@@ -16,6 +16,7 @@
     "date-fns": "^4.1.0",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
+    "nostr-login": "^1.7.12",
     "nostr-tools": "^2.23.1",
     "radix-ui": "^1.4.3",
     "react": "^19.2.0",

@@ -3,7 +3,13 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import './index.css'
 
+import { init as initNostrLogin } from 'nostr-login'
 import { Layout } from './components/layout/Layout'
+
+initNostrLogin({
+  theme: 'default',
+  noWait: true,
+});
 import Home from './pages/Home'
 import Rosary from './pages/Rosary'
 import Liturgy from './pages/Liturgy'
