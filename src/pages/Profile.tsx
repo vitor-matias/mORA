@@ -6,7 +6,7 @@ import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 
 export default function Profile() {
-    const { pubkey, isNip07, loginWithNip07, generateLocalKey, logout, setProfile } = useAuthStore();
+    const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
     const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, toggleRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily } = useAppStore();
     const t = useTranslations().profile;
 
@@ -14,6 +14,10 @@ export default function Profile() {
     const [profileName, setProfileName] = useState("");
     const [profilePicture, setProfilePicture] = useState("");
     const [isSaving, setIsSaving] = useState(false);
+
+    // Custom key input
+    const [customKey, setCustomKey] = useState("");
+    const [keyError, setKeyError] = useState("");
 
     useEffect(() => {
         if (pubkey) {
@@ -295,6 +299,46 @@ export default function Profile() {
 
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs">
+                                <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500">{t.or}</span>
+                            </div>
+                        </div>
+
+                        {/* Custom Key Login */}
+                        <div className="space-y-2">
+                            <input
+                                type="password"
+                                value={customKey}
+                                onChange={e => {
+                                    setCustomKey(e.target.value);
+                                    setKeyError("");
+                                }}
+                                placeholder="Colar chave secreta (nsec ou hex)"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                            />
+                            {keyError && <p className="text-red-500 text-xs px-1">{keyError}</p>}
+                            <button
+                                onClick={() => {
+                                    if (!customKey.trim()) {
+                                        setKeyError("Por favor, introduza uma chave");
+                                        return;
+                                    }
+                                    try {
+                                        loginWithPrivateKey(customKey.trim());
+                                    } catch (e: any) {
+                                        setKeyError(e.message || "Chave inválida");
+                                    }
+                                }}
+                                className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors box-border"
+                            >
+                                Entrar com Chave Privada
+                            </button>
+                        </div>
+
+                        <div className="relative pt-2">
+                            <div className="absolute inset-0 flex flex-col justify-center">
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
