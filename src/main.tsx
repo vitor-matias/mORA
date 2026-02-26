@@ -8,7 +8,6 @@ import { Layout } from './components/layout/Layout'
 
 initNostrLogin({
   theme: 'default',
-  noWait: true,
 });
 import Home from './pages/Home'
 import Rosary from './pages/Rosary'
