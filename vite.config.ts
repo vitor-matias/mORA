@@ -5,7 +5,8 @@ import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/mORA/' : '/',
   plugins: [
     react(),
     tailwindcss(),
@@ -37,4 +38,4 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-})
+}))
