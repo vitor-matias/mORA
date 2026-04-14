@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import legacy from '@vitejs/plugin-legacy'
-import tailwindcss from '@tailwindcss/vite'
 import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -11,16 +10,14 @@ export default defineConfig(({ command }) => ({
   base: command === 'build' ? './' : '/',
   plugins: [
     legacy({
-      // KaiOS 2.x uses Gecko engine; enforce broad compatibility
+      // KaiOS 2.x uses Gecko engine based on Firefox 48
       targets: ['Firefox 48'],
       modernPolyfills: true,
       additionalLegacyPolyfills: [
         'regenerator-runtime/runtime',
-        'core-js/stable',
       ],
     }),
     react(),
-    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
