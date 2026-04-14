@@ -1,6 +1,37 @@
+import '@babel/polyfill'
 import 'core-js/stable'
 import 'regenerator-runtime/runtime'
 import 'whatwg-fetch'
+
+// Polyfill check and setup for KaiOS/old browsers
+if (typeof Object.assign !== 'function') {
+  Object.defineProperty(Object, 'assign', {
+    value: function assign(target: any, ...sources: any[]) {
+      if (target == null) {
+        throw new TypeError('Cannot convert undefined or null to object');
+      }
+      const to = Object(target);
+      for (let index = 0; index < sources.length; index++) {
+        const nextSource = sources[index];
+        if (nextSource != null) {
+          for (const nextKey in nextSource) {
+            if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+              to[nextKey] = nextSource[nextKey];
+            }
+          }
+        }
+      }
+      return to;
+    },
+    writable: true,
+    configurable: true,
+  });
+}
+
+// Ensure Promise exists
+if (typeof Promise === 'undefined') {
+  console.error('Critical: Promise not available - app will not function');
+}
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'

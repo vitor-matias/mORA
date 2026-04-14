@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@babel/polyfill": "^7.12.1",
     "@noble/hashes": "^1.8.0",
     "@vitejs/plugin-legacy": "^7.2.1",
     "cheerio": "^1.2.0",

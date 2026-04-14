@@ -10,10 +10,13 @@ export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/mORA/' : '/',
   plugins: [
     legacy({
-      // KaiOS 2.x is based on an older Firefox engine.
-      targets: ['firefox >= 48'],
+      // KaiOS 2.x uses Gecko engine; enforce broad compatibility
+      targets: ['Firefox 48'],
       modernPolyfills: true,
-      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+      additionalLegacyPolyfills: [
+        'regenerator-runtime/runtime',
+        'core-js/stable',
+      ],
     }),
     react(),
     tailwindcss(),
