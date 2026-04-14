@@ -7,7 +7,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/mORA/' : '/',
+  // Relative assets work in KaiOS packaged apps and still work when hosted in a subfolder.
+  base: command === 'build' ? './' : '/',
   plugins: [
     legacy({
       // KaiOS 2.x uses Gecko engine; enforce broad compatibility

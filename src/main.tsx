@@ -6,11 +6,11 @@ import 'whatwg-fetch'
 // Polyfill check and setup for KaiOS/old browsers
 if (typeof Object.assign !== 'function') {
   Object.defineProperty(Object, 'assign', {
-    value: function assign(target: any, ...sources: any[]) {
+    value: function assign(target: object, ...sources: Array<Record<string, unknown> | null | undefined>) {
       if (target == null) {
         throw new TypeError('Cannot convert undefined or null to object');
       }
-      const to = Object(target);
+      const to = Object(target) as Record<string, unknown>;
       for (let index = 0; index < sources.length; index++) {
         const nextSource = sources[index];
         if (nextSource != null) {
@@ -35,7 +35,7 @@ if (typeof Promise === 'undefined') {
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { HashRouter, Routes, Route } from "react-router-dom"
 import './index.css'
 
 import { Layout } from './components/layout/Layout'
@@ -47,7 +47,7 @@ import Profile from './pages/Profile'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <HashRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
@@ -57,6 +57,6 @@ createRoot(document.getElementById('root')!).render(
           <Route path="perfil" element={<Profile />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   </StrictMode>,
 )

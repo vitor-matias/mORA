@@ -309,7 +309,7 @@ export default function LiturgiaHoras() {
                                                                             if (sectionEl) {
                                                                                 // Try to find the "Salmodia" heading inside the next section
                                                                                 const salmodiaEl = Array.from(sectionEl.querySelectorAll('h3, h6, font[color="red"], span.text-liturgy-600'))
-                                                                                    .find(el => el.textContent?.trim().toLowerCase() === 'salmodia');
+                                                                                    .find(el => el.textContent?.trim().toLowerCase() === 'hino');
 
                                                                                 if (salmodiaEl) {
                                                                                     salmodiaEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
