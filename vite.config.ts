@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import legacy from '@vitejs/plugin-legacy'
 import tailwindcss from '@tailwindcss/vite'
 import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
@@ -8,6 +9,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/mORA/' : '/',
   plugins: [
+    legacy({
+      // KaiOS 2.x is based on an older Firefox engine.
+      targets: ['firefox >= 48'],
+      modernPolyfills: true,
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+    }),
     react(),
     tailwindcss(),
     VitePWA({
