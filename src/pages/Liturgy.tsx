@@ -174,6 +174,13 @@ export default function Liturgy() {
     const [scrollSpeed, setScrollSpeed] = useState(2);
     const rafRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number | null>(null);
+    // Float accumulator for the scroll position. window.scrollTo/scrollBy
+    // round to whole pixels per call, so the sub-pixel per-frame delta
+    // (~0.3px at 120fps) would otherwise round to 0 and never advance.
+    const scrollAccRef = useRef(0);
+    // Speed kept in a ref so changes apply to the running loop immediately.
+    const speedRef = useRef(scrollSpeed);
+    useEffect(() => { speedRef.current = scrollSpeed; }, [scrollSpeed]);
 
     // Table of contents
     const articleRef = useRef<HTMLElement>(null);
@@ -278,22 +285,31 @@ export default function Liturgy() {
     }, []);
 
     const startAutoScroll = useCallback(() => {
-        const pxPerSec = SCROLL_SPEEDS[scrollSpeed - 1];
         setIsAutoScrolling(true);
+        // Seed the float accumulator with the current position so we don't
+        // jump on start.
+        scrollAccRef.current = window.scrollY;
+        lastTimeRef.current = null;
+
         const step = (time: number) => {
             if (lastTimeRef.current !== null) {
-                const elapsed = (time - lastTimeRef.current) / 1000;
-                window.scrollBy(0, pxPerSec * elapsed);
-                const atBottom =
-                    window.scrollY + window.innerHeight >= document.body.scrollHeight - 5;
-                if (atBottom) { stopAutoScroll(); return; }
+                // Cap elapsed so a backgrounded tab doesn't leap on return.
+                const elapsed = Math.min((time - lastTimeRef.current) / 1000, 0.1);
+                const pxPerSec = SCROLL_SPEEDS[speedRef.current - 1];
+                scrollAccRef.current += pxPerSec * elapsed;
+                window.scrollTo(0, scrollAccRef.current);
+
+                const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                if (scrollAccRef.current >= maxScroll - 1) {
+                    stopAutoScroll();
+                    return;
+                }
             }
             lastTimeRef.current = time;
             rafRef.current = requestAnimationFrame(step);
         };
-        lastTimeRef.current = null;
         rafRef.current = requestAnimationFrame(step);
-    }, [scrollSpeed, stopAutoScroll]);
+    }, [stopAutoScroll]);
 
     const toggleAutoScroll = useCallback(() => {
         if (isAutoScrolling) stopAutoScroll(); else startAutoScroll();
