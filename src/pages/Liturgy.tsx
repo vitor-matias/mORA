@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { ChevronRight, Calendar, Filter } from "lucide-react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { ChevronRight, Calendar, Filter, Play, Pause, Minus, Plus } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy } from "@/lib/liturgy";
@@ -12,44 +12,52 @@ const ENDING_RE = /^Palavra (do Senhor|da salvação|do Evangelho)/i;
 // First line of a reading body paragraph — the scripture source attribution.
 const SOURCE_RE = /^(Leitura (do|da|de|aos|ao)|Do Livro|Da Carta|Do Profeta|Dos Actos|Do Apocalipse|Da Primeira|Da Segunda|Da Terceira|Evangelho de Nosso Senhor)/i;
 
+// Canonical section IDs for stable TOC anchor links.
+const SECTION_ID_MAP: Array<[RegExp, string]> = [
+    [/^LEITURA\s+I$/i,          'leitura-i'],
+    [/^LEITURA\s+II/i,           'leitura-ii'],
+    [/^LEITURA\s+III/i,          'leitura-iii'],
+    [/^SALMO\s+RESPONSORIAL/i,   'salmo'],
+    [/^EVANGELHO/i,              'evangelho'],
+];
+
+function getSectionId(label: string): string {
+    return (
+        SECTION_ID_MAP.find(([re]) => re.test(label))?.[1]
+        ?? label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    );
+}
+
 /**
- * Adds semantic CSS classes to the reading HTML so the stylesheet can render
- * proper typographic hierarchy:
+ * Adds semantic CSS classes and anchor IDs to the reading HTML so the
+ * stylesheet renders proper typographic hierarchy and the TOC can navigate:
  *
- *   .reading-section-header  — the LEITURA / SALMO / EVANGELHO line
- *     .reading-label          — the ALL-CAPS section name
- *     .reading-ref            — the scripture reference  (e.g. "Ex 34, 4b-6")
- *     .reading-title          — the descriptive title    (e.g. «O Senhor…»)
- *   .reading-source           — "Leitura do Livro do Êxodo" attribution
- *   .reading-ending           — "Palavra do Senhor." / "Palavra da salvação."
+ *   .reading-section-header[id]  — the LEITURA / SALMO / EVANGELHO line
+ *     .reading-label              — the ALL-CAPS section name
+ *     .reading-ref                — the scripture reference
+ *     .reading-title              — the descriptive title in «»
+ *   .reading-source               — "Leitura do Livro do Êxodo" attribution
+ *   .reading-ending               — "Palavra do Senhor." / "Palavra da salvação."
  */
 function enrichReadingTypography(doc: Document): void {
     // ── Pass 1: split "Palavra do Senhor." out of body paragraphs ───────
-    // The API embeds the acclamation as the last <br>-separated line inside
-    // the reading paragraph rather than as its own <p>. Splitting it out
-    // lets the stylesheet centre and style it independently.
     doc.querySelectorAll('p').forEach((p) => {
         const nodes = Array.from(p.childNodes);
-
-        // Find the last <br> in this paragraph.
         let lastBrIdx = -1;
         for (let i = nodes.length - 1; i >= 0; i--) {
             if (nodes[i].nodeName === 'BR') { lastBrIdx = i; break; }
         }
         if (lastBrIdx === -1) return;
 
-        // Is the text after the last <br> an ending line?
         const afterNodes = nodes.slice(lastBrIdx + 1);
         const endingNode = afterNodes.find(
             (n) => n.nodeType === Node.TEXT_NODE && ENDING_RE.test(n.textContent?.trim() ?? '')
         );
         if (!endingNode) return;
 
-        // Detach the <br> and the ending text from this paragraph.
         p.removeChild(nodes[lastBrIdx]);
         p.removeChild(endingNode);
 
-        // Insert a standalone ending paragraph immediately after.
         const endingP = doc.createElement('p');
         endingP.className = 'reading-ending';
         endingP.textContent = (endingNode.textContent ?? '').trim();
@@ -58,10 +66,12 @@ function enrichReadingTypography(doc: Document): void {
 
     // ── Pass 2: section headers, source lines ────────────────────────────
     doc.querySelectorAll('p').forEach((p) => {
-        // Section headers
         const firstEl = p.children[0] as HTMLElement | undefined;
-        if (firstEl?.tagName === 'STRONG' && SECTION_LABEL_RE.test(firstEl.textContent?.trim() ?? '')) {
+        const label = firstEl?.textContent?.trim() ?? '';
+
+        if (firstEl?.tagName === 'STRONG' && SECTION_LABEL_RE.test(label)) {
             p.classList.add('reading-section-header');
+            p.id = getSectionId(label);
             firstEl.classList.add('reading-label');
 
             let seenBr = false;
@@ -91,18 +101,6 @@ function enrichReadingTypography(doc: Document): void {
     });
 }
 
-/**
- * Wraps each fully-italic paragraph (the introductory commentary that precedes
- * the readings) in a collapsible block, collapsed by default. Toggling is
- * handled via event delegation on the article (see handleToggleCommentary).
- * Also enriches section headers, source lines and endings with semantic
- * classes for the reading typography stylesheet.
- *
- * The incoming HTML comes from a remote API and is rendered with
- * dangerouslySetInnerHTML, so it is sanitized with DOMPurify first to strip
- * scripts, inline event handlers and javascript: URLs (the app keeps a Nostr
- * private key in localStorage, so an injected script would be high-impact).
- */
 function makeCommentariesCollapsible(html: string): string {
     if (typeof DOMParser === 'undefined' || !html) return html;
 
@@ -119,7 +117,6 @@ function makeCommentariesCollapsible(html: string): string {
         const allItalic = childEls.length > 0 &&
             childEls.every((c) => c.tagName === 'I' || c.tagName === 'EM');
 
-        // A commentary paragraph is one whose entire content is italic.
         if (directText || !allItalic) return;
 
         const wrapper = doc.createElement('div');
@@ -134,16 +131,30 @@ function makeCommentariesCollapsible(html: string): string {
         p.replaceWith(wrapper);
     });
 
-    // Run after commentaries so we don't process already-wrapped nodes.
     enrichReadingTypography(doc);
-
     return doc.body.innerHTML;
 }
+
+// Pixels-per-second for each speed level (1 = slow, 2 = medium, 3 = fast).
+const SCROLL_SPEEDS = [22, 42, 72] as const;
+
+interface TocEntry { id: string; label: string; }
 
 export default function Liturgy() {
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
+
+    // Autoscroll
+    const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+    const [scrollSpeed, setScrollSpeed] = useState(2);
+    const rafRef = useRef<number | null>(null);
+    const lastTimeRef = useRef<number | null>(null);
+
+    // Table of contents
+    const articleRef = useRef<HTMLElement>(null);
+    const [sections, setSections] = useState<TocEntry[]>([]);
+    const [activeSection, setActiveSection] = useState('');
 
     const { incrementStreak, liturgicalDescription } = useAppStore();
 
@@ -165,7 +176,6 @@ export default function Liturgy() {
             }
             setLoading(false);
         }
-
         loadLiturgy();
     }, [incrementStreak]);
 
@@ -181,17 +191,12 @@ export default function Liturgy() {
             if (startIdx === -1) {
                 result = html;
             } else {
-                // End markers use <b> tags (not <strong>) in the API response;
-                // Credo appears as plain text "Diz-se o Credo."
                 const postStart = html.slice(startIdx);
                 const endMatch = postStart.search(
                     /<p>(?:<b>(?:Oração sobre as oblatas|Prefácio)|Diz-se o Credo|<strong>(?:Credo|Oração sobre as oblatas))/i
                 );
                 const endIdx = endMatch !== -1 ? startIdx + endMatch : html.length;
-
                 let extracted = html.substring(startIdx, endIdx);
-
-                // Remove Gospel acclamation — API uses "ALELUIA" heading, not "ACLAMAÇÃO ANTES DO EVANGELHO"
                 extracted = extracted.replace(
                     /<p><strong>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i,
                     ''
@@ -199,12 +204,103 @@ export default function Liturgy() {
                 result = extracted;
             }
         }
-
         return makeCommentariesCollapsible(result);
     }, [liturgy, showOnlyReadings]);
 
-    // Expand/collapse the italic commentary blocks (event delegation, since the
-    // content is injected HTML).
+    // Rebuild TOC after the article renders with new content.
+    // We depend on both displayHtml (content) and loading (mount gate).
+    // Fall back to document.querySelector in case the ref isn't captured yet.
+    useEffect(() => {
+        if (loading || !liturgy) return;
+        const el = articleRef.current ?? document.querySelector<HTMLElement>('article');
+        if (!el) return;
+        const id = window.setTimeout(() => {
+            const headers = el.querySelectorAll<HTMLElement>('[id].reading-section-header');
+            if (headers.length === 0) return;
+            setSections(Array.from(headers).map((h) => ({
+                id: h.id,
+                label: (h.querySelector('.reading-label') as HTMLElement | null)
+                    ?.textContent?.trim() ?? h.id,
+            })));
+            setActiveSection('');
+        }, 50);
+        return () => window.clearTimeout(id);
+    }, [displayHtml, loading, liturgy]);
+
+    // Highlight the section currently in view.
+    useEffect(() => {
+        if (sections.length === 0) return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries.filter((e) => e.isIntersecting);
+                if (visible.length > 0) setActiveSection(visible[0].target.id);
+            },
+            { rootMargin: '-15% 0px -80% 0px', threshold: 0 }
+        );
+        sections.forEach(({ id }) => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el);
+        });
+        return () => observer.disconnect();
+    }, [sections]);
+
+    // ── Autoscroll ────────────────────────────────────────────────────────
+
+    const stopAutoScroll = useCallback(() => {
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+        lastTimeRef.current = null;
+        setIsAutoScrolling(false);
+    }, []);
+
+    const startAutoScroll = useCallback(() => {
+        const pxPerSec = SCROLL_SPEEDS[scrollSpeed - 1];
+        setIsAutoScrolling(true);
+        const step = (time: number) => {
+            if (lastTimeRef.current !== null) {
+                const elapsed = (time - lastTimeRef.current) / 1000;
+                window.scrollBy(0, pxPerSec * elapsed);
+                const atBottom =
+                    window.scrollY + window.innerHeight >= document.body.scrollHeight - 5;
+                if (atBottom) { stopAutoScroll(); return; }
+            }
+            lastTimeRef.current = time;
+            rafRef.current = requestAnimationFrame(step);
+        };
+        lastTimeRef.current = null;
+        rafRef.current = requestAnimationFrame(step);
+    }, [scrollSpeed, stopAutoScroll]);
+
+    const toggleAutoScroll = useCallback(() => {
+        if (isAutoScrolling) stopAutoScroll(); else startAutoScroll();
+    }, [isAutoScrolling, startAutoScroll, stopAutoScroll]);
+
+    // Pause when the user manually scrolls.
+    useEffect(() => {
+        if (!isAutoScrolling) return;
+        const stop = () => stopAutoScroll();
+        window.addEventListener('wheel', stop, { passive: true });
+        window.addEventListener('touchstart', stop, { passive: true });
+        return () => {
+            window.removeEventListener('wheel', stop);
+            window.removeEventListener('touchstart', stop);
+        };
+    }, [isAutoScrolling, stopAutoScroll]);
+
+    // Clean up on unmount.
+    useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
+
+    const scrollToSection = useCallback((id: string) => {
+        stopAutoScroll();
+        const el = document.getElementById(id);
+        if (el) {
+            const offset = 88; // clear the sticky header
+            const top = el.getBoundingClientRect().top + window.scrollY - offset;
+            window.scrollTo({ top, behavior: 'smooth' });
+        }
+    }, [stopAutoScroll]);
+
+    // Commentary expand/collapse (event delegation on article).
     const handleToggleCommentary = (e: React.MouseEvent<HTMLElement>) => {
         const toggle = (e.target as HTMLElement).closest('.commentary-toggle');
         if (!toggle) return;
@@ -215,105 +311,252 @@ export default function Liturgy() {
     };
 
     const [isScrolled, setIsScrolled] = useState(false);
-
     useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
-        };
+        const handleScroll = () => setIsScrolled(window.scrollY > 20);
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // ── Shared UI pieces rendered in both sidebar (desktop) and toolbar (mobile) ──
+
+    const filterButton = (
+        <button
+            onClick={() => setShowOnlyReadings(!showOnlyReadings)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors border w-full justify-center lg:justify-start ${
+                showOnlyReadings
+                    ? 'bg-liturgy-100 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-400 border-liturgy-200 dark:border-liturgy-800'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
+            }`}
+        >
+            <Filter size={15} />
+            {showOnlyReadings ? 'Apenas Leituras' : 'Missal Completo'}
+        </button>
+    );
+
+    const speedControls = isAutoScrolling ? (
+        <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-2 py-1.5">
+            <button
+                onClick={() => setScrollSpeed((s) => Math.max(1, s - 1))}
+                aria-label="Mais lento"
+                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-0.5"
+            >
+                <Minus size={12} />
+            </button>
+            <span className="text-zinc-500 dark:text-zinc-400 text-xs font-mono w-3 text-center select-none">
+                {scrollSpeed}
+            </span>
+            <button
+                onClick={() => setScrollSpeed((s) => Math.min(3, s + 1))}
+                aria-label="Mais rápido"
+                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-0.5"
+            >
+                <Plus size={12} />
+            </button>
+        </div>
+    ) : null;
+
+    const scrollButton = (
+        <button
+            onClick={toggleAutoScroll}
+            aria-label={isAutoScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors border w-full justify-center lg:justify-start ${
+                isAutoScrolling
+                    ? 'bg-liturgy-600 dark:bg-liturgy-500 text-white border-liturgy-700 dark:border-liturgy-600'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
+            }`}
+        >
+            {isAutoScrolling ? <Pause size={15} /> : <Play size={15} className="translate-x-px" />}
+            {isAutoScrolling ? 'Parar scroll' : 'Auto-scroll'}
+        </button>
+    );
+
+    const dateCard = liturgy && (
+        <div className="bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-1">
+                <Calendar className="text-liturgy-600 dark:text-liturgy-400 shrink-0" size={17} />
+                <p
+                    className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize leading-snug"
+                    style={{ fontFamily: 'var(--content-font-family, inherit)', fontSize: '0.9rem' }}
+                >
+                    {new Date(liturgy.date).toLocaleDateString('pt-PT', {
+                        weekday: 'long', day: 'numeric', month: 'long',
+                    })}
+                </p>
+            </div>
+            {liturgicalDescription && (
+                <p
+                    className="text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line pl-6 line-clamp-4"
+                    style={{ fontFamily: 'var(--content-font-family, inherit)', fontSize: '0.78rem' }}
+                >
+                    {liturgicalDescription}
+                </p>
+            )}
+        </div>
+    );
+
     return (
-        <div className="max-w-md mx-auto flex-1 w-full flex flex-col">
-            <header className={`sticky top-0 z-30 bg-[#FAF9F6]/90 dark:bg-[#121212]/90 backdrop-blur-md flex flex-col shrink-0 border-b transition-all duration-300 ${isScrolled
-                ? 'p-4 pt-6 gap-2 border-zinc-200/50 dark:border-zinc-800/50 shadow-sm'
-                : 'p-6 pt-12 gap-4 border-transparent'
-                }`}>
-                <div className="flex items-center gap-4">
+        <div className="flex-1 w-full flex flex-col">
+
+            {/* ── Sticky header ────────────────────────────────────────────── */}
+            <header className={`sticky top-0 z-30 bg-[#FAF9F6]/90 dark:bg-[#121212]/90 backdrop-blur-md border-b transition-all duration-300 ${
+                isScrolled
+                    ? 'border-zinc-200/50 dark:border-zinc-800/50 shadow-sm py-3'
+                    : 'border-transparent py-5 lg:py-6'
+            }`}>
+                <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
                     <button
                         onClick={() => window.history.back()}
-                        className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all duration-300 flex-shrink-0 ${isScrolled ? 'p-1.5' : 'p-2'
-                            }`}
+                        className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
+                            isScrolled ? 'p-1.5' : 'p-2'
+                        }`}
                     >
                         <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
                     </button>
-                    <div className="min-w-0">
-                        <h1 className={`font-bold tracking-tight text-zinc-900 dark:text-zinc-50 transition-all duration-300 truncate ${isScrolled ? 'text-xl' : 'text-3xl'
-                            }`}>Missa Diária</h1>
-                        <p className={`text-zinc-500 capitalize font-medium mt-0.5 transition-all duration-300 truncate ${isScrolled ? 'text-xs opacity-80' : 'text-sm'
-                            }`}>{liturgy?.saintOfDay || 'A carregar...'}</p>
+                    <div className="min-w-0 flex-1">
+                        <h1 className={`font-bold tracking-tight text-zinc-900 dark:text-zinc-50 transition-all truncate ${
+                            isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
+                        }`}>
+                            Missa Diária
+                        </h1>
+                        <p className={`text-zinc-500 capitalize font-medium mt-0.5 transition-all truncate ${
+                            isScrolled ? 'text-xs opacity-80' : 'text-sm'
+                        }`}>
+                            {liturgy?.saintOfDay || 'A carregar...'}
+                        </p>
                     </div>
                 </div>
             </header>
 
-            <div className="p-6 pt-2 space-y-6 flex-1 flex flex-col">
+            {/* ── Page body ────────────────────────────────────────────────── */}
+            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
 
-                {loading ? (
-                    <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-                        <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-amber-500 animate-spin"></div>
-                        <p className="text-zinc-400">A obter leituras de hoje...</p>
-                    </div>
-                ) : liturgy ? (
-                    <div className="space-y-6 flex-1 flex flex-col">
-                        {/* Header Info Banner */}
-                        <div className="bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-2xl p-4 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-3">
-                                <Calendar className="text-liturgy-600 dark:text-liturgy-400" size={24} />
-                                <div>
-                                    <p
-                                        className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize"
-                                        style={{ fontSize: 'var(--content-font-size, 21px)', fontFamily: 'var(--content-font-family, inherit)' }}
-                                    >
-                                        {new Date(liturgy.date).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                    </p>
-                                    {liturgicalDescription && (
-                                        <p
-                                            className="mt-1 text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line"
-                                            style={{ fontSize: 'calc(var(--content-font-size, 21px) * 0.82)', fontFamily: 'var(--content-font-family, inherit)' }}
-                                        >
-                                            {liturgicalDescription}
-                                        </p>
-                                    )}
+                {/* ── Desktop sidebar ──────────────────────────────────────── */}
+                {!loading && liturgy && (
+                    <aside className="hidden lg:flex flex-col gap-4 w-52 xl:w-60 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                        {dateCard}
+
+                        <div className="flex flex-col gap-2">
+                            {filterButton}
+                            {speedControls && (
+                                <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Velocidade</span>
+                                    {speedControls}
                                 </div>
-                            </div>
+                            )}
+                            {scrollButton}
                         </div>
 
-                        {/* Filter Toggle */}
-                        <div className="flex items-center justify-end">
-                            <button
-                                onClick={() => setShowOnlyReadings(!showOnlyReadings)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${showOnlyReadings
-                                    ? 'bg-liturgy-100 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-400 border-liturgy-200 dark:border-liturgy-800'
-                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                    }`}
+                        {sections.length > 0 && (
+                            <nav aria-label="Secções das leituras" className="mt-1">
+                                <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 px-2">
+                                    Secções
+                                </p>
+                                <ul className="space-y-0.5">
+                                    {sections.map(({ id, label }) => (
+                                        <li key={id}>
+                                            <button
+                                                onClick={() => scrollToSection(id)}
+                                                className={`w-full text-left text-sm py-1.5 px-2 rounded-lg transition-colors ${
+                                                    activeSection === id
+                                                        ? 'text-liturgy-600 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
+                                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
+                                                }`}
+                                            >
+                                                {/* Title-case but keep Roman numerals (I, II, III, IV) uppercase */}
+                                                {label.toLowerCase().replace(/\b\w+/g, (w) =>
+                                                    /^(i{1,3}|iv)$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
+                                                )}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </nav>
+                        )}
+                    </aside>
+                )}
+
+                {/* ── Main content ─────────────────────────────────────────── */}
+                <div className="flex-1 min-w-0 flex flex-col">
+                    {loading ? (
+                        <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-20">
+                            <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-amber-500 animate-spin" />
+                            <p className="text-zinc-400">A obter leituras de hoje...</p>
+                        </div>
+                    ) : liturgy ? (
+                        <>
+                            {/* Date card — mobile / tablet only */}
+                            <div className="lg:hidden mb-4">{dateCard}</div>
+
+                            {/* Filter + autoscroll row — mobile / tablet only */}
+                            <div className="lg:hidden flex items-center gap-2 mb-6">
+                                <div className="flex-1">{filterButton}</div>
+                                {speedControls}
+                                <div className="flex-1">{scrollButton}</div>
+                            </div>
+
+                            {/* Reading article */}
+                            <article
+                                ref={articleRef}
+                                className="
+                                    content-text flex-1
+                                    text-zinc-800 dark:text-zinc-200
+                                    [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
+                                    [&_em]:italic [&_em]:text-zinc-700 dark:[&_em]:text-zinc-300
+                                    [&_i]:italic [&_i]:text-zinc-700 dark:[&_i]:text-zinc-300
+                                    [&_br]:mb-2
+                                "
+                                onClick={handleToggleCommentary}
                             >
-                                <Filter size={16} />
-                                {showOnlyReadings ? 'Apenas Leituras' : 'Missal Completo'}
+                                <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
+                            </article>
+                        </>
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
+                            <p className="text-zinc-500">Não foi possível carregar a liturgia de hoje.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Floating autoscroll FAB — mobile / tablet only ────────── */}
+            {!loading && liturgy && (
+                <div className="lg:hidden fixed bottom-6 right-4 z-40 flex flex-col items-end gap-2">
+                    {isAutoScrolling && (
+                        <div className="flex items-center gap-1.5 bg-zinc-900/90 dark:bg-zinc-800 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg">
+                            <button
+                                onClick={() => setScrollSpeed((s) => Math.max(1, s - 1))}
+                                aria-label="Mais lento"
+                                className="text-zinc-300 hover:text-white transition-colors p-0.5"
+                            >
+                                <Minus size={14} />
+                            </button>
+                            <span className="text-zinc-300 text-xs font-mono w-3 text-center select-none">
+                                {scrollSpeed}
+                            </span>
+                            <button
+                                onClick={() => setScrollSpeed((s) => Math.min(3, s + 1))}
+                                aria-label="Mais rápido"
+                                className="text-zinc-300 hover:text-white transition-colors p-0.5"
+                            >
+                                <Plus size={14} />
                             </button>
                         </div>
-
-                        {/* Mass Readings */}
-                        <article className="
-                        flex-1
-                        content-text
-                        text-zinc-800 dark:text-zinc-200
-                        [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
-                        [&_em]:italic [&_em]:text-zinc-700 dark:[&_em]:text-zinc-300
-                        [&_i]:italic [&_i]:text-zinc-700 dark:[&_i]:text-zinc-300
-                        [&_br]:mb-2
-                    "
-                            onClick={handleToggleCommentary}
-                        >
-                            <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
-                        </article>
-                    </div>
-                ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
-                        <p className="text-zinc-500">Não foi possível carregar a liturgia de hoje.</p>
-                    </div>
-                )}
-            </div>
+                    )}
+                    <button
+                        onClick={toggleAutoScroll}
+                        aria-label={isAutoScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
+                        className={`h-12 w-12 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 ${
+                            isAutoScrolling
+                                ? 'bg-liturgy-600 text-white ring-4 ring-liturgy-400/25 scale-110'
+                                : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                        }`}
+                    >
+                        {isAutoScrolling
+                            ? <Pause size={18} />
+                            : <Play size={18} className="translate-x-px" />}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

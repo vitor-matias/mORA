@@ -29,7 +29,7 @@ export default function Home() {
     const displayName = profile?.display_name || profile?.name || null;
 
     return (
-        <div className="p-6 pt-12 space-y-8 h-full relative overflow-hidden">
+        <div className="p-6 pt-12 space-y-8 h-full relative overflow-hidden max-w-md lg:max-w-xl mx-auto w-full">
             {/* Thematic Background Gradient */}
             <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-br from-liturgy-100 to-transparent dark:from-liturgy-900/20 -z-10 mix-blend-multiply opacity-50"></div>
 

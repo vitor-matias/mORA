@@ -95,7 +95,8 @@ export function Layout() {
 
     return (
         <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
-            <main className="flex-1 w-full max-w-md mx-auto flex flex-col">
+            {/* max-w-md on mobile/tablet; individual pages control width on lg+ */}
+            <main className="flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col">
                 <Outlet />
             </main>
         </div>
