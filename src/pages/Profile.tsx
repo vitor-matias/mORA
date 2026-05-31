@@ -128,17 +128,19 @@ export default function Profile() {
                     {/* Font Size */}
                     <div>
                         <p className="text-sm font-medium mb-3">Tamanho do Texto</p>
-                        <div className="flex gap-2">
-                            {([['small', 'P'], ['medium', 'M'], ['large', 'G'], ['xlarge', 'XG']] as [FontSize, string][]).map(([sz, label]) => (
+                        <div className="flex gap-2 items-stretch">
+                            {([['small', 15], ['medium', 19], ['large', 24], ['xlarge', 30]] as [FontSize, number][]).map(([sz, preview]) => (
                                 <button
                                     key={sz}
                                     onClick={() => setFontSize(sz)}
-                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${fontSize === sz
+                                    aria-label={`Tamanho ${sz}`}
+                                    aria-pressed={fontSize === sz}
+                                    className={`flex-1 py-3 px-3 rounded-xl flex items-center justify-center transition-colors ${fontSize === sz
                                         ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
-                                    <span className="text-xs font-medium">{label}</span>
+                                    <span className="font-semibold leading-none" style={{ fontSize: preview }}>A</span>
                                 </button>
                             ))}
                         </div>
@@ -327,8 +329,8 @@ export default function Profile() {
                                     }
                                     try {
                                         loginWithPrivateKey(customKey.trim());
-                                    } catch (e: any) {
-                                        setKeyError(e.message || "Chave inválida");
+                                    } catch (e) {
+                                        setKeyError(e instanceof Error ? e.message : "Chave inválida");
                                     }
                                 }}
                                 className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors box-border"

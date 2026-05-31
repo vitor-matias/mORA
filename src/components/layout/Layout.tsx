@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useEffect } from "react";
 import { useAppStore } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
-import { fetchLiturgicalColorFromCalendar } from "@/lib/liturgy";
+import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 
 export function Layout() {
     const { theme, liturgicalColor, fontSize, fontFamily } = useAppStore();
@@ -20,6 +20,24 @@ export function Layout() {
             }
         }
         checkLiturgicalColor();
+
+        // Warm the cache for the next few days of Mass + Liturgy of the Hours
+        // once the app is open. Deferred to idle time so it never competes with
+        // the content the user is opening right now.
+        const w = window as typeof window & {
+            requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+            cancelIdleCallback?: (id: number) => void;
+        };
+        const kickoff = () => { preloadUpcomingLiturgy(5); };
+        let cancel: () => void;
+        if (w.requestIdleCallback) {
+            const id = w.requestIdleCallback(kickoff, { timeout: 5000 });
+            cancel = () => w.cancelIdleCallback?.(id);
+        } else {
+            const id = window.setTimeout(kickoff, 2000);
+            cancel = () => window.clearTimeout(id);
+        }
+        return cancel;
     }, []);
 
     // Apply color theme, dark mode, font settings
@@ -31,11 +49,32 @@ export function Layout() {
             document.documentElement.classList.remove('dark');
         }
 
+        // Keep the mobile system/status bar colour in sync with the theme
+        // (matches the page background: zinc-950 in dark, white in light).
+        const themeColor = isDark ? '#09090b' : '#ffffff';
+        let meta = document.querySelector('meta[name="theme-color"]');
+        if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('name', 'theme-color');
+            document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', themeColor);
+
         document.documentElement.setAttribute('data-theme', liturgicalColor);
 
-        // Font size — set as CSS variable so only content areas pick it up (not UI)
-        const sizeMap: Record<string, string> = { small: '14px', medium: '16px', large: '18px', xlarge: '20px' };
-        document.documentElement.style.setProperty('--content-font-size', sizeMap[fontSize] || '16px');
+        // Font size — set as CSS variables so only content (prayer/reading)
+        // areas pick it up, not the UI chrome. Each step pairs a generous
+        // reading size with a line-height tuned for that size (larger text
+        // wants a slightly tighter ratio).
+        const sizeMap: Record<string, { size: string; lineHeight: string }> = {
+            small: { size: '18px', lineHeight: '1.7' },
+            medium: { size: '21px', lineHeight: '1.65' },
+            large: { size: '26px', lineHeight: '1.6' },
+            xlarge: { size: '32px', lineHeight: '1.5' },
+        };
+        const sizeConfig = sizeMap[fontSize] || sizeMap.medium;
+        document.documentElement.style.setProperty('--content-font-size', sizeConfig.size);
+        document.documentElement.style.setProperty('--content-line-height', sizeConfig.lineHeight);
 
         // Font family — set as CSS variable so only content areas pick it up (not UI)
         const familyMap: Record<string, string> = {

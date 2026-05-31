@@ -4,83 +4,83 @@
 
 /* ------------------------------------------------------------------ */
 /* Liturgical dynamic colors — switched via data-theme on <html>      */
-/* Use raw color values (no hsl() wrapper) because Tailwind already   */
-/* wraps them in the config.                                          */
+/* Stored as "R G B" channel triplets (no rgb() wrapper) so Tailwind  */
+/* can apply opacity modifiers: rgb(var(--liturgy-x) / <alpha-value>) */
 /* ------------------------------------------------------------------ */
 
 /* Default: Verde (Emerald) */
 :root {
-  --liturgy-50: #ecfdf5;
-  --liturgy-100: #d1fae5;
-  --liturgy-200: #a7f3d0;
-  --liturgy-300: #6ee7b7;
-  --liturgy-400: #34d399;
-  --liturgy-500: #10b981;
-  --liturgy-600: #059669;
-  --liturgy-700: #047857;
-  --liturgy-800: #065f46;
-  --liturgy-900: #064e3b;
-  --liturgy-950: #022c22;
+  --liturgy-50: 236 253 245;
+  --liturgy-100: 209 250 229;
+  --liturgy-200: 167 243 208;
+  --liturgy-300: 110 231 183;
+  --liturgy-400: 52 211 153;
+  --liturgy-500: 16 185 129;
+  --liturgy-600: 5 150 105;
+  --liturgy-700: 4 120 87;
+  --liturgy-800: 6 95 70;
+  --liturgy-900: 6 78 59;
+  --liturgy-950: 2 44 34;
 }
 
 /* Roxo (Purple) */
 html[data-theme="roxo"] {
-  --liturgy-50: #faf5ff;
-  --liturgy-100: #f3e8ff;
-  --liturgy-200: #e9d5ff;
-  --liturgy-300: #d8b4fe;
-  --liturgy-400: #c084fc;
-  --liturgy-500: #a855f7;
-  --liturgy-600: #9333ea;
-  --liturgy-700: #7e22ce;
-  --liturgy-800: #6b21a8;
-  --liturgy-900: #581c87;
-  --liturgy-950: #3b0764;
+  --liturgy-50: 250 245 255;
+  --liturgy-100: 243 232 255;
+  --liturgy-200: 233 213 255;
+  --liturgy-300: 216 180 254;
+  --liturgy-400: 192 132 252;
+  --liturgy-500: 168 85 247;
+  --liturgy-600: 147 51 234;
+  --liturgy-700: 126 34 206;
+  --liturgy-800: 107 33 168;
+  --liturgy-900: 88 28 135;
+  --liturgy-950: 59 7 100;
 }
 
 /* Vermelho (Rose) */
 html[data-theme="vermelho"] {
-  --liturgy-50: #fff1f2;
-  --liturgy-100: #ffe4e6;
-  --liturgy-200: #fecdd3;
-  --liturgy-300: #fda4af;
-  --liturgy-400: #fb7185;
-  --liturgy-500: #f43f5e;
-  --liturgy-600: #e11d48;
-  --liturgy-700: #be123c;
-  --liturgy-800: #9f1239;
-  --liturgy-900: #881337;
-  --liturgy-950: #4c0519;
+  --liturgy-50: 255 241 242;
+  --liturgy-100: 255 228 230;
+  --liturgy-200: 254 205 211;
+  --liturgy-300: 253 164 175;
+  --liturgy-400: 251 113 133;
+  --liturgy-500: 244 63 94;
+  --liturgy-600: 225 29 72;
+  --liturgy-700: 190 18 60;
+  --liturgy-800: 159 18 57;
+  --liturgy-900: 136 19 55;
+  --liturgy-950: 76 5 25;
 }
 
 /* Branco (Amber/Gold) */
 html[data-theme="branco"] {
-  --liturgy-50: #fffbeb;
-  --liturgy-100: #fef3c7;
-  --liturgy-200: #fde68a;
-  --liturgy-300: #fcd34d;
-  --liturgy-400: #fbbf24;
-  --liturgy-500: #f59e0b;
-  --liturgy-600: #d97706;
-  --liturgy-700: #b45309;
-  --liturgy-800: #92400e;
-  --liturgy-900: #78350f;
-  --liturgy-950: #451a03;
+  --liturgy-50: 255 251 235;
+  --liturgy-100: 254 243 199;
+  --liturgy-200: 253 230 138;
+  --liturgy-300: 252 211 77;
+  --liturgy-400: 251 191 36;
+  --liturgy-500: 245 158 11;
+  --liturgy-600: 217 119 6;
+  --liturgy-700: 180 83 9;
+  --liturgy-800: 146 64 14;
+  --liturgy-900: 120 53 15;
+  --liturgy-950: 69 26 3;
 }
 
 /* Rosa (Pink) */
 html[data-theme="rosa"] {
-  --liturgy-50: #fdf2f8;
-  --liturgy-100: #fce7f3;
-  --liturgy-200: #fbcfe8;
-  --liturgy-300: #f9a8d4;
-  --liturgy-400: #f472b6;
-  --liturgy-500: #ec4899;
-  --liturgy-600: #db2777;
-  --liturgy-700: #be185d;
-  --liturgy-800: #9d174d;
-  --liturgy-900: #831843;
-  --liturgy-950: #500724;
+  --liturgy-50: 253 242 248;
+  --liturgy-100: 252 231 243;
+  --liturgy-200: 251 207 232;
+  --liturgy-300: 249 168 212;
+  --liturgy-400: 244 114 182;
+  --liturgy-500: 236 72 153;
+  --liturgy-600: 219 39 119;
+  --liturgy-700: 190 24 93;
+  --liturgy-800: 157 23 77;
+  --liturgy-900: 131 24 67;
+  --liturgy-950: 80 7 36;
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,9 +167,74 @@ html[data-theme="rosa"] {
   }
 }
 
-/* Content text areas — uses user-selected font settings */
+/* Content text areas (prayers & readings) — tuned for long-form reading.
+   Uses the user-selected size/family CSS variables set in Layout. */
 .content-text {
-  font-size: var(--content-font-size, 16px);
+  font-size: var(--content-font-size, 21px);
   font-family: var(--content-font-family, inherit);
-  line-height: 1.7;
+  line-height: var(--content-line-height, 1.65);
+  /* Ragged-right reads better than justified in a narrow column; let long
+     Portuguese words hyphenate and avoid orphan lines where supported. */
+  text-align: left;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  font-feature-settings: "kern", "liga", "calt";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Paragraph rhythm inside reading content scales with the font size */
+.content-text p {
+  margin-bottom: 0.85em;
+}
+
+.content-text p:last-child {
+  margin-bottom: 0;
+}
+
+/* Collapsible italic commentary inside the Mass readings */
+.reading-commentary {
+  margin-bottom: 1.25rem;
+}
+
+.commentary-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: rgb(var(--liturgy-700));
+  background: rgb(var(--liturgy-50));
+  border: 1px solid rgb(var(--liturgy-200));
+}
+
+.dark .commentary-toggle {
+  color: rgb(var(--liturgy-300));
+  background: rgb(var(--liturgy-950) / 0.4);
+  border-color: rgb(var(--liturgy-800));
+}
+
+.commentary-chevron {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.reading-commentary:not(.collapsed) .commentary-chevron {
+  transform: rotate(90deg);
+}
+
+/* Collapsed by default — hide the body, drop the margin under the toggle */
+.reading-commentary.collapsed .commentary-body {
+  display: none;
+}
+
+.reading-commentary:not(.collapsed) .commentary-body {
+  margin-top: 0.75rem;
 }

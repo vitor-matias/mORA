@@ -4,6 +4,46 @@ import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy } from "@/lib/liturgy";
 import { useAppStore } from "@/store/app";
 
+/**
+ * Wraps each fully-italic paragraph (the introductory commentary that precedes
+ * the readings) in a collapsible block, collapsed by default. Toggling is
+ * handled via event delegation on the article (see handleToggleCommentary).
+ * Uses the native DOMParser so there's no extra bundle weight and it still
+ * works on the legacy Firefox 48 / KaiOS target.
+ */
+function makeCommentariesCollapsible(html: string): string {
+    if (typeof DOMParser === 'undefined' || !html) return html;
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+    doc.querySelectorAll('p').forEach((p) => {
+        const directText = Array.from(p.childNodes)
+            .filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => n.textContent || '')
+            .join('')
+            .trim();
+        const childEls = Array.from(p.children);
+        const allItalic = childEls.length > 0 &&
+            childEls.every((c) => c.tagName === 'I' || c.tagName === 'EM');
+
+        // A commentary paragraph is one whose entire content is italic.
+        if (directText || !allItalic) return;
+
+        const wrapper = doc.createElement('div');
+        wrapper.className = 'reading-commentary collapsed';
+        wrapper.innerHTML =
+            '<button type="button" class="commentary-toggle">' +
+            '<span class="commentary-chevron" aria-hidden="true">▸</span>' +
+            '<span>Comentário</span>' +
+            '</button>' +
+            '<div class="commentary-body"></div>';
+        wrapper.querySelector('.commentary-body')!.appendChild(p.cloneNode(true));
+        p.replaceWith(wrapper);
+    });
+
+    return doc.body.innerHTML;
+}
+
 export default function Liturgy() {
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
@@ -35,30 +75,44 @@ export default function Liturgy() {
 
     const displayHtml = useMemo(() => {
         if (!liturgy?.htmlContent) return '';
-        if (!showOnlyReadings) return liturgy.htmlContent;
 
-        // Try to extract only from LEITURA I up to the end of EVANGELHO
-        const html = liturgy.htmlContent;
-        const startIdx = html.indexOf('<p><strong>LEITURA I');
-        const endOblatas = html.indexOf('<p><strong>Oração sobre as oblatas');
-        const endCredo = html.indexOf('<p><strong>Credo'); // some solemnities have Credo before oblatas
+        let result: string;
+        if (!showOnlyReadings) {
+            result = liturgy.htmlContent;
+        } else {
+            // Try to extract only from LEITURA I up to the end of EVANGELHO
+            const html = liturgy.htmlContent;
+            const startIdx = html.indexOf('<p><strong>LEITURA I');
+            const endOblatas = html.indexOf('<p><strong>Oração sobre as oblatas');
+            const endCredo = html.indexOf('<p><strong>Credo'); // some solemnities have Credo before oblatas
 
-        let endIdx = html.length;
-        if (endCredo > startIdx) {
-            endIdx = endCredo;
-        } else if (endOblatas > startIdx) {
-            endIdx = endOblatas;
+            let endIdx = html.length;
+            if (endCredo > startIdx) {
+                endIdx = endCredo;
+            } else if (endOblatas > startIdx) {
+                endIdx = endOblatas;
+            }
+
+            if (startIdx !== -1) {
+                let extracted = html.substring(startIdx, endIdx);
+                // Remove Acclamation before Gospel if we only want readings
+                extracted = extracted.replace(/<p><strong>ACLAMAÇÃO ANTES DO EVANGELHO<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i, '');
+                result = extracted;
+            } else {
+                result = html; // fallback
+            }
         }
 
-        if (startIdx !== -1) {
-            let extracted = html.substring(startIdx, endIdx);
-            // Remove Acclamation before Gospel if we only want readings
-            extracted = extracted.replace(/<p><strong>ACLAMAÇÃO ANTES DO EVANGELHO<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i, '');
-            return extracted;
-        }
-
-        return html; // fallback
+        return makeCommentariesCollapsible(result);
     }, [liturgy, showOnlyReadings]);
+
+    // Expand/collapse the italic commentary blocks (event delegation, since the
+    // content is injected HTML).
+    const handleToggleCommentary = (e: React.MouseEvent<HTMLElement>) => {
+        const toggle = (e.target as HTMLElement).closest('.commentary-toggle');
+        if (!toggle) return;
+        toggle.closest('.reading-commentary')?.classList.toggle('collapsed');
+    };
 
     const [isScrolled, setIsScrolled] = useState(false);
 
@@ -107,11 +161,17 @@ export default function Liturgy() {
                             <div className="flex items-center gap-3">
                                 <Calendar className="text-liturgy-600 dark:text-liturgy-400" size={24} />
                                 <div>
-                                    <p className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize">
+                                    <p
+                                        className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize"
+                                        style={{ fontSize: 'var(--content-font-size, 21px)', fontFamily: 'var(--content-font-family, inherit)' }}
+                                    >
                                         {new Date(liturgy.date).toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
                                     </p>
                                     {liturgicalDescription && (
-                                        <p className="text-sm mt-1 text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line">
+                                        <p
+                                            className="mt-1 text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line"
+                                            style={{ fontSize: 'calc(var(--content-font-size, 21px) * 0.82)', fontFamily: 'var(--content-font-family, inherit)' }}
+                                        >
                                             {liturgicalDescription}
                                         </p>
                                     )}
@@ -137,15 +197,14 @@ export default function Liturgy() {
                         <article className="
                         flex-1
                         content-text
-                        text-justify
-                        text-zinc-800 dark:text-zinc-200 
-                        [&_p]:mb-5 
-                        [&_p:last-child]:mb-0
+                        text-zinc-800 dark:text-zinc-200
                         [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
                         [&_em]:italic [&_em]:text-zinc-700 dark:[&_em]:text-zinc-300
                         [&_i]:italic [&_i]:text-zinc-700 dark:[&_i]:text-zinc-300
                         [&_br]:mb-2
-                    ">
+                    "
+                            onClick={handleToggleCommentary}
+                        >
                             <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
                         </article>
                     </div>

@@ -28,11 +28,9 @@ export const useAuthStore = create<AuthState>()(
 
             loginWithNip07: async () => {
                 try {
-                    // @ts-ignore
                     if (!window.nostr) {
                         throw new Error('Nostr extension not found');
                     }
-                    // @ts-ignore
                     const pubkey = await window.nostr.getPublicKey();
                     set({ pubkey, privkey: null, isNip07: true });
                 } catch (error) {
@@ -60,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
                     const secretKeyBytes = new Uint8Array(privkeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
                     const pubkeyHex = getPublicKey(secretKeyBytes);
                     set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false });
-                } catch (e) {
+                } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
                 }
             },

@@ -71,19 +71,21 @@ module.exports = {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-        // Liturgical theme colors — resolved via CSS custom properties
+        // Liturgical theme colors — resolved via CSS custom properties.
+        // Stored as "R G B" triplets so Tailwind's opacity modifiers
+        // (e.g. bg-liturgy-950/20) produce valid rgb(... / <alpha-value>).
         liturgy: {
-          50: 'var(--liturgy-50)',
-          100: 'var(--liturgy-100)',
-          200: 'var(--liturgy-200)',
-          300: 'var(--liturgy-300)',
-          400: 'var(--liturgy-400)',
-          500: 'var(--liturgy-500)',
-          600: 'var(--liturgy-600)',
-          700: 'var(--liturgy-700)',
-          800: 'var(--liturgy-800)',
-          900: 'var(--liturgy-900)',
-          950: 'var(--liturgy-950)',
+          50: 'rgb(var(--liturgy-50) / <alpha-value>)',
+          100: 'rgb(var(--liturgy-100) / <alpha-value>)',
+          200: 'rgb(var(--liturgy-200) / <alpha-value>)',
+          300: 'rgb(var(--liturgy-300) / <alpha-value>)',
+          400: 'rgb(var(--liturgy-400) / <alpha-value>)',
+          500: 'rgb(var(--liturgy-500) / <alpha-value>)',
+          600: 'rgb(var(--liturgy-600) / <alpha-value>)',
+          700: 'rgb(var(--liturgy-700) / <alpha-value>)',
+          800: 'rgb(var(--liturgy-800) / <alpha-value>)',
+          900: 'rgb(var(--liturgy-900) / <alpha-value>)',
+          950: 'rgb(var(--liturgy-950) / <alpha-value>)',
         },
       },
     },

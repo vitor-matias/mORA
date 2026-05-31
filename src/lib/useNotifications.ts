@@ -30,14 +30,14 @@ export function useNotifications() {
                         navigator.serviceWorker.ready.then(registration => {
                             registration.showNotification("mORA", {
                                 body: "É hora de rezar o " + t.rosaryTitle,
-                                icon: '/icon-192x192.png'
+                                icon: '/pwa-192x192.png'
                             });
                         });
                     } else {
                         // Fallback to standard Notification
                         new Notification("mORA", {
                             body: "É hora de rezar o " + t.rosaryTitle,
-                            icon: '/icon-192x192.png'
+                            icon: '/pwa-192x192.png'
                         });
                     }
                 }

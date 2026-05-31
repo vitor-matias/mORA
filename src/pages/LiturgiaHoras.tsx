@@ -22,6 +22,7 @@ interface HourMoment {
  */
 function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
     const byTitle = (title: string) => rawParts.find(p => p.title === title);
+    const byPrefix = (prefix: string) => rawParts.find(p => p.title.startsWith(prefix));
 
     const invitatorioPart = byTitle('Invitatório');
     const oficio = byTitle('Ofício de Leitura');
@@ -29,8 +30,10 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
     const tercia = byTitle('Tércia');
     const sexta = byTitle('Sexta');
     const noa = byTitle('Noa');
-    const vesperas = byTitle('Vésperas');
-    const completas = byTitle('Completas');
+    // On Saturdays/Sundays the API renames these (e.g. "Vésperas I/II",
+    // "Compl. dep. Vésp. II"), so match by prefix rather than exact title.
+    const vesperas = byPrefix('Vésperas');
+    const completas = byPrefix('Completas') || byPrefix('Compl');
 
     const moments: HourMoment[] = [];
 
@@ -87,8 +90,8 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
 export default function LiturgiaHoras() {
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeHour, setActiveHour] = useState<string | null>(null);
-    const [activeSubHour, setActiveSubHour] = useState<string | null>(null);
+    const [userActiveHour, setUserActiveHour] = useState<string | null>(null);
+    const [userActiveSubHour, setUserActiveSubHour] = useState<string | null>(null);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set([]));
 
     const { incrementStreak } = useAppStore();
@@ -120,35 +123,39 @@ export default function LiturgiaHoras() {
         return buildCanonicalHours(allParts);
     }, [liturgy]);
 
-    // When canonical hours load, pick a default based on time of day
-    useEffect(() => {
-        if (canonicalHours.length > 0 && !activeHour) {
-            const hour = new Date().getHours();
-            let defaultMoment = 'oficio';
-            let defaultSubHour: string | null = null;
+    // Default hour/sub-hour based on the current time of day, derived from the
+    // loaded data (no effect needed — avoids cascading renders).
+    const defaultSelection = useMemo<{ hour: string | null; subHour: string | null }>(() => {
+        if (canonicalHours.length === 0) return { hour: null, subHour: null };
 
-            if (hour >= 6 && hour < 9) {
-                defaultMoment = 'laudes';
-            } else if (hour >= 9 && hour < 12) {
-                defaultMoment = 'intermedia';
-                defaultSubHour = 'Tércia';
-            } else if (hour >= 12 && hour < 15) {
-                defaultMoment = 'intermedia';
-                defaultSubHour = 'Sexta';
-            } else if (hour >= 15 && hour < 18) {
-                defaultMoment = 'intermedia';
-                defaultSubHour = 'Noa';
-            } else if (hour >= 18 && hour < 21) {
-                defaultMoment = 'vesperas';
-            } else {
-                defaultMoment = 'completas';
-            }
+        const hour = new Date().getHours();
+        let defaultMoment = 'oficio';
+        let defaultSubHour: string | null = null;
 
-            const found = canonicalHours.find(m => m.id === defaultMoment);
-            setActiveHour(found ? found.id : canonicalHours[0].id);
-            setActiveSubHour(defaultSubHour);
+        if (hour >= 6 && hour < 9) {
+            defaultMoment = 'laudes';
+        } else if (hour >= 9 && hour < 12) {
+            defaultMoment = 'intermedia';
+            defaultSubHour = 'Tércia';
+        } else if (hour >= 12 && hour < 15) {
+            defaultMoment = 'intermedia';
+            defaultSubHour = 'Sexta';
+        } else if (hour >= 15 && hour < 18) {
+            defaultMoment = 'intermedia';
+            defaultSubHour = 'Noa';
+        } else if (hour >= 18 && hour < 21) {
+            defaultMoment = 'vesperas';
+        } else {
+            defaultMoment = 'completas';
         }
-    }, [canonicalHours, activeHour]);
+
+        const found = canonicalHours.find(m => m.id === defaultMoment);
+        return { hour: found ? found.id : canonicalHours[0].id, subHour: defaultSubHour };
+    }, [canonicalHours]);
+
+    // User selection takes precedence over the time-of-day default.
+    const activeHour = userActiveHour ?? defaultSelection.hour;
+    const activeSubHour = userActiveSubHour ?? defaultSelection.subHour;
 
     const selectedMoment = canonicalHours.find(m => m.id === activeHour);
 
@@ -214,11 +221,11 @@ export default function LiturgiaHoras() {
                                 <button
                                     key={moment.id}
                                     onClick={() => {
-                                        setActiveHour(moment.id);
+                                        setUserActiveHour(moment.id);
                                         if (moment.id === 'intermedia') {
-                                            setActiveSubHour('Tércia');
+                                            setUserActiveSubHour('Tércia');
                                         } else {
-                                            setActiveSubHour(null);
+                                            setUserActiveSubHour(null);
                                         }
                                     }}
                                     className={`flex-1 max-w-[4rem] aspect-square flex items-center justify-center text-xl rounded-2xl transition-all ${activeHour === moment.id
@@ -237,7 +244,7 @@ export default function LiturgiaHoras() {
                                 {['Tércia', 'Sexta', 'Noa'].map(sub => (
                                     <button
                                         key={sub}
-                                        onClick={() => setActiveSubHour(sub)}
+                                        onClick={() => setUserActiveSubHour(sub)}
                                         className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-all ${activeSubHour === sub
                                             ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                             : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
