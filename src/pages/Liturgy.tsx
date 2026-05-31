@@ -74,16 +74,39 @@ function enrichReadingTypography(doc: Document): void {
             p.id = getSectionId(label);
             firstEl.classList.add('reading-label');
 
+            // Collect ref text and title parts separately, removing all <br>s
+            // from the header so block/inline mixing doesn't create ghost lines.
             let seenBr = false;
+            const titleParts: string[] = [];
+            const toRemove: ChildNode[] = [];
+
             for (const node of Array.from(p.childNodes)) {
                 if (node === firstEl) continue;
-                if (node.nodeName === 'BR') { seenBr = true; continue; }
-                if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
-                    const span = doc.createElement('span');
-                    span.className = seenBr ? 'reading-title' : 'reading-ref';
-                    span.textContent = node.textContent;
-                    node.replaceWith(span);
+                if (node.nodeName === 'BR') {
+                    seenBr = true;
+                    toRemove.push(node); // strip <br> from the header
+                    continue;
                 }
+                if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+                    if (!seenBr) {
+                        const span = doc.createElement('span');
+                        span.className = 'reading-ref';
+                        span.textContent = node.textContent;
+                        node.replaceWith(span);
+                    } else {
+                        titleParts.push(node.textContent.trim());
+                        toRemove.push(node);
+                    }
+                }
+            }
+
+            toRemove.forEach((n) => n.parentNode?.removeChild(n));
+
+            if (titleParts.length > 0) {
+                const titleSpan = doc.createElement('span');
+                titleSpan.className = 'reading-title';
+                titleSpan.textContent = titleParts.join(' ');
+                p.appendChild(titleSpan);
             }
             return;
         }
@@ -515,7 +538,7 @@ export default function Liturgy() {
                                     [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
                                     [&_em]:italic [&_em]:text-zinc-700 dark:[&_em]:text-zinc-300
                                     [&_i]:italic [&_i]:text-zinc-700 dark:[&_i]:text-zinc-300
-                                    [&_br]:mb-2
+                                    [&_br]:my-0
                                 "
                                 onClick={handleToggleCommentary}
                             >

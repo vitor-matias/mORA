@@ -189,7 +189,7 @@ html[data-theme="rosa"] {
 
 /* Paragraph rhythm */
 .content-text p {
-  margin-bottom: 1em;
+  margin-bottom: 0.6em;
 }
 
 .content-text p:last-child {
@@ -198,9 +198,9 @@ html[data-theme="rosa"] {
 
 /* ── Section headers (LEITURA I / SALMO RESPONSORIAL / EVANGELHO) ── */
 .content-text .reading-section-header {
-  margin-top: 2.75rem !important;
-  margin-bottom: 0.25rem !important;
-  padding-top: 1.5rem;
+  margin-top: 1.75rem !important;
+  margin-bottom: 0.1rem !important;
+  padding-top: 1rem;
   border-top: 1px solid rgb(var(--liturgy-300) / 0.5);
 }
 
@@ -227,7 +227,7 @@ html[data-theme="rosa"] {
   border: 1px solid rgb(var(--liturgy-200));
   border-radius: 4px;
   padding: 0.15em 0.55em;
-  margin-bottom: 0.5em;
+  margin-bottom: 0.3em;
   vertical-align: middle;
 }
 
@@ -283,8 +283,8 @@ html[data-theme="rosa"] {
   font-weight: 500;
   letter-spacing: 0.02em;
   color: hsl(var(--muted-foreground));
-  margin-bottom: 0.9em;
-  padding-bottom: 0.7em;
+  margin-bottom: 0.55em;
+  padding-bottom: 0.45em;
   border-bottom: 1px dashed rgb(var(--liturgy-200) / 0.7);
 }
 
@@ -294,8 +294,8 @@ html[data-theme="rosa"] {
 
 /* ── Ending line ("Palavra do Senhor." / "Palavra da salvação.") ── */
 .content-text .reading-ending {
-  margin-top: 1.75rem !important;
-  padding-top: 1.25rem;
+  margin-top: 1rem !important;
+  padding-top: 0.75rem;
   border-top: 1px solid rgb(var(--liturgy-200) / 0.5);
   text-align: center;
   font-style: italic;
@@ -309,7 +309,7 @@ html[data-theme="rosa"] {
 
 /* ── Collapsible commentary ── */
 .reading-commentary {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.6rem;
 }
 
 .commentary-toggle {
