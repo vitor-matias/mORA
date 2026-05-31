@@ -5,11 +5,98 @@ import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy } from "@/lib/liturgy";
 import { useAppStore } from "@/store/app";
 
+// Labels that open a liturgical reading section.
+const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
+// Lines that close a reading ("Palavra do Senhor.", "Palavra da salvação.").
+const ENDING_RE = /^Palavra (do Senhor|da salvação|do Evangelho)/i;
+// First line of a reading body paragraph — the scripture source attribution.
+const SOURCE_RE = /^(Leitura (do|da|de|aos|ao)|Do Livro|Da Carta|Do Profeta|Dos Actos|Do Apocalipse|Da Primeira|Da Segunda|Da Terceira|Evangelho de Nosso Senhor)/i;
+
+/**
+ * Adds semantic CSS classes to the reading HTML so the stylesheet can render
+ * proper typographic hierarchy:
+ *
+ *   .reading-section-header  — the LEITURA / SALMO / EVANGELHO line
+ *     .reading-label          — the ALL-CAPS section name
+ *     .reading-ref            — the scripture reference  (e.g. "Ex 34, 4b-6")
+ *     .reading-title          — the descriptive title    (e.g. «O Senhor…»)
+ *   .reading-source           — "Leitura do Livro do Êxodo" attribution
+ *   .reading-ending           — "Palavra do Senhor." / "Palavra da salvação."
+ */
+function enrichReadingTypography(doc: Document): void {
+    // ── Pass 1: split "Palavra do Senhor." out of body paragraphs ───────
+    // The API embeds the acclamation as the last <br>-separated line inside
+    // the reading paragraph rather than as its own <p>. Splitting it out
+    // lets the stylesheet centre and style it independently.
+    doc.querySelectorAll('p').forEach((p) => {
+        const nodes = Array.from(p.childNodes);
+
+        // Find the last <br> in this paragraph.
+        let lastBrIdx = -1;
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            if (nodes[i].nodeName === 'BR') { lastBrIdx = i; break; }
+        }
+        if (lastBrIdx === -1) return;
+
+        // Is the text after the last <br> an ending line?
+        const afterNodes = nodes.slice(lastBrIdx + 1);
+        const endingNode = afterNodes.find(
+            (n) => n.nodeType === Node.TEXT_NODE && ENDING_RE.test(n.textContent?.trim() ?? '')
+        );
+        if (!endingNode) return;
+
+        // Detach the <br> and the ending text from this paragraph.
+        p.removeChild(nodes[lastBrIdx]);
+        p.removeChild(endingNode);
+
+        // Insert a standalone ending paragraph immediately after.
+        const endingP = doc.createElement('p');
+        endingP.className = 'reading-ending';
+        endingP.textContent = (endingNode.textContent ?? '').trim();
+        p.after(endingP);
+    });
+
+    // ── Pass 2: section headers, source lines ────────────────────────────
+    doc.querySelectorAll('p').forEach((p) => {
+        // Section headers
+        const firstEl = p.children[0] as HTMLElement | undefined;
+        if (firstEl?.tagName === 'STRONG' && SECTION_LABEL_RE.test(firstEl.textContent?.trim() ?? '')) {
+            p.classList.add('reading-section-header');
+            firstEl.classList.add('reading-label');
+
+            let seenBr = false;
+            for (const node of Array.from(p.childNodes)) {
+                if (node === firstEl) continue;
+                if (node.nodeName === 'BR') { seenBr = true; continue; }
+                if (node.nodeType === Node.TEXT_NODE && node.textContent?.trim()) {
+                    const span = doc.createElement('span');
+                    span.className = seenBr ? 'reading-title' : 'reading-ref';
+                    span.textContent = node.textContent;
+                    node.replaceWith(span);
+                }
+            }
+            return;
+        }
+
+        // Source attribution ("Leitura do Livro do Êxodo")
+        const firstChild = p.firstChild;
+        const hasBr = Array.from(p.childNodes).some((n) => n.nodeName === 'BR');
+        if (hasBr && firstChild?.nodeType === Node.TEXT_NODE
+            && SOURCE_RE.test(firstChild.textContent?.trim() ?? '')) {
+            const span = doc.createElement('span');
+            span.className = 'reading-source';
+            span.textContent = firstChild.textContent;
+            firstChild.replaceWith(span);
+        }
+    });
+}
+
 /**
  * Wraps each fully-italic paragraph (the introductory commentary that precedes
  * the readings) in a collapsible block, collapsed by default. Toggling is
  * handled via event delegation on the article (see handleToggleCommentary).
- * Uses the native DOMParser so there's no extra bundle weight.
+ * Also enriches section headers, source lines and endings with semantic
+ * classes for the reading typography stylesheet.
  *
  * The incoming HTML comes from a remote API and is rendered with
  * dangerouslySetInnerHTML, so it is sanitized with DOMPurify first to strip
@@ -46,6 +133,9 @@ function makeCommentariesCollapsible(html: string): string {
         wrapper.querySelector('.commentary-body')!.appendChild(p.cloneNode(true));
         p.replaceWith(wrapper);
     });
+
+    // Run after commentaries so we don't process already-wrapped nodes.
+    enrichReadingTypography(doc);
 
     return doc.body.innerHTML;
 }

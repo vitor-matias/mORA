@@ -79,8 +79,11 @@ export function Layout() {
 
         // Font family — set as CSS variable so only content areas pick it up (not UI)
         const familyMap: Record<string, string> = {
-            system: 'inherit',
-            serif: 'Georgia, "Times New Roman", Times, serif',
+            // "Lora" is a screen-optimised reading serif loaded in index.html.
+            // The "system" (Predefinido) default uses it so all users get a
+            // comfortable reading experience out of the box.
+            system: '"Lora", Georgia, "Times New Roman", serif',
+            serif: '"Lora", Georgia, "Times New Roman", serif',
             sans: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         };
         document.documentElement.style.setProperty('--content-font-family', familyMap[fontFamily] || 'inherit');

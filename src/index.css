@@ -167,34 +167,138 @@ html[data-theme="rosa"] {
   }
 }
 
-/* Content text areas (prayers & readings) — tuned for long-form reading.
-   Uses the user-selected size/family CSS variables set in Layout. */
+/* ------------------------------------------------------------------ */
+/* Reading typography — long-form liturgical text                      */
+/* ------------------------------------------------------------------ */
+
+/* Base content area — picks up user font/size preferences */
 .content-text {
-  font-size: var(--content-font-size, 21px);
-  font-family: var(--content-font-family, inherit);
-  line-height: var(--content-line-height, 1.65);
-  /* Ragged-right reads better than justified in a narrow column; let long
-     Portuguese words hyphenate and avoid orphan lines where supported. */
+  font-size: var(--content-font-size, 20px);
+  font-family: var(--content-font-family, "Lora", Georgia, serif);
+  line-height: var(--content-line-height, 1.75);
   text-align: left;
   hyphens: auto;
   -webkit-hyphens: auto;
   overflow-wrap: break-word;
   text-wrap: pretty;
-  font-feature-settings: "kern", "liga", "calt";
+  font-feature-settings: "kern", "liga", "calt", "onum";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Paragraph rhythm inside reading content scales with the font size */
+/* Paragraph rhythm */
 .content-text p {
-  margin-bottom: 0.85em;
+  margin-bottom: 1em;
 }
 
 .content-text p:last-child {
   margin-bottom: 0;
 }
 
-/* Collapsible italic commentary inside the Mass readings */
+/* ── Section headers (LEITURA I / SALMO RESPONSORIAL / EVANGELHO) ── */
+.content-text .reading-section-header {
+  margin-top: 2.75rem !important;
+  margin-bottom: 0.25rem !important;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgb(var(--liturgy-300) / 0.5);
+}
+
+.dark .content-text .reading-section-header {
+  border-top-color: rgb(var(--liturgy-700) / 0.4);
+}
+
+.content-text .reading-section-header:first-child {
+  margin-top: 0 !important;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* The ALL-CAPS label pill */
+.content-text .reading-label {
+  display: inline-block;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.6em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgb(var(--liturgy-600));
+  background: rgb(var(--liturgy-50));
+  border: 1px solid rgb(var(--liturgy-200));
+  border-radius: 4px;
+  padding: 0.15em 0.55em;
+  margin-bottom: 0.5em;
+  vertical-align: middle;
+}
+
+.dark .content-text .reading-label {
+  color: rgb(var(--liturgy-300));
+  background: rgb(var(--liturgy-950) / 0.5);
+  border-color: rgb(var(--liturgy-800));
+}
+
+/* Scripture reference (e.g. "Ex 34, 4b-6.8-9") */
+.content-text .reading-ref {
+  display: block;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.72em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: rgb(var(--liturgy-500));
+  margin-top: 0.1em;
+  margin-bottom: 0.45em;
+}
+
+.dark .content-text .reading-ref {
+  color: rgb(var(--liturgy-400));
+}
+
+/* Descriptive title (e.g. «O Senhor é um Deus clemente e compassivo») */
+.content-text .reading-title {
+  display: block;
+  font-style: italic;
+  font-size: 0.92em;
+  font-weight: 400;
+  line-height: 1.55;
+  color: rgb(var(--liturgy-800));
+}
+
+.dark .content-text .reading-title {
+  color: rgb(var(--liturgy-200));
+}
+
+/* ── Source attribution ("Leitura do Livro do Êxodo") ── */
+.content-text .reading-source {
+  display: block;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.75em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.9em;
+  padding-bottom: 0.7em;
+  border-bottom: 1px dashed rgb(var(--liturgy-200) / 0.7);
+}
+
+.dark .content-text .reading-source {
+  border-bottom-color: rgb(var(--liturgy-800) / 0.5);
+}
+
+/* ── Ending line ("Palavra do Senhor." / "Palavra da salvação.") ── */
+.content-text .reading-ending {
+  margin-top: 1.75rem !important;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(var(--liturgy-200) / 0.5);
+  text-align: center;
+  font-style: italic;
+  font-size: 0.88em;
+  color: hsl(var(--muted-foreground));
+}
+
+.dark .content-text .reading-ending {
+  border-top-color: rgb(var(--liturgy-800) / 0.4);
+}
+
+/* ── Collapsible commentary ── */
 .reading-commentary {
   margin-bottom: 1.25rem;
 }
@@ -210,6 +314,7 @@ html[data-theme="rosa"] {
   letter-spacing: 0.06em;
   border-radius: 0.5rem;
   cursor: pointer;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: rgb(var(--liturgy-700));
   background: rgb(var(--liturgy-50));
   border: 1px solid rgb(var(--liturgy-200));
@@ -230,11 +335,19 @@ html[data-theme="rosa"] {
   transform: rotate(90deg);
 }
 
-/* Collapsed by default — hide the body, drop the margin under the toggle */
 .reading-commentary.collapsed .commentary-body {
   display: none;
 }
 
 .reading-commentary:not(.collapsed) .commentary-body {
   margin-top: 0.75rem;
+}
+
+/* Commentary body text is italicised and muted */
+.reading-commentary:not(.collapsed) .commentary-body p {
+  font-style: italic;
+  font-size: 0.88em;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.65;
+  margin-bottom: 0.75em;
 }
