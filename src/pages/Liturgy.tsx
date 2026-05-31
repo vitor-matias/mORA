@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { ChevronRight, Calendar, Filter } from "lucide-react";
+import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy } from "@/lib/liturgy";
 import { useAppStore } from "@/store/app";
@@ -9,11 +10,17 @@ import { useAppStore } from "@/store/app";
  * the readings) in a collapsible block, collapsed by default. Toggling is
  * handled via event delegation on the article (see handleToggleCommentary).
  * Uses the native DOMParser so there's no extra bundle weight.
+ *
+ * The incoming HTML comes from a remote API and is rendered with
+ * dangerouslySetInnerHTML, so it is sanitized with DOMPurify first to strip
+ * scripts, inline event handlers and javascript: URLs (the app keeps a Nostr
+ * private key in localStorage, so an injected script would be high-impact).
  */
 function makeCommentariesCollapsible(html: string): string {
     if (typeof DOMParser === 'undefined' || !html) return html;
 
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const safe = DOMPurify.sanitize(html);
+    const doc = new DOMParser().parseFromString(safe, 'text/html');
 
     doc.querySelectorAll('p').forEach((p) => {
         const directText = Array.from(p.childNodes)
@@ -31,7 +38,7 @@ function makeCommentariesCollapsible(html: string): string {
         const wrapper = doc.createElement('div');
         wrapper.className = 'reading-commentary collapsed';
         wrapper.innerHTML =
-            '<button type="button" class="commentary-toggle">' +
+            '<button type="button" class="commentary-toggle" aria-expanded="false">' +
             '<span class="commentary-chevron" aria-hidden="true">▸</span>' +
             '<span>Comentário</span>' +
             '</button>' +
@@ -110,7 +117,10 @@ export default function Liturgy() {
     const handleToggleCommentary = (e: React.MouseEvent<HTMLElement>) => {
         const toggle = (e.target as HTMLElement).closest('.commentary-toggle');
         if (!toggle) return;
-        toggle.closest('.reading-commentary')?.classList.toggle('collapsed');
+        const container = toggle.closest('.reading-commentary');
+        if (!container) return;
+        const isOpen = container.classList.toggle('collapsed') === false;
+        toggle.setAttribute('aria-expanded', String(isOpen));
     };
 
     const [isScrolled, setIsScrolled] = useState(false);

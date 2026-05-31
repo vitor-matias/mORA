@@ -156,9 +156,12 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
  * liturgical calendar ICS is cached separately by fetchLiturgicalColorFromCalendar.
  */
 export async function preloadUpcomingLiturgy(days = 5): Promise<void> {
+    // Capture the base date once so the range can't drift if the clock crosses
+    // midnight while the (sequential) fetches are in flight.
+    const base = new Date();
     for (let i = 0; i <= days; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() + i);
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
         const dateStr = formatLocalDate(d);
 
         if (readLiturgyCache(dateStr)) continue;
@@ -220,9 +223,12 @@ export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<Litu
                 (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
             ];
 
+            const PROXY_TIMEOUT_MS = 8000;
             for (const buildProxyUrl of proxyBuilders) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
                 try {
-                    const response = await fetch(buildProxyUrl(icsUrl));
+                    const response = await fetch(buildProxyUrl(icsUrl), { signal: controller.signal });
                     if (!response.ok) continue;
 
                     const body = await response.text();
@@ -232,7 +238,13 @@ export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<Litu
                     text = body.replace(/\r?\n /g, '');
                     break;
                 } catch (e) {
-                    console.warn('ICS proxy failed, trying next:', e);
+                    if (e instanceof DOMException && e.name === 'AbortError') {
+                        console.warn('ICS proxy timed out, trying next');
+                    } else {
+                        console.warn('ICS proxy failed, trying next:', e);
+                    }
+                } finally {
+                    clearTimeout(timer);
                 }
             }
 

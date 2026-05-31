@@ -20,6 +20,7 @@ It tracks prayer **streaks** and can optionally sync them and your profile to th
 - Zustand (persisted) for auth and app state
 - `nostr-tools` for Nostr identity and publishing
 - `vite-plugin-pwa` for offline/installable support
+- `DOMPurify` to sanitize the remote liturgy HTML before rendering
 
 ## Getting started
 

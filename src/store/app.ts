@@ -11,6 +11,16 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
 
+// Single source of truth for the content (prayer/reading) text scale.
+// Each step pairs a reading size (px) with a line-height tuned for it.
+// Consumed by Layout (applies the CSS variables) and Profile (size picker preview).
+export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: number }> = {
+    small: { size: 18, lineHeight: 1.7 },
+    medium: { size: 21, lineHeight: 1.65 },
+    large: { size: 26, lineHeight: 1.6 },
+    xlarge: { size: 32, lineHeight: 1.5 },
+};
+
 interface AppState {
     rosaryMode: RosaryBeadMode;
     toggleRosaryMode: () => void;

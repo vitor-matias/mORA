@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { ChevronRight, Clock } from "lucide-react";
+import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
 import { useAppStore } from "@/store/app";
@@ -153,8 +154,12 @@ export default function LiturgiaHoras() {
         return { hour: found ? found.id : canonicalHours[0].id, subHour: defaultSubHour };
     }, [canonicalHours]);
 
-    // User selection takes precedence over the time-of-day default.
-    const activeHour = userActiveHour ?? defaultSelection.hour;
+    // User selection takes precedence over the time-of-day default — but only
+    // if it still refers to an existing hour, otherwise fall back to the default
+    // so selectedMoment always resolves.
+    const activeHour = (userActiveHour && canonicalHours.some(m => m.id === userActiveHour))
+        ? userActiveHour
+        : defaultSelection.hour;
     const activeSubHour = userActiveSubHour ?? defaultSelection.subHour;
 
     const selectedMoment = canonicalHours.find(m => m.id === activeHour);
@@ -302,7 +307,7 @@ export default function LiturgiaHoras() {
                                                                 [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
                                                                 [&_em]:italic [&_em]:text-zinc-600 dark:[&_em]:text-zinc-400
                                                             "
-                                                                dangerouslySetInnerHTML={{ __html: verse.text }}
+                                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(verse.text) }}
                                                             />
                                                         ))}
                                                         {/* Quick scroll button — sticky at the bottom */}

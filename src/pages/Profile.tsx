@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
-import { useAppStore, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
+import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
 import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
@@ -129,7 +129,7 @@ export default function Profile() {
                     <div>
                         <p className="text-sm font-medium mb-3">Tamanho do Texto</p>
                         <div className="flex gap-2 items-stretch">
-                            {([['small', 15], ['medium', 19], ['large', 24], ['xlarge', 30]] as [FontSize, number][]).map(([sz, preview]) => (
+                            {(Object.keys(CONTENT_FONT_SCALE) as FontSize[]).map((sz) => (
                                 <button
                                     key={sz}
                                     onClick={() => setFontSize(sz)}
@@ -140,7 +140,7 @@ export default function Profile() {
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
-                                    <span className="font-semibold leading-none" style={{ fontSize: preview }}>A</span>
+                                    <span className="font-semibold leading-none" style={{ fontSize: CONTENT_FONT_SCALE[sz].size }}>A</span>
                                 </button>
                             ))}
                         </div>
