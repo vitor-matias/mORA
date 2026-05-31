@@ -144,6 +144,7 @@ export default function Liturgy() {
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
+    const [dateCardExpanded, setDateCardExpanded] = useState(false);
 
     // Autoscroll
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
@@ -275,15 +276,17 @@ export default function Liturgy() {
         if (isAutoScrolling) stopAutoScroll(); else startAutoScroll();
     }, [isAutoScrolling, startAutoScroll, stopAutoScroll]);
 
-    // Pause when the user manually scrolls.
+    // Pause when the user manually scrolls (touchmove = drag, not tap).
+    // Using touchmove rather than touchstart means tapping speed/stop
+    // controls won't accidentally cancel the scroll mid-session.
     useEffect(() => {
         if (!isAutoScrolling) return;
         const stop = () => stopAutoScroll();
         window.addEventListener('wheel', stop, { passive: true });
-        window.addEventListener('touchstart', stop, { passive: true });
+        window.addEventListener('touchmove', stop, { passive: true });
         return () => {
             window.removeEventListener('wheel', stop);
-            window.removeEventListener('touchstart', stop);
+            window.removeEventListener('touchmove', stop);
         };
     }, [isAutoScrolling, stopAutoScroll]);
 
@@ -384,12 +387,21 @@ export default function Liturgy() {
                 </p>
             </div>
             {liturgicalDescription && (
-                <p
-                    className="text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line pl-6 line-clamp-4"
-                    style={{ fontFamily: 'var(--content-font-family, inherit)', fontSize: '0.78rem' }}
-                >
-                    {liturgicalDescription}
-                </p>
+                <>
+                    <p
+                        className={`text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line pl-6 ${dateCardExpanded ? '' : 'line-clamp-4'}`}
+                        style={{ fontFamily: 'var(--content-font-family, inherit)', fontSize: '0.78rem' }}
+                    >
+                        {liturgicalDescription}
+                    </p>
+                    <button
+                        onClick={() => setDateCardExpanded((v) => !v)}
+                        className="mt-1 pl-6 text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
+                        style={{ fontSize: '0.72rem', fontFamily: 'Inter, sans-serif' }}
+                    >
+                        {dateCardExpanded ? '▴ Ver menos' : '▾ Ver mais'}
+                    </button>
+                </>
             )}
         </div>
     );
