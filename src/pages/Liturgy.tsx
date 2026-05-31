@@ -86,26 +86,27 @@ export default function Liturgy() {
         if (!showOnlyReadings) {
             result = liturgy.htmlContent;
         } else {
-            // Try to extract only from LEITURA I up to the end of EVANGELHO
             const html = liturgy.htmlContent;
             const startIdx = html.indexOf('<p><strong>LEITURA I');
-            const endOblatas = html.indexOf('<p><strong>Oração sobre as oblatas');
-            const endCredo = html.indexOf('<p><strong>Credo'); // some solemnities have Credo before oblatas
-
-            let endIdx = html.length;
-            if (endCredo > startIdx) {
-                endIdx = endCredo;
-            } else if (endOblatas > startIdx) {
-                endIdx = endOblatas;
-            }
-
-            if (startIdx !== -1) {
-                let extracted = html.substring(startIdx, endIdx);
-                // Remove Acclamation before Gospel if we only want readings
-                extracted = extracted.replace(/<p><strong>ACLAMAÇÃO ANTES DO EVANGELHO<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i, '');
-                result = extracted;
+            if (startIdx === -1) {
+                result = html;
             } else {
-                result = html; // fallback
+                // End markers use <b> tags (not <strong>) in the API response;
+                // Credo appears as plain text "Diz-se o Credo."
+                const postStart = html.slice(startIdx);
+                const endMatch = postStart.search(
+                    /<p>(?:<b>(?:Oração sobre as oblatas|Prefácio)|Diz-se o Credo|<strong>(?:Credo|Oração sobre as oblatas))/i
+                );
+                const endIdx = endMatch !== -1 ? startIdx + endMatch : html.length;
+
+                let extracted = html.substring(startIdx, endIdx);
+
+                // Remove Gospel acclamation — API uses "ALELUIA" heading, not "ACLAMAÇÃO ANTES DO EVANGELHO"
+                extracted = extracted.replace(
+                    /<p><strong>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i,
+                    ''
+                );
+                result = extracted;
             }
         }
 
