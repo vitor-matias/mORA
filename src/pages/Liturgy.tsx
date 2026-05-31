@@ -8,8 +8,7 @@ import { useAppStore } from "@/store/app";
  * Wraps each fully-italic paragraph (the introductory commentary that precedes
  * the readings) in a collapsible block, collapsed by default. Toggling is
  * handled via event delegation on the article (see handleToggleCommentary).
- * Uses the native DOMParser so there's no extra bundle weight and it still
- * works on the legacy Firefox 48 / KaiOS target.
+ * Uses the native DOMParser so there's no extra bundle weight.
  */
 function makeCommentariesCollapsible(html: string): string {
     if (typeof DOMParser === 'undefined' || !html) return html;

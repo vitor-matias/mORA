@@ -4,9 +4,7 @@ module.exports = {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
-  // Use variant strategy with '.dark &' to generate traditional descendant
-  // selectors (.dark .class) instead of :is(.dark *) which Firefox 48 doesn't support.
-  darkMode: ['variant', '.dark &'],
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {
