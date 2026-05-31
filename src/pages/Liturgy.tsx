@@ -258,21 +258,37 @@ export default function Liturgy() {
         return () => window.clearTimeout(id);
     }, [displayHtml, loading, liturgy]);
 
-    // Highlight the section currently in view.
+    // Highlight the section currently in view (scrollspy).
+    // An IntersectionObserver band is unreliable here: sections are long, so
+    // between two headers nothing sits in the band and the highlight sticks
+    // on the first one. Instead, on each scroll we pick the last header whose
+    // top has crossed a line just below the sticky header.
     useEffect(() => {
         if (sections.length === 0) return;
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const visible = entries.filter((e) => e.isIntersecting);
-                if (visible.length > 0) setActiveSection(visible[0].target.id);
-            },
-            { rootMargin: '-15% 0px -80% 0px', threshold: 0 }
-        );
-        sections.forEach(({ id }) => {
-            const el = document.getElementById(id);
-            if (el) observer.observe(el);
-        });
-        return () => observer.disconnect();
+
+        const onScroll = () => {
+            // At (near) the page bottom the last headers can't reach the line,
+            // so force the final section active.
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (window.scrollY >= maxScroll - 2) {
+                setActiveSection(sections[sections.length - 1].id);
+                return;
+            }
+
+            const line = 140; // px below viewport top (clears the sticky header)
+            let current = sections[0].id;
+            for (const { id } of sections) {
+                const el = document.getElementById(id);
+                if (el && el.getBoundingClientRect().top - line <= 0) {
+                    current = id;
+                }
+            }
+            setActiveSection(current);
+        };
+
+        onScroll(); // set initial state
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
     }, [sections]);
 
     // ── Autoscroll ────────────────────────────────────────────────────────
@@ -596,9 +612,9 @@ export default function Liturgy() {
                     <button
                         onClick={toggleAutoScroll}
                         aria-label={isAutoScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
-                        className={`h-12 w-12 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 ${
+                        className={`h-14 w-14 rounded-full shadow-xl flex items-center justify-center transition-colors duration-200 ${
                             isAutoScrolling
-                                ? 'bg-liturgy-600 text-white ring-4 ring-liturgy-400/25 scale-110'
+                                ? 'bg-liturgy-600 text-white ring-4 ring-liturgy-400/25'
                                 : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
                         }`}
                     >
