@@ -21,11 +21,26 @@ const SECTION_ID_MAP: Array<[RegExp, string]> = [
     [/^EVANGELHO/i,              'evangelho'],
 ];
 
+function slugify(label: string): string {
+    return label
+        .toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '') // strip combining accents
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
 function getSectionId(label: string): string {
-    return (
-        SECTION_ID_MAP.find(([re]) => re.test(label))?.[1]
-        ?? label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    );
+    return SECTION_ID_MAP.find(([re]) => re.test(label))?.[1] ?? slugify(label);
+}
+
+// Display label for the TOC: reading headers are ALL-CAPS in the source
+// ("LEITURA I") and want title-case with Roman numerals kept uppercase.
+function readingDisplayLabel(label: string): string {
+    return label
+        .toLowerCase()
+        .split(/\s+/)
+        .map((w) => (/^(i{1,3}|iv)$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(' ');
 }
 
 /**
@@ -72,6 +87,7 @@ function enrichReadingTypography(doc: Document): void {
         if (firstEl?.tagName === 'STRONG' && SECTION_LABEL_RE.test(label)) {
             p.classList.add('reading-section-header');
             p.id = getSectionId(label);
+            p.setAttribute('data-toc-label', readingDisplayLabel(label));
             firstEl.classList.add('reading-label');
 
             // Collect ref text and title parts separately, removing all <br>s
@@ -108,6 +124,28 @@ function enrichReadingTypography(doc: Document): void {
                 titleSpan.textContent = titleParts.join(' ');
                 p.appendChild(titleSpan);
             }
+            return;
+        }
+
+        // Prayer / Mass-part headers (full missal only): "Antífona de entrada",
+        // "Oração coleta", "Oração sobre as oblatas", "Prefácio", etc. These use
+        // a <b> heading followed by <br>, distinct from the readings' <strong>.
+        const hasBrInP = Array.from(p.childNodes).some((n) => n.nodeName === 'BR');
+        if (firstEl?.tagName === 'B' && hasBrInP && label.length > 0 && label.length <= 48) {
+            p.classList.add('reading-prayer-header');
+            p.id = getSectionId(label);
+            p.setAttribute('data-toc-label', label);
+            firstEl.classList.add('reading-prayer-label');
+
+            // The label is display:block; drop the <br> right after it (and any
+            // whitespace text node between) so it doesn't add an empty line.
+            let n = firstEl.nextSibling;
+            while (n && n.nodeType === Node.TEXT_NODE && !n.textContent?.trim()) {
+                const next = n.nextSibling;
+                n.parentNode?.removeChild(n);
+                n = next;
+            }
+            if (n && n.nodeName === 'BR') n.parentNode?.removeChild(n);
             return;
         }
 
@@ -246,12 +284,13 @@ export default function Liturgy() {
         const el = articleRef.current ?? document.querySelector<HTMLElement>('article');
         if (!el) return;
         const id = window.setTimeout(() => {
-            const headers = el.querySelectorAll<HTMLElement>('[id].reading-section-header');
+            // Both reading sections and prayer/Mass-part headers carry
+            // data-toc-label, in document order.
+            const headers = el.querySelectorAll<HTMLElement>('[id][data-toc-label]');
             if (headers.length === 0) return;
             setSections(Array.from(headers).map((h) => ({
                 id: h.id,
-                label: (h.querySelector('.reading-label') as HTMLElement | null)
-                    ?.textContent?.trim() ?? h.id,
+                label: h.getAttribute('data-toc-label') ?? h.id,
             })));
             setActiveSection('');
         }, 50);
@@ -529,10 +568,8 @@ export default function Liturgy() {
                                                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                                                 }`}
                                             >
-                                                {/* Title-case but keep Roman numerals (I, II, III, IV) uppercase */}
-                                                {label.toLowerCase().replace(/\b\w+/g, (w) =>
-                                                    /^(i{1,3}|iv)$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)
-                                                )}
+                                                {/* Labels are pre-formatted at enrichment time */}
+                                                {label}
                                             </button>
                                         </li>
                                     ))}
