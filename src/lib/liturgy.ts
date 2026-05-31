@@ -27,9 +27,57 @@ export interface DailyLiturgy {
     memories: LiturgyMemory[];
 }
 
-export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy | null> {
+// ---- Daily liturgy cache (mass text + hours + day info, keyed by date) -----
+// The liturgy for a given calendar date is fixed, so it can be cached safely.
+// Only successful responses are cached — never the offline fallback.
+const LITURGY_CACHE_PREFIX = 'mora_liturgy_';
+
+function formatLocalDate(d: Date): string {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function readLiturgyCache(dateStr: string): DailyLiturgy | null {
     try {
-        const query = `query DailyLiturgy($date: String!, $rite: String!) { 
+        const raw = localStorage.getItem(LITURGY_CACHE_PREFIX + dateStr);
+        return raw ? (JSON.parse(raw) as DailyLiturgy) : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeLiturgyCache(dateStr: string, data: DailyLiturgy): void {
+    try {
+        localStorage.setItem(LITURGY_CACHE_PREFIX + dateStr, JSON.stringify(data));
+        pruneLiturgyCache();
+    } catch (e) {
+        console.warn('Failed to cache liturgy:', e);
+    }
+}
+
+// Drop cached entries for past dates so storage stays bounded.
+function pruneLiturgyCache(): void {
+    try {
+        const todayStr = formatLocalDate(new Date());
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(LITURGY_CACHE_PREFIX)) continue;
+            const dateStr = key.slice(LITURGY_CACHE_PREFIX.length);
+            if (dateStr < todayStr) localStorage.removeItem(key);
+        }
+    } catch {
+        // ignore storage access errors
+    }
+}
+
+export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy | null> {
+    const cached = readLiturgyCache(dateStr);
+    if (cached) return cached;
+
+    try {
+        const query = `query DailyLiturgy($date: String!, $rite: String!) {
             liturgyWithMemories(date: $date, rite: $rite) { 
                 date 
                 type 
@@ -83,7 +131,7 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
         else if (titleLower.includes('mártir') || titleLower.includes('espírito santo')) color = 'Vermelho';
         else if (titleLower.includes('solenidade') || titleLower.includes('festa')) color = 'Branco';
 
-        return {
+        const result: DailyLiturgy = {
             date: dateStr,
             liturgicalColor: color,
             saintOfDay: mass.title,
@@ -91,9 +139,37 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             memories: data.memories || []
         };
 
+        writeLiturgyCache(dateStr, result);
+        return result;
+
     } catch (error) {
         console.error('Error fetching liturgy:', error);
         return getFallbackLiturgy(dateStr);
+    }
+}
+
+/**
+ * Warms the cache for today and the next few days so the Mass and Liturgy of
+ * the Hours load instantly (and work offline) on subsequent opens. Fetches
+ * sequentially to avoid hammering the API, skips days already cached, and
+ * never throws. Day info (saint/colour) is part of each cached entry; the
+ * liturgical calendar ICS is cached separately by fetchLiturgicalColorFromCalendar.
+ */
+export async function preloadUpcomingLiturgy(days = 5): Promise<void> {
+    // Capture the base date once so the range can't drift if the clock crosses
+    // midnight while the (sequential) fetches are in flight.
+    const base = new Date();
+    for (let i = 0; i <= days; i++) {
+        const d = new Date(base);
+        d.setDate(base.getDate() + i);
+        const dateStr = formatLocalDate(d);
+
+        if (readLiturgyCache(dateStr)) continue;
+        try {
+            await fetchDailyLiturgy(dateStr);
+        } catch {
+            // best-effort preload; ignore failures
+        }
     }
 }
 
@@ -136,15 +212,43 @@ export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<Litu
         }
 
         if (!text) {
-            const url = 'https://www.liturgia.pt/agenda/agenda.ics';
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-            const response = await fetch(proxyUrl);
+            const icsUrl = 'https://www.liturgia.pt/agenda/agenda.ics';
 
-            if (!response.ok) return null;
-            text = await response.text();
+            // liturgia.pt doesn't send CORS headers, so the request has to go
+            // through a CORS proxy. These are public and occasionally go down,
+            // so we try a few in order until one returns a valid calendar.
+            const proxyBuilders: Array<(u: string) => string> = [
+                (u) => `https://api.codetabs.com/v1/proxy/?quest=${u}`,
+                (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+                (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+            ];
 
-            // Remove ICS line folding (\r\n followed by a space)
-            text = text.replace(/\r?\n /g, '');
+            const PROXY_TIMEOUT_MS = 8000;
+            for (const buildProxyUrl of proxyBuilders) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+                try {
+                    const response = await fetch(buildProxyUrl(icsUrl), { signal: controller.signal });
+                    if (!response.ok) continue;
+
+                    const body = await response.text();
+                    if (!body.includes('BEGIN:VEVENT')) continue; // not a usable calendar
+
+                    // Remove ICS line folding (\r\n followed by a space)
+                    text = body.replace(/\r?\n /g, '');
+                    break;
+                } catch (e) {
+                    if (e instanceof DOMException && e.name === 'AbortError') {
+                        console.warn('ICS proxy timed out, trying next');
+                    } else {
+                        console.warn('ICS proxy failed, trying next:', e);
+                    }
+                } finally {
+                    clearTimeout(timer);
+                }
+            }
+
+            if (!text) return null;
 
             try {
                 localStorage.setItem(CACHE_KEY, JSON.stringify({
@@ -166,8 +270,8 @@ export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<Litu
         // Search backwards to find the last (or most relevant) event for the day, or just the first match
         for (const event of events) {
             if (event.includes(`DTSTART;VALUE=DATE:${dateString}`) || event.includes(`DTSTART:${dateString}`)) {
-                const descMatch = event.match(/\r?\nDESCRIPTION:(.*?)(?=\r?\n[A-Z\-]+[;:]|$)/s);
-                const summaryMatch = event.match(/\r?\nSUMMARY:(.*?)(?=\r?\n[A-Z\-]+[;:]|$)/s);
+                const descMatch = event.match(/\r?\nDESCRIPTION:(.*?)(?=\r?\n[A-Z-]+[;:]|$)/s);
+                const summaryMatch = event.match(/\r?\nSUMMARY:(.*?)(?=\r?\n[A-Z-]+[;:]|$)/s);
 
                 let color: LiturgicalColor | undefined;
                 let dayName = summaryMatch ? summaryMatch[1].trim() : '';

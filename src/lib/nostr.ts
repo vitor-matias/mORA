@@ -1,4 +1,4 @@
-import { finalizeEvent, SimplePool, type EventTemplate } from 'nostr-tools';
+import { finalizeEvent, SimplePool, type Event, type EventTemplate } from 'nostr-tools';
 import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 
@@ -42,9 +42,9 @@ export async function publishNostrProfile(profile: NostrProfile) {
     };
 
     try {
-        let signedEvent;
-        if (isNip07 && typeof window !== 'undefined' && (window as any).nostr) {
-            signedEvent = await (window as any).nostr.signEvent(baseEvent);
+        let signedEvent: Event;
+        if (isNip07 && typeof window !== 'undefined' && window.nostr) {
+            signedEvent = await window.nostr.signEvent(baseEvent);
         } else if (privkey) {
             const secretKeyBytes = new Uint8Array(privkey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
             signedEvent = finalizeEvent(baseEvent, secretKeyBytes);
@@ -83,9 +83,9 @@ export async function publishStreakToNostr() {
     };
 
     try {
-        let signedEvent;
-        if (isNip07 && typeof window !== 'undefined' && (window as any).nostr) {
-            signedEvent = await (window as any).nostr.signEvent(baseEvent);
+        let signedEvent: Event;
+        if (isNip07 && typeof window !== 'undefined' && window.nostr) {
+            signedEvent = await window.nostr.signEvent(baseEvent);
         } else if (privkey) {
             const secretKeyBytes = new Uint8Array(privkey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
             signedEvent = finalizeEvent(baseEvent, secretKeyBytes);

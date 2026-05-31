@@ -11,12 +11,11 @@
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
-    "@vitejs/plugin-legacy": "^7.2.1",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "core-js": "^3.49.0",
     "date-fns": "^4.1.0",
+    "dompurify": "^3.4.7",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
     "nostr-tools": "^2.23.1",
@@ -24,9 +23,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
-    "regenerator-runtime": "^0.14.1",
     "tailwind-merge": "^3.5.0",
-    "whatwg-fetch": "^3.6.20",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

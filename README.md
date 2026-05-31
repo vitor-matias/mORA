@@ -1,73 +1,33 @@
-# React + TypeScript + Vite
+# mORA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Catholic companion app (PWA) for daily prayer in European Portuguese. mORA brings together the three daily pillars of prayer in a single, mobile-first interface:
 
-Currently, two official plugins are available:
+- **Santo Terço** — a guided Rosary that follows the day's mysteries (Joyful, Luminous, Sorrowful, Glorious), with beginner and advanced modes.
+- **Missa Diária** — the day's Mass readings, with a toggle between readings-only and the full missal.
+- **Liturgia das Horas** — the Liturgy of the Hours (Office of Readings, Lauds, Daytime Prayer, Vespers, Compline), defaulting to the canonical hour for the current time of day.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+It tracks prayer **streaks** and can optionally sync them and your profile to the [Nostr](https://nostr.com/) network, so your identity and progress are portable and self-owned (NIP-07 extension, an `nsec`/hex key, or a locally-generated anonymous key).
 
-## React Compiler
+## Data sources
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Mass and Hours content: `apiapp.glauco.it` (GraphQL, Portuguese rite).
+- Liturgical calendar / colour: `liturgia.pt` ICS feed (fetched via a CORS proxy and cached in `localStorage`).
 
-## Expanding the ESLint configuration
+## Tech stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React 19 + TypeScript + Vite
+- Tailwind CSS (with `tailwindcss-animate`) and Radix UI primitives
+- Zustand (persisted) for auth and app state
+- `nostr-tools` for Nostr identity and publishing
+- `vite-plugin-pwa` for offline/installable support
+- `DOMPurify` to sanitize the remote liturgy HTML before rendering
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Getting started
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev       # start the dev server
+npm run build     # type-check + production build
+npm run preview   # preview the production build
+npm run lint      # run ESLint
 ```
