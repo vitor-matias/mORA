@@ -286,11 +286,27 @@ export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<Litu
                     description = rawDesc.split(bs + 'n').join('\n').split(bs + ',').join(',').split(bs + ';').join(';');
 
                     const descLower = rawDesc.toLowerCase();
-                    if (descLower.includes('verde')) color = 'verde';
-                    else if (descLower.includes('roxo')) color = 'roxo';
-                    else if (descLower.includes('branco')) color = 'branco';
-                    else if (descLower.includes('vermelho')) color = 'vermelho';
-                    else if (descLower.includes('rosa')) color = 'rosa';
+                    // Pick the color that appears first — descriptions can mention
+                    // secondary colors in diocesan notes that would mask the primary.
+                    const colorCandidates: Array<[LiturgicalColor, number]> = (
+                        [
+                            ['verde', descLower.indexOf('verde')],
+                            ['roxo', descLower.indexOf('roxo')],
+                            ['branco', descLower.indexOf('branco')],
+                            ['vermelho', descLower.indexOf('vermelho')],
+                            ['rosa', descLower.indexOf('rosa')],
+                        ] as Array<[LiturgicalColor, number]>
+                    ).filter(([, i]) => i !== -1).sort(([, a], [, b]) => a - b);
+                    if (colorCandidates.length > 0) color = colorCandidates[0][0];
+                }
+
+                // Fall back to inferring color from the day name when the
+                // ICS description doesn't spell out the color explicitly.
+                if (!color && dayName) {
+                    const nameLower = dayName.toLowerCase();
+                    if (nameLower.includes('mártir') || nameLower.includes('martir')) color = 'vermelho';
+                    else if (nameLower.includes('quaresma') || nameLower.includes('advento')) color = 'roxo';
+                    else if (nameLower.includes('solenidade') || nameLower.includes('assunção') || nameLower.includes('natal') || nameLower.includes('páscoa')) color = 'branco';
                 }
 
                 if (color) {
