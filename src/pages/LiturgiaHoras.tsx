@@ -204,7 +204,7 @@ export default function LiturgiaHoras() {
             }`}>
                 <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
                     <button
-                        onClick={() => window.history.back()}
+                        type="button" aria-label="Voltar" onClick={() => window.history.back()}
                         className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
                             isScrolled ? 'p-1.5' : 'p-2'
                         }`}
