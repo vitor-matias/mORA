@@ -351,7 +351,7 @@ export default function LiturgiaHoras() {
                                                     {/* Content — hidden if collapsed */}
                                                     {!isCollapsed && (
                                                         <div className="space-y-4">
-                                                            {part.verses.sort((a, b) => a.order - b.order).map(verse => (
+                                                            {[...part.verses].sort((a, b) => a.order - b.order).map(verse => (
                                                                 <div
                                                                     key={verse.id}
                                                                     className="
