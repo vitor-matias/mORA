@@ -472,8 +472,8 @@ export default function Liturgy() {
             <div className="flex items-center gap-2 mb-1">
                 <Calendar className="text-liturgy-600 dark:text-liturgy-400 shrink-0" size={17} />
                 <p
-                    className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize leading-snug"
-                    style={{ fontFamily: 'var(--content-font-family, inherit)', fontSize: '0.9rem' }}
+                    className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize leading-snug text-base"
+                    style={{ fontFamily: 'var(--content-font-family, inherit)' }}
                 >
                     {new Date(liturgy.date).toLocaleDateString('pt-PT', {
                         weekday: 'long', day: 'numeric', month: 'long',
@@ -483,15 +483,15 @@ export default function Liturgy() {
             {liturgicalDescription && (
                 <>
                     <p
-                        className={`text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line pl-6 ${dateCardExpanded ? '' : 'line-clamp-4'}`}
-                        style={{ fontFamily: 'var(--content-font-family, inherit)', fontSize: '0.78rem' }}
+                        className={`text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line pl-6 text-sm ${dateCardExpanded ? '' : 'line-clamp-4'}`}
+                        style={{ fontFamily: 'var(--content-font-family, inherit)' }}
                     >
                         {liturgicalDescription}
                     </p>
                     <button
                         onClick={() => setDateCardExpanded((v) => !v)}
-                        className="mt-1 pl-6 text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
-                        style={{ fontSize: '0.72rem', fontFamily: 'Inter, sans-serif' }}
+                        className="mt-1 pl-6 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                         {dateCardExpanded ? '▴ Ver menos' : '▾ Ver mais'}
                     </button>
