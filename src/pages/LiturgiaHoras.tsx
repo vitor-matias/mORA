@@ -288,7 +288,7 @@ export default function LiturgiaHoras() {
                                 {canonicalHours.map(moment => (
                                     <button
                                         key={moment.id}
-                                        onClick={() => selectHour(moment.id)}
+                                        onClick={() => selectHour(moment.id)} aria-label={moment.label} title={moment.label}
                                         className={`flex-1 max-w-[4rem] aspect-square flex items-center justify-center text-xl rounded-2xl transition-all ${activeHour === moment.id
                                             ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 shadow-sm scale-110 z-10'
                                             : 'bg-zinc-100 dark:bg-zinc-900 border border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800 opacity-60 hover:opacity-100'
