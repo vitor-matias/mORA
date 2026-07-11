@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
-import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar } from "@/lib/liturgy";
+import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
@@ -217,11 +217,15 @@ export default function Liturgy() {
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
     const [dateCardExpanded, setDateCardExpanded] = useState(false);
 
-    // Date being viewed — defaults to today, browsable via the date nav.
-    const [selectedDate, setSelectedDate] = useState(() => new Date());
+    // Date being viewed — defaults to today (or to Sunday from Saturday
+    // 16:00, when vigil Masses start), browsable via the date nav.
+    const [selectedDate, setSelectedDate] = useState(() => getDefaultMassDate());
     const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
+    // Completion also applies to the anticipated Sunday on Saturday evening —
+    // praying the vigil readings is praying "today".
+    const canMarkPrayed = isToday || selectedDateStr === formatISODate(getDefaultMassDate());
 
     // Day info is stored keyed by date, so info from a previous date is
     // simply stale (renders as "not loaded") rather than needing a reset.
@@ -757,8 +761,9 @@ export default function Liturgy() {
                             </article>
 
                             {/* Explicit completion — the streak counts prayer,
-                                not page loads, and only for today's readings. */}
-                            {isToday && (
+                                not page loads, and only for today's readings
+                                (or Sunday's during Saturday-evening vigil time). */}
+                            {canMarkPrayed && (
                                 <div className="mt-10 mb-4">
                                     {readToday ? (
                                         <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">

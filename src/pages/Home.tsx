@@ -4,9 +4,10 @@ import { BookOpen, Cross, Clock, User, Flame, ChevronRight, ArrowRight } from "l
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
 import { useTranslations } from "@/lib/i18n";
-import { getGreeting, formatDisplayDate } from "@/lib/format";
+import { getGreeting, formatDisplayDate, formatISODate } from "@/lib/format";
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
+import { getDefaultMassDate } from "@/lib/liturgy";
 
 const COLOR_LABELS: Record<string, string> = {
     verde: 'Verde',
@@ -38,10 +39,12 @@ export default function Home() {
 
     const currentHour = getHourForTime();
     const mysteryLabel = MYSTERY_LABELS[getMysteryForToday()];
+    // From Saturday 16:00 the Missa page opens on Sunday's (vigil) readings
+    const anticipatingSunday = formatISODate(getDefaultMassDate()) !== formatISODate(new Date());
 
     const areas = [
         { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Cross },
-        { path: "/liturgia", label: t.liturgyTitle, context: "As leituras da missa de hoje", icon: BookOpen },
+        { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
     ];
 

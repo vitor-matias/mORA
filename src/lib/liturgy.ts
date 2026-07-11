@@ -72,6 +72,20 @@ function pruneLiturgyCache(): void {
     }
 }
 
+/**
+ * The date whose Mass the user most likely wants right now. From Saturday
+ * 16:00 onward, evening (vigil) Masses already belong liturgically to
+ * Sunday, so the readings default to Sunday; any other time it's today.
+ */
+export function getDefaultMassDate(now: Date = new Date()): Date {
+    if (now.getDay() === 6 && now.getHours() >= 16) {
+        const sunday = new Date(now);
+        sunday.setDate(now.getDate() + 1);
+        return sunday;
+    }
+    return now;
+}
+
 export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy | null> {
     const cached = readLiturgyCache(dateStr);
     if (cached) return cached;
