@@ -7,6 +7,22 @@ interface StreakData {
     lastCompletedDate: string | null;
 }
 
+export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+
+/** An in-progress rosary, so an accidental exit never loses the user's place. */
+export interface RosarySession {
+    date: string; // YYYY-MM-DD — sessions don't survive to the next day
+    mode: RosaryBeadMode;
+    step: number;
+}
+
+export function isCompletedToday(streak: StreakData): boolean {
+    const today = new Date();
+    const userToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000))
+        .toISOString().split('T')[0];
+    return streak.lastCompletedDate === userToday;
+}
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
@@ -23,13 +39,21 @@ export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: nu
 
 interface AppState {
     rosaryMode: RosaryBeadMode;
+    setRosaryMode: (mode: RosaryBeadMode) => void;
     toggleRosaryMode: () => void;
+    rosarySession: RosarySession | null;
+    setRosarySession: (session: RosarySession | null) => void;
     streaks: {
         rosary: StreakData;
         liturgy: StreakData;
         liturgy_hours: StreakData;
     };
-    incrementStreak: (item: 'rosary' | 'liturgy' | 'liturgy_hours') => void;
+    incrementStreak: (item: StreakItem) => void;
+
+    // Publishing streaks to Nostr relays is opt-in (and encrypted) — prayer
+    // activity is sensitive by default.
+    shareStreaks: boolean;
+    setShareStreaks: (share: boolean) => void;
 
     // Preferences
     theme: ThemeMode;
@@ -51,9 +75,14 @@ export const useAppStore = create<AppState>()(
     persist(
         (set) => ({
             rosaryMode: 'beginner',
+            setRosaryMode: (rosaryMode) => set({ rosaryMode }),
             toggleRosaryMode: () => set((state) => ({
                 rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner'
             })),
+            rosarySession: null,
+            setRosarySession: (rosarySession) => set({ rosarySession }),
+            shareStreaks: false,
+            setShareStreaks: (shareStreaks) => set({ shareStreaks }),
 
             // Default preferences
             theme: 'system',

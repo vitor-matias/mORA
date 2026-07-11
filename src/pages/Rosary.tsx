@@ -1,25 +1,48 @@
 import { useState, useMemo, useEffect } from "react";
-import { ChevronRight, Check, PartyPopper } from "lucide-react";
-import { useAppStore } from "@/store/app";
+import { useNavigate } from "react-router-dom";
+import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw } from "lucide-react";
+import { useAppStore, isCompletedToday } from "@/store/app";
+import type { RosaryBeadMode } from "@/lib/rosary";
 import { useTranslations } from "@/lib/i18n";
-import { getMysteryForToday, generateRosarySequence } from "@/lib/rosary";
+import { getMysteryForToday, generateRosarySequence, MYSTERY_LABELS } from "@/lib/rosary";
+import { formatISODate } from "@/lib/format";
 
 export default function Rosary() {
-    const { rosaryMode, incrementStreak } = useAppStore();
+    const navigate = useNavigate();
+    const { rosaryMode, setRosaryMode, setRosarySession, streaks, incrementStreak } = useAppStore();
     const t = useTranslations().rosary;
-    const [currentStepIndex, setCurrentStepIndex] = useState(0);
-    const [showFinish, setShowFinish] = useState(false);
 
+    const todayStr = formatISODate(new Date());
     const todayMysteryClass = getMysteryForToday();
+
+    // Resume an unfinished session from today (same mode); otherwise start fresh.
+    const [currentStepIndex, setCurrentStepIndex] = useState(() => {
+        const session = useAppStore.getState().rosarySession;
+        if (session && session.date === formatISODate(new Date()) && session.mode === useAppStore.getState().rosaryMode) {
+            return session.step;
+        }
+        return 0;
+    });
+    const [showFinish, setShowFinish] = useState(false);
 
     const sequence = useMemo(() => {
         return generateRosarySequence(todayMysteryClass, rosaryMode);
     }, [todayMysteryClass, rosaryMode]);
 
-    const currentStep = sequence[currentStepIndex];
+    // Keep the saved session in sync so an accidental exit never loses the
+    // user's place. Cleared on finish.
+    useEffect(() => {
+        if (showFinish) return;
+        if (currentStepIndex > 0) {
+            setRosarySession({ date: todayStr, mode: rosaryMode, step: currentStepIndex });
+        }
+    }, [currentStepIndex, rosaryMode, todayStr, showFinish, setRosarySession]);
+
+    const currentStep = sequence[Math.min(currentStepIndex, sequence.length - 1)];
 
     const handleFinishRosary = async () => {
         incrementStreak('rosary');
+        setRosarySession(null);
         setShowFinish(true);
 
         const { publishStreakToNostr } = await import('@/lib/nostr');
@@ -39,10 +62,27 @@ export default function Rosary() {
         }
     };
 
+    const handleBackStep = () => {
+        setCurrentStepIndex(prev => Math.max(0, prev - 1));
+    };
+
+    const handleRestart = () => {
+        setCurrentStepIndex(0);
+        setRosarySession(null);
+    };
+
+    const changeMode = (mode: RosaryBeadMode) => {
+        setRosaryMode(mode);
+        setCurrentStepIndex(0);
+        setRosarySession(null);
+    };
+
     // Scroll to top on step change
     useEffect(() => {
         window.scrollTo(0, 0);
     }, [currentStepIndex]);
+
+    const atStart = currentStepIndex === 0;
 
     return (
         <div className="p-6 pt-12 pb-8 flex-1 w-full flex flex-col max-w-md mx-auto relative overflow-hidden">
@@ -51,7 +91,8 @@ export default function Rosary() {
 
             <header className="flex items-center gap-4 mb-8">
                 <button
-                    onClick={() => window.history.back()}
+                    onClick={() => navigate('/')}
+                    aria-label="Voltar ao início"
                     className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 p-2 rounded-full"
                 >
                     <ChevronRight className="rotate-180" size={24} />
@@ -59,14 +100,27 @@ export default function Rosary() {
                 <div className="flex-1 flex justify-between items-center">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Terço</h1>
-                        <p className="text-zinc-500 text-sm capitalize">Mistérios {todayMysteryClass}</p>
+                        <p className="text-zinc-500 text-sm">Mistérios {MYSTERY_LABELS[todayMysteryClass]}</p>
                     </div>
+                    {!atStart && !showFinish && (
+                        <button
+                            onClick={handleRestart}
+                            aria-label="Recomeçar o terço"
+                            className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1.5"
+                        >
+                            <RotateCcw size={14} aria-hidden="true" />
+                            Recomeçar
+                        </button>
+                    )}
                 </div>
             </header>
 
             <div className="flex-1 flex flex-col mt-4 relative z-10">
-                {/* Active Step Card */}
-                <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800 mb-8 min-h-[240px] flex flex-col">
+                {/* Active Step Card — tapping it advances, like turning a bead */}
+                <div
+                    onClick={handleNext}
+                    className="bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none active:scale-[0.995] transition-transform"
+                >
                     <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-4 self-start shrink-0">
                         {currentStep.title}
                     </span>
@@ -80,6 +134,32 @@ export default function Rosary() {
                         </p>
                     </div>
                 </div>
+
+                {/* Mode picker — only before starting, where the choice matters */}
+                {atStart && !showFinish && (
+                    <div className="mb-6">
+                        <div role="group" aria-label="Modo do terço" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
+                            {([['beginner', 'Guiado'], ['advanced', 'Só mistérios']] as [RosaryBeadMode, string][]).map(([mode, label]) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => changeMode(mode)}
+                                    aria-pressed={rosaryMode === mode}
+                                    className={`flex-1 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${rosaryMode === mode
+                                        ? 'bg-white dark:bg-zinc-900 text-liturgy-700 dark:text-liturgy-400 shadow-sm'
+                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                                        }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-2">
+                            {rosaryMode === 'beginner'
+                                ? 'Todas as orações, conta a conta.'
+                                : 'Apenas o anúncio de cada mistério — reze as contas ao seu ritmo.'}
+                        </p>
+                    </div>
+                )}
 
                 {/* Progress Indicators (Only for beginner mode, during a decade) */}
                 {rosaryMode === 'beginner' && currentStep.decadeIndex && currentStep.type !== 'misterio' ? (
@@ -117,20 +197,31 @@ export default function Rosary() {
                     <div className="mt-auto mb-8 h-12"></div> // Spacer
                 )}
 
-                {/* Big Action Button */}
-                <button
-                    onClick={handleNext}
-                    className="w-full h-20 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-lg shadow-xl shadow-zinc-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                >
-                    {currentStepIndex === sequence.length - 1 ? (
-                        <>{t.finish} <Check size={24} /></>
-                    ) : (
-                        <>{currentStep.type === 'misterio' ? 'Iniciar Mistério' :
-                            currentStep.type === 'intro' ? 'Iniciar Terço' :
-                                currentStep.type === 'salve_rainha' ? 'Concluir Terço' :
-                                    'Continuar'} <ChevronRight size={24} /></>
+                {/* Action row: back-step + big advance button */}
+                <div className="flex items-stretch gap-3">
+                    {!atStart && (
+                        <button
+                            onClick={handleBackStep}
+                            aria-label="Passo anterior"
+                            className="w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center transition-all active:scale-[0.96]"
+                        >
+                            <Undo2 size={22} />
+                        </button>
                     )}
-                </button>
+                    <button
+                        onClick={handleNext}
+                        className="flex-1 h-20 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-lg shadow-xl shadow-zinc-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    >
+                        {currentStepIndex === sequence.length - 1 ? (
+                            <>{t.finish} <Check size={24} /></>
+                        ) : (
+                            <>{currentStep.type === 'misterio' ? 'Iniciar Mistério' :
+                                currentStep.type === 'intro' ? 'Iniciar Terço' :
+                                    currentStep.type === 'salve_rainha' ? 'Concluir Terço' :
+                                        'Continuar'} <ChevronRight size={24} /></>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* Finish Modal Overlay */}
@@ -145,10 +236,16 @@ export default function Rosary() {
                             Concluiu o Santo Terço de hoje. <br />
                             Que Nossa Senhora interceda por si e pelos seus.
                         </p>
+                        {isCompletedToday(streaks.rosary) && (
+                            <p className="text-sm font-semibold text-orange-500">
+                                🔥 {streaks.rosary.days} {streaks.rosary.days === 1 ? 'dia seguido' : 'dias seguidos'}
+                            </p>
+                        )}
                         <button
                             onClick={() => {
                                 setShowFinish(false);
-                                window.history.back();
+                                setCurrentStepIndex(0);
+                                navigate('/');
                             }}
                             className="w-full py-3 px-6 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-semibold transition-all active:scale-[0.97] hover:opacity-90"
                         >

@@ -1,15 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
-import { ChevronRight, Clock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronRight, Clock, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
-import { useAppStore } from "@/store/app";
+import { useAppStore, isCompletedToday } from "@/store/app";
+import { getHourForTime } from "@/lib/hours";
 
 // The 5 canonical moments we display
 interface HourMoment {
     id: string;
     label: string;
-    icon: string;
+    shortLabel: string;
+    icon: LucideIcon;
     parts: LiturgyHourPart[];
 }
 
@@ -44,7 +48,7 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
         if (invitatorioPart) parts.push(invitatorioPart);
         if (oficio) parts.push(oficio);
         if (parts.length > 0) {
-            moments.push({ id: 'oficio', label: 'Ofício de Leitura', icon: '📖', parts });
+            moments.push({ id: 'oficio', label: 'Ofício de Leitura', shortLabel: 'Ofício', icon: BookOpenText, parts });
         }
     }
 
@@ -54,7 +58,7 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
         if (invitatorioPart) parts.push(invitatorioPart);
         if (laudes) parts.push(laudes);
         if (parts.length > 0) {
-            moments.push({ id: 'laudes', label: 'Laudes', icon: '🌅', parts });
+            moments.push({ id: 'laudes', label: 'Laudes', shortLabel: 'Laudes', icon: Sunrise, parts });
         }
     }
 
@@ -71,33 +75,40 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
             parts.push({ ...noa, title: 'Noa' });
         }
         if (parts.length > 0) {
-            moments.push({ id: 'intermedia', label: 'Hora Intermédia', icon: '☀️', parts });
+            moments.push({ id: 'intermedia', label: 'Hora Intermédia', shortLabel: 'Interm.', icon: Sun, parts });
         }
     }
 
-    // 4. Vésperas
+    // 4. Vésperas — keep the API title ("Vésperas I"/"Vésperas II" on
+    // Saturdays/Sundays): first/second Vespers is a real liturgical
+    // distinction, not noise.
     if (vesperas) {
-        moments.push({ id: 'vesperas', label: 'Vésperas', icon: '🌇', parts: [vesperas] });
+        moments.push({ id: 'vesperas', label: vesperas.title, shortLabel: 'Vésperas', icon: Sunset, parts: [vesperas] });
     }
 
-    // 5. Completas
+    // 5. Completas (API abbreviates e.g. "Compl. dep. Vésp. I")
     if (completas) {
-        moments.push({ id: 'completas', label: 'Completas', icon: '🌙', parts: [completas] });
+        const label = completas.title.startsWith('Completas') ? completas.title : 'Completas';
+        moments.push({ id: 'completas', label, shortLabel: 'Completas', icon: MoonStar, parts: [completas] });
     }
 
     return moments;
 }
 
 export default function LiturgiaHoras() {
+    const navigate = useNavigate();
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
+    const [retryToken, setRetryToken] = useState(0);
     const [userActiveHour, setUserActiveHour] = useState<string | null>(null);
     const [userActiveSubHour, setUserActiveSubHour] = useState<string | null>(null);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set([]));
 
-    const { incrementStreak } = useAppStore();
+    const { streaks, incrementStreak } = useAppStore();
+    const prayedToday = isCompletedToday(streaks.liturgy_hours);
 
     useEffect(() => {
+        let cancelled = false;
         async function loadLiturgy() {
             setLoading(true);
             const today = new Date();
@@ -107,15 +118,20 @@ export default function LiturgiaHoras() {
             const dateStr = `${year}-${month}-${day}`;
 
             const data = await fetchDailyLiturgy(dateStr);
+            if (cancelled) return;
             setLiturgy(data);
-            if (data?.memories && data.memories.length > 0) {
-                incrementStreak('liturgy_hours');
-            }
             setLoading(false);
         }
 
         loadLiturgy();
-    }, [incrementStreak]);
+        return () => { cancelled = true; };
+    }, [retryToken]);
+
+    const markAsPrayed = async () => {
+        incrementStreak('liturgy_hours');
+        const { publishStreakToNostr } = await import('@/lib/nostr');
+        publishStreakToNostr();
+    };
 
     const canonicalHours = useMemo(() => {
         if (!liturgy?.memories || liturgy.memories.length === 0) return [];
@@ -128,30 +144,9 @@ export default function LiturgiaHoras() {
     // loaded data (no effect needed — avoids cascading renders).
     const defaultSelection = useMemo<{ hour: string | null; subHour: string | null }>(() => {
         if (canonicalHours.length === 0) return { hour: null, subHour: null };
-
-        const hour = new Date().getHours();
-        let defaultMoment = 'oficio';
-        let defaultSubHour: string | null = null;
-
-        if (hour >= 6 && hour < 9) {
-            defaultMoment = 'laudes';
-        } else if (hour >= 9 && hour < 12) {
-            defaultMoment = 'intermedia';
-            defaultSubHour = 'Tércia';
-        } else if (hour >= 12 && hour < 15) {
-            defaultMoment = 'intermedia';
-            defaultSubHour = 'Sexta';
-        } else if (hour >= 15 && hour < 18) {
-            defaultMoment = 'intermedia';
-            defaultSubHour = 'Noa';
-        } else if (hour >= 18 && hour < 21) {
-            defaultMoment = 'vesperas';
-        } else {
-            defaultMoment = 'completas';
-        }
-
-        const found = canonicalHours.find(m => m.id === defaultMoment);
-        return { hour: found ? found.id : canonicalHours[0].id, subHour: defaultSubHour };
+        const current = getHourForTime();
+        const found = canonicalHours.find(m => m.id === current.id);
+        return { hour: found ? found.id : canonicalHours[0].id, subHour: current.subHour };
     }, [canonicalHours]);
 
     // User selection takes precedence over the time-of-day default — but only
@@ -204,7 +199,7 @@ export default function LiturgiaHoras() {
             }`}>
                 <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
                     <button
-                        type="button" aria-label="Voltar" onClick={() => window.history.back()}
+                        type="button" aria-label="Voltar ao início" onClick={() => navigate('/')}
                         className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
                             isScrolled ? 'p-1.5' : 'p-2'
                         }`}
@@ -217,7 +212,7 @@ export default function LiturgiaHoras() {
                         }`}>
                             Liturgia das Horas
                         </h1>
-                        <p className={`text-zinc-500 capitalize font-medium mt-0.5 transition-all truncate ${
+                        <p className={`text-zinc-500 font-medium mt-0.5 transition-all truncate ${
                             isScrolled ? 'text-xs opacity-80' : 'text-sm'
                         }`}>
                             {liturgy ? liturgy.saintOfDay : 'A carregar...'}
@@ -247,7 +242,7 @@ export default function LiturgiaHoras() {
                                                     : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                                             }`}
                                         >
-                                            <span>{moment.icon}</span>
+                                            <moment.icon size={16} strokeWidth={activeHour === moment.id ? 2.4 : 2} aria-hidden="true" className="shrink-0" />
                                             <span>{moment.label}</span>
                                         </button>
                                         {moment.id === 'intermedia' && activeHour === 'intermedia' && (
@@ -283,18 +278,21 @@ export default function LiturgiaHoras() {
                         </div>
                     ) : canonicalHours.length > 0 ? (
                         <div className="space-y-5 flex-1 flex flex-col">
-                            {/* Mobile: horizontal hour buttons */}
-                            <div className="lg:hidden flex justify-center gap-2 pb-1 shrink-0">
+                            {/* Mobile: horizontal hour buttons — icon + label, so
+                                first-time users don't have to decode pictograms */}
+                            <div className="lg:hidden flex justify-center gap-1.5 pb-1 shrink-0">
                                 {canonicalHours.map(moment => (
                                     <button
                                         key={moment.id}
-                                        onClick={() => selectHour(moment.id)} aria-label={moment.label} title={moment.label}
-                                        className={`flex-1 max-w-[4rem] aspect-square flex items-center justify-center text-xl rounded-2xl transition-all ${activeHour === moment.id
-                                            ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 shadow-sm scale-110 z-10'
-                                            : 'bg-zinc-100 dark:bg-zinc-900 border border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-800 opacity-60 hover:opacity-100'
+                                        onClick={() => selectHour(moment.id)} aria-label={moment.label}
+                                        aria-pressed={activeHour === moment.id}
+                                        className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all ${activeHour === moment.id
+                                            ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
+                                            : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
-                                        <span>{moment.icon}</span>
+                                        <moment.icon size={20} strokeWidth={activeHour === moment.id ? 2.4 : 1.8} aria-hidden="true" />
+                                        <span className="text-[0.6rem] font-medium leading-none truncate max-w-full">{moment.shortLabel}</span>
                                     </button>
                                 ))}
                             </div>
@@ -352,19 +350,30 @@ export default function LiturgiaHoras() {
                                                     {!isCollapsed && (
                                                         <div className="space-y-4">
                                                             {[...part.verses].sort((a, b) => a.order - b.order).map(verse => (
-                                                                <div
-                                                                    key={verse.id}
-                                                                    className="
-                                                                    content-text
-                                                                    text-zinc-800 dark:text-zinc-200
-                                                                    [&_p]:mb-3 [&_p:last-child]:mb-0
-                                                                    [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2
-                                                                    [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4
-                                                                    [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
-                                                                    [&_em]:italic [&_em]:text-zinc-600 dark:[&_em]:text-zinc-400
-                                                                "
-                                                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(verse.text) }}
-                                                                />
+                                                                <div key={verse.id}>
+                                                                    {verse.audio_url && (
+                                                                        <audio
+                                                                            controls
+                                                                            preload="none"
+                                                                            src={verse.audio_url}
+                                                                            className="w-full h-10 mb-3"
+                                                                        >
+                                                                            <a href={verse.audio_url}>Ouvir áudio</a>
+                                                                        </audio>
+                                                                    )}
+                                                                    <div
+                                                                        className="
+                                                                        content-text
+                                                                        text-zinc-800 dark:text-zinc-200
+                                                                        [&_p]:mb-3 [&_p:last-child]:mb-0
+                                                                        [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2
+                                                                        [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4
+                                                                        [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
+                                                                        [&_em]:italic [&_em]:text-zinc-600 dark:[&_em]:text-zinc-400
+                                                                    "
+                                                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(verse.text) }}
+                                                                    />
+                                                                </div>
                                                             ))}
                                                             {/* Quick scroll button — sticky at the bottom */}
                                                             {part.title === 'Invitatório' && displayParts.length > 1 && (
@@ -388,7 +397,7 @@ export default function LiturgiaHoras() {
                                                                                 }
                                                                             }
                                                                         }}
-                                                                        className="w-full py-3 px-4 text-sm font-bold shadow-lg shadow-liturgy-900/10 bg-liturgy-600 dark:bg-liturgy-700 text-white hover:bg-liturgy-700 dark:hover:bg-liturgy-600 rounded-2xl flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                                                        className="w-full py-3 px-4 text-sm font-bold shadow-lg shadow-liturgy-900/10 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 rounded-2xl flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
                                                                     >
                                                                         Ir para {displayParts.find(p => p.title !== 'Invitatório')?.title || 'seguinte'}
                                                                         <ChevronRight size={16} className="rotate-90" />
@@ -408,10 +417,37 @@ export default function LiturgiaHoras() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Explicit completion — one per day, whatever hour was prayed */}
+                            <div className="mt-6 mb-2">
+                                {prayedToday ? (
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                        <CheckCircle2 size={18} aria-hidden="true" />
+                                        Rezado hoje — {streaks.liturgy_hours.days} {streaks.liturgy_hours.days === 1 ? 'dia' : 'dias'} seguidos
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={markAsPrayed}
+                                        className="w-full py-4 px-6 rounded-2xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-liturgy-900/10"
+                                    >
+                                        <CheckCircle2 size={18} aria-hidden="true" />
+                                        Rezei esta hora
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
-                            <p className="text-zinc-500">Não foi possível carregar a Liturgia das Horas de hoje.</p>
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                            <p className="text-zinc-500 text-center">
+                                Não foi possível carregar a Liturgia das Horas. Verifique a sua ligação à internet.
+                            </p>
+                            <button
+                                onClick={() => setRetryToken(t => t + 1)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-sm font-semibold transition-colors active:scale-[0.97]"
+                            >
+                                <RotateCcw size={15} aria-hidden="true" />
+                                Tentar novamente
+                            </button>
                         </div>
                     )}
                 </div>

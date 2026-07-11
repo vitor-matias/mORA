@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { ChevronRight, Calendar, Filter, Play, Pause, Minus, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
-import { fetchDailyLiturgy } from "@/lib/liturgy";
-import type { DailyLiturgy } from "@/lib/liturgy";
-import { useAppStore } from "@/store/app";
+import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar } from "@/lib/liturgy";
+import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
+import { useAppStore, isCompletedToday } from "@/store/app";
+import { formatDisplayDate, formatISODate } from "@/lib/format";
 
 // Labels that open a liturgical reading section.
 const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
@@ -196,20 +198,38 @@ function makeCommentariesCollapsible(html: string): string {
     return doc.body.innerHTML;
 }
 
-// Pixels-per-second for each speed level (1 = slow, 2 = medium, 3 = fast).
-const SCROLL_SPEEDS = [22, 42, 72] as const;
+// Autoscroll speed levels (px/s). ½ is a meditative half-pace below 1.
+const SCROLL_LEVELS = [
+    { label: '½', pps: 11 },
+    { label: '1', pps: 22 },
+    { label: '2', pps: 42 },
+    { label: '3', pps: 72 },
+] as const;
 
 interface TocEntry { id: string; label: string; }
 
 export default function Liturgy() {
+    const navigate = useNavigate();
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadFailed, setLoadFailed] = useState(false);
+    const [retryToken, setRetryToken] = useState(0);
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
     const [dateCardExpanded, setDateCardExpanded] = useState(false);
 
+    // Date being viewed — defaults to today, browsable via the date nav.
+    const [selectedDate, setSelectedDate] = useState(() => new Date());
+    const [dayInfo, setDayInfo] = useState<LiturgicalDayInfo | null>(null);
+    const dateInputRef = useRef<HTMLInputElement>(null);
+    const selectedDateStr = formatISODate(selectedDate);
+    const isToday = selectedDateStr === formatISODate(new Date());
+
     // Autoscroll
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+    // Index into SCROLL_LEVELS (default: level "2")
     const [scrollSpeed, setScrollSpeed] = useState(2);
+    // Nothing left to scroll — the start button is pointless then
+    const [atPageEnd, setAtPageEnd] = useState(false);
     const rafRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number | null>(null);
     // Float accumulator for the scroll position. window.scrollTo/scrollBy
@@ -225,28 +245,50 @@ export default function Liturgy() {
     const [sections, setSections] = useState<TocEntry[]>([]);
     const [activeSection, setActiveSection] = useState('');
 
-    const { incrementStreak, liturgicalDescription } = useAppStore();
+    const { streaks, incrementStreak } = useAppStore();
+    const readToday = isCompletedToday(streaks.liturgy);
 
     useEffect(() => {
+        let cancelled = false;
         async function loadLiturgy() {
             setLoading(true);
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
-
-            const data = await fetchDailyLiturgy(dateStr);
+            setLoadFailed(false);
+            const data = await fetchDailyLiturgy(selectedDateStr);
+            if (cancelled) return;
             setLiturgy(data);
-            if (data?.saintOfDay !== 'Sem Ligação') {
-                incrementStreak('liturgy');
-                const { publishStreakToNostr } = await import('@/lib/nostr');
-                publishStreakToNostr();
-            }
+            setLoadFailed(data === null);
             setLoading(false);
         }
         loadLiturgy();
-    }, [incrementStreak]);
+        return () => { cancelled = true; };
+    }, [selectedDateStr, retryToken]);
+
+    // Day name / description for the date being viewed (parsed from the
+    // cached liturgical-calendar ICS — cheap, no network after first load).
+    useEffect(() => {
+        let cancelled = false;
+        setDayInfo(null);
+        fetchLiturgicalColorFromCalendar(selectedDate).then(info => {
+            if (!cancelled) setDayInfo(info);
+        });
+        return () => { cancelled = true; };
+        // selectedDateStr is the stable identity of selectedDate
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedDateStr]);
+
+    const changeDay = (delta: number) => {
+        setSelectedDate(prev => {
+            const next = new Date(prev);
+            next.setDate(prev.getDate() + delta);
+            return next;
+        });
+    };
+
+    const markAsRead = async () => {
+        incrementStreak('liturgy');
+        const { publishStreakToNostr } = await import('@/lib/nostr');
+        publishStreakToNostr();
+    };
 
     const displayHtml = useMemo(() => {
         if (!liturgy?.htmlContent) return '';
@@ -314,7 +356,7 @@ export default function Liturgy() {
                 return;
             }
 
-            const line = 140; // px below viewport top (clears the sticky header)
+            const line = 170; // px below viewport top (clears the sticky header + chips row)
             let current = sections[0].id;
             for (const { id } of sections) {
                 const el = document.getElementById(id);
@@ -350,7 +392,7 @@ export default function Liturgy() {
             if (lastTimeRef.current !== null) {
                 // Cap elapsed so a backgrounded tab doesn't leap on return.
                 const elapsed = Math.min((time - lastTimeRef.current) / 1000, 0.1);
-                const pxPerSec = SCROLL_SPEEDS[speedRef.current - 1];
+                const pxPerSec = SCROLL_LEVELS[speedRef.current].pps;
                 scrollAccRef.current += pxPerSec * elapsed;
                 window.scrollTo(0, scrollAccRef.current);
 
@@ -391,7 +433,7 @@ export default function Liturgy() {
         stopAutoScroll();
         const el = document.getElementById(id);
         if (el) {
-            const offset = 88; // clear the sticky header
+            const offset = 130; // clear the sticky header (incl. mobile chips row)
             const top = el.getBoundingClientRect().top + window.scrollY - offset;
             window.scrollTo({ top, behavior: 'smooth' });
         }
@@ -414,40 +456,113 @@ export default function Liturgy() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Track whether the page is scrolled to (or has) no further content, so
+    // the autoscroll start button can be disabled when there is nowhere to go.
+    useEffect(() => {
+        const update = () => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            setAtPageEnd(maxScroll <= 0 || window.scrollY >= maxScroll - 2);
+        };
+        // Measure after the article paints (content height isn't final here).
+        const t = window.setTimeout(update, 60);
+        window.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+        return () => {
+            window.clearTimeout(t);
+            window.removeEventListener('scroll', update);
+            window.removeEventListener('resize', update);
+        };
+    }, [displayHtml, loading]);
+
     // ── Shared UI pieces rendered in both sidebar (desktop) and toolbar (mobile) ──
 
+    // Segmented control: both options always visible, so the label never
+    // reads as "the action a click would take" vs "the current state".
     const filterButton = (
-        <button
-            onClick={() => setShowOnlyReadings(!showOnlyReadings)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors border w-full justify-center lg:justify-start ${
-                showOnlyReadings
-                    ? 'bg-liturgy-100 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-400 border-liturgy-200 dark:border-liturgy-800'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
-            }`}
-        >
-            <Filter size={15} />
-            {showOnlyReadings ? 'Apenas Leituras' : 'Missal Completo'}
-        </button>
+        <div role="group" aria-label="Conteúdo a mostrar" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
+            {([[true, 'Leituras'], [false, 'Missal']] as [boolean, string][]).map(([value, label]) => (
+                <button
+                    key={label}
+                    onClick={() => setShowOnlyReadings(value)}
+                    aria-pressed={showOnlyReadings === value}
+                    className={`flex-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        showOnlyReadings === value
+                            ? 'bg-white dark:bg-zinc-900 text-liturgy-700 dark:text-liturgy-400 shadow-sm'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                    }`}
+                >
+                    {label}
+                </button>
+            ))}
+        </div>
+    );
+
+    // Prev / next day navigation with a native date picker on the label.
+    const dateNav = (
+        <div className="flex items-center justify-between gap-1 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-1 py-1 shadow-sm">
+            <button
+                onClick={() => changeDay(-1)}
+                aria-label="Dia anterior"
+                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+                <ChevronLeft size={18} />
+            </button>
+            <button
+                onClick={() => {
+                    const input = dateInputRef.current;
+                    if (!input) return;
+                    if ('showPicker' in input) {
+                        try { input.showPicker(); } catch { input.focus(); }
+                    } else {
+                        (input as HTMLInputElement).focus();
+                    }
+                }}
+                className="relative flex-1 flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+                <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                    {isToday ? 'Hoje' : formatDisplayDate(selectedDate)}
+                </span>
+                <input
+                    ref={dateInputRef}
+                    type="date"
+                    aria-label="Escolher data"
+                    value={selectedDateStr}
+                    onChange={(e) => {
+                        if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
+                    }}
+                    className="absolute inset-0 opacity-0 pointer-events-none"
+                    tabIndex={-1}
+                />
+            </button>
+            <button
+                onClick={() => changeDay(1)}
+                aria-label="Dia seguinte"
+                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+                <ChevronRight size={18} />
+            </button>
+        </div>
     );
 
     const speedControls = isAutoScrolling ? (
-        <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-2 py-1.5">
+        <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-1 py-0.5">
             <button
-                onClick={() => setScrollSpeed((s) => Math.max(1, s - 1))}
+                onClick={() => setScrollSpeed((s) => Math.max(0, s - 1))}
                 aria-label="Mais lento"
-                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-0.5"
+                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
             >
-                <Minus size={12} />
+                <Minus size={15} />
             </button>
-            <span className="text-zinc-500 dark:text-zinc-400 text-xs font-mono w-3 text-center select-none">
-                {scrollSpeed}
+            <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold w-3 text-center select-none">
+                {SCROLL_LEVELS[scrollSpeed].label}
             </span>
             <button
-                onClick={() => setScrollSpeed((s) => Math.min(3, s + 1))}
+                onClick={() => setScrollSpeed((s) => Math.min(SCROLL_LEVELS.length - 1, s + 1))}
                 aria-label="Mais rápido"
-                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-0.5"
+                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
             >
-                <Plus size={12} />
+                <Plus size={15} />
             </button>
         </div>
     ) : null;
@@ -455,10 +570,11 @@ export default function Liturgy() {
     const scrollButton = (
         <button
             onClick={toggleAutoScroll}
+            disabled={!isAutoScrolling && atPageEnd}
             aria-label={isAutoScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors border w-full justify-center lg:justify-start ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border w-full justify-center lg:justify-start disabled:opacity-40 disabled:cursor-not-allowed ${
                 isAutoScrolling
-                    ? 'bg-liturgy-600 dark:bg-liturgy-500 text-white border-liturgy-700 dark:border-liturgy-600'
+                    ? 'bg-liturgy-100 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-300 border-liturgy-200 dark:border-liturgy-800'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
             }`}
         >
@@ -469,28 +585,23 @@ export default function Liturgy() {
 
     const dateCard = liturgy && (
         <div className="bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-1">
-                <Calendar className="text-liturgy-600 dark:text-liturgy-400 shrink-0" size={17} />
-                <p
-                    className="font-semibold text-liturgy-900 dark:text-liturgy-100 capitalize leading-snug text-base"
-                    style={{ fontFamily: 'var(--content-font-family, inherit)' }}
-                >
-                    {new Date(liturgy.date).toLocaleDateString('pt-PT', {
-                        weekday: 'long', day: 'numeric', month: 'long',
-                    })}
-                </p>
-            </div>
-            {liturgicalDescription && (
+            <p
+                className="font-semibold text-liturgy-900 dark:text-liturgy-100 leading-snug text-base"
+                style={{ fontFamily: 'var(--content-font-family, inherit)' }}
+            >
+                {formatDisplayDate(new Date(liturgy.date + 'T00:00:00'))}
+            </p>
+            {dayInfo?.description && (
                 <>
                     <p
-                        className={`text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line pl-6 text-sm ${dateCardExpanded ? '' : 'line-clamp-4'}`}
+                        className={`mt-1 text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line text-sm ${dateCardExpanded ? '' : 'line-clamp-4'}`}
                         style={{ fontFamily: 'var(--content-font-family, inherit)' }}
                     >
-                        {liturgicalDescription}
+                        {dayInfo.description}
                     </p>
                     <button
                         onClick={() => setDateCardExpanded((v) => !v)}
-                        className="mt-1 pl-6 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
+                        className="mt-1 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                         {dateCardExpanded ? '▴ Ver menos' : '▾ Ver mais'}
@@ -511,7 +622,8 @@ export default function Liturgy() {
             }`}>
                 <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
                     <button
-                        onClick={() => window.history.back()}
+                        onClick={() => navigate('/')}
+                        aria-label="Voltar ao início"
                         className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
                             isScrolled ? 'p-1.5' : 'p-2'
                         }`}
@@ -524,13 +636,35 @@ export default function Liturgy() {
                         }`}>
                             Missa Diária
                         </h1>
-                        <p className={`text-zinc-500 capitalize font-medium mt-0.5 transition-all truncate ${
+                        <p className={`text-zinc-500 font-medium mt-0.5 transition-all truncate ${
                             isScrolled ? 'text-xs opacity-80' : 'text-sm'
                         }`}>
-                            {liturgy?.saintOfDay || 'A carregar...'}
+                            {loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
                         </p>
                     </div>
                 </div>
+
+                {/* Mobile section chips — quick jumps without the desktop sidebar */}
+                {!loading && sections.length > 0 && (
+                    <nav
+                        aria-label="Secções das leituras"
+                        className="lg:hidden max-w-5xl mx-auto px-6 mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                        {sections.map(({ id, label }) => (
+                            <button
+                                key={id}
+                                onClick={() => scrollToSection(id)}
+                                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                    activeSection === id
+                                        ? 'bg-liturgy-100 dark:bg-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300'
+                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </nav>
+                )}
             </header>
 
             {/* ── Page body ────────────────────────────────────────────────── */}
@@ -539,6 +673,7 @@ export default function Liturgy() {
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && liturgy && (
                     <aside className="hidden lg:flex flex-col gap-4 w-52 xl:w-60 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                        {dateNav}
                         {dateCard}
 
                         <div className="flex flex-col gap-2">
@@ -588,14 +723,18 @@ export default function Liturgy() {
                         </div>
                     ) : liturgy ? (
                         <>
-                            {/* Date card — mobile / tablet only */}
-                            <div className="lg:hidden mb-4">{dateCard}</div>
+                            {/* Date nav + date card — mobile / tablet only */}
+                            <div className="lg:hidden mb-4 space-y-3">
+                                {dateNav}
+                                {dateCard}
+                            </div>
 
-                            {/* Filter + autoscroll row — mobile / tablet only */}
+                            {/* Filter + autoscroll row — mobile / tablet only.
+                                Speed controls live in the floating pill while
+                                scrolling, so they aren't duplicated here. */}
                             <div className="lg:hidden flex items-center gap-2 mb-6">
                                 <div className="flex-1">{filterButton}</div>
-                                {speedControls}
-                                <div className="flex-1">{scrollButton}</div>
+                                <div className="shrink-0">{scrollButton}</div>
                             </div>
 
                             {/* Reading article */}
@@ -613,10 +752,45 @@ export default function Liturgy() {
                             >
                                 <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
                             </article>
+
+                            {/* Explicit completion — the streak counts prayer,
+                                not page loads, and only for today's readings. */}
+                            {isToday && (
+                                <div className="mt-10 mb-4">
+                                    {readToday ? (
+                                        <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                            <CheckCircle2 size={18} aria-hidden="true" />
+                                            Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={markAsRead}
+                                            className="w-full py-4 px-6 rounded-2xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-liturgy-900/10"
+                                        >
+                                            <CheckCircle2 size={18} aria-hidden="true" />
+                                            Rezei as leituras de hoje
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
-                            <p className="text-zinc-500">Não foi possível carregar a liturgia de hoje.</p>
+                        <div className="flex-1 flex flex-col gap-4">
+                            <div className="lg:hidden">{dateNav}</div>
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                                <p className="text-zinc-500 text-center">
+                                    {loadFailed
+                                        ? 'Não foi possível carregar as leituras. Verifique a sua ligação à internet.'
+                                        : 'Sem leituras disponíveis para este dia.'}
+                                </p>
+                                <button
+                                    onClick={() => setRetryToken(t => t + 1)}
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-sm font-semibold transition-colors active:scale-[0.97]"
+                                >
+                                    <RotateCcw size={15} aria-hidden="true" />
+                                    Tentar novamente
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -624,41 +798,48 @@ export default function Liturgy() {
 
             {/* ── Floating autoscroll FAB — mobile / tablet only ────────── */}
             {!loading && liturgy && (
-                <div className="lg:hidden fixed bottom-6 right-4 z-40 flex flex-col items-end gap-2">
-                    {isAutoScrolling && (
-                        <div className="flex items-center gap-1.5 bg-zinc-900/90 dark:bg-zinc-800 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-lg">
+                <div className="lg:hidden fixed bottom-24 right-4 z-40">
+                    {isAutoScrolling ? (
+                        /* One cohesive pill: speed on the left, pause on the
+                           right. Semi-transparent so text scrolling behind it
+                           stays readable. */
+                        <div className="flex items-stretch h-12 rounded-full bg-zinc-900/60 dark:bg-zinc-800/60 backdrop-blur-md shadow-xl overflow-hidden">
                             <button
-                                onClick={() => setScrollSpeed((s) => Math.max(1, s - 1))}
+                                onClick={() => setScrollSpeed((s) => Math.max(0, s - 1))}
                                 aria-label="Mais lento"
-                                className="text-zinc-300 hover:text-white transition-colors p-0.5"
+                                className="pl-4 pr-2.5 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
                             >
-                                <Minus size={14} />
+                                <Minus size={16} />
                             </button>
-                            <span className="text-zinc-300 text-xs font-mono w-3 text-center select-none">
-                                {scrollSpeed}
+                            <span className="flex items-center text-white text-sm font-semibold tabular-nums w-4 justify-center select-none">
+                                {SCROLL_LEVELS[scrollSpeed].label}
                             </span>
                             <button
-                                onClick={() => setScrollSpeed((s) => Math.min(3, s + 1))}
+                                onClick={() => setScrollSpeed((s) => Math.min(SCROLL_LEVELS.length - 1, s + 1))}
                                 aria-label="Mais rápido"
-                                className="text-zinc-300 hover:text-white transition-colors p-0.5"
+                                className="pl-2.5 pr-3 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
                             >
-                                <Plus size={14} />
+                                <Plus size={16} />
+                            </button>
+                            <div className="w-px my-3 bg-white/20" aria-hidden="true" />
+                            <button
+                                onClick={toggleAutoScroll}
+                                aria-label="Parar auto-scroll"
+                                className="pl-3.5 pr-4 flex items-center text-white transition-colors"
+                            >
+                                <Pause size={17} fill="currentColor" strokeWidth={0} />
                             </button>
                         </div>
+                    ) : (
+                        <button
+                            onClick={toggleAutoScroll}
+                            disabled={atPageEnd}
+                            aria-label="Iniciar auto-scroll"
+                            className="h-12 w-12 rounded-full shadow-xl flex items-center justify-center bg-zinc-900/60 dark:bg-zinc-100/70 backdrop-blur-md text-white dark:text-zinc-900 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                            <Play size={17} fill="currentColor" strokeWidth={0} className="translate-x-px" />
+                        </button>
                     )}
-                    <button
-                        onClick={toggleAutoScroll}
-                        aria-label={isAutoScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
-                        className={`h-14 w-14 rounded-full shadow-xl flex items-center justify-center transition-colors duration-200 ${
-                            isAutoScrolling
-                                ? 'bg-liturgy-600 text-white ring-4 ring-liturgy-400/25'
-                                : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                        }`}
-                    >
-                        {isAutoScrolling
-                            ? <Pause size={18} />
-                            : <Play size={18} className="translate-x-px" />}
-                    </button>
                 </div>
             )}
         </div>

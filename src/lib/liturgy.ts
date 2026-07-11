@@ -119,7 +119,7 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
         const data = json.data?.liturgyWithMemories;
 
         if (!data || !data.masses || data.masses.length === 0) {
-            return getFallbackLiturgy(dateStr);
+            return null;
         }
 
         const mass = data.masses[0];
@@ -144,7 +144,9 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
 
     } catch (error) {
         console.error('Error fetching liturgy:', error);
-        return getFallbackLiturgy(dateStr);
+        // No fallback content — callers show an explicit error state with a
+        // retry action instead of a fake "Sem Ligação" day.
+        return null;
     }
 }
 
@@ -170,16 +172,6 @@ export async function preloadUpcomingLiturgy(days = 5): Promise<void> {
         } catch {
             // best-effort preload; ignore failures
         }
-    }
-}
-
-function getFallbackLiturgy(dateStr: string): DailyLiturgy {
-    return {
-        date: dateStr,
-        liturgicalColor: 'Roxo',
-        saintOfDay: 'Sem Ligação',
-        htmlContent: '<p>Não foi possível carregar as leituras diárias. Verifique a sua ligação à internet.</p>',
-        memories: []
     }
 }
 

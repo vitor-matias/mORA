@@ -1,4 +1,5 @@
-import { finalizeEvent, SimplePool, type Event, type EventTemplate } from 'nostr-tools';
+import { finalizeEvent, SimplePool, nip44, type Event, type EventTemplate } from 'nostr-tools';
+import { hexToBytes } from '@noble/hashes/utils';
 import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 
@@ -7,8 +8,9 @@ const pool = new SimplePool();
 
 export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
 
-// Ensure kind is a valid number
-const KIND_APP_STATE = 30000;
+// NIP-78 "Application-specific Data": addressable event, replaced per d-tag.
+// (30000 would collide with NIP-51 follow sets.)
+const KIND_APP_STATE = 30078;
 
 export interface NostrProfile {
     name?: string;
@@ -63,14 +65,35 @@ export async function publishNostrProfile(profile: NostrProfile) {
 
 export async function publishStreakToNostr() {
     const { pubkey, privkey, isNip07 } = useAuthStore.getState();
-    const { streaks } = useAppStore.getState();
+    const { streaks, shareStreaks } = useAppStore.getState();
 
     if (!pubkey) return; // Not logged in
+    // Prayer activity is sensitive — syncing it to public relays is opt-in.
+    if (!shareStreaks) return;
 
-    const eventContent = JSON.stringify({
+    const plaintext = JSON.stringify({
         streaks: streaks,
         lastUpdate: new Date().toISOString()
     });
+
+    // NIP-44 encrypt to self, so relays only ever store ciphertext. Without
+    // an encryption path (e.g. a NIP-07 extension without nip44) we skip
+    // publishing rather than fall back to plaintext.
+    let eventContent: string;
+    try {
+        if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
+            eventContent = await window.nostr.nip44.encrypt(pubkey, plaintext);
+        } else if (privkey) {
+            const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
+            eventContent = nip44.v2.encrypt(plaintext, conversationKey);
+        } else {
+            console.warn('No NIP-44 encryption available; not publishing streaks.');
+            return;
+        }
+    } catch (error) {
+        console.warn('Failed to encrypt streaks; not publishing.', error);
+        return;
+    }
 
     const baseEvent: EventTemplate = {
         kind: KIND_APP_STATE,
