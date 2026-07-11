@@ -30,11 +30,15 @@ export default function Rosary() {
     }, [todayMysteryClass, rosaryMode]);
 
     // Keep the saved session in sync so an accidental exit never loses the
-    // user's place. Cleared on finish.
+    // user's place. Cleared on finish and whenever we're back at the start —
+    // including a stale (other day/mode) session rejected by the initializer —
+    // so nothing resumes from it and the tab bar stops treating it as active.
     useEffect(() => {
         if (showFinish) return;
         if (currentStepIndex > 0) {
             setRosarySession({ date: todayStr, mode: rosaryMode, step: currentStepIndex });
+        } else {
+            setRosarySession(null);
         }
     }, [currentStepIndex, rosaryMode, todayStr, showFinish, setRosarySession]);
 

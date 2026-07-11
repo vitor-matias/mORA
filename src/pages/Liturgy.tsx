@@ -261,11 +261,18 @@ export default function Liturgy() {
         async function loadLiturgy() {
             setLoading(true);
             setLoadFailed(false);
-            const data = await fetchDailyLiturgy(selectedDateStr);
-            if (cancelled) return;
-            setLiturgy(data);
-            setLoadFailed(data === null);
-            setLoading(false);
+            try {
+                // null = the API has no Mass for this date (not an outage)
+                const data = await fetchDailyLiturgy(selectedDateStr);
+                if (cancelled) return;
+                setLiturgy(data);
+            } catch {
+                if (cancelled) return;
+                setLiturgy(null);
+                setLoadFailed(true);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
         }
         loadLiturgy();
         return () => { cancelled = true; };
@@ -514,34 +521,40 @@ export default function Liturgy() {
             >
                 <ChevronLeft size={18} />
             </button>
-            <button
-                onClick={() => {
-                    const input = dateInputRef.current;
-                    if (!input) return;
-                    if ('showPicker' in input) {
-                        try { input.showPicker(); } catch { input.focus(); }
-                    } else {
-                        (input as HTMLInputElement).focus();
-                    }
-                }}
-                className="relative flex-1 flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-                <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
-                <span className="truncate">
-                    {isToday ? 'Hoje' : formatDisplayDate(selectedDate)}
-                </span>
+            <div className="relative flex-1">
+                <button
+                    type="button"
+                    onClick={() => {
+                        const input = dateInputRef.current;
+                        if (!input) return;
+                        if ('showPicker' in input) {
+                            try { input.showPicker(); } catch { input.focus(); }
+                        } else {
+                            (input as HTMLInputElement).focus();
+                        }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
+                    <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
+                    <span className="truncate">
+                        {isToday ? 'Hoje' : formatDisplayDate(selectedDate)}
+                    </span>
+                </button>
+                {/* Sibling overlay, not a child — an interactive element
+                    inside a <button> is invalid HTML. The button above is
+                    the control; this input only hosts the native picker. */}
                 <input
                     ref={dateInputRef}
                     type="date"
-                    aria-label="Escolher data"
+                    aria-hidden="true"
+                    tabIndex={-1}
                     value={selectedDateStr}
                     onChange={(e) => {
                         if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
                     }}
                     className="absolute inset-0 opacity-0 pointer-events-none"
-                    tabIndex={-1}
                 />
-            </button>
+            </div>
             <button
                 onClick={() => changeDay(1)}
                 aria-label="Dia seguinte"

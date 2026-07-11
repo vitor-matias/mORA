@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
+import { formatISODate } from "@/lib/format";
 import { TabBar } from "./TabBar";
 
 // Each page starts at the top — without this, the previous page's scroll
@@ -23,7 +24,8 @@ export function Layout() {
     useEffect(() => {
         async function checkLiturgicalColor() {
             const today = new Date();
-            const dateStr = today.toISOString().split('T')[0];
+            // Local date, matching how consumers (Home) compare it
+            const dateStr = formatISODate(today);
             const { setLiturgicalColor } = useAppStore.getState();
             const dayInfo = await fetchLiturgicalColorFromCalendar(today);
             if (dayInfo) {

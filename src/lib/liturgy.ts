@@ -86,6 +86,11 @@ export function getDefaultMassDate(now: Date = new Date()): Date {
     return now;
 }
 
+/**
+ * Resolves the day's liturgy, or null when the API genuinely has no Mass
+ * for that date. Network/API failures are thrown, so callers can tell an
+ * outage apart from an empty day.
+ */
 export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy | null> {
     const cached = readLiturgyCache(dateStr);
     if (cached) return cached;
@@ -158,9 +163,7 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
 
     } catch (error) {
         console.error('Error fetching liturgy:', error);
-        // No fallback content — callers show an explicit error state with a
-        // retry action instead of a fake "Sem Ligação" day.
-        return null;
+        throw error;
     }
 }
 

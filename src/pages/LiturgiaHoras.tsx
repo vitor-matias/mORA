@@ -117,10 +117,17 @@ export default function LiturgiaHoras() {
             const day = String(today.getDate()).padStart(2, '0');
             const dateStr = `${year}-${month}-${day}`;
 
-            const data = await fetchDailyLiturgy(dateStr);
-            if (cancelled) return;
-            setLiturgy(data);
-            setLoading(false);
+            try {
+                const data = await fetchDailyLiturgy(dateStr);
+                if (cancelled) return;
+                setLiturgy(data);
+            } catch {
+                // Same generic error state either way on this page
+                if (cancelled) return;
+                setLiturgy(null);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
         }
 
         loadLiturgy();

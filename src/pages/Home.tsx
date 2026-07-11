@@ -18,7 +18,7 @@ const COLOR_LABELS: Record<string, string> = {
 };
 
 export default function Home() {
-    const { streaks, liturgicalColor, liturgicalDayName } = useAppStore();
+    const { streaks, liturgicalColor, liturgicalDayName, liturgicalColorDate } = useAppStore();
     const { pubkey, profile, setProfile } = useAuthStore();
     const t = useTranslations().home;
 
@@ -41,6 +41,10 @@ export default function Home() {
     const mysteryLabel = MYSTERY_LABELS[getMysteryForToday()];
     // From Saturday 16:00 the Missa page opens on Sunday's (vigil) readings
     const anticipatingSunday = formatISODate(getDefaultMassDate()) !== formatISODate(new Date());
+
+    // The persisted day name may be yesterday's if today's calendar fetch
+    // hasn't succeeded yet — only show it when it belongs to today.
+    const todayDayName = liturgicalColorDate === formatISODate(new Date()) ? liturgicalDayName : null;
 
     const areas = [
         { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Cross },
@@ -93,7 +97,7 @@ export default function Home() {
                     className="text-lg font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100 line-clamp-2"
                     style={{ fontFamily: 'var(--content-font-family, inherit)' }}
                 >
-                    {liturgicalDayName || 'A liturgia de hoje'}
+                    {todayDayName || 'A liturgia de hoje'}
                 </h2>
                 <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-liturgy-800 dark:text-liturgy-300">
