@@ -146,7 +146,7 @@ export const useAppStore = create<AppState>()(
             // a wrong theme stuck after a hard close mid-browse.
             partialize: (state) => Object.fromEntries(
                 Object.entries(state).filter(([key]) => key !== 'liturgicalColorOverride')
-            ) as AppState,
+            ) as Omit<AppState, 'liturgicalColorOverride'>,
         }
     )
 );
