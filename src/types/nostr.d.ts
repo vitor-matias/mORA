@@ -6,6 +6,11 @@ declare global {
         nostr?: {
             getPublicKey(): Promise<string>;
             signEvent(event: EventTemplate): Promise<Event>;
+            // Optional NIP-44 capability (newer extensions)
+            nip44?: {
+                encrypt(pubkey: string, plaintext: string): Promise<string>;
+                decrypt(pubkey: string, ciphertext: string): Promise<string>;
+            };
         };
     }
 }

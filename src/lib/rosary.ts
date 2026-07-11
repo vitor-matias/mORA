@@ -20,6 +20,13 @@ export interface RosaryStep {
     beadIndex?: number; // 1 to 10 within a decade
 }
 
+export const MYSTERY_LABELS: Record<MysteryDay, string> = {
+    gozosos: 'Gozosos',
+    luminosos: 'Luminosos',
+    dolorosos: 'Dolorosos',
+    gloriosos: 'Gloriosos',
+};
+
 export const prayers = {
     sinalDaCruz: "Pelo sinal da Santa Cruz, livrai-nos, Deus, nosso Senhor, dos nossos inimigos. Em nome do Pai e do Filho e do Espírito Santo. Amém.",
     invocacao: "Em nome do Pai, do Filho e do Espírito Santo. Ó Deus, vinde em nosso auxílio. Senhor, socorrei-nos e salvai-nos.",

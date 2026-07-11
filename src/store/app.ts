@@ -1,10 +1,24 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RosaryBeadMode } from '@/lib/rosary';
+import { formatISODate } from '@/lib/format';
 
 interface StreakData {
     days: number;
     lastCompletedDate: string | null;
+}
+
+export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+
+/** An in-progress rosary, so an accidental exit never loses the user's place. */
+export interface RosarySession {
+    date: string; // YYYY-MM-DD — sessions don't survive to the next day
+    mode: RosaryBeadMode;
+    step: number;
+}
+
+export function isCompletedToday(streak: StreakData): boolean {
+    return streak.lastCompletedDate === formatISODate(new Date());
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -23,13 +37,21 @@ export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: nu
 
 interface AppState {
     rosaryMode: RosaryBeadMode;
+    setRosaryMode: (mode: RosaryBeadMode) => void;
     toggleRosaryMode: () => void;
+    rosarySession: RosarySession | null;
+    setRosarySession: (session: RosarySession | null) => void;
     streaks: {
         rosary: StreakData;
         liturgy: StreakData;
         liturgy_hours: StreakData;
     };
-    incrementStreak: (item: 'rosary' | 'liturgy' | 'liturgy_hours') => void;
+    incrementStreak: (item: StreakItem) => void;
+
+    // Publishing streaks to Nostr relays is opt-in (and encrypted) — prayer
+    // activity is sensitive by default.
+    shareStreaks: boolean;
+    setShareStreaks: (share: boolean) => void;
 
     // Preferences
     theme: ThemeMode;
@@ -51,9 +73,14 @@ export const useAppStore = create<AppState>()(
     persist(
         (set) => ({
             rosaryMode: 'beginner',
+            setRosaryMode: (rosaryMode) => set({ rosaryMode }),
             toggleRosaryMode: () => set((state) => ({
                 rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner'
             })),
+            rosarySession: null,
+            setRosarySession: (rosarySession) => set({ rosarySession }),
+            shareStreaks: false,
+            setShareStreaks: (shareStreaks) => set({ shareStreaks }),
 
             // Default preferences
             theme: 'system',
@@ -75,10 +102,7 @@ export const useAppStore = create<AppState>()(
                 liturgy_hours: { days: 0, lastCompletedDate: null }
             },
             incrementStreak: (item) => set((state) => {
-                const today = new Date();
-                // Adjust for timezone to get local YYYY-MM-DD
-                const userToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000))
-                    .toISOString().split('T')[0];
+                const userToday = formatISODate(new Date());
 
                 const currentStreak = state.streaks[item] ?? { days: 0, lastCompletedDate: null };
 

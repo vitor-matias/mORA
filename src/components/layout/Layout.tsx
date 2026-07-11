@@ -1,8 +1,20 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
+import { formatISODate } from "@/lib/format";
+import { TabBar } from "./TabBar";
+
+// Each page starts at the top — without this, the previous page's scroll
+// position carries over across route changes.
+function ScrollToTop() {
+    const { pathname } = useLocation();
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [pathname]);
+    return null;
+}
 
 export function Layout() {
     const { theme, liturgicalColor, fontSize, fontFamily } = useAppStore();
@@ -12,7 +24,8 @@ export function Layout() {
     useEffect(() => {
         async function checkLiturgicalColor() {
             const today = new Date();
-            const dateStr = today.toISOString().split('T')[0];
+            // Local date, matching how consumers (Home) compare it
+            const dateStr = formatISODate(today);
             const { setLiturgicalColor } = useAppStore.getState();
             const dayInfo = await fetchLiturgicalColorFromCalendar(today);
             if (dayInfo) {
@@ -49,8 +62,8 @@ export function Layout() {
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
 
-            // Status bar matches the page background: zinc-950 in dark, white in light.
-            const themeColor = isDark ? '#09090b' : '#ffffff';
+            // Status bar matches the page background: charcoal in dark, warm cream in light.
+            const themeColor = isDark ? '#121212' : '#FAF9F6';
             let meta = document.querySelector('meta[name="theme-color"]');
             if (!meta) {
                 meta = document.createElement('meta');
@@ -94,11 +107,15 @@ export function Layout() {
     }, [theme, liturgicalColor, fontSize, fontFamily]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
-            {/* max-w-md on mobile/tablet; individual pages control width on lg+ */}
-            <main className="flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col">
+        <div className="flex flex-col min-h-screen bg-[#FAF9F6] dark:bg-[#121212] text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
+            <ScrollToTop />
+            {/* max-w-md on mobile/tablet; individual pages control width on lg+.
+                Bottom padding clears the fixed tab bar plus the device
+                safe-area inset it sits on. */}
+            <main className="flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(4rem+env(safe-area-inset-bottom))]">
                 <Outlet />
             </main>
+            <TabBar />
         </div>
     );
 }

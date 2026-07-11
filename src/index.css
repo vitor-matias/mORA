@@ -176,10 +176,13 @@ html[data-theme="rosa"] {
   font-size: var(--content-font-size, 20px);
   font-family: var(--content-font-family, "Lora", Georgia, serif);
   line-height: var(--content-line-height, 1.75);
-  text-align: justify;
-  text-align-last: left;   /* last line of each paragraph stays flush-left */
-  hyphens: auto;
-  -webkit-hyphens: auto;
+  /* Ragged-right, no hyphenation: liturgical text is mostly verse
+     (psalms, responses, short sense-lines), where justification opens
+     rivers of whitespace and hyphens split words mid-verse on narrow
+     screens. */
+  text-align: left;
+  hyphens: none;
+  -webkit-hyphens: none;
   overflow-wrap: break-word;
   text-wrap: pretty;
   font-feature-settings: "kern", "liga", "calt", "onum";
