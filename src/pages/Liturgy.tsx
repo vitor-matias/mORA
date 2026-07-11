@@ -219,10 +219,14 @@ export default function Liturgy() {
 
     // Date being viewed — defaults to today, browsable via the date nav.
     const [selectedDate, setSelectedDate] = useState(() => new Date());
-    const [dayInfo, setDayInfo] = useState<LiturgicalDayInfo | null>(null);
     const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
+
+    // Day info is stored keyed by date, so info from a previous date is
+    // simply stale (renders as "not loaded") rather than needing a reset.
+    const [dayInfoState, setDayInfoState] = useState<{ dateStr: string; info: LiturgicalDayInfo | null } | null>(null);
+    const dayInfo = dayInfoState?.dateStr === selectedDateStr ? dayInfoState.info : null;
 
     // Autoscroll
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
@@ -267,9 +271,8 @@ export default function Liturgy() {
     // cached liturgical-calendar ICS — cheap, no network after first load).
     useEffect(() => {
         let cancelled = false;
-        setDayInfo(null);
         fetchLiturgicalColorFromCalendar(selectedDate).then(info => {
-            if (!cancelled) setDayInfo(info);
+            if (!cancelled) setDayInfoState({ dateStr: selectedDateStr, info });
         });
         return () => { cancelled = true; };
         // selectedDateStr is the stable identity of selectedDate
