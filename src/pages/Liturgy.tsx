@@ -253,8 +253,15 @@ export default function Liturgy() {
     const [sections, setSections] = useState<TocEntry[]>([]);
     const [activeSection, setActiveSection] = useState('');
 
-    const { streaks, incrementStreak } = useAppStore();
+    const { streaks, incrementStreak, setLiturgicalColorOverride } = useAppStore();
     const readToday = isCompletedToday(streaks.liturgy);
+
+    // Theme the app to the color of the day being read: browsing another
+    // date overrides today's liturgical color for as long as we're here.
+    useEffect(() => {
+        setLiturgicalColorOverride(!isToday && dayInfo?.color ? dayInfo.color : null);
+        return () => setLiturgicalColorOverride(null);
+    }, [dayInfo, isToday, setLiturgicalColorOverride]);
 
     useEffect(() => {
         let cancelled = false;
