@@ -300,8 +300,14 @@ export default function Liturgy() {
 
     const markAsRead = async () => {
         incrementStreak('liturgy');
-        const { publishStreakToNostr } = await import('@/lib/nostr');
-        publishStreakToNostr();
+        try {
+            const { publishStreakToNostr } = await import('@/lib/nostr');
+            await publishStreakToNostr();
+        } catch (error) {
+            // Best-effort sync — a chunk-load failure (e.g. offline) must
+            // never break the completion action itself.
+            console.warn('Streak sync skipped:', error);
+        }
     };
 
     const displayHtml = useMemo(() => {

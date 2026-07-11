@@ -49,8 +49,14 @@ export default function Rosary() {
         setRosarySession(null);
         setShowFinish(true);
 
-        const { publishStreakToNostr } = await import('@/lib/nostr');
-        publishStreakToNostr();
+        try {
+            const { publishStreakToNostr } = await import('@/lib/nostr');
+            await publishStreakToNostr();
+        } catch (error) {
+            // Best-effort sync — a chunk-load failure (e.g. offline) must
+            // never break finishing the rosary.
+            console.warn('Streak sync skipped:', error);
+        }
     };
 
     const handleNext = () => {

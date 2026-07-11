@@ -136,8 +136,14 @@ export default function LiturgiaHoras() {
 
     const markAsPrayed = async () => {
         incrementStreak('liturgy_hours');
-        const { publishStreakToNostr } = await import('@/lib/nostr');
-        publishStreakToNostr();
+        try {
+            const { publishStreakToNostr } = await import('@/lib/nostr');
+            await publishStreakToNostr();
+        } catch (error) {
+            // Best-effort sync — a chunk-load failure (e.g. offline) must
+            // never break the completion action itself.
+            console.warn('Streak sync skipped:', error);
+        }
     };
 
     const canonicalHours = useMemo(() => {
