@@ -70,6 +70,7 @@ export function TabBar() {
     return (
         <nav
             aria-label="Navegação principal"
+            aria-hidden={hide}
             className={`fixed bottom-0 inset-x-0 z-40 bg-[#FAF9F6]/92 dark:bg-[#121212]/92 backdrop-blur-md border-t border-zinc-200/70 dark:border-zinc-800/70 pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-out ${
                 hide ? 'translate-y-full' : 'translate-y-0'
             }`}

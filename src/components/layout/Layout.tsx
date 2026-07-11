@@ -108,8 +108,9 @@ export function Layout() {
         <div className="flex flex-col min-h-screen bg-[#FAF9F6] dark:bg-[#121212] text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
             <ScrollToTop />
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
-                Bottom padding clears the fixed tab bar. */}
-            <main className="flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-16">
+                Bottom padding clears the fixed tab bar plus the device
+                safe-area inset it sits on. */}
+            <main className="flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(4rem+env(safe-area-inset-bottom))]">
                 <Outlet />
             </main>
             <TabBar />

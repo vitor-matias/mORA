@@ -305,7 +305,12 @@ export default function Profile() {
                     </div>
 
                     <button
-                        onClick={logout}
+                        onClick={() => {
+                            // Sync opt-in is per identity — don't carry it over
+                            // to whoever logs in next on this device.
+                            setShareStreaks(false);
+                            logout();
+                        }}
                         className="mt-6 w-full py-2 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 rounded-xl font-medium transition-colors"
                     >
                         {t.logout}

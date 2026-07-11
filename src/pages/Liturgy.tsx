@@ -779,7 +779,9 @@ export default function Liturgy() {
                         </>
                     ) : (
                         <div className="flex-1 flex flex-col gap-4">
-                            <div className="lg:hidden">{dateNav}</div>
+                            {/* The sidebar (and its date nav) only renders on
+                                success, so this must show on all breakpoints */}
+                            <div className="lg:max-w-sm">{dateNav}</div>
                             <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
                                 <p className="text-zinc-500 text-center">
                                     {loadFailed

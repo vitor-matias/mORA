@@ -19,6 +19,19 @@ export interface NostrProfile {
     about?: string;
 }
 
+// Signs with the NIP-07 extension when available, otherwise with the locally
+// stored private key.
+async function signNostrEvent(baseEvent: EventTemplate): Promise<Event> {
+    const { privkey, isNip07 } = useAuthStore.getState();
+    if (isNip07 && typeof window !== 'undefined' && window.nostr) {
+        return window.nostr.signEvent(baseEvent);
+    }
+    if (privkey) {
+        return finalizeEvent(baseEvent, hexToBytes(privkey));
+    }
+    throw new Error('No method available to sign the event');
+}
+
 export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | null> {
     try {
         const events = await pool.querySync(RELAYS, { kinds: [0], authors: [pubkey], limit: 1 });
@@ -33,7 +46,7 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 }
 
 export async function publishNostrProfile(profile: NostrProfile) {
-    const { pubkey, privkey, isNip07 } = useAuthStore.getState();
+    const { pubkey } = useAuthStore.getState();
     if (!pubkey) throw new Error("Not logged in");
 
     const baseEvent: EventTemplate = {
@@ -44,15 +57,7 @@ export async function publishNostrProfile(profile: NostrProfile) {
     };
 
     try {
-        let signedEvent: Event;
-        if (isNip07 && typeof window !== 'undefined' && window.nostr) {
-            signedEvent = await window.nostr.signEvent(baseEvent);
-        } else if (privkey) {
-            const secretKeyBytes = new Uint8Array(privkey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-            signedEvent = finalizeEvent(baseEvent, secretKeyBytes);
-        } else {
-            throw new Error('No method available to sign the event');
-        }
+        const signedEvent = await signNostrEvent(baseEvent);
 
         await Promise.any(pool.publish(RELAYS, signedEvent));
         console.log('Successfully published profile to Nostr:', signedEvent);
@@ -106,15 +111,7 @@ export async function publishStreakToNostr() {
     };
 
     try {
-        let signedEvent: Event;
-        if (isNip07 && typeof window !== 'undefined' && window.nostr) {
-            signedEvent = await window.nostr.signEvent(baseEvent);
-        } else if (privkey) {
-            const secretKeyBytes = new Uint8Array(privkey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-            signedEvent = finalizeEvent(baseEvent, secretKeyBytes);
-        } else {
-            throw new Error('No method available to sign the event');
-        }
+        const signedEvent = await signNostrEvent(baseEvent);
 
         // Publish to relays
         await Promise.any(pool.publish(RELAYS, signedEvent));

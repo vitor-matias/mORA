@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RosaryBeadMode } from '@/lib/rosary';
+import { formatISODate } from '@/lib/format';
 
 interface StreakData {
     days: number;
@@ -17,10 +18,7 @@ export interface RosarySession {
 }
 
 export function isCompletedToday(streak: StreakData): boolean {
-    const today = new Date();
-    const userToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000))
-        .toISOString().split('T')[0];
-    return streak.lastCompletedDate === userToday;
+    return streak.lastCompletedDate === formatISODate(new Date());
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -104,10 +102,7 @@ export const useAppStore = create<AppState>()(
                 liturgy_hours: { days: 0, lastCompletedDate: null }
             },
             incrementStreak: (item) => set((state) => {
-                const today = new Date();
-                // Adjust for timezone to get local YYYY-MM-DD
-                const userToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000))
-                    .toISOString().split('T')[0];
+                const userToday = formatISODate(new Date());
 
                 const currentStreak = state.streaks[item] ?? { days: 0, lastCompletedDate: null };
 
