@@ -17,7 +17,7 @@ function ScrollToTop() {
 }
 
 export function Layout() {
-    const { theme, liturgicalColor, fontSize, fontFamily } = useAppStore();
+    const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily } = useAppStore();
     useNotifications();
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
@@ -82,7 +82,9 @@ export function Layout() {
             mq.addEventListener('change', onSchemeChange);
         }
 
-        document.documentElement.setAttribute('data-theme', liturgicalColor);
+        // A page browsing another day's liturgy may temporarily override
+        // today's color (e.g. Missa on a past/future date).
+        document.documentElement.setAttribute('data-theme', liturgicalColorOverride ?? liturgicalColor);
 
         // Font size — set as CSS variables so only content (prayer/reading)
         // areas pick it up, not the UI chrome.
@@ -104,7 +106,7 @@ export function Layout() {
         return () => {
             mq.removeEventListener('change', onSchemeChange);
         };
-    }, [theme, liturgicalColor, fontSize, fontFamily]);
+    }, [theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily]);
 
     return (
         <div className="flex flex-col min-h-screen bg-[#FAF9F6] dark:bg-[#121212] text-zinc-900 dark:text-zinc-100 transition-colors duration-300">

@@ -63,6 +63,11 @@ interface AppState {
     liturgicalDescription: string | null;
     liturgicalColorDate: string | null;
     setLiturgicalColor: (color: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa', date: string, dayName: string | null, description: string | null) => void;
+    // Page-level theme override while browsing another day's liturgy
+    // (e.g. Missa on a past/future date). Never persisted — a stale override
+    // must not outlive the page that set it.
+    liturgicalColorOverride: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa' | null;
+    setLiturgicalColorOverride: (color: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa' | null) => void;
     fontSize: FontSize;
     setFontSize: (size: FontSize) => void;
     fontFamily: FontFamily;
@@ -92,6 +97,8 @@ export const useAppStore = create<AppState>()(
             liturgicalDescription: null,
             liturgicalColorDate: null,
             setLiturgicalColor: (liturgicalColor, liturgicalColorDate, liturgicalDayName, liturgicalDescription) => set({ liturgicalColor, liturgicalColorDate, liturgicalDayName, liturgicalDescription }),
+            liturgicalColorOverride: null,
+            setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
             setFontSize: (fontSize) => set({ fontSize }),
             fontFamily: 'system',
@@ -135,6 +142,11 @@ export const useAppStore = create<AppState>()(
         }),
         {
             name: 'mora-app-storage',
+            // The override is transient page state; persisting it would leave
+            // a wrong theme stuck after a hard close mid-browse.
+            partialize: (state) => Object.fromEntries(
+                Object.entries(state).filter(([key]) => key !== 'liturgicalColorOverride')
+            ) as Omit<AppState, 'liturgicalColorOverride'>,
         }
     )
 );
