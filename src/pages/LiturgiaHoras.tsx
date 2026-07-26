@@ -196,7 +196,7 @@ export default function LiturgiaHoras() {
             {/* ── Sticky header ────────────────────────────────────────────── */}
             <PageHeader
                 title="Liturgia das Horas"
-                subtitle={liturgy ? liturgy.saintOfDay : 'A carregar...'}
+                subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay}
             />
 
             {/* ── Page body ────────────────────────────────────────────────── */}

@@ -27,6 +27,12 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
     return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
 
+function bufferEquals(a: ArrayBuffer | null, b: Uint8Array): boolean {
+    if (!a || a.byteLength !== b.byteLength) return false;
+    const view = new Uint8Array(a);
+    return view.every((byte, i) => byte === b[i]);
+}
+
 // serviceWorker.ready never resolves when no SW is registered (e.g. dev
 // server), which would hang the subscribe flow forever.
 function readyWithTimeout(ms: number): Promise<ServiceWorkerRegistration> {
@@ -62,14 +68,22 @@ export async function enablePushReminder(time: string): Promise<boolean> {
         }
 
         const registration = await readyWithTimeout(5000);
+        const expectedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY!);
+
         // Reuse an existing subscription (e.g. the user is just changing the
         // reminder time) — re-subscribing can reject with InvalidStateError.
-        const subscription =
-            (await registration.pushManager.getSubscription()) ??
-            (await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!).buffer as ArrayBuffer,
-            }));
+        // But only when it was created with the current VAPID key: after a
+        // key rotation the stale subscription would accept pushes the Worker
+        // can no longer sign for, silently killing delivery.
+        let subscription = await registration.pushManager.getSubscription();
+        if (subscription && !bufferEquals(subscription.options.applicationServerKey, expectedKey)) {
+            await subscription.unsubscribe();
+            subscription = null;
+        }
+        subscription ??= await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: expectedKey.buffer as ArrayBuffer,
+        });
 
         const res = await fetchWithTimeout(`${SERVER_URL}/subscriptions`, {
             method: 'POST',

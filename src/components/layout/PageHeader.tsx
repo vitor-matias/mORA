@@ -34,6 +34,7 @@ export function PageHeader({
         const onScroll = () => setIsScrolled((prev) =>
             prev ? window.scrollY > 8 : window.scrollY > 56
         );
+        onScroll(); // a restored/hash-anchored page can mount already scrolled
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
