@@ -471,8 +471,13 @@ export default function Liturgy() {
                 // The platform can revoke the lock while we're still visible
                 // (e.g. battery saver kicks in); try once to get it back.
                 // Hidden-tab revocations re-acquire via visibilitychange.
+                // Only the *tracked* lock re-acquires — releasing a superseded
+                // lock firing this handler must not start a request loop.
                 lock.addEventListener('release', () => {
-                    if (!cancelled && document.visibilityState === 'visible') acquire();
+                    if (!cancelled && sentinel === lock && document.visibilityState === 'visible') {
+                        sentinel = null;
+                        acquire();
+                    }
                 });
             } catch {
                 // Denied (e.g. battery saver) — autoscroll still works,
