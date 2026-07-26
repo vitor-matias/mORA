@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Cross, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays } from "lucide-react";
 import { useAppStore } from "@/store/app";
@@ -31,6 +31,18 @@ export default function Home() {
             });
         }
     }, [pubkey, profile, setProfile]);
+
+    // Community pulse — how many people (who opted into sharing) prayed today.
+    const [prayerCount, setPrayerCount] = useState<number | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        import("@/lib/nostr").then(({ fetchTodayPrayerCount }) =>
+            fetchTodayPrayerCount().then((n) => {
+                if (!cancelled) setPrayerCount(n);
+            })
+        );
+        return () => { cancelled = true; };
+    }, []);
 
     const displayName = profile?.display_name || profile?.name || null;
     const greeting = displayName
@@ -71,7 +83,7 @@ export default function Home() {
 
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold tracking-tight text-halo text-zinc-900 dark:text-white mb-2">
                         {greeting}
                     </h1>
                     <p className="text-zinc-500 text-lg">{t.whatToPray}</p>
@@ -94,7 +106,7 @@ export default function Home() {
             </header>
 
             {/* Liturgical day hero */}
-            <section className="relative z-10 bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-3xl p-5">
+            <section className="relative z-10 glass-panel glow-ring rounded-3xl p-5">
                 <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
                     {formatDisplayDate(new Date())}
                 </p>
@@ -119,7 +131,7 @@ export default function Home() {
             </section>
 
             {/* Streaks */}
-            <section className="relative z-10 bg-white dark:bg-zinc-900 rounded-2xl px-5 py-4 shadow-sm border border-zinc-100 dark:border-zinc-800">
+            <section className="relative z-10 glass-panel rounded-2xl px-5 py-4">
                 <div className="flex items-center justify-between mb-2.5">
                     <h2 className="text-sm font-semibold text-zinc-500">{t.progress}</h2>
                     <Flame size={16} className="text-orange-500" aria-hidden="true" />
@@ -140,6 +152,13 @@ export default function Home() {
                         Comece hoje — cada oração concluída conta um dia.
                     </p>
                 )}
+                {prayerCount !== null && prayerCount > 0 && (
+                    <p className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
+                        🙏 {prayerCount === 1
+                            ? '1 pessoa já rezou hoje com o mORA'
+                            : `${prayerCount} pessoas já rezaram hoje com o mORA`}
+                    </p>
+                )}
             </section>
 
             {/* Main navigation */}
@@ -156,7 +175,7 @@ export default function Home() {
                             <Link
                                 key={area.path}
                                 to={area.path}
-                                className="group flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md hover:border-zinc-200 dark:hover:border-zinc-700 transition-all active:scale-[0.99]"
+                                className="group flex items-center gap-4 p-4 glass-panel rounded-2xl transition-all active:scale-[0.99]"
                             >
                                 <div className="h-11 w-11 shrink-0 rounded-2xl bg-liturgy-50 text-liturgy-600 dark:bg-liturgy-950/30 dark:text-liturgy-400 flex items-center justify-center transition-transform group-hover:scale-110">
                                     <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />

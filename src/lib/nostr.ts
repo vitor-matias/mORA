@@ -68,6 +68,35 @@ export async function publishNostrProfile(profile: NostrProfile) {
     }
 }
 
+// Community pulse: how many people prayed today. Streak events are
+// encrypted, but their existence is public metadata — each opted-in user
+// republishes their (replaceable) streak event on completing a prayer, so
+// counting distinct pubkeys with an update since local midnight counts
+// today's praying users without reading anyone's content. Undercounts by
+// design: only users with shareStreaks on are visible.
+let prayerCountCache: { value: number; fetchedAt: number } | null = null;
+const PRAYER_COUNT_TTL_MS = 5 * 60 * 1000;
+
+export async function fetchTodayPrayerCount(): Promise<number | null> {
+    if (prayerCountCache && Date.now() - prayerCountCache.fetchedAt < PRAYER_COUNT_TTL_MS) {
+        return prayerCountCache.value;
+    }
+    try {
+        const since = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
+        const events = await pool.querySync(RELAYS, {
+            kinds: [KIND_APP_STATE],
+            '#d': ['mora-app-streak'],
+            since,
+        });
+        const value = new Set(events.map((e) => e.pubkey)).size;
+        prayerCountCache = { value, fetchedAt: Date.now() };
+        return value;
+    } catch (error) {
+        console.warn('Could not fetch community prayer count:', error);
+        return null;
+    }
+}
+
 export async function publishStreakToNostr() {
     const { pubkey, privkey, isNip07 } = useAuthStore.getState();
     const { streaks, shareStreaks } = useAppStore.getState();
