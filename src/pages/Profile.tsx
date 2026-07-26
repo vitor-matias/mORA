@@ -159,6 +159,7 @@ export default function Profile() {
                         <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-2">
                             {SCROLL_LEVELS.map((level, idx) => (
                                 <button
+                                    type="button"
                                     key={level.label}
                                     onClick={() => setAutoScrollSpeed(idx as AutoScrollSpeed)}
                                     aria-pressed={autoScrollSpeed === idx}
