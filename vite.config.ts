@@ -11,12 +11,13 @@ export default defineConfig(({ command }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['apple-touch-icon.png'],
+      includeAssets: ['apple-touch-icon.png', 'favicon.svg'],
       manifest: {
-        name: 'mORA - Organização, Rezar e Ação',
+        name: 'mORA — Oração diária',
         short_name: 'mORA',
-        description: 'Um canivete suíço católico para a sua vida espiritual.',
-        theme_color: '#ffffff',
+        description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
+        theme_color: '#FAF9F6',
+        background_color: '#FAF9F6',
         icons: [
           {
             src: 'pwa-192x192.png',

@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
-import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
+import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
+import type { RosaryBeadMode } from "@/lib/rosary";
 import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 
 export default function Profile() {
+    const navigate = useNavigate();
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
-    const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, toggleRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -61,7 +64,8 @@ export default function Profile() {
         <div className="p-6 pt-12 max-w-md mx-auto space-y-8 flex-1 w-full flex flex-col">
             <header className="flex items-center gap-4">
                 <button
-                    onClick={() => window.history.back()}
+                    onClick={() => navigate('/')}
+                    aria-label="Voltar ao início"
                     className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 p-2 rounded-full"
                 >
                     <ChevronRight className="rotate-180" size={24} />
@@ -152,46 +156,43 @@ export default function Profile() {
                             <Gauge className="text-zinc-400" size={16} />
                             <p className="text-sm font-medium">Velocidade do Auto-scroll</p>
                         </div>
-                        <div className="flex gap-2">
-                            {([[1, 'Lenta'], [2, 'Média'], [3, 'Rápida']] as [AutoScrollSpeed, string][]).map(([speed, label]) => (
+                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-2">
+                            {SCROLL_LEVELS.map((level, idx) => (
                                 <button
-                                    key={speed}
-                                    onClick={() => setAutoScrollSpeed(speed)}
-                                    aria-pressed={autoScrollSpeed === speed}
-                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${autoScrollSpeed === speed
+                                    key={level.label}
+                                    onClick={() => setAutoScrollSpeed(idx as AutoScrollSpeed)}
+                                    aria-pressed={autoScrollSpeed === idx}
+                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${autoScrollSpeed === idx
                                         ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
-                                    <span className="text-xs font-medium">{label}</span>
+                                    <span className="text-xs font-medium">{level.label}</span>
                                 </button>
                             ))}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">Velocidade inicial da leitura automática na Liturgia</p>
+                        <p className="text-xs text-zinc-500 mt-2">Velocidade inicial da leitura automática na Missa</p>
                     </div>
 
-                    {/* Rosary Mode Toggle */}
-                    <div className="flex items-center justify-between py-1">
-                        <div>
-                            <p className="text-sm font-medium">{t.rosaryMode}</p>
-                            <p className="text-xs text-zinc-500 mt-0.5">
-                                {rosaryMode === 'beginner' ? t.rosaryBeginner : t.rosaryAdvanced}
-                            </p>
+                    {/* Rosary Mode — segmented so both options are always visible */}
+                    <div>
+                        <p className="text-sm font-medium mb-3">{t.rosaryMode}</p>
+                        <div role="group" aria-label={t.rosaryMode} className="flex gap-2">
+                            {([['beginner', 'Guiado', 'Todas as orações, conta a conta'], ['advanced', 'Só mistérios', 'Reza as contas ao seu ritmo']] as [RosaryBeadMode, string, string][]).map(([mode, label, desc]) => (
+                                <button
+                                    key={mode}
+                                    onClick={() => setRosaryMode(mode)}
+                                    aria-pressed={rosaryMode === mode}
+                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${rosaryMode === mode
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                        : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                        }`}
+                                >
+                                    <span className="text-xs font-semibold block">{label}</span>
+                                    <span className="text-[0.65rem] block mt-0.5 opacity-70">{desc}</span>
+                                </button>
+                            ))}
                         </div>
-                        <button
-                            onClick={toggleRosaryMode}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${rosaryMode === 'beginner' ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'
-                                }`}
-                            role="switch"
-                            aria-checked={rosaryMode === 'beginner'}
-                        >
-                            <span className="sr-only">Toggle Rosary Mode</span>
-                            <span
-                                aria-hidden="true"
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${rosaryMode === 'beginner' ? 'translate-x-5' : 'translate-x-0'
-                                    }`}
-                            />
-                        </button>
                     </div>
 
                     {/* Notification Preference */}
@@ -205,15 +206,18 @@ export default function Profile() {
                                 type="time"
                                 value={notificationTime || ''}
                                 onChange={handleNotificationChange}
-                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-liturgy-500 outline-none"
                             />
                             <button
                                 onClick={() => setNotificationTime(null)}
-                                className="text-xs text-red-500 hover:text-red-600 px-2"
+                                className="text-xs text-red-500 hover:text-red-600 px-2 py-2"
                             >
                                 {t.notificationsOff}
                             </button>
                         </div>
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
+                            Por agora, o lembrete só aparece com a aplicação aberta.
+                        </p>
                     </div>
                 </div>
             </section>
@@ -302,8 +306,35 @@ export default function Profile() {
                         </div>
                     )}
 
+                    {/* Streak sync — opt-in, encrypted before leaving the device */}
+                    <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                        <div>
+                            <p className="text-sm font-medium">Sincronizar sequências</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                                Guarda as suas sequências de oração na rede, encriptadas — só o seu dispositivo as consegue ler.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShareStreaks(!shareStreaks)}
+                            role="switch"
+                            aria-checked={shareStreaks}
+                            aria-label="Sincronizar sequências"
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${shareStreaks ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${shareStreaks ? 'translate-x-5' : 'translate-x-0'}`}
+                            />
+                        </button>
+                    </div>
+
                     <button
-                        onClick={logout}
+                        onClick={() => {
+                            // Sync opt-in is per identity — don't carry it over
+                            // to whoever logs in next on this device.
+                            setShareStreaks(false);
+                            logout();
+                        }}
                         className="mt-6 w-full py-2 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 rounded-xl font-medium transition-colors"
                     >
                         {t.logout}

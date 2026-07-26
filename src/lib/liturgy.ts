@@ -72,6 +72,25 @@ function pruneLiturgyCache(): void {
     }
 }
 
+/**
+ * The date whose Mass the user most likely wants right now. From Saturday
+ * 16:00 onward, evening (vigil) Masses already belong liturgically to
+ * Sunday, so the readings default to Sunday; any other time it's today.
+ */
+export function getDefaultMassDate(now: Date = new Date()): Date {
+    if (now.getDay() === 6 && now.getHours() >= 16) {
+        const sunday = new Date(now);
+        sunday.setDate(now.getDate() + 1);
+        return sunday;
+    }
+    return now;
+}
+
+/**
+ * Resolves the day's liturgy, or null when the API genuinely has no Mass
+ * for that date. Network/API failures are thrown, so callers can tell an
+ * outage apart from an empty day.
+ */
 export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy | null> {
     const cached = readLiturgyCache(dateStr);
     if (cached) return cached;
@@ -119,7 +138,7 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
         const data = json.data?.liturgyWithMemories;
 
         if (!data || !data.masses || data.masses.length === 0) {
-            return getFallbackLiturgy(dateStr);
+            return null;
         }
 
         const mass = data.masses[0];
@@ -144,7 +163,7 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
 
     } catch (error) {
         console.error('Error fetching liturgy:', error);
-        return getFallbackLiturgy(dateStr);
+        throw error;
     }
 }
 
@@ -170,16 +189,6 @@ export async function preloadUpcomingLiturgy(days = 5): Promise<void> {
         } catch {
             // best-effort preload; ignore failures
         }
-    }
-}
-
-function getFallbackLiturgy(dateStr: string): DailyLiturgy {
-    return {
-        date: dateStr,
-        liturgicalColor: 'Roxo',
-        saintOfDay: 'Sem Ligação',
-        htmlContent: '<p>Não foi possível carregar as leituras diárias. Verifique a sua ligação à internet.</p>',
-        memories: []
     }
 }
 

@@ -1,4 +1,5 @@
-import { finalizeEvent, SimplePool, type Event, type EventTemplate } from 'nostr-tools';
+import { finalizeEvent, SimplePool, nip44, type Event, type EventTemplate } from 'nostr-tools';
+import { hexToBytes } from '@noble/hashes/utils';
 import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 
@@ -7,14 +8,28 @@ const pool = new SimplePool();
 
 export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
 
-// Ensure kind is a valid number
-const KIND_APP_STATE = 30000;
+// NIP-78 "Application-specific Data": addressable event, replaced per d-tag.
+// (30000 would collide with NIP-51 follow sets.)
+const KIND_APP_STATE = 30078;
 
 export interface NostrProfile {
     name?: string;
     display_name?: string;
     picture?: string;
     about?: string;
+}
+
+// Signs with the NIP-07 extension when available, otherwise with the locally
+// stored private key.
+async function signNostrEvent(baseEvent: EventTemplate): Promise<Event> {
+    const { privkey, isNip07 } = useAuthStore.getState();
+    if (isNip07 && typeof window !== 'undefined' && window.nostr) {
+        return window.nostr.signEvent(baseEvent);
+    }
+    if (privkey) {
+        return finalizeEvent(baseEvent, hexToBytes(privkey));
+    }
+    throw new Error('No method available to sign the event');
 }
 
 export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | null> {
@@ -31,7 +46,7 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 }
 
 export async function publishNostrProfile(profile: NostrProfile) {
-    const { pubkey, privkey, isNip07 } = useAuthStore.getState();
+    const { pubkey } = useAuthStore.getState();
     if (!pubkey) throw new Error("Not logged in");
 
     const baseEvent: EventTemplate = {
@@ -42,15 +57,7 @@ export async function publishNostrProfile(profile: NostrProfile) {
     };
 
     try {
-        let signedEvent: Event;
-        if (isNip07 && typeof window !== 'undefined' && window.nostr) {
-            signedEvent = await window.nostr.signEvent(baseEvent);
-        } else if (privkey) {
-            const secretKeyBytes = new Uint8Array(privkey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-            signedEvent = finalizeEvent(baseEvent, secretKeyBytes);
-        } else {
-            throw new Error('No method available to sign the event');
-        }
+        const signedEvent = await signNostrEvent(baseEvent);
 
         await Promise.any(pool.publish(RELAYS, signedEvent));
         console.log('Successfully published profile to Nostr:', signedEvent);
@@ -63,14 +70,35 @@ export async function publishNostrProfile(profile: NostrProfile) {
 
 export async function publishStreakToNostr() {
     const { pubkey, privkey, isNip07 } = useAuthStore.getState();
-    const { streaks } = useAppStore.getState();
+    const { streaks, shareStreaks } = useAppStore.getState();
 
     if (!pubkey) return; // Not logged in
+    // Prayer activity is sensitive — syncing it to public relays is opt-in.
+    if (!shareStreaks) return;
 
-    const eventContent = JSON.stringify({
+    const plaintext = JSON.stringify({
         streaks: streaks,
         lastUpdate: new Date().toISOString()
     });
+
+    // NIP-44 encrypt to self, so relays only ever store ciphertext. Without
+    // an encryption path (e.g. a NIP-07 extension without nip44) we skip
+    // publishing rather than fall back to plaintext.
+    let eventContent: string;
+    try {
+        if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
+            eventContent = await window.nostr.nip44.encrypt(pubkey, plaintext);
+        } else if (privkey) {
+            const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
+            eventContent = nip44.v2.encrypt(plaintext, conversationKey);
+        } else {
+            console.warn('No NIP-44 encryption available; not publishing streaks.');
+            return;
+        }
+    } catch (error) {
+        console.warn('Failed to encrypt streaks; not publishing.', error);
+        return;
+    }
 
     const baseEvent: EventTemplate = {
         kind: KIND_APP_STATE,
@@ -83,15 +111,7 @@ export async function publishStreakToNostr() {
     };
 
     try {
-        let signedEvent: Event;
-        if (isNip07 && typeof window !== 'undefined' && window.nostr) {
-            signedEvent = await window.nostr.signEvent(baseEvent);
-        } else if (privkey) {
-            const secretKeyBytes = new Uint8Array(privkey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-            signedEvent = finalizeEvent(baseEvent, secretKeyBytes);
-        } else {
-            throw new Error('No method available to sign the event');
-        }
+        const signedEvent = await signNostrEvent(baseEvent);
 
         // Publish to relays
         await Promise.any(pool.publish(RELAYS, signedEvent));

@@ -1,16 +1,42 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RosaryBeadMode } from '@/lib/rosary';
+import { formatISODate } from '@/lib/format';
 
 interface StreakData {
     days: number;
     lastCompletedDate: string | null;
 }
 
+export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+
+/** An in-progress rosary, so an accidental exit never loses the user's place. */
+export interface RosarySession {
+    date: string; // YYYY-MM-DD — sessions don't survive to the next day
+    mode: RosaryBeadMode;
+    step: number;
+}
+
+export function isCompletedToday(streak: StreakData): boolean {
+    return streak.lastCompletedDate === formatISODate(new Date());
+}
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
-export type AutoScrollSpeed = 1 | 2 | 3;
+
+// Autoscroll speed levels (px/s). ½ is a meditative half-pace below 1.
+// Lives here (like CONTENT_FONT_SCALE) because both the Missa page and the
+// Profile default-speed picker render from it.
+export const SCROLL_LEVELS = [
+    { label: '½', pps: 11 },
+    { label: '1', pps: 22 },
+    { label: '2', pps: 42 },
+    { label: '3', pps: 72 },
+] as const;
+
+// Index into SCROLL_LEVELS.
+export type AutoScrollSpeed = 0 | 1 | 2 | 3;
 
 // Single source of truth for the content (prayer/reading) text scale.
 // Each step pairs a reading size (px) with a line-height tuned for it.
@@ -24,13 +50,21 @@ export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: nu
 
 interface AppState {
     rosaryMode: RosaryBeadMode;
+    setRosaryMode: (mode: RosaryBeadMode) => void;
     toggleRosaryMode: () => void;
+    rosarySession: RosarySession | null;
+    setRosarySession: (session: RosarySession | null) => void;
     streaks: {
         rosary: StreakData;
         liturgy: StreakData;
         liturgy_hours: StreakData;
     };
-    incrementStreak: (item: 'rosary' | 'liturgy' | 'liturgy_hours') => void;
+    incrementStreak: (item: StreakItem) => void;
+
+    // Publishing streaks to Nostr relays is opt-in (and encrypted) — prayer
+    // activity is sensitive by default.
+    shareStreaks: boolean;
+    setShareStreaks: (share: boolean) => void;
 
     // Preferences
     theme: ThemeMode;
@@ -42,6 +76,11 @@ interface AppState {
     liturgicalDescription: string | null;
     liturgicalColorDate: string | null;
     setLiturgicalColor: (color: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa', date: string, dayName: string | null, description: string | null) => void;
+    // Page-level theme override while browsing another day's liturgy
+    // (e.g. Missa on a past/future date). Never persisted — a stale override
+    // must not outlive the page that set it.
+    liturgicalColorOverride: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa' | null;
+    setLiturgicalColorOverride: (color: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa' | null) => void;
     fontSize: FontSize;
     setFontSize: (size: FontSize) => void;
     fontFamily: FontFamily;
@@ -54,9 +93,14 @@ export const useAppStore = create<AppState>()(
     persist(
         (set) => ({
             rosaryMode: 'beginner',
+            setRosaryMode: (rosaryMode) => set({ rosaryMode }),
             toggleRosaryMode: () => set((state) => ({
                 rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner'
             })),
+            rosarySession: null,
+            setRosarySession: (rosarySession) => set({ rosarySession }),
+            shareStreaks: false,
+            setShareStreaks: (shareStreaks) => set({ shareStreaks }),
 
             // Default preferences
             theme: 'system',
@@ -68,6 +112,8 @@ export const useAppStore = create<AppState>()(
             liturgicalDescription: null,
             liturgicalColorDate: null,
             setLiturgicalColor: (liturgicalColor, liturgicalColorDate, liturgicalDayName, liturgicalDescription) => set({ liturgicalColor, liturgicalColorDate, liturgicalDayName, liturgicalDescription }),
+            liturgicalColorOverride: null,
+            setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
             setFontSize: (fontSize) => set({ fontSize }),
             fontFamily: 'system',
@@ -80,10 +126,7 @@ export const useAppStore = create<AppState>()(
                 liturgy_hours: { days: 0, lastCompletedDate: null }
             },
             incrementStreak: (item) => set((state) => {
-                const today = new Date();
-                // Adjust for timezone to get local YYYY-MM-DD
-                const userToday = new Date(today.getTime() - (today.getTimezoneOffset() * 60000))
-                    .toISOString().split('T')[0];
+                const userToday = formatISODate(new Date());
 
                 const currentStreak = state.streaks[item] ?? { days: 0, lastCompletedDate: null };
 
@@ -116,6 +159,11 @@ export const useAppStore = create<AppState>()(
         }),
         {
             name: 'mora-app-storage',
+            // The override is transient page state; persisting it would leave
+            // a wrong theme stuck after a hard close mid-browse.
+            partialize: (state) => Object.fromEntries(
+                Object.entries(state).filter(([key]) => key !== 'liturgicalColorOverride')
+            ) as Omit<AppState, 'liturgicalColorOverride'>,
         }
     )
 );
