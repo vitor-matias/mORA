@@ -180,7 +180,7 @@ export default function Rosary() {
                     </div>
                     <button
                         onClick={handleFinishRosary}
-                        className="h-20 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-lg shadow-xl shadow-zinc-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        className="h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
                         {t.finish} <Check size={24} />
                     </button>
@@ -258,7 +258,7 @@ export default function Rosary() {
                     )}
                     <button
                         onClick={handleNext}
-                        className="flex-1 h-20 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-lg shadow-xl shadow-zinc-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        className="flex-1 h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
                         {currentStepIndex === sequence.length - 1 ? (
                             <>{t.finish} <Check size={24} /></>
@@ -296,7 +296,7 @@ export default function Rosary() {
                                 setCurrentStepIndex(0);
                                 navigate('/');
                             }}
-                            className="w-full py-3 px-6 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-semibold transition-all active:scale-[0.97] hover:opacity-90"
+                            className="w-full py-3 px-6 cta-primary rounded-xl font-semibold transition-all active:scale-[0.97] hover:opacity-90"
                         >
                             Amém
                         </button>

@@ -162,6 +162,52 @@ function enrichReadingTypography(doc: Document): void {
             firstChild.replaceWith(span);
         }
     });
+
+    // ── Pass 3: surface the responsorial-psalm refrain ───────────────────
+    doc.querySelectorAll('p.reading-section-header').forEach((header) => {
+        const label = header.querySelector('.reading-label')?.textContent ?? '';
+        if (!/^SALMO/i.test(label)) return;
+
+        // The header title carries "(R. 97a) Refrão: … Repete-se" — lift the
+        // refrain into its own highlighted line right under the header.
+        const title = header.querySelector('.reading-title');
+        const titleText = title?.textContent ?? '';
+        const m = titleText.match(/Refrão:\s*(.*)$/i);
+        if (title && m) {
+            let refrain = m[1].trim();
+            const repeats = /\bRepete-se\b\.?\s*$/i.test(refrain);
+            refrain = refrain.replace(/\s*Repete-se\.?\s*$/i, '').trim();
+
+            const refrainP = doc.createElement('p');
+            refrainP.className = 'psalm-refrain';
+            refrainP.textContent = `℟ ${refrain}`;
+            if (repeats) {
+                const note = doc.createElement('span');
+                note.className = 'psalm-refrain-note';
+                note.textContent = 'Repete-se';
+                refrainP.appendChild(note);
+            }
+            // Keep only the psalm-number reference in the small title
+            const before = titleText.slice(0, m.index ?? 0).trim();
+            if (before) title.textContent = before; else title.remove();
+            header.after(refrainP);
+        }
+
+        // Color the "Refrão" cue that closes each stanza
+        let node = header.nextElementSibling;
+        while (node && !node.classList.contains('reading-section-header')) {
+            const last = node.lastChild;
+            if (node.tagName === 'P' && !node.classList.contains('psalm-refrain')
+                && last && last.nodeType === Node.TEXT_NODE && /Refrão\s*$/.test(last.textContent ?? '')) {
+                last.textContent = (last.textContent ?? '').replace(/\s*Refrão\s*$/, ' ');
+                const cue = doc.createElement('span');
+                cue.className = 'psalm-cue';
+                cue.textContent = '℟ Refrão';
+                node.appendChild(cue);
+            }
+            node = node.nextElementSibling;
+        }
+    });
 }
 
 function makeCommentariesCollapsible(html: string): string {
@@ -532,7 +578,13 @@ export default function Liturgy() {
 
     const [isScrolled, setIsScrolled] = useState(false);
     useEffect(() => {
-        const handleScroll = () => setIsScrolled(window.scrollY > 20);
+        // Hysteresis: collapsing the header shrinks the page by ~30px, which
+        // shifts scrollY back below a single threshold and re-expands it —
+        // an oscillation the user sees as flicker. The collapse and expand
+        // thresholds are spaced wider than that height delta.
+        const handleScroll = () => setIsScrolled((prev) =>
+            prev ? window.scrollY > 8 : window.scrollY > 56
+        );
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);

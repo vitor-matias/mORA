@@ -185,8 +185,10 @@ export default function LiturgiaHoras() {
     const [isScrolled, setIsScrolled] = useState(false);
 
     useEffect(() => {
+        // Hysteresis (see Liturgy.tsx): thresholds spaced wider than the
+        // header's collapse height delta so the toggle can't oscillate.
         const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
+            setIsScrolled((prev) => (prev ? window.scrollY > 8 : window.scrollY > 56));
         };
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);

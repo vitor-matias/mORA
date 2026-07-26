@@ -123,7 +123,7 @@ export default function Home() {
                     </span>
                     <Link
                         to="/liturgia-horas"
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-white dark:text-zinc-950 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 rounded-xl px-3.5 py-2 transition-colors active:scale-[0.97]"
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2 transition-colors active:scale-[0.97]"
                     >
                         Rezar agora <ArrowRight size={15} aria-hidden="true" />
                     </Link>
@@ -177,7 +177,7 @@ export default function Home() {
                                 to={area.path}
                                 className="group flex items-center gap-4 p-4 glass-panel rounded-2xl transition-all active:scale-[0.99]"
                             >
-                                <div className="h-11 w-11 shrink-0 rounded-2xl bg-liturgy-50 text-liturgy-600 dark:bg-liturgy-950/30 dark:text-liturgy-400 flex items-center justify-center transition-transform group-hover:scale-110">
+                                <div className="h-11 w-11 shrink-0 rounded-2xl icon-orb text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
                                     <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
                                 </div>
                                 <div className="flex-1 min-w-0">

@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft, BookOpen, RotateCcw } from "lucide-react";
 import { fetchLiturgicalCalendarMap } from "@/lib/liturgy";
 import type { LiturgicalColor, LiturgicalDayInfo } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
+import { useAppStore } from "@/store/app";
 
 // Fixed swatches per liturgical color — the calendar shows every day's own
 // color at once, so these can't follow the app-wide `data-theme` palette.
@@ -69,6 +70,16 @@ export default function LiturgicalDirectory() {
     };
 
     const selectedInfo = calendar?.get(selected) ?? null;
+
+    // Theme the whole app to the selected day's liturgical color while
+    // browsing (same override mechanism as the Missa page on other dates).
+    const setLiturgicalColorOverride = useAppStore((s) => s.setLiturgicalColorOverride);
+    useEffect(() => {
+        const isToday = selected === todayStr;
+        setLiturgicalColorOverride(!isToday && selectedInfo?.color ? selectedInfo.color : null);
+        return () => setLiturgicalColorOverride(null);
+    }, [selected, selectedInfo, todayStr, setLiturgicalColorOverride]);
+
     const monthLabel = viewMonth.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
     const isCurrentMonth = viewMonth.getMonth() === new Date().getMonth()
         && viewMonth.getFullYear() === new Date().getFullYear();
@@ -218,7 +229,7 @@ export default function LiturgicalDirectory() {
                 <button
                     type="button"
                     onClick={() => navigate(`/liturgia?date=${selected}`)}
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold text-white dark:text-zinc-950 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
                 >
                     <BookOpen size={16} aria-hidden="true" /> Ver leituras da Missa
                 </button>

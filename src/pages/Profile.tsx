@@ -295,7 +295,7 @@ export default function Profile() {
                                 </button>
                                 <button
                                     onClick={handleSaveProfile}
-                                    className="flex-1 py-2 px-4 bg-liturgy-600 hover:bg-liturgy-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-2 px-4 cta-primary rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                                     disabled={isSaving}
                                 >
                                     {isSaving ? (
@@ -361,7 +361,7 @@ export default function Profile() {
 
                         <button
                             onClick={loginWithNip07}
-                            className="w-full py-3 px-4 bg-liturgy-600 hover:bg-liturgy-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             {t.loginNip07}
                         </button>

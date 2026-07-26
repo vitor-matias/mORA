@@ -96,7 +96,7 @@ export function TabBar() {
                                     size={22}
                                     strokeWidth={isActive ? 2.4 : 1.8}
                                     aria-hidden="true"
-                                    className={isActive ? 'drop-shadow-[0_0_7px_rgb(var(--liturgy-500)/0.75)]' : undefined}
+                                    className={isActive ? 'drop-shadow-[0_0_9px_rgb(var(--liturgy-500)/0.9)]' : undefined}
                                 />
                                 <span>{label}</span>
                             </>

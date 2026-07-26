@@ -14,71 +14,157 @@
 /* liturgical color automatically.                                    */
 /* ------------------------------------------------------------------ */
 
+@layer base {
+  /* Chrome headings use the futuristic display face; reading content keeps
+     its own family via the inline --content-font-family variables. */
+  h1, h2, h3 {
+    font-family: 'Space Grotesk', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
 @layer components {
   .app-ambient {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background:
-      radial-gradient(60rem 42rem at 85% -12%, rgb(var(--liturgy-300) / 0.28), transparent 60%),
-      radial-gradient(48rem 36rem at -18% 28%, rgb(var(--liturgy-200) / 0.22), transparent 62%),
-      radial-gradient(40rem 30rem at 60% 110%, rgb(var(--liturgy-100) / 0.35), transparent 60%);
+    overflow: hidden;
   }
-  .dark .app-ambient {
+  /* Aurora on a pseudo-element so it can drift without repainting gradients */
+  .app-ambient::before {
+    content: '';
+    position: absolute;
+    inset: -20%;
     background:
-      radial-gradient(60rem 42rem at 85% -12%, rgb(var(--liturgy-500) / 0.16), transparent 60%),
-      radial-gradient(48rem 36rem at -18% 28%, rgb(var(--liturgy-700) / 0.12), transparent 65%),
-      radial-gradient(40rem 30rem at 60% 115%, rgb(var(--liturgy-800) / 0.14), transparent 60%);
+      radial-gradient(55rem 40rem at 80% -5%, rgb(var(--liturgy-400) / 0.45), transparent 60%),
+      radial-gradient(45rem 34rem at -10% 25%, rgb(var(--liturgy-300) / 0.35), transparent 62%),
+      radial-gradient(38rem 30rem at 55% 105%, rgb(var(--liturgy-200) / 0.45), transparent 60%);
+    animation: aurora-drift 36s ease-in-out infinite alternate;
   }
-  /* Starfield — dark mode only, three repeating pinprick layers */
+  .dark .app-ambient::before {
+    background:
+      radial-gradient(55rem 40rem at 80% -5%, rgb(var(--liturgy-500) / 0.30), transparent 60%),
+      radial-gradient(45rem 34rem at -10% 25%, rgb(var(--liturgy-700) / 0.22), transparent 65%),
+      radial-gradient(38rem 30rem at 55% 105%, rgb(var(--liturgy-800) / 0.26), transparent 60%);
+  }
+  @keyframes aurora-drift {
+    from { transform: translate3d(-3%, -2%, 0) scale(1); }
+    to   { transform: translate3d(3%, 2%, 0) scale(1.12); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-ambient::before { animation: none; }
+  }
+  /* Starfield — dark mode only, repeating pinprick layers */
   .dark .app-ambient::after {
     content: '';
     position: absolute;
     inset: 0;
     background-image:
-      radial-gradient(1px 1px at 25% 15%, rgb(255 255 255 / 0.55), transparent 55%),
-      radial-gradient(1px 1px at 72% 48%, rgb(255 255 255 / 0.4), transparent 55%),
-      radial-gradient(1.5px 1.5px at 44% 78%, rgb(255 255 255 / 0.45), transparent 55%);
-    background-size: 210px 210px, 310px 310px, 270px 270px;
-    opacity: 0.45;
+      radial-gradient(1px 1px at 25% 15%, rgb(255 255 255 / 0.7), transparent 55%),
+      radial-gradient(1px 1px at 72% 48%, rgb(255 255 255 / 0.55), transparent 55%),
+      radial-gradient(1.5px 1.5px at 44% 78%, rgb(255 255 255 / 0.6), transparent 55%),
+      radial-gradient(1px 1px at 12% 62%, rgb(255 255 255 / 0.45), transparent 55%),
+      radial-gradient(2px 2px at 88% 82%, rgb(var(--liturgy-300) / 0.55), transparent 55%);
+    background-size: 210px 210px, 310px 310px, 270px 270px, 190px 190px, 390px 390px;
+    opacity: 0.7;
   }
 
+  /* Frosted surface with a liturgical gradient edge (padding-box/border-box
+     double background — the border itself is the gradient). */
   .glass-panel {
-    backdrop-filter: blur(20px) saturate(1.35);
-    -webkit-backdrop-filter: blur(20px) saturate(1.35);
-    background: linear-gradient(150deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.55));
-    border: 1px solid rgb(255 255 255 / 0.65);
+    backdrop-filter: blur(28px) saturate(1.6);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    border: 1px solid transparent;
+    background:
+      linear-gradient(150deg, rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.38)) padding-box,
+      linear-gradient(140deg, rgb(255 255 255 / 0.95), rgb(var(--liturgy-300) / 0.55) 40%, rgb(255 255 255 / 0.4)) border-box;
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.85),
-      0 8px 30px rgb(var(--liturgy-900) / 0.08);
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      0 10px 36px rgb(var(--liturgy-900) / 0.10);
   }
   .dark .glass-panel {
-    background: linear-gradient(150deg, rgb(28 28 32 / 0.72), rgb(22 22 26 / 0.5));
-    border-color: rgb(255 255 255 / 0.09);
+    background:
+      linear-gradient(150deg, rgb(30 30 36 / 0.52), rgb(20 20 26 / 0.32)) padding-box,
+      linear-gradient(140deg, rgb(var(--liturgy-400) / 0.45), rgb(255 255 255 / 0.08) 35%, rgb(var(--liturgy-500) / 0.30)) border-box;
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
-      0 10px 34px rgb(0 0 0 / 0.4),
-      0 0 46px rgb(var(--liturgy-500) / 0.06);
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
+      0 12px 40px rgb(0 0 0 / 0.45),
+      0 0 56px rgb(var(--liturgy-500) / 0.10);
   }
 
   .glow-ring {
-    box-shadow: 0 0 30px rgb(var(--liturgy-500) / 0.22), 0 0 2px rgb(var(--liturgy-500) / 0.3);
+    box-shadow: 0 0 32px rgb(var(--liturgy-500) / 0.22), 0 0 2px rgb(var(--liturgy-500) / 0.3);
   }
   .dark .glow-ring {
-    box-shadow: 0 0 36px rgb(var(--liturgy-500) / 0.28), 0 0 2px rgb(var(--liturgy-400) / 0.45);
+    box-shadow: 0 0 40px rgb(var(--liturgy-500) / 0.28), 0 0 2px rgb(var(--liturgy-400) / 0.4);
   }
 
   .text-halo {
-    background-image: linear-gradient(100deg, rgb(24 24 27) 30%, rgb(var(--liturgy-600)) 95%);
+    background-image: linear-gradient(95deg, rgb(24 24 27) 55%, rgb(var(--liturgy-700)));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: rgb(24 24 27); /* fallback when background-clip:text is unsupported */
   }
   .dark .text-halo {
-    background-image: linear-gradient(100deg, rgb(250 250 250) 30%, rgb(var(--liturgy-400)) 95%);
+    background-image: linear-gradient(95deg, rgb(250 250 250) 55%, rgb(var(--liturgy-300)));
     color: rgb(250 250 250);
+  }
+
+  /* Primary action — liturgical gradient with a glow, replaces the old
+     solid zinc/liturgy CTA buttons. */
+  .cta-primary {
+    color: #fff;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    background: linear-gradient(135deg, rgb(var(--liturgy-500)), rgb(var(--liturgy-700)));
+    box-shadow: 0 4px 18px rgb(var(--liturgy-600) / 0.45), inset 0 1px 0 rgb(255 255 255 / 0.35);
+    transition: filter 0.2s ease;
+  }
+  .cta-primary:hover { filter: brightness(1.08); }
+  .dark .cta-primary {
+    background: linear-gradient(135deg, rgb(var(--liturgy-400)), rgb(var(--liturgy-600)));
+    box-shadow: 0 4px 24px rgb(var(--liturgy-500) / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.3);
+  }
+
+  /* Responsorial-psalm refrain — the line the congregation answers with,
+     lifted out of the section title by enrichReadingTypography. */
+  .psalm-refrain {
+    margin: 0.85rem 0;
+    padding: 0.6rem 1rem;
+    border-left: 3px solid rgb(var(--liturgy-500));
+    background: rgb(var(--liturgy-500) / 0.08);
+    border-radius: 0 0.75rem 0.75rem 0;
+    font-weight: 600;
+    color: rgb(var(--liturgy-700));
+  }
+  .dark .psalm-refrain {
+    background: rgb(var(--liturgy-500) / 0.12);
+    color: rgb(var(--liturgy-300));
+  }
+  .psalm-refrain .psalm-refrain-note {
+    display: block;
+    font-weight: 500;
+    font-size: 0.72em;
+    opacity: 0.65;
+    margin-top: 0.15rem;
+  }
+  /* The "Refrão" cue closing each stanza */
+  .psalm-cue {
+    color: rgb(var(--liturgy-600));
+    font-weight: 600;
+  }
+  .dark .psalm-cue {
+    color: rgb(var(--liturgy-400));
+  }
+
+  /* Feature icon chip — a small glowing orb */
+  .icon-orb {
+    background: radial-gradient(120% 120% at 30% 20%, rgb(var(--liturgy-400) / 0.38), rgb(var(--liturgy-600) / 0.14));
+    border: 1px solid rgb(var(--liturgy-500) / 0.35);
+    box-shadow: 0 0 18px rgb(var(--liturgy-500) / 0.25), inset 0 1px 0 rgb(255 255 255 / 0.4);
+  }
+  .dark .icon-orb {
+    box-shadow: 0 0 22px rgb(var(--liturgy-500) / 0.4), inset 0 1px 0 rgb(255 255 255 / 0.15);
   }
 }
 
