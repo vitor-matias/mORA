@@ -127,7 +127,7 @@ export default function Rosary() {
             <PageHeader
                 title="Terço"
                 subtitle={`Mistérios ${MYSTERY_LABELS[todayMysteryClass]}`}
-                width="max-w-md"
+                width="max-w-md lg:max-w-2xl"
                 action={rosaryMode === 'beginner' && !atStart && !showFinish ? (
                     <button
                         onClick={handleRestart}
@@ -139,7 +139,7 @@ export default function Rosary() {
                     </button>
                 ) : undefined}
             />
-            <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md mx-auto relative overflow-hidden">
+            <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-2xl mx-auto relative overflow-hidden">
             {rosaryMode === 'advanced' ? (
                 /* ── Mysteries-only mode: all five on one page, prayed at the
                    user's own pace, closed with a single complete button. ── */

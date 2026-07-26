@@ -77,7 +77,7 @@ export default function Home() {
     const hasAnyStreak = streakItems.some(s => s.days > 0);
 
     return (
-        <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-xl mx-auto w-full">
+        <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-2xl mx-auto w-full">
             {/* Thematic Background Gradient */}
             <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-br from-liturgy-100 to-transparent dark:from-liturgy-900/20 -z-10 mix-blend-multiply opacity-50"></div>
 
@@ -105,8 +105,10 @@ export default function Home() {
                 </Link>
             </header>
 
+            {/* Desktop: hero and progress share a row */}
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
             {/* Liturgical day hero */}
-            <section className="relative z-10 glass-panel glow-ring rounded-3xl p-5">
+            <section className="relative z-10 glass-panel glow-ring rounded-3xl p-5 lg:col-span-3">
                 <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
                     {formatDisplayDate(new Date())}
                 </p>
@@ -131,7 +133,7 @@ export default function Home() {
             </section>
 
             {/* Streaks */}
-            <section className="relative z-10 glass-panel rounded-2xl px-5 py-4">
+            <section className="relative z-10 glass-panel rounded-2xl px-5 py-4 lg:col-span-2 lg:rounded-3xl">
                 <div className="flex items-center justify-between mb-2.5">
                     <h2 className="text-sm font-semibold text-zinc-500">{t.progress}</h2>
                     <Flame size={16} className="text-orange-500" aria-hidden="true" />
@@ -160,6 +162,7 @@ export default function Home() {
                     </p>
                 )}
             </section>
+            </div>
 
             {/* Main navigation */}
             <div className="relative z-10 space-y-3">
