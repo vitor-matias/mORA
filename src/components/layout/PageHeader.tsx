@@ -39,8 +39,11 @@ export function PageHeader({
     }, []);
 
     return (
-        <header className={`sticky top-0 z-30 glass-bar transition-all duration-300 ${
-            isScrolled ? 'glass-bar-scrolled py-3' : 'py-5 lg:py-6'
+        // At rest the header floats directly on the aurora — the look of the
+        // original Diretório header. The frosted bar only appears once the
+        // page scrolls, when content needs separating from the title.
+        <header className={`sticky top-0 z-30 transition-all duration-300 ${
+            isScrolled ? 'glass-bar glass-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
         }`}>
             <div className={`${width} mx-auto px-6 flex items-center gap-4`}>
                 <button
@@ -55,7 +58,7 @@ export function PageHeader({
                 </button>
                 <div className="min-w-0 flex-1">
                     <h1 className={`font-bold tracking-tight text-halo transition-all truncate ${
-                        isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
+                        isScrolled ? 'text-xl' : 'text-3xl'
                     }`}>
                         {title}
                     </h1>
