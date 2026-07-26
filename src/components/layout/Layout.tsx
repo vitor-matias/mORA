@@ -111,10 +111,12 @@ export function Layout() {
     return (
         <div className="flex flex-col min-h-screen bg-[#FAF9F6] dark:bg-[#121212] text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
             <ScrollToTop />
+            {/* Aurora/starfield backdrop tinted by the day's liturgical color */}
+            <div aria-hidden="true" className="app-ambient" />
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
-                Bottom padding clears the fixed tab bar plus the device
-                safe-area inset it sits on. */}
-            <main className="flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(4rem+env(safe-area-inset-bottom))]">
+                Bottom padding clears the floating tab bar plus the device
+                safe-area inset it hovers over. */}
+            <main className="relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
                 <Outlet />
             </main>
             <TabBar />

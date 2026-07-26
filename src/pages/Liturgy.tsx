@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
-import { useAppStore, isCompletedToday } from "@/store/app";
+import { useAppStore, isCompletedToday, SCROLL_LEVELS, clampScrollLevel } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 // Labels that open a liturgical reading section.
 const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
@@ -33,6 +34,19 @@ function slugify(label: string): string {
 
 function getSectionId(label: string): string {
     return SECTION_ID_MAP.find(([re]) => re.test(label))?.[1] ?? slugify(label);
+}
+
+// Parses a ?date=YYYY-MM-DD param. Round-trip check because JS normalizes
+// overflowed dates (Feb 30 → Mar 2) instead of yielding NaN.
+function parseDateParam(param: string | null): Date | null {
+    if (!param || !/^\d{4}-\d{2}-\d{2}$/.test(param)) return null;
+    const d = new Date(param + 'T00:00:00');
+    const [year, month, day] = param.split('-').map(Number);
+    const valid = !Number.isNaN(d.getTime())
+        && d.getFullYear() === year
+        && d.getMonth() === month - 1
+        && d.getDate() === day;
+    return valid ? d : null;
 }
 
 // Display label for the TOC: reading headers are ALL-CAPS in the source
@@ -162,6 +176,52 @@ function enrichReadingTypography(doc: Document): void {
             firstChild.replaceWith(span);
         }
     });
+
+    // ── Pass 3: surface the responsorial-psalm refrain ───────────────────
+    doc.querySelectorAll('p.reading-section-header').forEach((header) => {
+        const label = header.querySelector('.reading-label')?.textContent ?? '';
+        if (!/^SALMO/i.test(label)) return;
+
+        // The header title carries "(R. 97a) Refrão: … Repete-se" — lift the
+        // refrain into its own highlighted line right under the header.
+        const title = header.querySelector('.reading-title');
+        const titleText = title?.textContent ?? '';
+        const m = titleText.match(/Refrão:\s*(.*)$/i);
+        if (title && m) {
+            let refrain = m[1].trim();
+            const repeats = /\bRepete-se\b\.?\s*$/i.test(refrain);
+            refrain = refrain.replace(/\s*Repete-se\.?\s*$/i, '').trim();
+
+            const refrainP = doc.createElement('p');
+            refrainP.className = 'psalm-refrain';
+            refrainP.textContent = `℟ ${refrain}`;
+            if (repeats) {
+                const note = doc.createElement('span');
+                note.className = 'psalm-refrain-note';
+                note.textContent = 'Repete-se';
+                refrainP.appendChild(note);
+            }
+            // Keep only the psalm-number reference in the small title
+            const before = titleText.slice(0, m.index ?? 0).trim();
+            if (before) title.textContent = before; else title.remove();
+            header.after(refrainP);
+        }
+
+        // Color the "Refrão" cue that closes each stanza
+        let node = header.nextElementSibling;
+        while (node && !node.classList.contains('reading-section-header')) {
+            const last = node.lastChild;
+            if (node.tagName === 'P' && !node.classList.contains('psalm-refrain')
+                && last && last.nodeType === Node.TEXT_NODE && /Refrão\s*$/.test(last.textContent ?? '')) {
+                last.textContent = (last.textContent ?? '').replace(/\s*Refrão\s*$/, ' ');
+                const cue = doc.createElement('span');
+                cue.className = 'psalm-cue';
+                cue.textContent = '℟ Refrão';
+                node.appendChild(cue);
+            }
+            node = node.nextElementSibling;
+        }
+    });
 }
 
 function makeCommentariesCollapsible(html: string): string {
@@ -198,18 +258,9 @@ function makeCommentariesCollapsible(html: string): string {
     return doc.body.innerHTML;
 }
 
-// Autoscroll speed levels (px/s). ½ is a meditative half-pace below 1.
-const SCROLL_LEVELS = [
-    { label: '½', pps: 11 },
-    { label: '1', pps: 22 },
-    { label: '2', pps: 42 },
-    { label: '3', pps: 72 },
-] as const;
-
 interface TocEntry { id: string; label: string; }
 
 export default function Liturgy() {
-    const navigate = useNavigate();
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -217,9 +268,29 @@ export default function Liturgy() {
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
     const [dateCardExpanded, setDateCardExpanded] = useState(false);
 
-    // Date being viewed — defaults to today (or to Sunday from Saturday
-    // 16:00, when vigil Masses start), browsable via the date nav.
-    const [selectedDate, setSelectedDate] = useState(() => getDefaultMassDate());
+    const { streaks, incrementStreak, setLiturgicalColorOverride, autoScrollSpeed } = useAppStore();
+
+    // Date being viewed — a ?date=YYYY-MM-DD param (e.g. from the calendar
+    // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
+    // Masses start). Browsable via the date nav either way.
+    const [searchParams] = useSearchParams();
+    const dateParam = searchParams.get('date');
+    const [selectedDate, setSelectedDate] = useState(
+        () => parseDateParam(dateParam) ?? getDefaultMassDate()
+    );
+
+    // Re-sync when ?date= changes while mounted (e.g. an in-app link to
+    // another /liturgia?date=…, or back/forward that only swaps the query) —
+    // the initializer alone only covers fresh mounts. State adjustment
+    // during render, per React docs, instead of an effect (see TabBar).
+    const [lastDateParam, setLastDateParam] = useState(dateParam);
+    if (dateParam !== lastDateParam) {
+        setLastDateParam(dateParam);
+        const d = parseDateParam(dateParam);
+        if (d && formatISODate(d) !== formatISODate(selectedDate)) {
+            setSelectedDate(d);
+        }
+    }
     const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
@@ -234,8 +305,9 @@ export default function Liturgy() {
 
     // Autoscroll
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-    // Index into SCROLL_LEVELS (default: level "2")
-    const [scrollSpeed, setScrollSpeed] = useState(2);
+    // Index into SCROLL_LEVELS; starts at the default configured in Profile —
+    // the +/- controls only adjust this session, not the saved default.
+    const [scrollSpeed, setScrollSpeed] = useState<number>(() => clampScrollLevel(autoScrollSpeed));
     // Nothing left to scroll — the start button is pointless then
     const [atPageEnd, setAtPageEnd] = useState(false);
     const rafRef = useRef<number | null>(null);
@@ -253,7 +325,6 @@ export default function Liturgy() {
     const [sections, setSections] = useState<TocEntry[]>([]);
     const [activeSection, setActiveSection] = useState('');
 
-    const { streaks, incrementStreak, setLiturgicalColorOverride } = useAppStore();
     const readToday = isCompletedToday(streaks.liturgy);
 
     // Theme the app to the color of the day being read: browsing another
@@ -453,6 +524,65 @@ export default function Liturgy() {
         };
     }, [isAutoScrolling, stopAutoScroll]);
 
+    // Freeze the ambient aurora while autoscrolling — the page already
+    // repaints every frame, so pausing the animation (see index.css) keeps
+    // compositing cheap on low-end GPUs.
+    useEffect(() => {
+        document.documentElement.classList.toggle('autoscrolling', isAutoScrolling);
+        return () => document.documentElement.classList.remove('autoscrolling');
+    }, [isAutoScrolling]);
+
+    // Keep the screen awake while autoscrolling — otherwise the phone dims
+    // and locks mid-reading. The browser releases the lock whenever the tab
+    // is hidden, so re-acquire it when the page becomes visible again.
+    useEffect(() => {
+        if (!isAutoScrolling || !('wakeLock' in navigator)) return;
+        let sentinel: WakeLockSentinel | null = null;
+        let cancelled = false;
+
+        const acquire = async () => {
+            try {
+                const lock = await navigator.wakeLock.request('screen');
+                if (cancelled) {
+                    lock.release().catch(() => {});
+                    return;
+                }
+                // A concurrent acquire may have won the race — release the
+                // older lock so it can't linger unreleased.
+                if (sentinel && sentinel !== lock && !sentinel.released) {
+                    sentinel.release().catch(() => {});
+                }
+                sentinel = lock;
+                // The platform can revoke the lock while we're still visible
+                // (e.g. battery saver kicks in); try once to get it back.
+                // Hidden-tab revocations re-acquire via visibilitychange.
+                // Only the *tracked* lock re-acquires — releasing a superseded
+                // lock firing this handler must not start a request loop.
+                lock.addEventListener('release', () => {
+                    if (!cancelled && sentinel === lock && document.visibilityState === 'visible') {
+                        sentinel = null;
+                        acquire();
+                    }
+                });
+            } catch {
+                // Denied (e.g. battery saver) — autoscroll still works,
+                // the screen just won't be kept on.
+            }
+        };
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') acquire();
+        };
+
+        acquire();
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => {
+            cancelled = true;
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            sentinel?.release().catch(() => {});
+        };
+    }, [isAutoScrolling]);
+
     // Clean up on unmount.
     useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
 
@@ -475,13 +605,6 @@ export default function Liturgy() {
         const isOpen = container.classList.toggle('collapsed') === false;
         toggle.setAttribute('aria-expanded', String(isOpen));
     };
-
-    const [isScrolled, setIsScrolled] = useState(false);
-    useEffect(() => {
-        const handleScroll = () => setIsScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     // Track whether the page is scrolled to (or has) no further content, so
     // the autoscroll start button can be disabled when there is nowhere to go.
@@ -514,7 +637,7 @@ export default function Liturgy() {
                     aria-pressed={showOnlyReadings === value}
                     className={`flex-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         showOnlyReadings === value
-                            ? 'bg-white dark:bg-zinc-900 text-liturgy-700 dark:text-liturgy-400 shadow-sm'
+                            ? 'glass-panel text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                 >
@@ -526,7 +649,7 @@ export default function Liturgy() {
 
     // Prev / next day navigation with a native date picker on the label.
     const dateNav = (
-        <div className="flex items-center justify-between gap-1 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-1 py-1 shadow-sm">
+        <div className="flex items-center justify-between gap-1 glass-panel rounded-xl px-1 py-1">
             <button
                 onClick={() => changeDay(-1)}
                 aria-label="Dia anterior"
@@ -617,7 +740,7 @@ export default function Liturgy() {
     );
 
     const dateCard = liturgy && (
-        <div className="bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-2xl p-4">
+        <div className="glass-panel glow-ring rounded-2xl p-4">
             <p
                 className="font-semibold text-liturgy-900 dark:text-liturgy-100 leading-snug text-base"
                 style={{ fontFamily: 'var(--content-font-family, inherit)' }}
@@ -648,35 +771,10 @@ export default function Liturgy() {
         <div className="flex-1 w-full flex flex-col">
 
             {/* ── Sticky header ────────────────────────────────────────────── */}
-            <header className={`sticky top-0 z-30 bg-[#FAF9F6]/90 dark:bg-[#121212]/90 backdrop-blur-md border-b transition-all duration-300 ${
-                isScrolled
-                    ? 'border-zinc-200/50 dark:border-zinc-800/50 shadow-sm py-3'
-                    : 'border-transparent py-5 lg:py-6'
-            }`}>
-                <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/')}
-                        aria-label="Voltar ao início"
-                        className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
-                            isScrolled ? 'p-1.5' : 'p-2'
-                        }`}
-                    >
-                        <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                        <h1 className={`font-bold tracking-tight text-zinc-900 dark:text-zinc-50 transition-all truncate ${
-                            isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
-                        }`}>
-                            Missa Diária
-                        </h1>
-                        <p className={`text-zinc-500 font-medium mt-0.5 transition-all truncate ${
-                            isScrolled ? 'text-xs opacity-80' : 'text-sm'
-                        }`}>
-                            {loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
-                        </p>
-                    </div>
-                </div>
-
+            <PageHeader
+                title="Missa Diária"
+                subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
+            >
                 {/* Mobile section chips — quick jumps without the desktop sidebar */}
                 {!loading && sections.length > 0 && (
                     <nav
@@ -698,7 +796,7 @@ export default function Liturgy() {
                         ))}
                     </nav>
                 )}
-            </header>
+            </PageHeader>
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
@@ -792,7 +890,7 @@ export default function Liturgy() {
                             {canMarkPrayed && (
                                 <div className="mt-10 mb-4">
                                     {readToday ? (
-                                        <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                        <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl glass-panel glow-ring text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                             <CheckCircle2 size={18} aria-hidden="true" />
                                             Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
                                         </div>
@@ -813,7 +911,7 @@ export default function Liturgy() {
                             {/* The sidebar (and its date nav) only renders on
                                 success, so this must show on all breakpoints */}
                             <div className="lg:max-w-sm">{dateNav}</div>
-                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 glass-panel rounded-2xl">
                                 <p className="text-zinc-500 text-center">
                                     {loadFailed
                                         ? 'Não foi possível carregar as leituras. Verifique a sua ligação à internet.'

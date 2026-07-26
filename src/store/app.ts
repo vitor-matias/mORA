@@ -25,6 +25,26 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
 
+// Autoscroll speed levels (px/s). ½ is a meditative half-pace below 1.
+// Lives here (like CONTENT_FONT_SCALE) because both the Missa page and the
+// Profile default-speed picker render from it.
+export const SCROLL_LEVELS = [
+    { label: '½', pps: 11 },
+    { label: '1', pps: 22 },
+    { label: '2', pps: 42 },
+    { label: '3', pps: 72 },
+] as const;
+
+// Index into SCROLL_LEVELS.
+export type AutoScrollSpeed = 0 | 1 | 2 | 3;
+
+// Persisted values rehydrate from JSON unvalidated — clamp to a valid index
+// so a corrupted store entry can't crash SCROLL_LEVELS lookups.
+export function clampScrollLevel(value: number): AutoScrollSpeed {
+    if (!Number.isInteger(value)) return 2;
+    return Math.min(Math.max(value, 0), SCROLL_LEVELS.length - 1) as AutoScrollSpeed;
+}
+
 // Single source of truth for the content (prayer/reading) text scale.
 // Each step pairs a reading size (px) with a line-height tuned for it.
 // Consumed by Layout (applies the CSS variables) and Profile (size picker preview).
@@ -58,6 +78,10 @@ interface AppState {
     setTheme: (theme: ThemeMode) => void;
     notificationTime: string | null;
     setNotificationTime: (time: string | null) => void;
+    // True while this browser holds a server-registered Web Push
+    // subscription; the in-app reminder timer stands down then.
+    pushSubscribed: boolean;
+    setPushSubscribed: (subscribed: boolean) => void;
     liturgicalColor: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa';
     liturgicalDayName: string | null;
     liturgicalDescription: string | null;
@@ -72,6 +96,8 @@ interface AppState {
     setFontSize: (size: FontSize) => void;
     fontFamily: FontFamily;
     setFontFamily: (family: FontFamily) => void;
+    autoScrollSpeed: AutoScrollSpeed;
+    setAutoScrollSpeed: (speed: AutoScrollSpeed) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -92,6 +118,8 @@ export const useAppStore = create<AppState>()(
             setTheme: (theme) => set({ theme }),
             notificationTime: null,
             setNotificationTime: (notificationTime) => set({ notificationTime }),
+            pushSubscribed: false,
+            setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',
             liturgicalDayName: null,
             liturgicalDescription: null,
@@ -103,6 +131,8 @@ export const useAppStore = create<AppState>()(
             setFontSize: (fontSize) => set({ fontSize }),
             fontFamily: 'system',
             setFontFamily: (fontFamily) => set({ fontFamily }),
+            autoScrollSpeed: 2,
+            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
             streaks: {
                 rosary: { days: 0, lastCompletedDate: null },
                 liturgy: { days: 0, lastCompletedDate: null },

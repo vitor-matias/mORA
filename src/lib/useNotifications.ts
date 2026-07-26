@@ -1,14 +1,25 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '@/store/app';
 import { useTranslations } from '@/lib/i18n';
+import { verifyPushSubscription } from '@/lib/push';
 
 export function useNotifications() {
-    const { notificationTime } = useAppStore();
+    const { notificationTime, pushSubscribed } = useAppStore();
     const t = useTranslations().home; // Re-use strings for notification if possible
     const hasNotifiedToday = useRef(false);
 
+    // The persisted flag can go stale (permission revoked, subscription
+    // expired outside the app) — reconcile once per app start so the
+    // fallback timer below isn't left disabled with no push active.
     useEffect(() => {
-        if (!notificationTime) return;
+        verifyPushSubscription();
+    }, []);
+
+    useEffect(() => {
+        // With a server-side push subscription active this in-app timer would
+        // only duplicate the notification — it exists for the unconfigured
+        // (no push server) fallback.
+        if (!notificationTime || pushSubscribed) return;
 
         const checkTime = () => {
             const now = new Date();
@@ -51,5 +62,5 @@ export function useNotifications() {
         checkTime();
 
         return () => clearInterval(intervalId);
-    }, [notificationTime, t.rosaryTitle]);
+    }, [notificationTime, pushSubscribed, t.rosaryTitle]);
 }

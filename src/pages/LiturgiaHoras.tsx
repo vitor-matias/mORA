@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { ChevronRight, Clock, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { getHourForTime } from "@/lib/hours";
 
 // The 5 canonical moments we display
@@ -96,7 +96,6 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
 }
 
 export default function LiturgiaHoras() {
-    const navigate = useNavigate();
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [retryToken, setRetryToken] = useState(0);
@@ -182,16 +181,6 @@ export default function LiturgiaHoras() {
         return selectedMoment.parts;
     }, [selectedMoment, activeSubHour]);
 
-    const [isScrolled, setIsScrolled] = useState(false);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
-        };
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
     const selectHour = (id: string) => {
         setUserActiveHour(id);
         if (id === 'intermedia') {
@@ -205,34 +194,10 @@ export default function LiturgiaHoras() {
         <div className="flex-1 w-full flex flex-col">
 
             {/* ── Sticky header ────────────────────────────────────────────── */}
-            <header className={`sticky top-0 z-30 bg-[#FAF9F6]/90 dark:bg-[#121212]/90 backdrop-blur-md border-b transition-all duration-300 ${
-                isScrolled
-                    ? 'border-zinc-200/50 dark:border-zinc-800/50 shadow-sm py-3'
-                    : 'border-transparent py-5 lg:py-6'
-            }`}>
-                <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
-                    <button
-                        type="button" aria-label="Voltar ao início" onClick={() => navigate('/')}
-                        className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
-                            isScrolled ? 'p-1.5' : 'p-2'
-                        }`}
-                    >
-                        <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                        <h1 className={`font-bold tracking-tight text-zinc-900 dark:text-zinc-50 transition-all truncate ${
-                            isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
-                        }`}>
-                            Liturgia das Horas
-                        </h1>
-                        <p className={`text-zinc-500 font-medium mt-0.5 transition-all truncate ${
-                            isScrolled ? 'text-xs opacity-80' : 'text-sm'
-                        }`}>
-                            {liturgy ? liturgy.saintOfDay : 'A carregar...'}
-                        </p>
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                title="Liturgia das Horas"
+                subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay}
+            />
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
@@ -301,7 +266,7 @@ export default function LiturgiaHoras() {
                                         aria-pressed={activeHour === moment.id}
                                         className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all ${activeHour === moment.id
                                             ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
-                                            : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
+                                            : 'glass-panel text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
                                         <moment.icon size={20} strokeWidth={activeHour === moment.id ? 2.4 : 1.8} aria-hidden="true" />
@@ -434,7 +399,7 @@ export default function LiturgiaHoras() {
                             {/* Explicit completion — one per day, whatever hour was prayed */}
                             <div className="mt-6 mb-2">
                                 {prayedToday ? (
-                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl glass-panel glow-ring text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />
                                         Rezado hoje — {streaks.liturgy_hours.days} {streaks.liturgy_hours.days === 1 ? 'dia' : 'dias'} seguidos
                                     </div>
@@ -450,7 +415,7 @@ export default function LiturgiaHoras() {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 glass-panel rounded-2xl">
                             <p className="text-zinc-500 text-center">
                                 Não foi possível carregar a Liturgia das Horas. Verifique a sua ligação à internet.
                             </p>

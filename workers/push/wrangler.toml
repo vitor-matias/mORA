@@ -1,0 +1,12 @@
+name = "mora-push"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Create with: npx wrangler kv namespace create SUBSCRIPTIONS
+# then paste the generated id below.
+kv_namespaces = [
+  { binding = "SUBSCRIPTIONS", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+]
+
+[triggers]
+crons = ["*/5 * * * *"]

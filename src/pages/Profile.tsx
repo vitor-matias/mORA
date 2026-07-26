@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
-import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
+import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
+import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
 
 export default function Profile() {
-    const navigate = useNavigate();
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
-    const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -47,38 +47,37 @@ export default function Profile() {
         }
     };
 
-    // Handles picking a notification time
+    const clearNotification = () => {
+        setNotificationTime(null);
+        disablePushReminder();
+    };
+
+    // Handles picking a notification time. With a push server configured the
+    // reminder is delivered via Web Push (works with the app closed);
+    // otherwise it falls back to the in-app timer.
     const handleNotificationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const time = e.target.value;
         if (time) {
             setNotificationTime(time);
-            if (Notification.permission !== 'granted') {
+            if (isPushConfigured()) {
+                enablePushReminder(time);
+            } else if (Notification.permission !== 'granted') {
                 Notification.requestPermission();
             }
         } else {
-            setNotificationTime(null);
+            clearNotification();
         }
     };
 
     return (
-        <div className="p-6 pt-12 max-w-md mx-auto space-y-8 flex-1 w-full flex flex-col">
-            <header className="flex items-center gap-4">
-                <button
-                    onClick={() => navigate('/')}
-                    aria-label="Voltar ao início"
-                    className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 p-2 rounded-full"
-                >
-                    <ChevronRight className="rotate-180" size={24} />
-                </button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
-                    <p className="text-zinc-500">{t.subtitle}</p>
-                </div>
-            </header>
-
+        <div className="flex-1 w-full flex flex-col">
+            <PageHeader title={t.title} subtitle={t.subtitle} width="max-w-md lg:max-w-3xl" />
+            <div className="p-6 max-w-md lg:max-w-3xl mx-auto flex-1 w-full">
+            {/* Desktop: settings and identity side by side */}
+            <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
             {/* Application Settings Section */}
-            <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+            <section className="glass-panel rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                     <Settings className="text-zinc-400" size={20} />
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.settings}</h2>
@@ -150,6 +149,31 @@ export default function Profile() {
                         </div>
                     </div>
 
+                    {/* Auto-scroll Default Speed */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Gauge className="text-zinc-400" size={16} />
+                            <p className="text-sm font-medium">Velocidade do Auto-scroll</p>
+                        </div>
+                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-2">
+                            {SCROLL_LEVELS.map((level, idx) => (
+                                <button
+                                    type="button"
+                                    key={level.label}
+                                    onClick={() => setAutoScrollSpeed(idx as AutoScrollSpeed)}
+                                    aria-pressed={autoScrollSpeed === idx}
+                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${autoScrollSpeed === idx
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                        : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                        }`}
+                                >
+                                    <span className="text-xs font-medium">{level.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-2">Velocidade inicial da leitura automática na Missa</p>
+                    </div>
+
                     {/* Rosary Mode — segmented so both options are always visible */}
                     <div>
                         <p className="text-sm font-medium mb-3">{t.rosaryMode}</p>
@@ -185,21 +209,24 @@ export default function Profile() {
                                 className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-liturgy-500 outline-none"
                             />
                             <button
-                                onClick={() => setNotificationTime(null)}
+                                type="button"
+                                onClick={clearNotification}
                                 className="text-xs text-red-500 hover:text-red-600 px-2 py-2"
                             >
                                 {t.notificationsOff}
                             </button>
                         </div>
                         <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                            Por agora, o lembrete só aparece com a aplicação aberta.
+                            {pushSubscribed
+                                ? 'Lembrete ativo — chega mesmo com a aplicação fechada.'
+                                : 'Por agora, o lembrete só aparece com a aplicação aberta.'}
                         </p>
                     </div>
                 </div>
             </section>
             {/* Nostr Identity Section */}
             {pubkey ? (
-                <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <section className="glass-panel rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.identity}</h2>
                         {!isEditingProfile && (
@@ -259,7 +286,7 @@ export default function Profile() {
                                 </button>
                                 <button
                                     onClick={handleSaveProfile}
-                                    className="flex-1 py-2 px-4 bg-liturgy-600 hover:bg-liturgy-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                                    className="flex-1 py-2 px-4 cta-primary rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                                     disabled={isSaving}
                                 >
                                     {isSaving ? (
@@ -317,7 +344,7 @@ export default function Profile() {
                     </button>
                 </section>
             ) : (
-                <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <section className="glass-panel rounded-2xl p-6">
                     <div className="space-y-4">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {t.loginPrompt}
@@ -325,7 +352,7 @@ export default function Profile() {
 
                         <button
                             onClick={loginWithNip07}
-                            className="w-full py-3 px-4 bg-liturgy-600 hover:bg-liturgy-700 text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                         >
                             {t.loginNip07}
                         </button>
@@ -335,7 +362,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500">{t.or}</span>
+                                <span className="glass-panel px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
@@ -375,7 +402,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500">{t.or}</span>
+                                <span className="glass-panel px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
@@ -392,6 +419,8 @@ export default function Profile() {
                 </section>
             )}
 
+            </div>
+            </div>
         </div>
     );
 }
