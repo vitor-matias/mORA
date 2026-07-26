@@ -46,10 +46,14 @@ export default function Home() {
     // hasn't succeeded yet — only show it when it belongs to today.
     const todayDayName = liturgicalColorDate === formatISODate(new Date()) ? liturgicalDayName : null;
 
-    const areas = [
-        { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Cross },
+    // Two-tier hub: "Rezar" is the daily practice, "Explorar" hosts every
+    // secondary feature — new ones join this list instead of a new tab.
+    const prayerAreas = [
         { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
+        { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Cross },
+    ];
+    const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
     ];
 
@@ -140,21 +144,31 @@ export default function Home() {
 
             {/* Main navigation */}
             <div className="relative z-10 space-y-3">
-                {areas.map((area) => (
-                    <Link
-                        key={area.path}
-                        to={area.path}
-                        className="group flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md hover:border-zinc-200 dark:hover:border-zinc-700 transition-all active:scale-[0.99]"
-                    >
-                        <div className="h-11 w-11 shrink-0 rounded-2xl bg-liturgy-50 text-liturgy-600 dark:bg-liturgy-950/30 dark:text-liturgy-400 flex items-center justify-center transition-transform group-hover:scale-110">
-                            <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-bold leading-tight">{area.label}</h3>
-                            <p className="text-zinc-500 text-xs mt-0.5 truncate">{area.context}</p>
-                        </div>
-                        <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
-                    </Link>
+                {[
+                    { title: 'Rezar', items: prayerAreas },
+                    { title: 'Explorar', items: exploreAreas },
+                ].map(({ title, items }) => (
+                    <section key={title} className="space-y-3">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 pt-2">
+                            {title}
+                        </h2>
+                        {items.map((area) => (
+                            <Link
+                                key={area.path}
+                                to={area.path}
+                                className="group flex items-center gap-4 p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 hover:shadow-md hover:border-zinc-200 dark:hover:border-zinc-700 transition-all active:scale-[0.99]"
+                            >
+                                <div className="h-11 w-11 shrink-0 rounded-2xl bg-liturgy-50 text-liturgy-600 dark:bg-liturgy-950/30 dark:text-liturgy-400 flex items-center justify-center transition-transform group-hover:scale-110">
+                                    <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-base font-bold leading-tight">{area.label}</h3>
+                                    <p className="text-zinc-500 text-xs mt-0.5 truncate">{area.context}</p>
+                                </div>
+                                <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
+                            </Link>
+                        ))}
+                    </section>
                 ))}
             </div>
         </div>
