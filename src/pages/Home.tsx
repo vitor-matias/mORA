@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Cross, Clock, User, Flame, ChevronRight, ArrowRight } from "lucide-react";
+import { BookOpen, Cross, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays } from "lucide-react";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
 import { useTranslations } from "@/lib/i18n";
@@ -50,6 +50,7 @@ export default function Home() {
         { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Cross },
         { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
+        { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
     ];
 
     const streakItems = [

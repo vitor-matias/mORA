@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
@@ -211,9 +211,18 @@ export default function Liturgy() {
 
     const { streaks, incrementStreak, setLiturgicalColorOverride, autoScrollSpeed } = useAppStore();
 
-    // Date being viewed — defaults to today (or to Sunday from Saturday
-    // 16:00, when vigil Masses start), browsable via the date nav.
-    const [selectedDate, setSelectedDate] = useState(() => getDefaultMassDate());
+    // Date being viewed — a ?date=YYYY-MM-DD param (e.g. from the calendar
+    // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
+    // Masses start). Browsable via the date nav either way.
+    const [searchParams] = useSearchParams();
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const param = searchParams.get('date');
+        if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) {
+            const d = new Date(param + 'T00:00:00');
+            if (!Number.isNaN(d.getTime())) return d;
+        }
+        return getDefaultMassDate();
+    });
     const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
