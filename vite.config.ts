@@ -11,6 +11,11 @@ export default defineConfig(({ command }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Custom SW (src/sw.ts) so we can handle Web Push events; it
+      // reproduces generateSW's precache + auto-update behaviour.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['apple-touch-icon.png', 'favicon.svg'],
       manifest: {
         name: 'mORA — Oração diária',

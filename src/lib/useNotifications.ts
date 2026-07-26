@@ -3,12 +3,15 @@ import { useAppStore } from '@/store/app';
 import { useTranslations } from '@/lib/i18n';
 
 export function useNotifications() {
-    const { notificationTime } = useAppStore();
+    const { notificationTime, pushSubscribed } = useAppStore();
     const t = useTranslations().home; // Re-use strings for notification if possible
     const hasNotifiedToday = useRef(false);
 
     useEffect(() => {
-        if (!notificationTime) return;
+        // With a server-side push subscription active this in-app timer would
+        // only duplicate the notification — it exists for the unconfigured
+        // (no push server) fallback.
+        if (!notificationTime || pushSubscribed) return;
 
         const checkTime = () => {
             const now = new Date();
@@ -51,5 +54,5 @@ export function useNotifications() {
         checkTime();
 
         return () => clearInterval(intervalId);
-    }, [notificationTime, t.rosaryTitle]);
+    }, [notificationTime, pushSubscribed, t.rosaryTitle]);
 }

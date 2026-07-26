@@ -78,6 +78,10 @@ interface AppState {
     setTheme: (theme: ThemeMode) => void;
     notificationTime: string | null;
     setNotificationTime: (time: string | null) => void;
+    // True while this browser holds a server-registered Web Push
+    // subscription; the in-app reminder timer stands down then.
+    pushSubscribed: boolean;
+    setPushSubscribed: (subscribed: boolean) => void;
     liturgicalColor: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa';
     liturgicalDayName: string | null;
     liturgicalDescription: string | null;
@@ -114,6 +118,8 @@ export const useAppStore = create<AppState>()(
             setTheme: (theme) => set({ theme }),
             notificationTime: null,
             setNotificationTime: (notificationTime) => set({ notificationTime }),
+            pushSubscribed: false,
+            setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',
             liturgicalDayName: null,
             liturgicalDescription: null,

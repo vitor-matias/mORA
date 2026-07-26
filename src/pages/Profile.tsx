@@ -6,11 +6,12 @@ import type { RosaryBeadMode } from "@/lib/rosary";
 import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
+import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
 
 export default function Profile() {
     const navigate = useNavigate();
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
-    const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -47,16 +48,21 @@ export default function Profile() {
         }
     };
 
-    // Handles picking a notification time
+    // Handles picking a notification time. With a push server configured the
+    // reminder is delivered via Web Push (works with the app closed);
+    // otherwise it falls back to the in-app timer.
     const handleNotificationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const time = e.target.value;
         if (time) {
             setNotificationTime(time);
-            if (Notification.permission !== 'granted') {
+            if (isPushConfigured()) {
+                enablePushReminder(time);
+            } else if (Notification.permission !== 'granted') {
                 Notification.requestPermission();
             }
         } else {
             setNotificationTime(null);
+            disablePushReminder();
         }
     };
 
@@ -210,14 +216,19 @@ export default function Profile() {
                                 className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-liturgy-500 outline-none"
                             />
                             <button
-                                onClick={() => setNotificationTime(null)}
+                                onClick={() => {
+                                    setNotificationTime(null);
+                                    disablePushReminder();
+                                }}
                                 className="text-xs text-red-500 hover:text-red-600 px-2 py-2"
                             >
                                 {t.notificationsOff}
                             </button>
                         </div>
                         <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                            Por agora, o lembrete só aparece com a aplicação aberta.
+                            {pushSubscribed
+                                ? 'Lembrete ativo — chega mesmo com a aplicação fechada.'
+                                : 'Por agora, o lembrete só aparece com a aplicação aberta.'}
                         </p>
                     </div>
                 </div>
