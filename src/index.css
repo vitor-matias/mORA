@@ -54,6 +54,11 @@
   @media (prefers-reduced-motion: reduce) {
     .app-ambient::before { animation: none; }
   }
+  /* During autoscroll the page repaints continuously; freezing the aurora
+     keeps compositing cost down on low-end GPUs (class set by Liturgy). */
+  html.autoscrolling .app-ambient::before {
+    animation-play-state: paused;
+  }
   /* Starfield — dark mode only, repeating pinprick layers */
   .dark .app-ambient::after {
     content: '';

@@ -102,6 +102,7 @@ export default function Rosary() {
             <div role="group" aria-label="Modo do terço" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
                 {([['beginner', 'Guiado'], ['advanced', 'Só mistérios']] as [RosaryBeadMode, string][]).map(([mode, label]) => (
                     <button
+                        type="button"
                         key={mode}
                         onClick={() => changeMode(mode)}
                         aria-pressed={rosaryMode === mode}
@@ -130,6 +131,7 @@ export default function Rosary() {
                 width="max-w-md lg:max-w-2xl"
                 action={rosaryMode === 'beginner' && !atStart && !showFinish ? (
                     <button
+                        type="button"
                         onClick={handleRestart}
                         aria-label="Recomeçar o terço"
                         className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1.5 shrink-0"
@@ -167,6 +169,7 @@ export default function Rosary() {
                         ))}
                     </div>
                     <button
+                        type="button"
                         onClick={handleFinishRosary}
                         className="h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
@@ -178,6 +181,9 @@ export default function Rosary() {
                 {/* Active Step Card — tapping it advances, like turning a bead */}
                 <div
                     onClick={handleNext}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext(); } }}
                     className="glass-panel rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none active:scale-[0.995] transition-transform"
                 >
                     <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-4 self-start shrink-0">
@@ -237,6 +243,7 @@ export default function Rosary() {
                 <div className="flex items-stretch gap-3">
                     {!atStart && (
                         <button
+                        type="button"
                             onClick={handleBackStep}
                             aria-label="Passo anterior"
                             className="w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center transition-all active:scale-[0.96]"
@@ -245,6 +252,7 @@ export default function Rosary() {
                         </button>
                     )}
                     <button
+                        type="button"
                         onClick={handleNext}
                         className="flex-1 h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
@@ -279,6 +287,7 @@ export default function Rosary() {
                             </p>
                         )}
                         <button
+                        type="button"
                             onClick={() => {
                                 setShowFinish(false);
                                 setCurrentStepIndex(0);

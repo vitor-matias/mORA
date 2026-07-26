@@ -206,13 +206,18 @@ async function loadCalendarICS(): Promise<string | null> {
     const CACHE_DAYS = 90;
     const now = Date.now();
 
+    // An expired cache is kept around as a last resort: the feed is
+    // published for the whole year, so stale beats nothing when every
+    // fetch route is down.
+    let staleText: string | null = null;
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
             const ageDays = (now - parsed.timestamp) / (1000 * 60 * 60 * 24);
-            if (ageDays < CACHE_DAYS && parsed.text && parsed.text.includes('BEGIN:VEVENT')) {
-                return parsed.text;
+            if (parsed.text && parsed.text.includes('BEGIN:VEVENT')) {
+                if (ageDays < CACHE_DAYS) return parsed.text;
+                staleText = parsed.text;
             }
         } catch (e) {
             console.warn('Failed to parse cached ICS:', e);
@@ -221,22 +226,25 @@ async function loadCalendarICS(): Promise<string | null> {
 
     const icsUrl = 'https://www.liturgia.pt/agenda/agenda.ics';
 
-    // liturgia.pt doesn't send CORS headers, so the request has to go
-    // through a CORS proxy. These are public and occasionally go down,
-    // so we try a few in order until one returns a valid calendar.
-    const proxyBuilders: Array<(u: string) => string> = [
-        (u) => `https://api.codetabs.com/v1/proxy/?quest=${u}`,
-        (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-        (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    // liturgia.pt doesn't send CORS headers. The mORA push Worker (when
+    // deployed and configured) proxies the feed under our own control;
+    // otherwise fall back to public CORS proxies, which occasionally go
+    // down — hence trying several in order until one returns a calendar.
+    const ownWorker = import.meta.env.VITE_PUSH_SERVER_URL as string | undefined;
+    const candidateUrls = [
+        ...(ownWorker ? [`${ownWorker}/ics`] : []),
+        `https://api.codetabs.com/v1/proxy/?quest=${icsUrl}`,
+        `https://corsproxy.io/?url=${encodeURIComponent(icsUrl)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(icsUrl)}`,
     ];
 
     let text = '';
     const PROXY_TIMEOUT_MS = 8000;
-    for (const buildProxyUrl of proxyBuilders) {
+    for (const url of candidateUrls) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
         try {
-            const response = await fetch(buildProxyUrl(icsUrl), { signal: controller.signal });
+            const response = await fetch(url, { signal: controller.signal });
             if (!response.ok) continue;
 
             const body = await response.text();
@@ -247,16 +255,16 @@ async function loadCalendarICS(): Promise<string | null> {
             break;
         } catch (e) {
             if (e instanceof DOMException && e.name === 'AbortError') {
-                console.warn('ICS proxy timed out, trying next');
+                console.warn('ICS fetch timed out, trying next route');
             } else {
-                console.warn('ICS proxy failed, trying next:', e);
+                console.warn('ICS fetch failed, trying next route:', e);
             }
         } finally {
             clearTimeout(timer);
         }
     }
 
-    if (!text) return null;
+    if (!text) return staleText;
 
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, text }));

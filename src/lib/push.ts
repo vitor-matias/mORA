@@ -38,6 +38,14 @@ function readyWithTimeout(ms: number): Promise<ServiceWorkerRegistration> {
     ]);
 }
 
+// Server calls are bounded so a hung request can never strand the browser
+// subscription or the app state mid-flow.
+function fetchWithTimeout(url: string, init: RequestInit, ms = 8000): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 /**
  * Subscribes this browser to the daily reminder push at `time` (HH:MM,
  * user's local timezone). Returns true when the server accepted it.
@@ -46,15 +54,24 @@ export async function enablePushReminder(time: string): Promise<boolean> {
     if (!isPushConfigured()) return false;
     try {
         const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return false;
+        if (permission !== 'granted') {
+            // A previously subscribed browser may have had permission revoked
+            // — stand down so the in-app fallback takes over again.
+            useAppStore.getState().setPushSubscribed(false);
+            return false;
+        }
 
         const registration = await readyWithTimeout(5000);
-        const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!).buffer as ArrayBuffer,
-        });
+        // Reuse an existing subscription (e.g. the user is just changing the
+        // reminder time) — re-subscribing can reject with InvalidStateError.
+        const subscription =
+            (await registration.pushManager.getSubscription()) ??
+            (await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!).buffer as ArrayBuffer,
+            }));
 
-        const res = await fetch(`${SERVER_URL}/subscriptions`, {
+        const res = await fetchWithTimeout(`${SERVER_URL}/subscriptions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -83,13 +100,13 @@ export async function disablePushReminder(): Promise<void> {
         const subscription = await registration.pushManager.getSubscription();
         if (!subscription) return;
 
-        await fetch(`${SERVER_URL}/subscriptions`, {
+        await fetchWithTimeout(`${SERVER_URL}/subscriptions`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ endpoint: subscription.endpoint }),
         }).catch(() => {
-            // Server cleanup is best-effort — it also drops dead
-            // subscriptions on its own when a push bounces.
+            // Server cleanup is best-effort (and time-bounded) — it also
+            // drops dead subscriptions on its own when a push bounces.
         });
         await subscription.unsubscribe();
     } catch (e) {

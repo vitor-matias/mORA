@@ -38,7 +38,7 @@ worker ([src/sw.ts](../../src/sw.ts)) renders the notification text.
 5. **Point the app at it** — create `.env` in the repo root (see
    `.env.example`) with the deployed Worker URL and the public key:
 
-   ```
+   ```env
    VITE_PUSH_SERVER_URL=https://mora-push.<your-subdomain>.workers.dev
    VITE_VAPID_PUBLIC_KEY=<from step 1>
    ```

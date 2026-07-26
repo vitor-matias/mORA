@@ -47,6 +47,11 @@ export default function Profile() {
         }
     };
 
+    const clearNotification = () => {
+        setNotificationTime(null);
+        disablePushReminder();
+    };
+
     // Handles picking a notification time. With a push server configured the
     // reminder is delivered via Web Push (works with the app closed);
     // otherwise it falls back to the in-app timer.
@@ -60,8 +65,7 @@ export default function Profile() {
                 Notification.requestPermission();
             }
         } else {
-            setNotificationTime(null);
-            disablePushReminder();
+            clearNotification();
         }
     };
 
@@ -205,10 +209,8 @@ export default function Profile() {
                                 className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-liturgy-500 outline-none"
                             />
                             <button
-                                onClick={() => {
-                                    setNotificationTime(null);
-                                    disablePushReminder();
-                                }}
+                                type="button"
+                                onClick={clearNotification}
                                 className="text-xs text-red-500 hover:text-red-600 px-2 py-2"
                             >
                                 {t.notificationsOff}

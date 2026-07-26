@@ -502,6 +502,14 @@ export default function Liturgy() {
         };
     }, [isAutoScrolling, stopAutoScroll]);
 
+    // Freeze the ambient aurora while autoscrolling — the page already
+    // repaints every frame, so pausing the animation (see index.css) keeps
+    // compositing cheap on low-end GPUs.
+    useEffect(() => {
+        document.documentElement.classList.toggle('autoscrolling', isAutoScrolling);
+        return () => document.documentElement.classList.remove('autoscrolling');
+    }, [isAutoScrolling]);
+
     // Keep the screen awake while autoscrolling — otherwise the phone dims
     // and locks mid-reading. The browser releases the lock whenever the tab
     // is hidden, so re-acquire it when the page becomes visible again.

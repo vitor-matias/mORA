@@ -103,6 +103,24 @@ export default {
     async fetch(request, env) {
         const url = new URL(request.url);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+
+        // Authoritative CORS proxy for the liturgia.pt calendar, so the app
+        // doesn't have to rely on rotating public proxies. Cached at the
+        // Cloudflare edge for 6 hours.
+        if (url.pathname === '/ics' && request.method === 'GET') {
+            try {
+                const res = await fetch('https://www.liturgia.pt/agenda/agenda.ics', {
+                    cf: { cacheTtl: 21600, cacheEverything: true },
+                });
+                if (!res.ok) return json(502, { error: 'calendar upstream unavailable' });
+                return new Response(await res.text(), {
+                    headers: { 'Content-Type': 'text/calendar; charset=utf-8', ...CORS },
+                });
+            } catch {
+                return json(502, { error: 'calendar upstream unavailable' });
+            }
+        }
+
         if (url.pathname !== '/subscriptions') return json(404, { error: 'not found' });
 
         let body;
@@ -117,7 +135,7 @@ export default {
             const endpoint = subscription?.endpoint;
             if (
                 typeof endpoint !== 'string' || !endpoint.startsWith('https://') ||
-                typeof time !== 'string' || !/^\d{2}:\d{2}$/.test(time) ||
+                typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
                 typeof tz !== 'string' || tz.length > 64 || !localParts(tz, new Date())
             ) {
                 return json(400, { error: 'invalid subscription payload' });
@@ -139,6 +157,9 @@ export default {
         return json(405, { error: 'method not allowed' });
     },
 
+    // Full KV scan per tick — fine at personal-use scale. If this ever
+    // serves many users, partition keys by delivery-time bucket so each
+    // tick only lists the buckets due now.
     async scheduled(_event, env, ctx) {
         ctx.waitUntil((async () => {
             const now = new Date();
@@ -150,7 +171,14 @@ export default {
                 for (const { name: key } of page.keys) {
                     const raw = await env.SUBSCRIPTIONS.get(key);
                     if (!raw) continue;
-                    const rec = JSON.parse(raw);
+                    let rec;
+                    try {
+                        rec = JSON.parse(raw);
+                    } catch {
+                        // A corrupt record must not abort the whole run.
+                        await env.SUBSCRIPTIONS.delete(key);
+                        continue;
+                    }
 
                     const local = localParts(rec.tz, now);
                     if (!local || rec.lastSentDate === local.date) continue;
