@@ -754,10 +754,10 @@ export default function Liturgy() {
         <div className="flex-1 w-full flex flex-col">
 
             {/* ── Sticky header ────────────────────────────────────────────── */}
-            <header className={`sticky top-0 z-30 bg-[#FAF9F6]/90 dark:bg-[#121212]/90 backdrop-blur-md border-b transition-all duration-300 ${
+            <header className={`sticky top-0 z-30 glass-bar transition-all duration-300 ${
                 isScrolled
-                    ? 'border-zinc-200/50 dark:border-zinc-800/50 shadow-sm py-3'
-                    : 'border-transparent py-5 lg:py-6'
+                    ? 'glass-bar-scrolled py-3'
+                    : 'py-5 lg:py-6'
             }`}>
                 <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
                     <button
@@ -770,7 +770,7 @@ export default function Liturgy() {
                         <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
                     </button>
                     <div className="min-w-0 flex-1">
-                        <h1 className={`font-bold tracking-tight text-zinc-900 dark:text-zinc-50 transition-all truncate ${
+                        <h1 className={`font-bold tracking-tight text-halo transition-all truncate ${
                             isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
                         }`}>
                             Missa Diária

@@ -126,6 +126,26 @@
     box-shadow: 0 4px 24px rgb(var(--liturgy-500) / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.3);
   }
 
+  /* Sticky top bars (Missa / Horas headers) — frosted like glass-panel but
+     full-bleed, with only a bottom hairline that appears when scrolled. */
+  .glass-bar {
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.5));
+    border-bottom: 1px solid transparent;
+  }
+  .dark .glass-bar {
+    background: linear-gradient(to bottom, rgb(18 18 22 / 0.78), rgb(18 18 22 / 0.55));
+  }
+  .glass-bar-scrolled {
+    border-bottom-color: rgb(var(--liturgy-500) / 0.2);
+    box-shadow: 0 8px 24px rgb(var(--liturgy-900) / 0.08);
+  }
+  .dark .glass-bar-scrolled {
+    border-bottom-color: rgb(var(--liturgy-400) / 0.18);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+
   /* Responsorial-psalm refrain — the line the congregation answers with,
      lifted out of the section title by enrichReadingTypography. */
   .psalm-refrain {
