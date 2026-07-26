@@ -77,14 +77,14 @@ export default function Profile() {
                     <ChevronRight className="rotate-180" size={24} />
                 </button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-halo">{t.title}</h1>
                     <p className="text-zinc-500">{t.subtitle}</p>
                 </div>
             </header>
 
 
             {/* Application Settings Section */}
-            <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+            <section className="glass-panel rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                     <Settings className="text-zinc-400" size={20} />
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.settings}</h2>
@@ -235,7 +235,7 @@ export default function Profile() {
             </section>
             {/* Nostr Identity Section */}
             {pubkey ? (
-                <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <section className="glass-panel rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.identity}</h2>
                         {!isEditingProfile && (
@@ -353,7 +353,7 @@ export default function Profile() {
                     </button>
                 </section>
             ) : (
-                <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                <section className="glass-panel rounded-2xl p-6">
                     <div className="space-y-4">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {t.loginPrompt}
@@ -371,7 +371,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500">{t.or}</span>
+                                <span className="glass-panel px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
@@ -411,7 +411,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-500">{t.or}</span>
+                                <span className="glass-panel px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 

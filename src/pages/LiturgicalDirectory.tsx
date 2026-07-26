@@ -84,12 +84,12 @@ export default function LiturgicalDirectory() {
                     <ChevronRight className="rotate-180" size={24} />
                 </button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Diretório Litúrgico</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-halo">Diretório Litúrgico</h1>
                     <p className="text-zinc-500">O ano litúrgico, dia a dia</p>
                 </div>
             </header>
 
-            <section className="bg-white dark:bg-zinc-900 rounded-2xl p-3 shadow-sm border border-zinc-100 dark:border-zinc-800">
+            <section className="glass-panel rounded-2xl p-3">
                 {/* Month navigation */}
                 <div className="flex items-center justify-between mb-2">
                     <button
@@ -169,7 +169,7 @@ export default function LiturgicalDirectory() {
             </section>
 
             {/* Selected day details */}
-            <section className="bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-2xl p-4">
+            <section className="glass-panel glow-ring rounded-2xl p-4">
                 <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5 capitalize">
                     {new Date(selected + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </p>

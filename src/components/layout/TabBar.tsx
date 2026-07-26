@@ -71,11 +71,11 @@ export function TabBar() {
         <nav
             aria-label="Navegação principal"
             aria-hidden={hide}
-            className={`fixed bottom-0 inset-x-0 z-40 bg-[#FAF9F6]/92 dark:bg-[#121212]/92 backdrop-blur-md border-t border-zinc-200/70 dark:border-zinc-800/70 pb-[env(safe-area-inset-bottom)] transition-transform duration-300 ease-out ${
-                hide ? 'translate-y-full' : 'translate-y-0'
+            className={`fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 transition-transform duration-300 ease-out ${
+                hide ? 'translate-y-[150%]' : 'translate-y-0'
             }`}
         >
-            <div className="max-w-md lg:max-w-xl mx-auto flex">
+            <div className="max-w-md lg:max-w-xl mx-auto flex glass-panel rounded-3xl px-1">
                 {tabs.map(({ to, label, icon: Icon, end }) => (
                     <NavLink
                         key={to}
@@ -92,7 +92,12 @@ export function TabBar() {
                     >
                         {({ isActive }) => (
                             <>
-                                <Icon size={22} strokeWidth={isActive ? 2.4 : 1.8} aria-hidden="true" />
+                                <Icon
+                                    size={22}
+                                    strokeWidth={isActive ? 2.4 : 1.8}
+                                    aria-hidden="true"
+                                    className={isActive ? 'drop-shadow-[0_0_7px_rgb(var(--liturgy-500)/0.75)]' : undefined}
+                                />
                                 <span>{label}</span>
                             </>
                         )}

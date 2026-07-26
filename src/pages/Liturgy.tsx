@@ -568,7 +568,7 @@ export default function Liturgy() {
                     aria-pressed={showOnlyReadings === value}
                     className={`flex-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         showOnlyReadings === value
-                            ? 'bg-white dark:bg-zinc-900 text-liturgy-700 dark:text-liturgy-400 shadow-sm'
+                            ? 'glass-panel text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
                 >
@@ -580,7 +580,7 @@ export default function Liturgy() {
 
     // Prev / next day navigation with a native date picker on the label.
     const dateNav = (
-        <div className="flex items-center justify-between gap-1 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl px-1 py-1 shadow-sm">
+        <div className="flex items-center justify-between gap-1 glass-panel rounded-xl px-1 py-1">
             <button
                 onClick={() => changeDay(-1)}
                 aria-label="Dia anterior"
@@ -671,7 +671,7 @@ export default function Liturgy() {
     );
 
     const dateCard = liturgy && (
-        <div className="bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 rounded-2xl p-4">
+        <div className="glass-panel glow-ring rounded-2xl p-4">
             <p
                 className="font-semibold text-liturgy-900 dark:text-liturgy-100 leading-snug text-base"
                 style={{ fontFamily: 'var(--content-font-family, inherit)' }}
@@ -846,7 +846,7 @@ export default function Liturgy() {
                             {canMarkPrayed && (
                                 <div className="mt-10 mb-4">
                                     {readToday ? (
-                                        <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-liturgy-50 dark:bg-liturgy-950/20 border border-liturgy-100 dark:border-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                        <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl glass-panel glow-ring text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                             <CheckCircle2 size={18} aria-hidden="true" />
                                             Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
                                         </div>
@@ -867,7 +867,7 @@ export default function Liturgy() {
                             {/* The sidebar (and its date nav) only renders on
                                 success, so this must show on all breakpoints */}
                             <div className="lg:max-w-sm">{dateNav}</div>
-                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl">
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 glass-panel rounded-2xl">
                                 <p className="text-zinc-500 text-center">
                                     {loadFailed
                                         ? 'Não foi possível carregar as leituras. Verifique a sua ligação à internet.'
