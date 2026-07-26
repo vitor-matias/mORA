@@ -36,6 +36,19 @@ function getSectionId(label: string): string {
     return SECTION_ID_MAP.find(([re]) => re.test(label))?.[1] ?? slugify(label);
 }
 
+// Parses a ?date=YYYY-MM-DD param. Round-trip check because JS normalizes
+// overflowed dates (Feb 30 → Mar 2) instead of yielding NaN.
+function parseDateParam(param: string | null): Date | null {
+    if (!param || !/^\d{4}-\d{2}-\d{2}$/.test(param)) return null;
+    const d = new Date(param + 'T00:00:00');
+    const [year, month, day] = param.split('-').map(Number);
+    const valid = !Number.isNaN(d.getTime())
+        && d.getFullYear() === year
+        && d.getMonth() === month - 1
+        && d.getDate() === day;
+    return valid ? d : null;
+}
+
 // Display label for the TOC: reading headers are ALL-CAPS in the source
 // ("LEITURA I") and want title-case with Roman numerals kept uppercase.
 function readingDisplayLabel(label: string): string {
@@ -261,22 +274,23 @@ export default function Liturgy() {
     // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
     // Masses start). Browsable via the date nav either way.
     const [searchParams] = useSearchParams();
-    const [selectedDate, setSelectedDate] = useState(() => {
-        const param = searchParams.get('date');
-        if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) {
-            const d = new Date(param + 'T00:00:00');
-            // Round-trip check: JS normalizes overflowed dates (Feb 30 →
-            // Mar 2) instead of yielding NaN, so compare the components.
-            const [year, month, day] = param.split('-').map(Number);
-            if (
-                !Number.isNaN(d.getTime()) &&
-                d.getFullYear() === year &&
-                d.getMonth() === month - 1 &&
-                d.getDate() === day
-            ) return d;
+    const dateParam = searchParams.get('date');
+    const [selectedDate, setSelectedDate] = useState(
+        () => parseDateParam(dateParam) ?? getDefaultMassDate()
+    );
+
+    // Re-sync when ?date= changes while mounted (e.g. an in-app link to
+    // another /liturgia?date=…, or back/forward that only swaps the query) —
+    // the initializer alone only covers fresh mounts. State adjustment
+    // during render, per React docs, instead of an effect (see TabBar).
+    const [lastDateParam, setLastDateParam] = useState(dateParam);
+    if (dateParam !== lastDateParam) {
+        setLastDateParam(dateParam);
+        const d = parseDateParam(dateParam);
+        if (d && formatISODate(d) !== formatISODate(selectedDate)) {
+            setSelectedDate(d);
         }
-        return getDefaultMassDate();
-    });
+    }
     const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());

@@ -210,7 +210,12 @@ async function loadCalendarICS(): Promise<string | null> {
     // published for the whole year, so stale beats nothing when every
     // fetch route is down.
     let staleText: string | null = null;
-    const cached = localStorage.getItem(CACHE_KEY);
+    let cached: string | null = null;
+    try {
+        cached = localStorage.getItem(CACHE_KEY);
+    } catch {
+        // Storage blocked (e.g. private browsing) — go straight to network.
+    }
     if (cached) {
         try {
             const parsed = JSON.parse(cached);
