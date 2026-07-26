@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday, SCROLL_LEVELS, clampScrollLevel } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 // Labels that open a liturgical reading section.
 const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
@@ -247,7 +248,6 @@ function makeCommentariesCollapsible(html: string): string {
 interface TocEntry { id: string; label: string; }
 
 export default function Liturgy() {
-    const navigate = useNavigate();
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -576,19 +576,6 @@ export default function Liturgy() {
         toggle.setAttribute('aria-expanded', String(isOpen));
     };
 
-    const [isScrolled, setIsScrolled] = useState(false);
-    useEffect(() => {
-        // Hysteresis: collapsing the header shrinks the page by ~30px, which
-        // shifts scrollY back below a single threshold and re-expands it —
-        // an oscillation the user sees as flicker. The collapse and expand
-        // thresholds are spaced wider than that height delta.
-        const handleScroll = () => setIsScrolled((prev) =>
-            prev ? window.scrollY > 8 : window.scrollY > 56
-        );
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
     // Track whether the page is scrolled to (or has) no further content, so
     // the autoscroll start button can be disabled when there is nowhere to go.
     useEffect(() => {
@@ -754,35 +741,10 @@ export default function Liturgy() {
         <div className="flex-1 w-full flex flex-col">
 
             {/* ── Sticky header ────────────────────────────────────────────── */}
-            <header className={`sticky top-0 z-30 glass-bar transition-all duration-300 ${
-                isScrolled
-                    ? 'glass-bar-scrolled py-3'
-                    : 'py-5 lg:py-6'
-            }`}>
-                <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
-                    <button
-                        onClick={() => navigate('/')}
-                        aria-label="Voltar ao início"
-                        className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
-                            isScrolled ? 'p-1.5' : 'p-2'
-                        }`}
-                    >
-                        <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                        <h1 className={`font-bold tracking-tight text-halo transition-all truncate ${
-                            isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
-                        }`}>
-                            Missa Diária
-                        </h1>
-                        <p className={`text-zinc-500 font-medium mt-0.5 transition-all truncate ${
-                            isScrolled ? 'text-xs opacity-80' : 'text-sm'
-                        }`}>
-                            {loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
-                        </p>
-                    </div>
-                </div>
-
+            <PageHeader
+                title="Missa Diária"
+                subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
+            >
                 {/* Mobile section chips — quick jumps without the desktop sidebar */}
                 {!loading && sections.length > 0 && (
                     <nav
@@ -804,7 +766,7 @@ export default function Liturgy() {
                         ))}
                     </nav>
                 )}
-            </header>
+            </PageHeader>
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">

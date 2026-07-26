@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useAppStore, isCompletedToday } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { useTranslations } from "@/lib/i18n";
@@ -122,36 +123,23 @@ export default function Rosary() {
     );
 
     return (
-        <div className="p-6 pt-12 pb-8 flex-1 w-full flex flex-col max-w-md mx-auto relative overflow-hidden">
-            {/* Background Texture/Gradient */}
-            <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-br from-liturgy-100 to-transparent dark:from-liturgy-900/20 -z-10 mix-blend-multiply opacity-50"></div>
-
-            <header className="flex items-center gap-4 mb-8">
-                <button
-                    onClick={() => navigate('/')}
-                    aria-label="Voltar ao início"
-                    className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 p-2 rounded-full"
-                >
-                    <ChevronRight className="rotate-180" size={24} />
-                </button>
-                <div className="flex-1 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-halo">Terço</h1>
-                        <p className="text-zinc-500 text-sm">Mistérios {MYSTERY_LABELS[todayMysteryClass]}</p>
-                    </div>
-                    {rosaryMode === 'beginner' && !atStart && !showFinish && (
-                        <button
-                            onClick={handleRestart}
-                            aria-label="Recomeçar o terço"
-                            className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1.5"
-                        >
-                            <RotateCcw size={14} aria-hidden="true" />
-                            Recomeçar
-                        </button>
-                    )}
-                </div>
-            </header>
-
+        <div className="flex-1 w-full flex flex-col">
+            <PageHeader
+                title="Terço"
+                subtitle={`Mistérios ${MYSTERY_LABELS[todayMysteryClass]}`}
+                width="max-w-md"
+                action={rosaryMode === 'beginner' && !atStart && !showFinish ? (
+                    <button
+                        onClick={handleRestart}
+                        aria-label="Recomeçar o terço"
+                        className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1.5 shrink-0"
+                    >
+                        <RotateCcw size={14} aria-hidden="true" />
+                        Recomeçar
+                    </button>
+                ) : undefined}
+            />
+            <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md mx-auto relative overflow-hidden">
             {rosaryMode === 'advanced' ? (
                 /* ── Mysteries-only mode: all five on one page, prayed at the
                    user's own pace, closed with a single complete button. ── */
@@ -303,6 +291,7 @@ export default function Rosary() {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }

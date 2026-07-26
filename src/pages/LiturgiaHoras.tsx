@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { ChevronRight, Clock, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { getHourForTime } from "@/lib/hours";
 
 // The 5 canonical moments we display
@@ -96,7 +96,6 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
 }
 
 export default function LiturgiaHoras() {
-    const navigate = useNavigate();
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [retryToken, setRetryToken] = useState(0);
@@ -182,18 +181,6 @@ export default function LiturgiaHoras() {
         return selectedMoment.parts;
     }, [selectedMoment, activeSubHour]);
 
-    const [isScrolled, setIsScrolled] = useState(false);
-
-    useEffect(() => {
-        // Hysteresis (see Liturgy.tsx): thresholds spaced wider than the
-        // header's collapse height delta so the toggle can't oscillate.
-        const handleScroll = () => {
-            setIsScrolled((prev) => (prev ? window.scrollY > 8 : window.scrollY > 56));
-        };
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
     const selectHour = (id: string) => {
         setUserActiveHour(id);
         if (id === 'intermedia') {
@@ -207,34 +194,10 @@ export default function LiturgiaHoras() {
         <div className="flex-1 w-full flex flex-col">
 
             {/* ── Sticky header ────────────────────────────────────────────── */}
-            <header className={`sticky top-0 z-30 glass-bar transition-all duration-300 ${
-                isScrolled
-                    ? 'glass-bar-scrolled py-3'
-                    : 'py-5 lg:py-6'
-            }`}>
-                <div className="max-w-5xl mx-auto px-6 flex items-center gap-4">
-                    <button
-                        type="button" aria-label="Voltar ao início" onClick={() => navigate('/')}
-                        className={`bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 rounded-full shadow-sm transition-all shrink-0 ${
-                            isScrolled ? 'p-1.5' : 'p-2'
-                        }`}
-                    >
-                        <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
-                    </button>
-                    <div className="min-w-0 flex-1">
-                        <h1 className={`font-bold tracking-tight text-halo transition-all truncate ${
-                            isScrolled ? 'text-xl' : 'text-2xl lg:text-3xl'
-                        }`}>
-                            Liturgia das Horas
-                        </h1>
-                        <p className={`text-zinc-500 font-medium mt-0.5 transition-all truncate ${
-                            isScrolled ? 'text-xs opacity-80' : 'text-sm'
-                        }`}>
-                            {liturgy ? liturgy.saintOfDay : 'A carregar...'}
-                        </p>
-                    </div>
-                </div>
-            </header>
+            <PageHeader
+                title="Liturgia das Horas"
+                subtitle={liturgy ? liturgy.saintOfDay : 'A carregar...'}
+            />
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">

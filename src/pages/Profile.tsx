@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
 
 export default function Profile() {
-    const navigate = useNavigate();
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
     const { theme, setTheme, notificationTime, setNotificationTime, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
@@ -67,21 +66,9 @@ export default function Profile() {
     };
 
     return (
-        <div className="p-6 pt-12 max-w-md mx-auto space-y-8 flex-1 w-full flex flex-col">
-            <header className="flex items-center gap-4">
-                <button
-                    onClick={() => navigate('/')}
-                    aria-label="Voltar ao início"
-                    className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 p-2 rounded-full"
-                >
-                    <ChevronRight className="rotate-180" size={24} />
-                </button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-halo">{t.title}</h1>
-                    <p className="text-zinc-500">{t.subtitle}</p>
-                </div>
-            </header>
-
+        <div className="flex-1 w-full flex flex-col">
+            <PageHeader title={t.title} subtitle={t.subtitle} width="max-w-md" />
+            <div className="p-6 max-w-md mx-auto space-y-8 flex-1 w-full flex flex-col">
 
             {/* Application Settings Section */}
             <section className="glass-panel rounded-2xl p-6">
@@ -428,6 +415,7 @@ export default function Profile() {
                 </section>
             )}
 
+            </div>
         </div>
     );
 }

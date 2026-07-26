@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, BookOpen, RotateCcw } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchLiturgicalCalendarMap } from "@/lib/liturgy";
 import type { LiturgicalColor, LiturgicalDayInfo } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
@@ -85,20 +86,9 @@ export default function LiturgicalDirectory() {
         && viewMonth.getFullYear() === new Date().getFullYear();
 
     return (
-        <div className="p-6 pt-12 max-w-md lg:max-w-xl mx-auto space-y-6 flex-1 w-full flex flex-col">
-            <header className="flex items-center gap-4">
-                <button
-                    onClick={() => navigate('/')}
-                    aria-label="Voltar ao início"
-                    className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 p-2 rounded-full"
-                >
-                    <ChevronRight className="rotate-180" size={24} />
-                </button>
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-halo">Diretório Litúrgico</h1>
-                    <p className="text-zinc-500">O ano litúrgico, dia a dia</p>
-                </div>
-            </header>
+        <div className="flex-1 w-full flex flex-col">
+            <PageHeader title="Diretório Litúrgico" subtitle="O ano litúrgico, dia a dia" width="max-w-md lg:max-w-xl" />
+            <div className="p-6 max-w-md lg:max-w-xl mx-auto space-y-6 flex-1 w-full flex flex-col">
 
             <section className="glass-panel rounded-2xl p-3">
                 {/* Month navigation */}
@@ -234,6 +224,7 @@ export default function LiturgicalDirectory() {
                     <BookOpen size={16} aria-hidden="true" /> Ver leituras da Missa
                 </button>
             </section>
+            </div>
         </div>
     );
 }
