@@ -265,7 +265,15 @@ export default function Liturgy() {
         const param = searchParams.get('date');
         if (param && /^\d{4}-\d{2}-\d{2}$/.test(param)) {
             const d = new Date(param + 'T00:00:00');
-            if (!Number.isNaN(d.getTime())) return d;
+            // Round-trip check: JS normalizes overflowed dates (Feb 30 →
+            // Mar 2) instead of yielding NaN, so compare the components.
+            const [year, month, day] = param.split('-').map(Number);
+            if (
+                !Number.isNaN(d.getTime()) &&
+                d.getFullYear() === year &&
+                d.getMonth() === month - 1 &&
+                d.getDate() === day
+            ) return d;
         }
         return getDefaultMassDate();
     });

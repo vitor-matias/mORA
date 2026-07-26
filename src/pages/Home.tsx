@@ -36,12 +36,23 @@ export default function Home() {
     const [prayerCount, setPrayerCount] = useState<number | null>(null);
     useEffect(() => {
         let cancelled = false;
-        import("@/lib/nostr").then(({ fetchTodayPrayerCount }) =>
-            fetchTodayPrayerCount().then((n) => {
-                if (!cancelled) setPrayerCount(n);
-            })
-        );
-        return () => { cancelled = true; };
+        let midnightTimer: number | undefined;
+        const refresh = () => {
+            import("@/lib/nostr")
+                .then(({ fetchTodayPrayerCount }) => fetchTodayPrayerCount())
+                .then((n) => { if (!cancelled) setPrayerCount(n); })
+                .catch((e) => console.warn('Could not load community prayer count:', e));
+            // Re-arm for the next local midnight so a Home view left open
+            // doesn't keep showing yesterday's count.
+            const next = new Date();
+            next.setHours(24, 0, 0, 0);
+            midnightTimer = window.setTimeout(refresh, next.getTime() - Date.now() + 1000);
+        };
+        refresh();
+        return () => {
+            cancelled = true;
+            window.clearTimeout(midnightTimer);
+        };
     }, []);
 
     const displayName = profile?.display_name || profile?.name || null;
