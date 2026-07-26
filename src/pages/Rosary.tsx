@@ -4,7 +4,7 @@ import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw } from "lucide-react
 import { useAppStore, isCompletedToday } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { useTranslations } from "@/lib/i18n";
-import { getMysteryForToday, generateRosarySequence, MYSTERY_LABELS } from "@/lib/rosary";
+import { getMysteryForToday, generateRosarySequence, mysteries, MYSTERY_LABELS } from "@/lib/rosary";
 import { formatISODate } from "@/lib/format";
 
 export default function Rosary() {
@@ -94,6 +94,33 @@ export default function Rosary() {
 
     const atStart = currentStepIndex === 0;
 
+    // Shared by both layouts: guided shows it only before starting, the
+    // mysteries-only page always shows it (there is no "started" state).
+    const modePicker = (
+        <div className="mb-6">
+            <div role="group" aria-label="Modo do terço" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
+                {([['beginner', 'Guiado'], ['advanced', 'Só mistérios']] as [RosaryBeadMode, string][]).map(([mode, label]) => (
+                    <button
+                        key={mode}
+                        onClick={() => changeMode(mode)}
+                        aria-pressed={rosaryMode === mode}
+                        className={`flex-1 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${rosaryMode === mode
+                            ? 'bg-white dark:bg-zinc-900 text-liturgy-700 dark:text-liturgy-400 shadow-sm'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                            }`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-2">
+                {rosaryMode === 'beginner'
+                    ? 'Todas as orações, conta a conta.'
+                    : 'Os cinco mistérios numa só página — reze as contas ao seu ritmo.'}
+            </p>
+        </div>
+    );
+
     return (
         <div className="p-6 pt-12 pb-8 flex-1 w-full flex flex-col max-w-md mx-auto relative overflow-hidden">
             {/* Background Texture/Gradient */}
@@ -112,7 +139,7 @@ export default function Rosary() {
                         <h1 className="text-3xl font-bold tracking-tight">Terço</h1>
                         <p className="text-zinc-500 text-sm">Mistérios {MYSTERY_LABELS[todayMysteryClass]}</p>
                     </div>
-                    {!atStart && !showFinish && (
+                    {rosaryMode === 'beginner' && !atStart && !showFinish && (
                         <button
                             onClick={handleRestart}
                             aria-label="Recomeçar o terço"
@@ -125,6 +152,40 @@ export default function Rosary() {
                 </div>
             </header>
 
+            {rosaryMode === 'advanced' ? (
+                /* ── Mysteries-only mode: all five on one page, prayed at the
+                   user's own pace, closed with a single complete button. ── */
+                <div className="flex-1 flex flex-col mt-4 relative z-10">
+                    {modePicker}
+                    <div className="space-y-3 mb-8">
+                        {mysteries[todayMysteryClass].map((m) => (
+                            <article
+                                key={m.id}
+                                className="bg-white dark:bg-zinc-900 rounded-3xl p-5 shadow-sm border border-zinc-100 dark:border-zinc-800"
+                            >
+                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-3">
+                                    {m.mysteryNum}º Mistério
+                                </span>
+                                <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 leading-snug mb-2">
+                                    {m.title}
+                                </h2>
+                                <p className="content-text italic text-zinc-700 dark:text-zinc-300 whitespace-pre-line mb-2">
+                                    {m.description}
+                                </p>
+                                <p className="text-xs font-medium text-zinc-500">
+                                    Fruto: {m.fruit}
+                                </p>
+                            </article>
+                        ))}
+                    </div>
+                    <button
+                        onClick={handleFinishRosary}
+                        className="h-20 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl font-bold text-lg shadow-xl shadow-zinc-900/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    >
+                        {t.finish} <Check size={24} />
+                    </button>
+                </div>
+            ) : (
             <div className="flex-1 flex flex-col mt-4 relative z-10">
                 {/* Active Step Card — tapping it advances, like turning a bead */}
                 <div
@@ -146,30 +207,7 @@ export default function Rosary() {
                 </div>
 
                 {/* Mode picker — only before starting, where the choice matters */}
-                {atStart && !showFinish && (
-                    <div className="mb-6">
-                        <div role="group" aria-label="Modo do terço" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
-                            {([['beginner', 'Guiado'], ['advanced', 'Só mistérios']] as [RosaryBeadMode, string][]).map(([mode, label]) => (
-                                <button
-                                    key={mode}
-                                    onClick={() => changeMode(mode)}
-                                    aria-pressed={rosaryMode === mode}
-                                    className={`flex-1 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${rosaryMode === mode
-                                        ? 'bg-white dark:bg-zinc-900 text-liturgy-700 dark:text-liturgy-400 shadow-sm'
-                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-                                        }`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-2">
-                            {rosaryMode === 'beginner'
-                                ? 'Todas as orações, conta a conta.'
-                                : 'Apenas o anúncio de cada mistério — reze as contas ao seu ritmo.'}
-                        </p>
-                    </div>
-                )}
+                {atStart && !showFinish && modePicker}
 
                 {/* Progress Indicators (Only for beginner mode, during a decade) */}
                 {rosaryMode === 'beginner' && currentStep.decadeIndex && currentStep.type !== 'misterio' ? (
@@ -233,6 +271,7 @@ export default function Rosary() {
                     </button>
                 </div>
             </div>
+            )}
 
             {/* Finish Modal Overlay */}
             {showFinish && (
