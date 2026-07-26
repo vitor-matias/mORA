@@ -38,6 +38,13 @@ export const SCROLL_LEVELS = [
 // Index into SCROLL_LEVELS.
 export type AutoScrollSpeed = 0 | 1 | 2 | 3;
 
+// Persisted values rehydrate from JSON unvalidated — clamp to a valid index
+// so a corrupted store entry can't crash SCROLL_LEVELS lookups.
+export function clampScrollLevel(value: number): AutoScrollSpeed {
+    if (!Number.isInteger(value)) return 2;
+    return Math.min(Math.max(value, 0), SCROLL_LEVELS.length - 1) as AutoScrollSpeed;
+}
+
 // Single source of truth for the content (prayer/reading) text scale.
 // Each step pairs a reading size (px) with a line-height tuned for it.
 // Consumed by Layout (applies the CSS variables) and Profile (size picker preview).

@@ -4,7 +4,7 @@ import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCir
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
-import { useAppStore, isCompletedToday, SCROLL_LEVELS } from "@/store/app";
+import { useAppStore, isCompletedToday, SCROLL_LEVELS, clampScrollLevel } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 
 // Labels that open a liturgical reading section.
@@ -230,7 +230,7 @@ export default function Liturgy() {
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
     // Index into SCROLL_LEVELS; starts at the default configured in Profile —
     // the +/- controls only adjust this session, not the saved default.
-    const [scrollSpeed, setScrollSpeed] = useState<number>(autoScrollSpeed);
+    const [scrollSpeed, setScrollSpeed] = useState<number>(() => clampScrollLevel(autoScrollSpeed));
     // Nothing left to scroll — the start button is pointless then
     const [atPageEnd, setAtPageEnd] = useState(false);
     const rafRef = useRef<number | null>(null);
