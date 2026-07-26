@@ -24,6 +24,29 @@ const CORS = {
 // guards that).
 const DELIVERY_WINDOW_MIN = 15;
 
+// Known Web Push service hosts. Restricting endpoints to these prevents the
+// worker from being abused as a credentialed requester to arbitrary servers
+// (SSRF) or as an oracle for VAPID JWTs with attacker-chosen `aud` values.
+const PUSH_HOST_SUFFIXES = [
+    'fcm.googleapis.com',            // Chrome / Chromium
+    '.push.services.mozilla.com',    // Firefox
+    '.push.apple.com',               // Safari (web.push.apple.com + regions)
+    '.notify.windows.com',           // Edge (WNS)
+    '.push.samsungosp.com',          // Samsung Internet
+];
+
+function isAllowedPushEndpoint(endpoint) {
+    try {
+        const { protocol, hostname } = new URL(endpoint);
+        if (protocol !== 'https:') return false;
+        return PUSH_HOST_SUFFIXES.some((h) =>
+            h.startsWith('.') ? hostname === h.slice(1) || hostname.endsWith(h) : hostname === h
+        );
+    } catch {
+        return false;
+    }
+}
+
 const json = (status, body) =>
     new Response(body ? JSON.stringify(body) : null, {
         status,
@@ -134,7 +157,9 @@ export default {
             const { subscription, time, tz } = body ?? {};
             const endpoint = subscription?.endpoint;
             if (
-                typeof endpoint !== 'string' || !endpoint.startsWith('https://') ||
+                typeof endpoint !== 'string' || !isAllowedPushEndpoint(endpoint) ||
+                typeof subscription?.keys?.p256dh !== 'string' ||
+                typeof subscription?.keys?.auth !== 'string' ||
                 typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
                 typeof tz !== 'string' || tz.length > 64 || !localParts(tz, new Date())
             ) {

@@ -91,6 +91,28 @@ export async function enablePushReminder(time: string): Promise<boolean> {
     }
 }
 
+/**
+ * Reconciles the persisted pushSubscribed flag with reality — permission can
+ * be revoked and subscriptions can expire outside the app, which would
+ * otherwise leave the in-app fallback timer disabled with no push either.
+ */
+export async function verifyPushSubscription(): Promise<void> {
+    const { pushSubscribed, setPushSubscribed } = useAppStore.getState();
+    if (!pushSubscribed) return;
+    if (!isPushConfigured() || Notification.permission !== 'granted') {
+        setPushSubscribed(false);
+        return;
+    }
+    try {
+        const registration = await readyWithTimeout(5000);
+        if (!(await registration.pushManager.getSubscription())) {
+            setPushSubscribed(false);
+        }
+    } catch {
+        // SW not ready (e.g. dev server) — keep the flag rather than flap.
+    }
+}
+
 /** Removes the browser subscription and tells the server to forget it. */
 export async function disablePushReminder(): Promise<void> {
     useAppStore.getState().setPushSubscribed(false);
