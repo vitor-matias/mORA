@@ -207,9 +207,13 @@ export default function Liturgy() {
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
     const [dateCardExpanded, setDateCardExpanded] = useState(false);
 
+    const { incrementStreak, liturgicalDescription, autoScrollSpeed } = useAppStore();
+
     // Autoscroll
     const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-    const [scrollSpeed, setScrollSpeed] = useState(2);
+    // Session speed starts at the default configured in Profile; the +/-
+    // controls only adjust this session, not the saved default.
+    const [scrollSpeed, setScrollSpeed] = useState<number>(autoScrollSpeed);
     const rafRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number | null>(null);
     // Float accumulator for the scroll position. window.scrollTo/scrollBy
@@ -224,8 +228,6 @@ export default function Liturgy() {
     const articleRef = useRef<HTMLElement>(null);
     const [sections, setSections] = useState<TocEntry[]>([]);
     const [activeSection, setActiveSection] = useState('');
-
-    const { incrementStreak, liturgicalDescription } = useAppStore();
 
     useEffect(() => {
         async function loadLiturgy() {
@@ -383,6 +385,41 @@ export default function Liturgy() {
             window.removeEventListener('touchmove', stop);
         };
     }, [isAutoScrolling, stopAutoScroll]);
+
+    // Keep the screen awake while autoscrolling — otherwise the phone dims
+    // and locks mid-reading. The browser releases the lock whenever the tab
+    // is hidden, so re-acquire it when the page becomes visible again.
+    useEffect(() => {
+        if (!isAutoScrolling || !('wakeLock' in navigator)) return;
+        let sentinel: WakeLockSentinel | null = null;
+        let cancelled = false;
+
+        const acquire = async () => {
+            try {
+                const lock = await navigator.wakeLock.request('screen');
+                if (cancelled) {
+                    lock.release().catch(() => {});
+                    return;
+                }
+                sentinel = lock;
+            } catch {
+                // Denied (e.g. battery saver) — autoscroll still works,
+                // the screen just won't be kept on.
+            }
+        };
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') acquire();
+        };
+
+        acquire();
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => {
+            cancelled = true;
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            sentinel?.release().catch(() => {});
+        };
+    }, [isAutoScrolling]);
 
     // Clean up on unmount.
     useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);

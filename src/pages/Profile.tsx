@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
-import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
-import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save } from "lucide-react";
+import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
+import { ChevronRight, Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 
 export default function Profile() {
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
-    const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, toggleRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, rosaryMode, toggleRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -144,6 +144,30 @@ export default function Profile() {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Auto-scroll Default Speed */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Gauge className="text-zinc-400" size={16} />
+                            <p className="text-sm font-medium">Velocidade do Auto-scroll</p>
+                        </div>
+                        <div className="flex gap-2">
+                            {([[1, 'Lenta'], [2, 'Média'], [3, 'Rápida']] as [AutoScrollSpeed, string][]).map(([speed, label]) => (
+                                <button
+                                    key={speed}
+                                    onClick={() => setAutoScrollSpeed(speed)}
+                                    aria-pressed={autoScrollSpeed === speed}
+                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${autoScrollSpeed === speed
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                        : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                        }`}
+                                >
+                                    <span className="text-xs font-medium">{label}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-xs text-zinc-500 mt-2">Velocidade inicial da leitura automática na Liturgia</p>
                     </div>
 
                     {/* Rosary Mode Toggle */}

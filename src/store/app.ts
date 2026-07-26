@@ -10,6 +10,7 @@ interface StreakData {
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
+export type AutoScrollSpeed = 1 | 2 | 3;
 
 // Single source of truth for the content (prayer/reading) text scale.
 // Each step pairs a reading size (px) with a line-height tuned for it.
@@ -45,6 +46,8 @@ interface AppState {
     setFontSize: (size: FontSize) => void;
     fontFamily: FontFamily;
     setFontFamily: (family: FontFamily) => void;
+    autoScrollSpeed: AutoScrollSpeed;
+    setAutoScrollSpeed: (speed: AutoScrollSpeed) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -69,6 +72,8 @@ export const useAppStore = create<AppState>()(
             setFontSize: (fontSize) => set({ fontSize }),
             fontFamily: 'system',
             setFontFamily: (fontFamily) => set({ fontFamily }),
+            autoScrollSpeed: 2,
+            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
             streaks: {
                 rosary: { days: 0, lastCompletedDate: null },
                 liturgy: { days: 0, lastCompletedDate: null },
