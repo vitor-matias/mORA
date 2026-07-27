@@ -6,10 +6,16 @@ import type { NostrProfile } from '@/lib/nostr';
 import { useAppStore } from '@/store/app';
 
 // Signing in is the point at which a user gets an identity to sync under, so
-// sync starts on and they can turn it off in Perfil. Logout resets it, so it
-// is never carried over to whoever signs in next on this device.
+// sync starts on and they can turn it off in Perfil. Both halves live here so
+// the flag can never be carried over to whoever signs in next on this device —
+// shareStreaks is device-level, and every caller of logout() must clear it, not
+// just the button in Perfil.
 function enableSyncForNewIdentity() {
     useAppStore.getState().setShareStreaks(true);
+}
+
+function clearSyncForIdentity() {
+    useAppStore.getState().setShareStreaks(false);
 }
 
 interface AuthState {
@@ -83,6 +89,7 @@ export const useAuthStore = create<AuthState>()(
 
             logout: () => {
                 set({ pubkey: null, privkey: null, isNip07: false, profile: null });
+                clearSyncForIdentity();
             },
         }),
         {

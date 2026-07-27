@@ -46,14 +46,19 @@
 
   /* Card surface — opaque, hairline border, no blur and no coloured shadow. */
   .surface {
-    background: #fff;
+    background: rgb(var(--surface-bg));
     border: 1px solid rgb(24 24 27 / 0.08);
     box-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
   }
   .dark .surface {
-    background: #1b1b1e;
     border-color: rgb(255 255 255 / 0.08);
     box-shadow: none;
+  }
+
+  /* Surface colour with no border or shadow — for masking a rule behind
+     inline text (the "ou" dividers), where a card would be wrong. */
+  .surface-bg {
+    background: rgb(var(--surface-bg));
   }
 
   /* Marks the one panel a page leads with — a tinted edge, not a halo. */
@@ -88,11 +93,8 @@
   .app-bar {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    background: rgb(250 249 246 / 0.9);
+    background: rgb(var(--app-bg) / 0.9);
     border-bottom: 1px solid transparent;
-  }
-  .dark .app-bar {
-    background: rgb(18 18 18 / 0.9);
   }
   .app-bar-scrolled {
     border-bottom-color: rgb(24 24 27 / 0.1);
@@ -227,7 +229,16 @@ html[data-theme="rosa"] {
 /* Tailwind config wraps them: hsl(var(--primary))                    */
 /* ------------------------------------------------------------------ */
 
+/* Page and card backgrounds, as "R G B" channels so they take opacity
+   modifiers. Single source of truth: Layout's page background and the
+   theme-color meta both derive from --app-bg, and .surface/.app-bar read
+   these instead of repeating literals. The pre-paint script in index.html
+   duplicates the --app-bg values by necessity — it runs before any
+   stylesheet — so keep those two hex literals in step with these. */
 :root {
+  --app-bg: 250 249 246;
+  --surface-bg: 255 255 255;
+
   --radius: 0.625rem;
   --background: 0 0% 100%;
   --foreground: 0 0% 9%;
@@ -263,6 +274,9 @@ html[data-theme="rosa"] {
 }
 
 .dark {
+  --app-bg: 18 18 18;
+  --surface-bg: 27 27 30;
+
   --background: 0 0% 7%;
   --foreground: 0 0% 97%;
   --card: 0 0% 12%;

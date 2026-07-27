@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
@@ -8,6 +8,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
+
+/** Long enough to cover picking an hour then a minute, short enough that the
+    registration still feels immediate. */
+const REMINDER_SYNC_DEBOUNCE_MS = 600;
 
 export default function Profile() {
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
@@ -79,19 +83,42 @@ export default function Profile() {
     // so any change — rosary time or an Hour — re-registers the whole set.
     // With a push server configured the reminders arrive with the app closed;
     // otherwise they fall back to the in-app timer.
+    //
+    // <input type="time"> fires a change per component (hour, then minute, and
+    // repeatedly while stepping), and each registration is a permission prompt,
+    // a pushManager.subscribe and a POST. So: debounce until the value settles,
+    // then run registrations one at a time, dropping any that a newer edit has
+    // already superseded — otherwise two in-flight POSTs can land out of order
+    // and the server keeps the older schedule.
+    const syncTimerRef = useRef<number | undefined>(undefined);
+    const syncSeqRef = useRef(0);
+    const syncQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+
+    useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
+
     const syncReminders = (nextTime: string | null, nextHours: Record<string, string>) => {
         const times = [...new Set([
             ...(nextTime ? [nextTime] : []),
             ...Object.values(nextHours),
         ])].sort();
 
-        if (times.length === 0) {
-            disablePushReminder();
-        } else if (isPushConfigured()) {
-            enablePushReminder(times);
-        } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-            Notification.requestPermission();
-        }
+        window.clearTimeout(syncTimerRef.current);
+        const seq = ++syncSeqRef.current;
+        syncTimerRef.current = window.setTimeout(() => {
+            syncQueueRef.current = syncQueueRef.current
+                // One failed registration must not stall every later one.
+                .catch(() => {})
+                .then(async () => {
+                    if (seq !== syncSeqRef.current) return;
+                    if (times.length === 0) {
+                        await disablePushReminder();
+                    } else if (isPushConfigured()) {
+                        await enablePushReminder(times);
+                    } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+                        await Notification.requestPermission();
+                    }
+                });
+        }, REMINDER_SYNC_DEBOUNCE_MS);
     };
 
     const clearNotification = () => {
@@ -421,12 +448,7 @@ export default function Profile() {
                     </div>
 
                     <button
-                        onClick={() => {
-                            // Sync opt-in is per identity — don't carry it over
-                            // to whoever logs in next on this device.
-                            setShareStreaks(false);
-                            logout();
-                        }}
+                        onClick={logout}
                         className="mt-6 w-full py-2 px-4 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 text-red-600 rounded-xl font-medium transition-colors"
                     >
                         {t.logout}
@@ -451,7 +473,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="surface px-2 text-zinc-500">{t.or}</span>
+                                <span className="surface-bg px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
@@ -491,7 +513,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="surface px-2 text-zinc-500">{t.or}</span>
+                                <span className="surface-bg px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
@@ -505,6 +527,7 @@ export default function Profile() {
                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
                             />
                             <button
+                                type="button"
                                 onClick={handleCreateIdentity}
                                 disabled={isCreatingIdentity}
                                 className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors disabled:opacity-60"

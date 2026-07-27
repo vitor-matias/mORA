@@ -19,7 +19,7 @@ export interface CanonicalHour {
 
 /** The Hours a user can be reminded of, in the order they fall in the day. */
 export const CANONICAL_HOURS: CanonicalHour[] = [
-    { id: 'oficio', label: 'Ofício de Leituras', defaultTime: '05:30' },
+    { id: 'oficio', label: 'Ofício de Leitura', defaultTime: '05:30' },
     { id: 'laudes', label: 'Laudes', defaultTime: '07:00' },
     { id: 'intermedia', label: 'Hora Intermédia', defaultTime: '12:00' },
     { id: 'vesperas', label: 'Vésperas', defaultTime: '19:00' },

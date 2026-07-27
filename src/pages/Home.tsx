@@ -104,7 +104,7 @@ export default function Home() {
         <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-2xl mx-auto w-full">
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight page-title text-zinc-900 dark:text-white mb-2">
+                    <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
                         {greeting}
                     </h1>
                     <p className="text-zinc-500 text-lg">{t.whatToPray}</p>
