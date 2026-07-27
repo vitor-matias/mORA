@@ -59,9 +59,12 @@ export async function readReminderSchedule(): Promise<ReminderEntry[]> {
 }
 
 /**
- * The scheduled reminder nearest `now`, within `windowMin` minutes either side.
- * The server may fire up to DELIVERY_WINDOW_MIN late, so this has to tolerate
- * drift rather than demand an exact match.
+ * The reminder this push is most likely announcing: the most recently *due*
+ * one, within `windowMin` minutes. The server may fire up to
+ * DELIVERY_WINDOW_MIN late, so this tolerates drift rather than demanding an
+ * exact match — but it only ever looks backwards, because the server never
+ * pushes before a reminder's time. Matching the nearest in either direction
+ * would label a late 07:00 push as the 07:20 reminder.
  */
 export function matchReminder(
     entries: ReminderEntry[],
@@ -70,19 +73,20 @@ export function matchReminder(
 ): ReminderEntry | null {
     const minutes = now.getHours() * 60 + now.getMinutes();
     let best: ReminderEntry | null = null;
-    let bestDelta = Infinity;
+    let bestElapsed = Infinity;
     for (const entry of entries) {
         // Exported, so callers may pass entries that never went through
         // readReminderSchedule's filter.
         if (!isReminderEntry(entry)) continue;
         const [h, m] = entry.time.split(':').map(Number);
-        // Compare around a 24h circle, so 23:50 and 00:05 are 15 minutes apart.
-        const raw = Math.abs(minutes - (h * 60 + m));
-        const delta = Math.min(raw, 1440 - raw);
-        if (delta < bestDelta) {
-            bestDelta = delta;
+        // Minutes since the reminder fell due, wrapping midnight so a 23:55
+        // reminder is 10 minutes old at 00:05 rather than 1430 minutes early.
+        let elapsed = minutes - (h * 60 + m);
+        if (elapsed < 0) elapsed += 1440;
+        if (elapsed < bestElapsed) {
+            bestElapsed = elapsed;
             best = entry;
         }
     }
-    return bestDelta <= windowMin ? best : null;
+    return bestElapsed <= windowMin ? best : null;
 }

@@ -206,7 +206,10 @@ export default {
                 key,
                 JSON.stringify({ subscription, times: scheduled, tz, lastSent })
             );
-            return json(201, { ok: true });
+            // The count is the app's proof that this Worker understands
+            // `times` — an older one stores only `time` and omits this, which
+            // is how the app knows to keep its in-app fallback running.
+            return json(201, { ok: true, times: scheduled.length });
         }
 
         if (request.method === 'DELETE') {

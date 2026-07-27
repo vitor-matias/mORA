@@ -58,7 +58,10 @@ function fetchWithTimeout(url: string, init: RequestInit, ms = 8000): Promise<Re
  * enabled. Returns true when the server accepted it.
  */
 export async function enablePushReminder(times: string[]): Promise<boolean> {
-    if (!isPushConfigured() || times.length === 0) return false;
+    // Dedupe/sort here so the count we check against the server's ack below is
+    // the same set the server stores.
+    const wanted = [...new Set(times)].sort();
+    if (!isPushConfigured() || wanted.length === 0) return false;
     try {
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
@@ -91,15 +94,29 @@ export async function enablePushReminder(times: string[]): Promise<boolean> {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 subscription: subscription.toJSON(),
-                // `time` keeps a not-yet-redeployed Worker working (it would
-                // reject a payload with no `time`); `times` is what a current
-                // Worker actually schedules on.
-                time: times[0],
-                times,
+                // `time` lets a not-yet-redeployed Worker keep serving the
+                // single-reminder case, which is all it understands.
+                time: wanted[0],
+                times: wanted,
                 tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
             }),
         });
         if (!res.ok) throw new Error(`subscription rejected: ${res.status}`);
+
+        // A Worker predating multi-time reminders reads only `time`, stores the
+        // first one and still answers 201. Trusting that would set
+        // pushSubscribed, stand the in-app timer down, and silently drop every
+        // reminder but the earliest. A current Worker echoes how many times it
+        // stored; when that doesn't match, tear the registration back down so
+        // the fallback keeps covering all of them.
+        if (wanted.length > 1) {
+            const ack = await res.json().catch(() => null);
+            if (ack?.times !== wanted.length) {
+                console.warn('Push server has no multi-reminder support; keeping the in-app fallback.');
+                await disablePushReminder();
+                return false;
+            }
+        }
 
         useAppStore.getState().setPushSubscribed(true);
         return true;
