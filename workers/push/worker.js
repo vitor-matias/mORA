@@ -20,8 +20,10 @@ const CORS = {
 };
 
 // How long after the chosen minute a reminder may still fire. Covers cron
-// jitter and the 5-minute schedule without ever double-sending (lastSentDate
-// guards that).
+// jitter and the 5-minute schedule without ever double-sending (the per-time
+// lastSent marks guard that). Mirrored by DELIVERY_WINDOW_MIN in
+// src/lib/reminderSchedule.ts, which derives both the service worker's label
+// matching and the in-app fallback's catch-up window from it — change both.
 const DELIVERY_WINDOW_MIN = 15;
 
 // Rosary reminder + the five canonical Hours, with room to spare.

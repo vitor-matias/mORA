@@ -4,7 +4,7 @@ import { useTranslations } from '@/lib/i18n';
 import { verifyPushSubscription } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
-import { writeReminderSchedule, type ReminderEntry } from '@/lib/reminderSchedule';
+import { writeReminderSchedule, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
 
 /**
  * Every reminder this device is set up for — the daily rosary reminder plus
@@ -51,9 +51,11 @@ export function buildReminderSchedule(
 export function useNotifications() {
     const { notificationTime, hourReminders, pushSubscribed } = useAppStore();
     const t = useTranslations().home;
-    // Which reminder times already fired today, so the minute tick can't
-    // repeat one. Reset when the local date rolls over.
-    const firedToday = useRef<{ date: string; times: Set<string> }>({ date: '', times: new Set() });
+    // "<due date> <HH:MM>" for each reminder already shown, so a repeated tick
+    // inside the catch-up window can't show it twice. Keyed by the date the
+    // reminder was due (not today's) so a near-midnight reminder is not
+    // suppressed the following night. Pruned in check().
+    const fired = useRef<Set<string>>(new Set());
 
     // The persisted flag can go stale (permission revoked, subscription
     // expired outside the app) — reconcile once per app start so the
@@ -82,15 +84,30 @@ export function useNotifications() {
         const check = () => {
             if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
             const now = new Date();
+            const minutes = now.getHours() * 60 + now.getMinutes();
             const today = formatISODate(now);
-            if (firedToday.current.date !== today) {
-                firedToday.current = { date: today, times: new Set() };
-            }
-            const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            const yesterday = formatISODate(new Date(now.getTime() - 86400000));
 
             for (const entry of schedule) {
-                if (entry.time !== hhmm || firedToday.current.times.has(entry.time)) continue;
-                firedToday.current.times.add(entry.time);
+                const [h, m] = entry.time.split(':').map(Number);
+                // Minutes since the reminder fell due, wrapping midnight, and
+                // the date it was due on — a 23:55 reminder seen at 00:05
+                // belongs to yesterday, or tonight's would look already sent.
+                let elapsed = minutes - (h * 60 + m);
+                let dueDate = today;
+                if (elapsed < 0) {
+                    elapsed += 1440;
+                    dueDate = yesterday;
+                }
+                // A window rather than an exact minute match: this tick can be
+                // late or skipped entirely (timer drift, background throttling,
+                // the device sleeping), and an exact match would drop the
+                // reminder for good.
+                if (elapsed >= DELIVERY_WINDOW_MIN) continue;
+
+                const mark = `${dueDate} ${entry.time}`;
+                if (fired.current.has(mark)) continue;
+                fired.current.add(mark);
 
                 const options: NotificationOptions = {
                     body: entry.body,
@@ -107,14 +124,31 @@ export function useNotifications() {
                     new Notification(entry.title, options);
                 }
             }
+
+            // Only today's and yesterday's marks can still suppress anything.
+            if (fired.current.size > 32) {
+                for (const mark of fired.current) {
+                    if (!mark.startsWith(today) && !mark.startsWith(yesterday)) {
+                        fired.current.delete(mark);
+                    }
+                }
+            }
         };
 
-        // Check every minute
-        const intervalId = setInterval(check, 60000);
+        // Align to the minute boundary so checks land just after HH:MM:00
+        // rather than at whatever second the app happened to start on.
+        let intervalId: number | undefined;
+        const alignId = window.setTimeout(() => {
+            check();
+            intervalId = window.setInterval(check, 60000);
+        }, 60000 - (Date.now() % 60000));
 
-        // Initial check in case they just opened it exactly on time
+        // Initial check in case they just opened it on time
         check();
 
-        return () => clearInterval(intervalId);
+        return () => {
+            window.clearTimeout(alignId);
+            if (intervalId !== undefined) window.clearInterval(intervalId);
+        };
     }, [schedule, pushSubscribed]);
 }

@@ -13,6 +13,21 @@ export interface ReminderEntry {
     body: string;
 }
 
+/**
+ * Mirrors DELIVERY_WINDOW_MIN in workers/push/worker.js: the Worker only sends
+ * a reminder between its time and this many minutes after. Both the label
+ * matching below and the in-app fallback timer derive their windows from it, so
+ * the push and no-push paths behave the same. Keep the two in step.
+ */
+export const DELIVERY_WINDOW_MIN = 15;
+
+/**
+ * Slack on top of the delivery window for push-service latency and for device
+ * clocks that disagree with the server's. Without it a push sent at the very
+ * end of the window would arrive just outside it and lose its label.
+ */
+const CLOCK_SKEW_ALLOWANCE_MIN = 5;
+
 const CACHE_NAME = 'mora-reminder-schedule';
 // Same-origin path that is not a real route, so nothing else can collide.
 const SCHEDULE_URL = '/__mora-reminder-schedule';
@@ -69,7 +84,7 @@ export async function readReminderSchedule(): Promise<ReminderEntry[]> {
 export function matchReminder(
     entries: ReminderEntry[],
     now: Date,
-    windowMin = 30
+    windowMin = DELIVERY_WINDOW_MIN + CLOCK_SKEW_ALLOWANCE_MIN
 ): ReminderEntry | null {
     const minutes = now.getHours() * 60 + now.getMinutes();
     let best: ReminderEntry | null = null;
