@@ -68,21 +68,31 @@ export async function publishNostrProfile(profile: NostrProfile) {
     }
 }
 
-// Community pulse: how many people prayed today. Streak events are
+// Community pulse: who prayed today, and how many. Streak events are
 // encrypted, but their existence is public metadata — each opted-in user
 // republishes their (replaceable) streak event on completing a prayer, so
 // counting distinct pubkeys with an update since local midnight counts
 // today's praying users without reading anyone's content. Undercounts by
 // design: only users with shareStreaks on are visible.
-let prayerCountCache: { value: number; fetchedAt: number; since: number } | null = null;
-const PRAYER_COUNT_TTL_MS = 5 * 60 * 1000;
+export interface PrayerPulse {
+    count: number;
+    /** Display names of the most recent few — only those with a public
+        Nostr profile, so this is usually shorter than `count`. */
+    names: string[];
+}
 
-export async function fetchTodayPrayerCount(): Promise<number | null> {
+let prayerPulseCache: { value: PrayerPulse; fetchedAt: number; since: number } | null = null;
+const PRAYER_COUNT_TTL_MS = 5 * 60 * 1000;
+/** How many names to show, and how many profiles to look up to find them. */
+const PULSE_NAMES_SHOWN = 3;
+const PULSE_PROFILES_QUERIED = 12;
+
+export async function fetchTodayPrayerPulse(): Promise<PrayerPulse | null> {
     const since = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
     // Keyed on `since` too, so the cache dies the moment "today" rolls over.
-    if (prayerCountCache && prayerCountCache.since === since
-        && Date.now() - prayerCountCache.fetchedAt < PRAYER_COUNT_TTL_MS) {
-        return prayerCountCache.value;
+    if (prayerPulseCache && prayerPulseCache.since === since
+        && Date.now() - prayerPulseCache.fetchedAt < PRAYER_COUNT_TTL_MS) {
+        return prayerPulseCache.value;
     }
     try {
         const events = await pool.querySync(RELAYS, {
@@ -90,13 +100,52 @@ export async function fetchTodayPrayerCount(): Promise<number | null> {
             '#d': ['mora-app-streak'],
             since,
         });
-        const value = new Set(events.map((e) => e.pubkey)).size;
-        prayerCountCache = { value, fetchedAt: Date.now(), since };
+        // Most recent first, so the names shown are whoever prayed last.
+        const pubkeys = [...new Set(
+            [...events].sort((a, b) => b.created_at - a.created_at).map((e) => e.pubkey)
+        )];
+        const names = await fetchDisplayNames(pubkeys.slice(0, PULSE_PROFILES_QUERIED));
+        const value: PrayerPulse = { count: pubkeys.length, names: names.slice(0, PULSE_NAMES_SHOWN) };
+        prayerPulseCache = { value, fetchedAt: Date.now(), since };
         return value;
     } catch (error) {
-        console.warn('Could not fetch community prayer count:', error);
+        console.warn('Could not fetch community prayer pulse:', error);
         return null;
     }
+}
+
+/** Newest kind-0 name per pubkey, in the order the pubkeys were given.
+    Pubkeys with no profile (or no name in it) are simply dropped. */
+async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
+    if (pubkeys.length === 0) return [];
+    let metadata: Event[];
+    try {
+        metadata = await pool.querySync(RELAYS, { kinds: [0], authors: pubkeys });
+    } catch (error) {
+        console.warn('Could not fetch profiles for the prayer pulse:', error);
+        return [];
+    }
+    const newest = new Map<string, Event>();
+    for (const event of metadata) {
+        const prev = newest.get(event.pubkey);
+        if (!prev || event.created_at > prev.created_at) newest.set(event.pubkey, event);
+    }
+    const names: string[] = [];
+    for (const pubkey of pubkeys) {
+        const event = newest.get(pubkey);
+        if (!event) continue;
+        try {
+            const profile = JSON.parse(event.content) as NostrProfile;
+            // Names are attacker-controlled: collapse whitespace and cap the
+            // length so a hostile profile can't wreck the Home layout.
+            const name = (profile.display_name || profile.name || '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 24);
+            if (name) names.push(name);
+        } catch { /* malformed profile JSON — skip this one */ }
+    }
+    return names;
 }
 
 export async function publishStreakToNostr() {

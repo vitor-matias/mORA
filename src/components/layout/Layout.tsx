@@ -62,8 +62,15 @@ export function Layout() {
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
 
-            // Status bar matches the page background: charcoal in dark, warm cream in light.
-            const themeColor = isDark ? '#121212' : '#FAF9F6';
+            // Status bar matches the page background. Read --app-bg (set by the
+            // .dark class we just toggled) rather than repeating the literals,
+            // so the bar can't drift from the page under it.
+            const appBg = getComputedStyle(document.documentElement)
+                .getPropertyValue('--app-bg')
+                .trim();
+            const themeColor = appBg
+                ? `rgb(${appBg})`
+                : (isDark ? '#121212' : '#FAF9F6'); // stylesheet not applied yet
             let meta = document.querySelector('meta[name="theme-color"]');
             if (!meta) {
                 meta = document.createElement('meta');
@@ -94,10 +101,11 @@ export function Layout() {
 
         // Font family — set as CSS variable so only content areas pick it up (not UI)
         const familyMap: Record<string, string> = {
-            // "Lora" is a screen-optimised reading serif loaded in index.html.
-            // The "system" (Predefinido) default uses it so all users get a
-            // comfortable reading experience out of the box.
-            system: '"Lora", Georgia, "Times New Roman", serif',
+            // "Predefinido" matches the app chrome, so readings and UI are one
+            // family by default. "Serifada" opts into Lora, a screen-optimised
+            // reading serif loaded in index.html. (These two used to resolve to
+            // the same serif, which made the setting look broken.)
+            system: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             serif: '"Lora", Georgia, "Times New Roman", serif',
             sans: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         };
@@ -109,9 +117,9 @@ export function Layout() {
     }, [theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#FAF9F6] dark:bg-[#121212] text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
+        <div className="flex flex-col min-h-screen bg-[rgb(var(--app-bg))] text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
             <ScrollToTop />
-            {/* Aurora/starfield backdrop tinted by the day's liturgical color */}
+            {/* Faint backdrop wash tinted by the day's liturgical color */}
             <div aria-hidden="true" className="app-ambient" />
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device

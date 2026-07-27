@@ -107,7 +107,7 @@ export default function Rosary() {
                         onClick={() => changeMode(mode)}
                         aria-pressed={rosaryMode === mode}
                         className={`flex-1 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${rosaryMode === mode
-                            ? 'glass-panel text-liturgy-700 dark:text-liturgy-400'
+                            ? 'surface text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                             }`}
                     >
@@ -151,7 +151,7 @@ export default function Rosary() {
                         {mysteries[todayMysteryClass].map((m) => (
                             <article
                                 key={m.id}
-                                className="glass-panel rounded-3xl p-5"
+                                className="surface rounded-3xl p-5"
                             >
                                 <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-3">
                                     {m.mysteryNum}º Mistério
@@ -184,7 +184,7 @@ export default function Rosary() {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext(); } }}
-                    className="glass-panel rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none active:scale-[0.995] transition-transform"
+                    className="surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none active:scale-[0.995] transition-transform"
                 >
                     <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-4 self-start shrink-0">
                         {currentStep.title}
@@ -272,7 +272,7 @@ export default function Rosary() {
             {/* Finish Modal Overlay */}
             {showFinish && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="glass-panel rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95">
+                    <div className="surface rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95">
                         <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
                             <PartyPopper size={32} />
                         </div>

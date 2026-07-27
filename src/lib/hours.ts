@@ -10,6 +10,22 @@ export interface HourSelection {
     label: string;
 }
 
+export interface CanonicalHour {
+    id: string;
+    label: string;
+    /** Time proposed when the user first switches this reminder on. */
+    defaultTime: string;
+}
+
+/** The Hours a user can be reminded of, in the order they fall in the day. */
+export const CANONICAL_HOURS: CanonicalHour[] = [
+    { id: 'oficio', label: 'Ofício de Leitura', defaultTime: '05:30' },
+    { id: 'laudes', label: 'Laudes', defaultTime: '07:00' },
+    { id: 'intermedia', label: 'Hora Intermédia', defaultTime: '12:00' },
+    { id: 'vesperas', label: 'Vésperas', defaultTime: '19:00' },
+    { id: 'completas', label: 'Completas', defaultTime: '21:30' },
+];
+
 export function getHourForTime(now: Date = new Date()): HourSelection {
     const h = now.getHours();
     if (h >= 6 && h < 9) return { id: 'laudes', subHour: null, label: 'Laudes' };

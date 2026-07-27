@@ -266,7 +266,7 @@ export default function LiturgiaHoras() {
                                         aria-pressed={activeHour === moment.id}
                                         className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all ${activeHour === moment.id
                                             ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
-                                            : 'glass-panel text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
+                                            : 'surface text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
                                         <moment.icon size={20} strokeWidth={activeHour === moment.id ? 2.4 : 1.8} aria-hidden="true" />
@@ -399,7 +399,7 @@ export default function LiturgiaHoras() {
                             {/* Explicit completion — one per day, whatever hour was prayed */}
                             <div className="mt-6 mb-2">
                                 {prayedToday ? (
-                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl glass-panel glow-ring text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />
                                         Rezado hoje — {streaks.liturgy_hours.days} {streaks.liturgy_hours.days === 1 ? 'dia' : 'dias'} seguidos
                                     </div>
@@ -415,7 +415,7 @@ export default function LiturgiaHoras() {
                             </div>
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 glass-panel rounded-2xl">
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
                             <p className="text-zinc-500 text-center">
                                 Não foi possível carregar a Liturgia das Horas. Verifique a sua ligação à internet.
                             </p>

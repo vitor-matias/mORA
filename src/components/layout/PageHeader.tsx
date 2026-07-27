@@ -40,11 +40,11 @@ export function PageHeader({
     }, []);
 
     return (
-        // At rest the header floats directly on the aurora — the look of the
-        // original Diretório header. The frosted bar only appears once the
-        // page scrolls, when content needs separating from the title.
+        // At rest the header sits directly on the page background. The bar
+        // only appears once the page scrolls, when content needs separating
+        // from the title.
         <header className={`sticky top-0 z-30 transition-all duration-300 ${
-            isScrolled ? 'glass-bar glass-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
+            isScrolled ? 'app-bar app-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
         }`}>
             <div className={`${width} mx-auto px-6 flex items-center gap-4`}>
                 <button
@@ -58,7 +58,7 @@ export function PageHeader({
                     <ChevronRight className="rotate-180" size={isScrolled ? 20 : 24} />
                 </button>
                 <div className="min-w-0 flex-1">
-                    <h1 className={`font-bold tracking-tight text-halo transition-all truncate ${
+                    <h1 className={`font-bold tracking-tight page-title transition-all truncate ${
                         isScrolled ? 'text-xl' : 'text-3xl'
                     }`}>
                         {title}
