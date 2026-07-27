@@ -92,7 +92,7 @@ export default function LiturgicalDirectory() {
                 on the right; mobile keeps the stacked flow. */}
             <div className="p-6 max-w-md lg:max-w-4xl mx-auto space-y-6 lg:space-y-0 flex-1 w-full flex flex-col lg:flex-row lg:gap-8 lg:items-start">
 
-            <section className="glass-panel rounded-2xl p-3 lg:w-96 lg:shrink-0 lg:sticky lg:top-24">
+            <section className="surface rounded-2xl p-3 lg:w-96 lg:shrink-0 lg:sticky lg:top-24">
                 {/* Month navigation */}
                 <div className="flex items-center justify-between mb-2">
                     <button
@@ -172,7 +172,7 @@ export default function LiturgicalDirectory() {
             </section>
 
             {/* Selected day details */}
-            <section className="glass-panel glow-ring rounded-2xl p-4 lg:flex-1 lg:min-w-0">
+            <section className="surface surface-accent rounded-2xl p-4 lg:flex-1 lg:min-w-0">
                 <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5 capitalize">
                     {new Date(selected + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </p>
@@ -180,10 +180,7 @@ export default function LiturgicalDirectory() {
                     <div className="h-5 w-2/3 rounded bg-liturgy-100 dark:bg-liturgy-900/50 animate-pulse" />
                 ) : selectedInfo ? (
                     <>
-                        <h2
-                            className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100"
-                            style={{ fontFamily: 'var(--content-font-family, inherit)' }}
-                        >
+                        <h2 className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
                             {selectedInfo.dayName}
                         </h2>
                         <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-liturgy-800 dark:text-liturgy-300">

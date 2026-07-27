@@ -53,11 +53,12 @@ function fetchWithTimeout(url: string, init: RequestInit, ms = 8000): Promise<Re
 }
 
 /**
- * Subscribes this browser to the daily reminder push at `time` (HH:MM,
- * user's local timezone). Returns true when the server accepted it.
+ * Subscribes this browser to reminder pushes at `times` (HH:MM, user's local
+ * timezone) — the daily rosary reminder plus any Liturgy of the Hours the user
+ * enabled. Returns true when the server accepted it.
  */
-export async function enablePushReminder(time: string): Promise<boolean> {
-    if (!isPushConfigured()) return false;
+export async function enablePushReminder(times: string[]): Promise<boolean> {
+    if (!isPushConfigured() || times.length === 0) return false;
     try {
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
@@ -90,7 +91,11 @@ export async function enablePushReminder(time: string): Promise<boolean> {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 subscription: subscription.toJSON(),
-                time,
+                // `time` keeps a not-yet-redeployed Worker working (it would
+                // reject a payload with no `time`); `times` is what a current
+                // Worker actually schedules on.
+                time: times[0],
+                times,
                 tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
             }),
         });

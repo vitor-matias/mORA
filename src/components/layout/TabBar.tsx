@@ -75,7 +75,7 @@ export function TabBar() {
                 hide ? 'translate-y-[150%]' : 'translate-y-0'
             }`}
         >
-            <div className="max-w-md lg:max-w-xl mx-auto flex glass-panel rounded-3xl px-1">
+            <div className="max-w-md lg:max-w-xl mx-auto flex surface rounded-3xl px-1">
                 {tabs.map(({ to, label, icon: Icon, end }) => (
                     <NavLink
                         key={to}
@@ -96,7 +96,6 @@ export function TabBar() {
                                     size={22}
                                     strokeWidth={isActive ? 2.4 : 1.8}
                                     aria-hidden="true"
-                                    className={isActive ? 'drop-shadow-[0_0_9px_rgb(var(--liturgy-500)/0.9)]' : undefined}
                                 />
                                 <span>{label}</span>
                             </>

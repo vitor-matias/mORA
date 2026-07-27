@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock } from "lucide-react";
+import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
@@ -10,7 +11,7 @@ import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib
 
 export default function Profile() {
     const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
-    const { theme, setTheme, notificationTime, setNotificationTime, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -21,6 +22,33 @@ export default function Profile() {
     // Custom key input
     const [customKey, setCustomKey] = useState("");
     const [keyError, setKeyError] = useState("");
+
+    // New-identity name
+    const [newIdentityName, setNewIdentityName] = useState("");
+    const [isCreatingIdentity, setIsCreatingIdentity] = useState(false);
+
+    // A new identity publishes its display name straight away — without one the
+    // account shows up as a bare public key everywhere, including the
+    // "who prayed today" line on Início.
+    const handleCreateIdentity = async () => {
+        const name = newIdentityName.trim();
+        setIsCreatingIdentity(true);
+        try {
+            generateLocalKey();
+            if (!name) return;
+            const profile = { name, display_name: name };
+            setProfile(profile);
+            try {
+                await publishNostrProfile(profile);
+            } catch (e) {
+                // The identity exists either way; the name can be re-published
+                // later from "Editar Perfil".
+                console.warn('Identity created, but publishing the name failed:', e);
+            }
+        } finally {
+            setIsCreatingIdentity(false);
+        }
+    };
 
     useEffect(() => {
         if (pubkey) {
@@ -47,26 +75,43 @@ export default function Profile() {
         }
     };
 
-    const clearNotification = () => {
-        setNotificationTime(null);
-        disablePushReminder();
+    // A push subscription carries every time this device wants reminding at,
+    // so any change — rosary time or an Hour — re-registers the whole set.
+    // With a push server configured the reminders arrive with the app closed;
+    // otherwise they fall back to the in-app timer.
+    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>) => {
+        const times = [...new Set([
+            ...(nextTime ? [nextTime] : []),
+            ...Object.values(nextHours),
+        ])].sort();
+
+        if (times.length === 0) {
+            disablePushReminder();
+        } else if (isPushConfigured()) {
+            enablePushReminder(times);
+        } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
     };
 
-    // Handles picking a notification time. With a push server configured the
-    // reminder is delivered via Web Push (works with the app closed);
-    // otherwise it falls back to the in-app timer.
+    const clearNotification = () => {
+        setNotificationTime(null);
+        syncReminders(null, hourReminders);
+    };
+
     const handleNotificationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const time = e.target.value;
-        if (time) {
-            setNotificationTime(time);
-            if (isPushConfigured()) {
-                enablePushReminder(time);
-            } else if (Notification.permission !== 'granted') {
-                Notification.requestPermission();
-            }
-        } else {
-            clearNotification();
-        }
+        const time = e.target.value || null;
+        setNotificationTime(time);
+        syncReminders(time, hourReminders);
+    };
+
+    // Switching an Hour on seeds it with its traditional time; the user can
+    // then move it. Switching off removes it from the schedule entirely.
+    const setHourTime = (hourId: string, time: string | null) => {
+        const nextHours = { ...hourReminders };
+        if (time) nextHours[hourId] = time; else delete nextHours[hourId];
+        setHourReminder(hourId, time);
+        syncReminders(notificationTime, nextHours);
     };
 
     return (
@@ -77,7 +122,7 @@ export default function Profile() {
             <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
             {/* Application Settings Section */}
-            <section className="glass-panel rounded-2xl p-6">
+            <section className="surface rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                     <Settings className="text-zinc-400" size={20} />
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.settings}</h2>
@@ -222,11 +267,54 @@ export default function Profile() {
                                 : 'Por agora, o lembrete só aparece com a aplicação aberta.'}
                         </p>
                     </div>
+
+                    {/* Liturgy of the Hours reminders — one per canonical Hour */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Clock className="text-zinc-400" size={16} />
+                            <p className="text-sm font-medium">Liturgia das Horas</p>
+                        </div>
+                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
+                            Escolha as Horas que quer rezar — cada uma avisa à hora que definir.
+                        </p>
+                        <div className="space-y-2">
+                            {CANONICAL_HOURS.map((hour) => {
+                                const time = hourReminders[hour.id];
+                                const enabled = Boolean(time);
+                                return (
+                                    <div key={hour.id} className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={enabled}
+                                            aria-label={`Lembrete: ${hour.label}`}
+                                            onClick={() => setHourTime(hour.id, enabled ? null : hour.defaultTime)}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                                        >
+                                            <span
+                                                aria-hidden="true"
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                                            />
+                                        </button>
+                                        <span className="text-sm flex-1 min-w-0 truncate">{hour.label}</span>
+                                        <input
+                                            type="time"
+                                            value={time ?? hour.defaultTime}
+                                            disabled={!enabled}
+                                            aria-label={`Hora do lembrete: ${hour.label}`}
+                                            onChange={(e) => setHourTime(hour.id, e.target.value || null)}
+                                            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-500 outline-none"
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
             </section>
             {/* Nostr Identity Section */}
             {pubkey ? (
-                <section className="glass-panel rounded-2xl p-6">
+                <section className="surface rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.identity}</h2>
                         {!isEditingProfile && (
@@ -315,6 +403,7 @@ export default function Profile() {
                             <p className="text-sm font-medium">Sincronizar sequências</p>
                             <p className="text-xs text-zinc-500 mt-0.5">
                                 Guarda as suas sequências de oração na rede, encriptadas — só o seu dispositivo as consegue ler.
+                                O seu nome de perfil pode aparecer a outras pessoas na lista de quem rezou hoje.
                             </p>
                         </div>
                         <button
@@ -344,7 +433,7 @@ export default function Profile() {
                     </button>
                 </section>
             ) : (
-                <section className="glass-panel rounded-2xl p-6">
+                <section className="surface rounded-2xl p-6">
                     <div className="space-y-4">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {t.loginPrompt}
@@ -362,7 +451,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="glass-panel px-2 text-zinc-500">{t.or}</span>
+                                <span className="surface px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
@@ -402,18 +491,29 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="glass-panel px-2 text-zinc-500">{t.or}</span>
+                                <span className="surface px-2 text-zinc-500">{t.or}</span>
                             </div>
                         </div>
 
-                        <button
-                            onClick={generateLocalKey}
-                            className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors"
-                        >
-                            {t.createKey}
-                        </button>
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                value={newIdentityName}
+                                onChange={(e) => setNewIdentityName(e.target.value)}
+                                maxLength={24}
+                                placeholder="O seu nome (opcional)"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                            />
+                            <button
+                                onClick={handleCreateIdentity}
+                                disabled={isCreatingIdentity}
+                                className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors disabled:opacity-60"
+                            >
+                                {isCreatingIdentity ? 'A criar…' : t.createKey}
+                            </button>
+                        </div>
                         <p className="text-xs text-zinc-500 text-center">
-                            {t.keyDisclaimer}
+                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje» — pode mudá-lo ou deixá-lo em branco.
                         </p>
                     </div>
                 </section>

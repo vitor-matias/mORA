@@ -24,6 +24,9 @@ const CORS = {
 // guards that).
 const DELIVERY_WINDOW_MIN = 15;
 
+// Rosary reminder + the five canonical Hours, with room to spare.
+const MAX_TIMES_PER_SUBSCRIPTION = 12;
+
 // Known Web Push service hosts. Restricting endpoints to these prevents the
 // worker from being abused as a credentialed requester to arbitrary servers
 // (SSRF) or as an oracle for VAPID JWTs with attacker-chosen `aud` values.
@@ -154,20 +157,25 @@ export default {
         }
 
         if (request.method === 'POST') {
-            const { subscription, time, tz } = body ?? {};
+            const { subscription, time, times, tz } = body ?? {};
             const endpoint = subscription?.endpoint;
+            // `times` is the current field (rosary reminder + each enabled
+            // Hour); `time` is the pre-Hours single-reminder field, still
+            // accepted so an older app build keeps working.
+            const wanted = Array.isArray(times) ? times : [time];
             if (
                 typeof endpoint !== 'string' || !isAllowedPushEndpoint(endpoint) ||
                 typeof subscription?.keys?.p256dh !== 'string' ||
                 typeof subscription?.keys?.auth !== 'string' ||
-                typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ||
+                wanted.length === 0 || wanted.length > MAX_TIMES_PER_SUBSCRIPTION ||
+                !wanted.every((t) => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) ||
                 typeof tz !== 'string' || tz.length > 64 || !localParts(tz, new Date())
             ) {
                 return json(400, { error: 'invalid subscription payload' });
             }
             await env.SUBSCRIPTIONS.put(
                 await endpointKey(endpoint),
-                JSON.stringify({ subscription, time, tz, lastSentDate: null })
+                JSON.stringify({ subscription, times: [...new Set(wanted)].sort(), tz, lastSent: {} })
             );
             return json(201, { ok: true });
         }
@@ -206,20 +214,47 @@ export default {
                     }
 
                     const local = localParts(rec.tz, now);
-                    if (!local || rec.lastSentDate === local.date) continue;
+                    if (!local) continue;
 
-                    const [h, m] = rec.time.split(':').map(Number);
-                    const target = h * 60 + m;
-                    if (local.minutes < target || local.minutes - target >= DELIVERY_WINDOW_MIN) continue;
+                    // Records written before per-Hour reminders carry a single
+                    // `time`/`lastSentDate`; read them as a one-entry schedule
+                    // and write them back in the current shape below.
+                    const times = Array.isArray(rec.times) ? rec.times : [rec.time];
+                    const lastSent = rec.lastSent
+                        ?? (rec.lastSentDate ? { [rec.time]: rec.lastSentDate } : {});
 
-                    const outcome = await sendPush(rec.subscription, env);
-                    if (outcome === 'gone') {
-                        await env.SUBSCRIPTIONS.delete(key);
-                    } else if (outcome === 'sent') {
-                        rec.lastSentDate = local.date;
-                        await env.SUBSCRIPTIONS.put(key, JSON.stringify(rec));
+                    let dirty = false;
+                    let dropped = false;
+                    for (const time of times) {
+                        if (typeof time !== 'string' || lastSent[time] === local.date) continue;
+
+                        const [h, m] = time.split(':').map(Number);
+                        const target = h * 60 + m;
+                        if (local.minutes < target || local.minutes - target >= DELIVERY_WINDOW_MIN) continue;
+
+                        const outcome = await sendPush(rec.subscription, env);
+                        if (outcome === 'gone') {
+                            await env.SUBSCRIPTIONS.delete(key);
+                            dropped = true;
+                            break;
+                        }
+                        if (outcome === 'sent') {
+                            lastSent[time] = local.date;
+                            dirty = true;
+                        }
+                        // 'failed' → retried on the next cron tick within the window
                     }
-                    // 'failed' → retried on the next cron tick within the window
+
+                    if (!dropped && dirty) {
+                        // Drop marks for times no longer scheduled, so the map
+                        // can't grow without bound as the user edits reminders.
+                        for (const t of Object.keys(lastSent)) {
+                            if (!times.includes(t)) delete lastSent[t];
+                        }
+                        await env.SUBSCRIPTIONS.put(key, JSON.stringify({
+                            subscription: rec.subscription, tz: rec.tz, times, lastSent,
+                        }));
+                    }
                 }
             } while (cursor);
         })());

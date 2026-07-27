@@ -3,6 +3,14 @@ import { persist } from 'zustand/middleware';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
 import type { NostrProfile } from '@/lib/nostr';
+import { useAppStore } from '@/store/app';
+
+// Signing in is the point at which a user gets an identity to sync under, so
+// sync starts on and they can turn it off in Perfil. Logout resets it, so it
+// is never carried over to whoever signs in next on this device.
+function enableSyncForNewIdentity() {
+    useAppStore.getState().setShareStreaks(true);
+}
 
 interface AuthState {
     pubkey: string | null;
@@ -33,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
                     }
                     const pubkey = await window.nostr.getPublicKey();
                     set({ pubkey, privkey: null, isNip07: true });
+                    enableSyncForNewIdentity();
                 } catch (error) {
                     console.error('Failed to login with NIP-07:', error);
                     throw error;
@@ -58,6 +67,7 @@ export const useAuthStore = create<AuthState>()(
                     const secretKeyBytes = new Uint8Array(privkeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
                     const pubkeyHex = getPublicKey(secretKeyBytes);
                     set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false });
+                    enableSyncForNewIdentity();
                 } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
                 }
@@ -68,6 +78,7 @@ export const useAuthStore = create<AuthState>()(
                 const privkeyHex = bytesToHex(secretKey);
                 const pubkeyHex = getPublicKey(secretKey);
                 set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false });
+                enableSyncForNewIdentity();
             },
 
             logout: () => {

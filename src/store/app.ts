@@ -78,6 +78,10 @@ interface AppState {
     setTheme: (theme: ThemeMode) => void;
     notificationTime: string | null;
     setNotificationTime: (time: string | null) => void;
+    /** Liturgy of the Hours reminders: canonical-hour id → "HH:MM". A missing
+        key means that Hour is not being reminded. */
+    hourReminders: Record<string, string>;
+    setHourReminder: (hourId: string, time: string | null) => void;
     // True while this browser holds a server-registered Web Push
     // subscription; the in-app reminder timer stands down then.
     pushSubscribed: boolean;
@@ -118,6 +122,12 @@ export const useAppStore = create<AppState>()(
             setTheme: (theme) => set({ theme }),
             notificationTime: null,
             setNotificationTime: (notificationTime) => set({ notificationTime }),
+            hourReminders: {},
+            setHourReminder: (hourId, time) => set((state) => {
+                const next = { ...state.hourReminders };
+                if (time) next[hourId] = time; else delete next[hourId];
+                return { hourReminders: next };
+            }),
             pushSubscribed: false,
             setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',
