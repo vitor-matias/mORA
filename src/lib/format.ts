@@ -8,6 +8,12 @@ export function capitalizeFirst(text: string): string {
     return text.charAt(0).toLocaleUpperCase('pt-PT') + text.slice(1);
 }
 
+/** Join items the Portuguese way: "a", "a e b", "a, b e c". */
+export function joinWithE(items: string[]): string {
+    if (items.length <= 1) return items[0] ?? '';
+    return `${items.slice(0, -1).join(', ')} e ${items[items.length - 1]}`;
+}
+
 /** Format a date for display headers, e.g. "Sábado, 11 de julho". */
 export function formatDisplayDate(date: Date): string {
     return capitalizeFirst(

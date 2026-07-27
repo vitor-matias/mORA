@@ -4,7 +4,7 @@ import { BookOpen, Cross, Clock, User, Flame, ChevronRight, ArrowRight, Calendar
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
 import { useTranslations } from "@/lib/i18n";
-import { getGreeting, formatDisplayDate, formatISODate } from "@/lib/format";
+import { getGreeting, formatDisplayDate, formatISODate, joinWithE } from "@/lib/format";
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { getDefaultMassDate } from "@/lib/liturgy";
@@ -18,12 +18,6 @@ const COLOR_LABELS: Record<string, string> = {
     rosa: 'Rosa',
 };
 
-/** "Ana" / "Ana e Bruno" / "Ana, Bruno e Carla" */
-function joinNames(names: string[]): string {
-    if (names.length <= 1) return names[0] ?? '';
-    return `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
-}
-
 /** The community-pulse line. Falls back to a bare count when nobody who
     prayed today has a public profile name. */
 function prayerPulseText({ count, names }: PrayerPulse): string {
@@ -32,7 +26,7 @@ function prayerPulseText({ count, names }: PrayerPulse): string {
         return `${count} ${count === 1 ? 'pessoa' : 'pessoas'} ${suffix}`;
     }
     const others = count - names.length;
-    const subject = others > 0 ? `${joinNames(names)} e mais ${others}` : joinNames(names);
+    const subject = others > 0 ? `${joinWithE(names)} e mais ${others}` : joinWithE(names);
     return `${subject} ${suffix}`;
 }
 

@@ -16,6 +16,21 @@ export interface ReminderEntry {
 const CACHE_NAME = 'mora-reminder-schedule';
 // Same-origin path that is not a real route, so nothing else can collide.
 const SCHEDULE_URL = '/__mora-reminder-schedule';
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * The cache outlives any single app version, so what comes back may predate a
+ * schema change or be partially written. Entries are validated rather than
+ * trusted: one malformed record must not throw inside the push handler, which
+ * would leave the user with no notification at all.
+ */
+function isReminderEntry(value: unknown): value is ReminderEntry {
+    if (typeof value !== 'object' || value === null) return false;
+    const entry = value as Record<string, unknown>;
+    return typeof entry.time === 'string' && TIME_PATTERN.test(entry.time)
+        && typeof entry.title === 'string'
+        && typeof entry.body === 'string';
+}
 
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {
     if (typeof caches === 'undefined') return;
@@ -37,7 +52,7 @@ export async function readReminderSchedule(): Promise<ReminderEntry[]> {
         const res = await cache.match(SCHEDULE_URL);
         if (!res) return [];
         const parsed: unknown = await res.json();
-        return Array.isArray(parsed) ? (parsed as ReminderEntry[]) : [];
+        return Array.isArray(parsed) ? parsed.filter(isReminderEntry) : [];
     } catch {
         return [];
     }
@@ -57,8 +72,10 @@ export function matchReminder(
     let best: ReminderEntry | null = null;
     let bestDelta = Infinity;
     for (const entry of entries) {
+        // Exported, so callers may pass entries that never went through
+        // readReminderSchedule's filter.
+        if (!isReminderEntry(entry)) continue;
         const [h, m] = entry.time.split(':').map(Number);
-        if (Number.isNaN(h) || Number.isNaN(m)) continue;
         // Compare around a 24h circle, so 23:50 and 00:05 are 15 minutes apart.
         const raw = Math.abs(minutes - (h * 60 + m));
         const delta = Math.min(raw, 1440 - raw);

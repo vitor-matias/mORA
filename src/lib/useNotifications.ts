@@ -3,38 +3,49 @@ import { useAppStore } from '@/store/app';
 import { useTranslations } from '@/lib/i18n';
 import { verifyPushSubscription } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
-import { formatISODate } from '@/lib/format';
+import { formatISODate, joinWithE } from '@/lib/format';
 import { writeReminderSchedule, type ReminderEntry } from '@/lib/reminderSchedule';
 
 /**
  * Every reminder this device is set up for — the daily rosary reminder plus
- * whichever Hours the user switched on — sorted by time of day. Single source
- * of truth for both the in-app timer below and the service worker's text.
+ * whichever Hours the user switched on — sorted by time of day, at most one
+ * entry per time. Single source of truth for both the in-app timer below and
+ * the service worker's text.
+ *
+ * Times must be unique: the push server de-dupes them and the service worker
+ * matches a single entry per push, so two prayers due at the same minute have
+ * to share one message or the second would never be announced at all.
  */
 export function buildReminderSchedule(
     notificationTime: string | null,
     hourReminders: Record<string, string>,
     rosaryTitle: string
 ): ReminderEntry[] {
-    const entries: ReminderEntry[] = [];
+    const drafts: { time: string; isHour: boolean; label: string }[] = [];
     if (notificationTime) {
-        entries.push({
-            time: notificationTime,
-            title: 'mORA — Hora da oração 🙏',
-            body: `É hora de rezar o ${rosaryTitle}`,
-        });
+        drafts.push({ time: notificationTime, isHour: false, label: `o ${rosaryTitle}` });
     }
     for (const hour of CANONICAL_HOURS) {
         const time = hourReminders[hour.id];
-        if (time) {
-            entries.push({
-                time,
-                title: 'mORA — Liturgia das Horas 🙏',
-                body: `É hora de rezar ${hour.label}`,
-            });
-        }
+        if (time) drafts.push({ time, isHour: true, label: hour.label });
     }
-    return entries.sort((a, b) => a.time.localeCompare(b.time));
+
+    const byTime = new Map<string, typeof drafts>();
+    for (const draft of drafts) {
+        const group = byTime.get(draft.time);
+        if (group) group.push(draft);
+        else byTime.set(draft.time, [draft]);
+    }
+
+    return [...byTime.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([time, group]) => ({
+            time,
+            title: group.every((d) => d.isHour)
+                ? 'mORA — Liturgia das Horas 🙏'
+                : 'mORA — Hora da oração 🙏',
+            body: `É hora de rezar ${joinWithE(group.map((d) => d.label))}`,
+        }));
 }
 
 export function useNotifications() {

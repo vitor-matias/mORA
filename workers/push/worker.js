@@ -111,6 +111,13 @@ async function sendPush(subscription, env) {
     }
 }
 
+/** The local calendar day before `isoDate` ("YYYY-MM-DD"). */
+function previousDate(isoDate) {
+    const d = new Date(`${isoDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().slice(0, 10);
+}
+
 function localParts(tz, now) {
     try {
         const fmt = new Intl.DateTimeFormat('en-CA', {
@@ -173,9 +180,31 @@ export default {
             ) {
                 return json(400, { error: 'invalid subscription payload' });
             }
+            const key = await endpointKey(endpoint);
+            const scheduled = [...new Set(wanted)].sort();
+
+            // Carry forward send marks for times that are still scheduled. Every
+            // reminder edit re-registers the whole set, so clearing them here
+            // would let a reminder that already fired today fire again on the
+            // next tick inside its delivery window.
+            const lastSent = {};
+            const existingRaw = await env.SUBSCRIPTIONS.get(key);
+            if (existingRaw) {
+                try {
+                    const prev = JSON.parse(existingRaw);
+                    const prevSent = prev.lastSent
+                        ?? (prev.lastSentDate ? { [prev.time]: prev.lastSentDate } : {});
+                    for (const t of scheduled) {
+                        if (typeof prevSent[t] === 'string') lastSent[t] = prevSent[t];
+                    }
+                } catch {
+                    // Corrupt record — start with a clean slate.
+                }
+            }
+
             await env.SUBSCRIPTIONS.put(
-                await endpointKey(endpoint),
-                JSON.stringify({ subscription, times: [...new Set(wanted)].sort(), tz, lastSent: {} })
+                key,
+                JSON.stringify({ subscription, times: scheduled, tz, lastSent })
             );
             return json(201, { ok: true });
         }
@@ -226,11 +255,23 @@ export default {
                     let dirty = false;
                     let dropped = false;
                     for (const time of times) {
-                        if (typeof time !== 'string' || lastSent[time] === local.date) continue;
+                        if (typeof time !== 'string') continue;
 
                         const [h, m] = time.split(':').map(Number);
                         const target = h * 60 + m;
-                        if (local.minutes < target || local.minutes - target >= DELIVERY_WINDOW_MIN) continue;
+
+                        // Completas sits near midnight, so the delivery window
+                        // has to wrap: a 23:55 reminder is still due at 00:05.
+                        // It belongs to the previous local date — key the send
+                        // mark that way, or tonight's send looks already done.
+                        let delta = local.minutes - target;
+                        let dueDate = local.date;
+                        if (delta < 0 && delta + 1440 < DELIVERY_WINDOW_MIN) {
+                            delta += 1440;
+                            dueDate = previousDate(local.date);
+                        }
+                        if (delta < 0 || delta >= DELIVERY_WINDOW_MIN) continue;
+                        if (lastSent[time] === dueDate) continue;
 
                         const outcome = await sendPush(rec.subscription, env);
                         if (outcome === 'gone') {
@@ -239,7 +280,7 @@ export default {
                             break;
                         }
                         if (outcome === 'sent') {
-                            lastSent[time] = local.date;
+                            lastSent[time] = dueDate;
                             dirty = true;
                         }
                         // 'failed' → retried on the next cron tick within the window
