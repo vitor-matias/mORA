@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronRight, ChevronLeft, Calendar, Play, Pause, Minus, Plus, CheckCircle2, RotateCcw } from "lucide-react";
+import { ChevronRight, ChevronLeft, Calendar, CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
-import { useAppStore, isCompletedToday, SCROLL_LEVELS, clampScrollLevel } from "@/store/app";
+import { useAppStore, isCompletedToday } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
+import { useAutoScroll } from "@/lib/useAutoScroll";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
+import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
+import { DayCard } from "@/components/DayInfo";
 import { SaintOfDayCard } from "@/components/SaintOfDay";
 
 // Labels that open a liturgical reading section.
@@ -290,7 +292,7 @@ export default function Liturgy() {
     const [retryToken, setRetryToken] = useState(0);
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
 
-    const { streaks, incrementStreak, setLiturgicalColorOverride, autoScrollSpeed } = useAppStore();
+    const { streaks, incrementStreak, setLiturgicalColorOverride } = useAppStore();
 
     // Date being viewed — a ?date=YYYY-MM-DD param (e.g. from the calendar
     // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
@@ -324,23 +326,6 @@ export default function Liturgy() {
     // simply stale (renders as "not loaded") rather than needing a reset.
     const [dayInfoState, setDayInfoState] = useState<{ dateStr: string; info: LiturgicalDayInfo | null } | null>(null);
     const dayInfo = dayInfoState?.dateStr === selectedDateStr ? dayInfoState.info : null;
-
-    // Autoscroll
-    const [isAutoScrolling, setIsAutoScrolling] = useState(false);
-    // Index into SCROLL_LEVELS; starts at the default configured in Profile —
-    // the +/- controls only adjust this session, not the saved default.
-    const [scrollSpeed, setScrollSpeed] = useState<number>(() => clampScrollLevel(autoScrollSpeed));
-    // Nothing left to scroll — the start button is pointless then
-    const [atPageEnd, setAtPageEnd] = useState(false);
-    const rafRef = useRef<number | null>(null);
-    const lastTimeRef = useRef<number | null>(null);
-    // Float accumulator for the scroll position. window.scrollTo/scrollBy
-    // round to whole pixels per call, so the sub-pixel per-frame delta
-    // (~0.3px at 120fps) would otherwise round to 0 and never advance.
-    const scrollAccRef = useRef(0);
-    // Speed kept in a ref so changes apply to the running loop immediately.
-    const speedRef = useRef(scrollSpeed);
-    useEffect(() => { speedRef.current = scrollSpeed; }, [scrollSpeed]);
 
     // Table of contents
     const articleRef = useRef<HTMLElement>(null);
@@ -469,6 +454,10 @@ export default function Liturgy() {
         return makeCommentariesCollapsible(result);
     }, [liturgy, showOnlyReadings]);
 
+    // Hands-free scrolling through the readings.
+    const scroll = useAutoScroll(displayHtml);
+    const { stop: stopScroll } = scroll;
+
     // Rebuild TOC after the article renders with new content.
     // We depend on both displayHtml (content) and loading (mount gate).
     // Fall back to document.querySelector in case the ref isn't captured yet.
@@ -523,123 +512,15 @@ export default function Liturgy() {
         return () => window.removeEventListener('scroll', onScroll);
     }, [sections]);
 
-    // ── Autoscroll ────────────────────────────────────────────────────────
-
-    const stopAutoScroll = useCallback(() => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-        lastTimeRef.current = null;
-        setIsAutoScrolling(false);
-    }, []);
-
-    const startAutoScroll = useCallback(() => {
-        setIsAutoScrolling(true);
-        // Seed the float accumulator with the current position so we don't
-        // jump on start.
-        scrollAccRef.current = window.scrollY;
-        lastTimeRef.current = null;
-
-        const step = (time: number) => {
-            if (lastTimeRef.current !== null) {
-                // Cap elapsed so a backgrounded tab doesn't leap on return.
-                const elapsed = Math.min((time - lastTimeRef.current) / 1000, 0.1);
-                const pxPerSec = SCROLL_LEVELS[speedRef.current].pps;
-                scrollAccRef.current += pxPerSec * elapsed;
-                window.scrollTo(0, scrollAccRef.current);
-
-                const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-                if (scrollAccRef.current >= maxScroll - 1) {
-                    stopAutoScroll();
-                    return;
-                }
-            }
-            lastTimeRef.current = time;
-            rafRef.current = requestAnimationFrame(step);
-        };
-        rafRef.current = requestAnimationFrame(step);
-    }, [stopAutoScroll]);
-
-    const toggleAutoScroll = useCallback(() => {
-        if (isAutoScrolling) stopAutoScroll(); else startAutoScroll();
-    }, [isAutoScrolling, startAutoScroll, stopAutoScroll]);
-
-    // Pause when the user manually scrolls (touchmove = drag, not tap).
-    // Using touchmove rather than touchstart means tapping speed/stop
-    // controls won't accidentally cancel the scroll mid-session.
-    useEffect(() => {
-        if (!isAutoScrolling) return;
-        const stop = () => stopAutoScroll();
-        window.addEventListener('wheel', stop, { passive: true });
-        window.addEventListener('touchmove', stop, { passive: true });
-        return () => {
-            window.removeEventListener('wheel', stop);
-            window.removeEventListener('touchmove', stop);
-        };
-    }, [isAutoScrolling, stopAutoScroll]);
-
-    // Keep the screen awake while autoscrolling — otherwise the phone dims
-    // and locks mid-reading. The browser releases the lock whenever the tab
-    // is hidden, so re-acquire it when the page becomes visible again.
-    useEffect(() => {
-        if (!isAutoScrolling || !('wakeLock' in navigator)) return;
-        let sentinel: WakeLockSentinel | null = null;
-        let cancelled = false;
-
-        const acquire = async () => {
-            try {
-                const lock = await navigator.wakeLock.request('screen');
-                if (cancelled) {
-                    lock.release().catch(() => {});
-                    return;
-                }
-                // A concurrent acquire may have won the race — release the
-                // older lock so it can't linger unreleased.
-                if (sentinel && sentinel !== lock && !sentinel.released) {
-                    sentinel.release().catch(() => {});
-                }
-                sentinel = lock;
-                // The platform can revoke the lock while we're still visible
-                // (e.g. battery saver kicks in); try once to get it back.
-                // Hidden-tab revocations re-acquire via visibilitychange.
-                // Only the *tracked* lock re-acquires — releasing a superseded
-                // lock firing this handler must not start a request loop.
-                lock.addEventListener('release', () => {
-                    if (!cancelled && sentinel === lock && document.visibilityState === 'visible') {
-                        sentinel = null;
-                        acquire();
-                    }
-                });
-            } catch {
-                // Denied (e.g. battery saver) — autoscroll still works,
-                // the screen just won't be kept on.
-            }
-        };
-
-        const onVisibilityChange = () => {
-            if (document.visibilityState === 'visible') acquire();
-        };
-
-        acquire();
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => {
-            cancelled = true;
-            document.removeEventListener('visibilitychange', onVisibilityChange);
-            sentinel?.release().catch(() => {});
-        };
-    }, [isAutoScrolling]);
-
-    // Clean up on unmount.
-    useEffect(() => () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); }, []);
-
     const scrollToSection = useCallback((id: string) => {
-        stopAutoScroll();
+        stopScroll();
         const el = document.getElementById(id);
         if (el) {
             const offset = 130; // clear the sticky header (incl. mobile chips row)
             const top = el.getBoundingClientRect().top + window.scrollY - offset;
             window.scrollTo({ top, behavior: 'smooth' });
         }
-    }, [stopAutoScroll]);
+    }, [stopScroll]);
 
     // Commentary expand/collapse (event delegation on article).
     const handleToggleCommentary = (e: React.MouseEvent<HTMLElement>) => {
@@ -650,24 +531,6 @@ export default function Liturgy() {
         const isOpen = container.classList.toggle('collapsed') === false;
         toggle.setAttribute('aria-expanded', String(isOpen));
     };
-
-    // Track whether the page is scrolled to (or has) no further content, so
-    // the autoscroll start button can be disabled when there is nowhere to go.
-    useEffect(() => {
-        const update = () => {
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            setAtPageEnd(maxScroll <= 0 || window.scrollY >= maxScroll - 2);
-        };
-        // Measure after the article paints (content height isn't final here).
-        const t = window.setTimeout(update, 60);
-        window.addEventListener('scroll', update, { passive: true });
-        window.addEventListener('resize', update);
-        return () => {
-            window.clearTimeout(t);
-            window.removeEventListener('scroll', update);
-            window.removeEventListener('resize', update);
-        };
-    }, [displayHtml, loading]);
 
     // ── Shared UI pieces rendered in both sidebar (desktop) and toolbar (mobile) ──
 
@@ -746,72 +609,22 @@ export default function Liturgy() {
         </div>
     );
 
-    const speedControls = isAutoScrolling ? (
-        <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-1 py-0.5">
-            <button
-                onClick={() => setScrollSpeed((s) => Math.max(0, s - 1))}
-                aria-label="Mais lento"
-                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
-            >
-                <Minus size={15} />
-            </button>
-            <span className="text-zinc-500 dark:text-zinc-400 text-xs font-semibold w-3 text-center select-none">
-                {SCROLL_LEVELS[scrollSpeed].label}
-            </span>
-            <button
-                onClick={() => setScrollSpeed((s) => Math.min(SCROLL_LEVELS.length - 1, s + 1))}
-                aria-label="Mais rápido"
-                className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
-            >
-                <Plus size={15} />
-            </button>
-        </div>
-    ) : null;
-
-    const scrollButton = (
-        <button
-            onClick={toggleAutoScroll}
-            disabled={!isAutoScrolling && atPageEnd}
-            aria-label={isAutoScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border w-full justify-center lg:justify-start disabled:opacity-40 disabled:cursor-not-allowed ${
-                isAutoScrolling
-                    ? 'bg-liturgy-100 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-300 border-liturgy-200 dark:border-liturgy-800'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
-            }`}
-        >
-            {isAutoScrolling ? <Pause size={15} /> : <Play size={15} className="translate-x-px" />}
-            {isAutoScrolling ? 'Parar scroll' : 'Auto-scroll'}
-        </button>
-    );
-
+    // Keyed by date so the expanded state resets when browsing to another day.
+    // The prefix keeps it distinct from the saint card's key — they render as
+    // siblings, so a bare date would be a duplicate key.
     const dateCard = liturgy && (
-        <div className="surface surface-accent rounded-2xl p-4">
-            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
-                {/* The dot is the color signal; its name is already in the
-                    description text, so no "Cor litúrgica" line here. */}
-                {dayInfo && <LiturgicalColorDot color={dayInfo.color} />}
-                {formatDisplayDate(new Date(liturgy.date + 'T00:00:00'))}
-            </p>
-            {dayInfo ? (
-                <>
-                    <h2 className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
-                        {dayInfo.dayName}
-                    </h2>
-                    {dayInfo.description && (
-                        <DayDescription key={selectedDateStr} text={dayInfo.description} className="mt-2" />
-                    )}
-                </>
-            ) : (
-                <p className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
-                    {liturgy.saintOfDay}
-                </p>
-            )}
-        </div>
+        <DayCard
+            key={`day-${selectedDateStr}`}
+            dateLabel={formatDisplayDate(new Date(liturgy.date + 'T00:00:00'))}
+            color={dayInfo?.color}
+            title={dayInfo?.dayName ?? liturgy.saintOfDay}
+            description={dayInfo?.description}
+        />
     );
 
     // Keyed by date so the expanded state resets when browsing to another day.
     const saintCard = liturgy?.saint && (
-        <SaintOfDayCard key={selectedDateStr} saint={liturgy.saint} />
+        <SaintOfDayCard key={`saint-${selectedDateStr}`} saint={liturgy.saint} />
     );
 
     return (
@@ -855,16 +668,7 @@ export default function Liturgy() {
                         {dateCard}
                         {saintCard}
 
-                        <div className="flex flex-col gap-2">
-                            {filterButton}
-                            {speedControls && (
-                                <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">Velocidade</span>
-                                    {speedControls}
-                                </div>
-                            )}
-                            {scrollButton}
-                        </div>
+                        {filterButton}
 
                         {sections.length > 0 && (
                             <nav aria-label="Secções das leituras" className="mt-1">
@@ -890,6 +694,11 @@ export default function Liturgy() {
                                 </ul>
                             </nav>
                         )}
+
+                        <div className="flex flex-col gap-2">
+                            <AutoScrollSpeedRow scroll={scroll} />
+                            <AutoScrollButton scroll={scroll} />
+                        </div>
                     </aside>
                 )}
 
@@ -914,7 +723,7 @@ export default function Liturgy() {
                                 scrolling, so they aren't duplicated here. */}
                             <div className="lg:hidden flex items-center gap-2 mb-6">
                                 <div className="flex-1">{filterButton}</div>
-                                <div className="shrink-0">{scrollButton}</div>
+                                <div className="shrink-0"><AutoScrollButton scroll={scroll} /></div>
                             </div>
 
                             {/* Reading article */}
@@ -971,51 +780,7 @@ export default function Liturgy() {
             </div>
 
             {/* ── Floating autoscroll FAB — mobile / tablet only ────────── */}
-            {!loading && liturgy && (
-                <div className="lg:hidden fixed bottom-24 right-4 z-40">
-                    {isAutoScrolling ? (
-                        /* One cohesive pill: speed on the left, pause on the
-                           right. Semi-transparent so text scrolling behind it
-                           stays readable. */
-                        <div className="flex items-stretch h-12 rounded-full bg-zinc-900/60 dark:bg-zinc-800/60 backdrop-blur-md shadow-xl overflow-hidden">
-                            <button
-                                onClick={() => setScrollSpeed((s) => Math.max(0, s - 1))}
-                                aria-label="Mais lento"
-                                className="pl-4 pr-2.5 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
-                            >
-                                <Minus size={16} />
-                            </button>
-                            <span className="flex items-center text-white text-sm font-semibold tabular-nums w-4 justify-center select-none">
-                                {SCROLL_LEVELS[scrollSpeed].label}
-                            </span>
-                            <button
-                                onClick={() => setScrollSpeed((s) => Math.min(SCROLL_LEVELS.length - 1, s + 1))}
-                                aria-label="Mais rápido"
-                                className="pl-2.5 pr-3 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
-                            >
-                                <Plus size={16} />
-                            </button>
-                            <div className="w-px my-3 bg-white/20" aria-hidden="true" />
-                            <button
-                                onClick={toggleAutoScroll}
-                                aria-label="Parar auto-scroll"
-                                className="pl-3.5 pr-4 flex items-center text-white transition-colors"
-                            >
-                                <Pause size={17} fill="currentColor" strokeWidth={0} />
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={toggleAutoScroll}
-                            disabled={atPageEnd}
-                            aria-label="Iniciar auto-scroll"
-                            className="h-12 w-12 rounded-full shadow-xl flex items-center justify-center bg-zinc-900/60 dark:bg-zinc-100/70 backdrop-blur-md text-white dark:text-zinc-900 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                            <Play size={17} fill="currentColor" strokeWidth={0} className="translate-x-px" />
-                        </button>
-                    )}
-                </div>
-            )}
+            {!loading && liturgy && <AutoScrollFab scroll={scroll} />}
         </div>
     );
 }
