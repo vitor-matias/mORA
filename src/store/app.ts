@@ -32,10 +32,17 @@ export function isCompletedToday(streak: StreakData): boolean {
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Whole days from `a` to `b`, both YYYY-MM-DD. */
+/** Whole days from `a` to `b`, both YYYY-MM-DD.
+    Built from the date parts in UTC rather than parsed as local time: local
+    midnights are 23 or 25 hours apart across a DST change (and don't exist at
+    all in a few zones), which rounding happens to absorb — but the merge rule
+    turns on this being exactly 1, so it shouldn't rest on that. */
 function daysApart(a: string, b: string): number {
-    const diff = new Date(b + 'T00:00:00').getTime() - new Date(a + 'T00:00:00').getTime();
-    return Math.round(diff / 86400000);
+    const utc = (iso: string) => {
+        const [y, m, d] = iso.split('-').map(Number);
+        return Date.UTC(y, m - 1, d);
+    };
+    return (utc(b) - utc(a)) / 86400000;
 }
 
 export function emptyStreak(): StreakData {
@@ -204,6 +211,10 @@ interface AppState {
     /** When the synced settings last changed on this device (epoch ms).
         Settings are last-write-wins, so this is what decides a conflict. */
     settingsUpdatedAt: number;
+    /** True when the last settings change came from another device rather than
+        this user, so the sync hook doesn't publish it straight back. Never
+        persisted — it describes the last change, not the state. */
+    settingsFromRemote: boolean;
     /** Applies a snapshot pulled from another device, adopting its timestamp
         rather than stamping "now" — otherwise every pull would look like a
         local edit and ping-pong back. */
@@ -249,10 +260,11 @@ export const useAppStore = create<AppState>()(
     persist(
         (set) => ({
             rosaryMode: 'beginner',
-            setRosaryMode: (rosaryMode) => set({ rosaryMode, settingsUpdatedAt: Date.now() }),
+            setRosaryMode: (rosaryMode) => set({ rosaryMode, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             toggleRosaryMode: () => set((state) => ({
                 rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner',
                 settingsUpdatedAt: Date.now(),
+                settingsFromRemote: false,
             })),
             rosarySession: null,
             setRosarySession: (rosarySession) => set({ rosarySession }),
@@ -261,7 +273,7 @@ export const useAppStore = create<AppState>()(
 
             // Default preferences
             theme: 'system',
-            setTheme: (theme) => set({ theme, settingsUpdatedAt: Date.now() }),
+            setTheme: (theme) => set({ theme, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             notificationTime: null,
             setNotificationTime: (notificationTime) => set({ notificationTime }),
             hourReminders: {},
@@ -280,11 +292,11 @@ export const useAppStore = create<AppState>()(
             liturgicalColorOverride: null,
             setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
-            setFontSize: (fontSize) => set({ fontSize, settingsUpdatedAt: Date.now() }),
+            setFontSize: (fontSize) => set({ fontSize, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             fontFamily: 'system',
-            setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now() }),
+            setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             autoScrollSpeed: 2,
-            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed, settingsUpdatedAt: Date.now() }),
+            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             streaks: emptyStreaks(),
             incrementStreak: (item) => set((state) => {
                 const userToday = formatISODate(new Date());
@@ -319,15 +331,21 @@ export const useAppStore = create<AppState>()(
             }),
             setStreaks: (streaks) => set({ streaks }),
             settingsUpdatedAt: 0,
-            applySyncedSettings: (settings, updatedAt) => set({ ...settings, settingsUpdatedAt: updatedAt })
+            settingsFromRemote: false,
+            applySyncedSettings: (settings, updatedAt) => set({
+                ...settings,
+                settingsUpdatedAt: updatedAt,
+                settingsFromRemote: true,
+            })
         }),
         {
             name: 'mora-app-storage',
             // The override is transient page state; persisting it would leave
             // a wrong theme stuck after a hard close mid-browse.
             partialize: (state) => Object.fromEntries(
-                Object.entries(state).filter(([key]) => key !== 'liturgicalColorOverride')
-            ) as Omit<AppState, 'liturgicalColorOverride'>,
+                Object.entries(state).filter(([key]) =>
+                    key !== 'liturgicalColorOverride' && key !== 'settingsFromRemote')
+            ) as Omit<AppState, 'liturgicalColorOverride' | 'settingsFromRemote'>,
         }
     )
 );

@@ -27,6 +27,15 @@ const CLIENT_METADATA = {
 let active: BunkerSigner | null = null;
 let activeFor: string | null = null;
 
+/** Replaces the cached signer, closing whatever it displaces — a reconnect, a
+    switch of signer, or a logout would otherwise leave the old relay
+    subscription running until a hard reload. */
+function setActive(signer: BunkerSigner | null, key: string | null) {
+    if (active && active !== signer) active.close().catch(() => {});
+    active = signer;
+    activeFor = key;
+}
+
 export interface BunkerSession {
     /** Hex secret key this client uses to talk to the signer — not the user's. */
     clientSecret: string;
@@ -48,8 +57,7 @@ function sessionKey(session: BunkerSession): string {
 export async function getBunkerSigner(): Promise<BunkerSigner | null> {
     const session = useAuthStore.getState().bunker;
     if (!session) {
-        active = null;
-        activeFor = null;
+        setActive(null, null);
         return null;
     }
     if (active && activeFor === sessionKey(session)) return active;
@@ -59,15 +67,12 @@ export async function getBunkerSigner(): Promise<BunkerSigner | null> {
         session.pointer,
     );
     await signer.connect();
-    active = signer;
-    activeFor = sessionKey(session);
+    setActive(signer, sessionKey(session));
     return signer;
 }
 
 export function forgetBunkerSigner() {
-    active?.close().catch(() => {});
-    active = null;
-    activeFor = null;
+    setActive(null, null);
 }
 
 /**
@@ -100,12 +105,11 @@ export function startBunkerConnection(relays: string[] = DEFAULT_SIGNER_RELAYS):
         .fromURI(clientSecretKey, uri)
         .then(async (signer: BunkerSigner) => {
             const pubkey = await signer.getPublicKey();
-            active = signer;
             const session: BunkerSession = {
                 clientSecret: bytesToHex(clientSecretKey),
                 pointer: signer.bp,
             };
-            activeFor = sessionKey(session);
+            setActive(signer, sessionKey(session));
             return { session, pubkey };
         });
 
@@ -122,8 +126,7 @@ export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> 
     await signer.connect();
     const pubkey = await signer.getPublicKey();
 
-    active = signer;
     const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
-    activeFor = sessionKey(session);
+    setActive(signer, sessionKey(session));
     return { session, pubkey };
 }

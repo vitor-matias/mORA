@@ -61,6 +61,10 @@ export function useNostrSync() {
         const unsubscribe = useAppStore.subscribe((state) => {
             if (state.settingsUpdatedAt === seenUpdatedAt) return;
             seenUpdatedAt = state.settingsUpdatedAt;
+            // A pull that wins also moves settingsUpdatedAt. Publishing that
+            // back would put the same snapshot on the relays again on every
+            // foreground where the other device is ahead.
+            if (state.settingsFromRemote) return;
             window.clearTimeout(debounce);
             debounce = window.setTimeout(async () => {
                 try {

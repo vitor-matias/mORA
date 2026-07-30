@@ -127,6 +127,13 @@ export const useAuthStore = create<AuthState>()(
             logout: () => {
                 set({ pubkey: null, privkey: null, protectedKey: null, isLocked: false, isNip07: false, bunker: null, profile: null });
                 clearSyncForIdentity();
+                // Clearing the stored session doesn't hang up on the signer:
+                // the connection is cached at module scope and would keep its
+                // relay subscription open until a reload. Imported lazily —
+                // signer.ts reads this store, so a static import would cycle.
+                import('@/lib/signer')
+                    .then(({ forgetBunkerSigner }) => forgetBunkerSigner())
+                    .catch(() => {});
             },
         }),
         {
