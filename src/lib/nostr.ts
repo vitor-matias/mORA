@@ -1,7 +1,7 @@
 import { finalizeEvent, SimplePool, nip44, type Event, type EventTemplate } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import { useAuthStore } from '@/store/auth';
-import { useAppStore } from '@/store/app';
+import { useAppStore, mergeStreaks, streaksEqual, type Streaks } from '@/store/app';
 
 const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
 const pool = new SimplePool();
@@ -148,8 +148,100 @@ async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
     return names;
 }
 
-export async function publishStreakToNostr() {
+// NIP-44 to self, so relays only ever store ciphertext. Returns null when
+// there is no encryption path (e.g. a NIP-07 extension without nip44) —
+// callers skip rather than fall back to plaintext.
+async function encryptToSelf(plaintext: string): Promise<string | null> {
     const { pubkey, privkey, isNip07 } = useAuthStore.getState();
+    if (!pubkey) return null;
+    if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
+        return window.nostr.nip44.encrypt(pubkey, plaintext);
+    }
+    if (privkey) {
+        const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
+        return nip44.v2.encrypt(plaintext, conversationKey);
+    }
+    return null;
+}
+
+async function decryptFromSelf(ciphertext: string): Promise<string | null> {
+    const { pubkey, privkey, isNip07 } = useAuthStore.getState();
+    if (!pubkey) return null;
+    if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
+        return window.nostr.nip44.decrypt(pubkey, ciphertext);
+    }
+    if (privkey) {
+        const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
+        return nip44.v2.decrypt(ciphertext, conversationKey);
+    }
+    return null;
+}
+
+/** The streak snapshot this identity last published, or null if there is
+    none (or it can't be read). */
+async function fetchRemoteStreaks(pubkey: string): Promise<Streaks | null> {
+    let events: Event[];
+    try {
+        events = await pool.querySync(RELAYS, {
+            kinds: [KIND_APP_STATE],
+            authors: [pubkey],
+            '#d': ['mora-app-streak'],
+        });
+    } catch (error) {
+        console.warn('Could not fetch streaks from Nostr relays.', error);
+        return null;
+    }
+    if (events.length === 0) return null;
+
+    // Relays each hold their own copy of a replaceable event and can lag —
+    // the newest across all of them is the one to trust.
+    const newest = events.reduce((a, b) => (b.created_at > a.created_at ? b : a));
+    try {
+        const plaintext = await decryptFromSelf(newest.content);
+        if (!plaintext) return null;
+        const parsed = JSON.parse(plaintext) as { streaks?: unknown };
+        // Shape-checked entry by entry during the merge.
+        return (parsed?.streaks ?? null) as Streaks | null;
+    } catch (error) {
+        console.warn('Could not read the streak snapshot from Nostr.', error);
+        return null;
+    }
+}
+
+/**
+ * Pulls this identity's published streaks and merges them into the local
+ * store, then republishes if this device now knows more than the relays do.
+ * Safe to call repeatedly; the merge is idempotent.
+ */
+export async function syncStreaksWithNostr(): Promise<void> {
+    const { pubkey } = useAuthStore.getState();
+    if (!pubkey || !useAppStore.getState().shareStreaks) return;
+
+    const remote = await fetchRemoteStreaks(pubkey);
+    // Read the store after the round-trip, not before: a prayer may have
+    // completed while the query was in flight.
+    const { streaks: local, setStreaks } = useAppStore.getState();
+    const merged = mergeStreaks(local, remote);
+
+    if (!streaksEqual(merged, local)) setStreaks(merged);
+
+    // Seed the relays on first sync, and push whatever they were missing.
+    // publishStreakToNostr reads the store, so it picks up the merge above.
+    if (!remote || !streaksEqual(merged, mergeStreaks(emptyStreaks(), remote))) {
+        await publishStreakToNostr();
+    }
+}
+
+function emptyStreaks(): Streaks {
+    return {
+        rosary: { days: 0, lastCompletedDate: null },
+        liturgy: { days: 0, lastCompletedDate: null },
+        liturgy_hours: { days: 0, lastCompletedDate: null },
+    };
+}
+
+export async function publishStreakToNostr() {
+    const { pubkey } = useAuthStore.getState();
     const { streaks, shareStreaks } = useAppStore.getState();
 
     if (!pubkey) return; // Not logged in
@@ -161,20 +253,14 @@ export async function publishStreakToNostr() {
         lastUpdate: new Date().toISOString()
     });
 
-    // NIP-44 encrypt to self, so relays only ever store ciphertext. Without
-    // an encryption path (e.g. a NIP-07 extension without nip44) we skip
-    // publishing rather than fall back to plaintext.
     let eventContent: string;
     try {
-        if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
-            eventContent = await window.nostr.nip44.encrypt(pubkey, plaintext);
-        } else if (privkey) {
-            const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
-            eventContent = nip44.v2.encrypt(plaintext, conversationKey);
-        } else {
+        const encrypted = await encryptToSelf(plaintext);
+        if (!encrypted) {
             console.warn('No NIP-44 encryption available; not publishing streaks.');
             return;
         }
+        eventContent = encrypted;
     } catch (error) {
         console.warn('Failed to encrypt streaks; not publishing.', error);
         return;

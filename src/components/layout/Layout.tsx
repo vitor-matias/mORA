@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
+import { useStreakSync } from "@/lib/useStreakSync";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { TabBar } from "./TabBar";
@@ -19,6 +20,7 @@ function ScrollToTop() {
 export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily } = useAppStore();
     useNotifications();
+    useStreakSync();
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
     useEffect(() => {
