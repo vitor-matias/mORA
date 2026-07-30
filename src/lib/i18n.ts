@@ -23,6 +23,12 @@ const translations = {
         logout: "Terminar Sessão",
         loginPrompt: "O seu progresso fica guardado neste dispositivo. Se quiser uma cópia de segurança portátil (opcional, para utilizadores avançados):",
         loginNip07: "Entrar com Extensão Nostr",
+        nip07Missing: "Não foi detetada nenhuma extensão Nostr neste navegador.",
+        // Android installs a PWA as its own app, and browser extensions don't
+        // reach it — the extension button can never work there, so say so
+        // instead of leaving a button that does nothing.
+        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis — abra o mORA no navegador para entrar com a extensão, ou use a sua chave secreta abaixo.",
+        nip07Failed: "Não foi possível entrar com a extensão.",
         or: "ou",
         createKey: "Criar identidade anónima",
         keyDisclaimer: "Criamos uma chave secreta guardada apenas neste dispositivo. Não é preciso e-mail nem dados pessoais.",

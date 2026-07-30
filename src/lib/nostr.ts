@@ -35,10 +35,16 @@ export interface NostrProfile {
     about?: string;
 }
 
-// Signs with the NIP-07 extension when available, otherwise with the locally
-// stored private key.
+// Signs with whichever key custody the user chose: a NIP-46 remote signer
+// (Amber and friends), a NIP-07 extension, or the locally stored key.
 async function signNostrEvent(baseEvent: EventTemplate): Promise<Event> {
-    const { privkey, isNip07 } = useAuthStore.getState();
+    const { privkey, isNip07, bunker } = useAuthStore.getState();
+    if (bunker) {
+        const { getBunkerSigner } = await import('@/lib/signer');
+        const signer = await getBunkerSigner();
+        if (!signer) throw new Error('Remote signer unavailable');
+        return signer.signEvent(baseEvent);
+    }
     if (isNip07 && typeof window !== 'undefined' && window.nostr) {
         return window.nostr.signEvent(baseEvent);
     }
@@ -168,8 +174,13 @@ async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
 // there is no encryption path (e.g. a NIP-07 extension without nip44) —
 // callers skip rather than fall back to plaintext.
 async function encryptToSelf(plaintext: string): Promise<string | null> {
-    const { pubkey, privkey, isNip07 } = useAuthStore.getState();
+    const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
     if (!pubkey) return null;
+    if (bunker) {
+        const { getBunkerSigner } = await import('@/lib/signer');
+        const signer = await getBunkerSigner();
+        return signer ? signer.nip44Encrypt(pubkey, plaintext) : null;
+    }
     if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
         return window.nostr.nip44.encrypt(pubkey, plaintext);
     }
@@ -181,8 +192,13 @@ async function encryptToSelf(plaintext: string): Promise<string | null> {
 }
 
 async function decryptFromSelf(ciphertext: string): Promise<string | null> {
-    const { pubkey, privkey, isNip07 } = useAuthStore.getState();
+    const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
     if (!pubkey) return null;
+    if (bunker) {
+        const { getBunkerSigner } = await import('@/lib/signer');
+        const signer = await getBunkerSigner();
+        return signer ? signer.nip44Decrypt(pubkey, ciphertext) : null;
+    }
     if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
         return window.nostr.nip44.decrypt(pubkey, ciphertext);
     }

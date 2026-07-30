@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
 import type { NostrProfile } from '@/lib/nostr';
+import type { BunkerSession } from '@/lib/signer';
 import { useAppStore } from '@/store/app';
 
 // Signing in is the point at which a user gets an identity to sync under, so
@@ -20,8 +21,12 @@ function clearSyncForIdentity() {
 
 interface AuthState {
     pubkey: string | null;
-    privkey: string | null; // Only stored if generated locally, not NIP-07
+    privkey: string | null; // Only stored locally-generated, not NIP-07 or NIP-46
     isNip07: boolean;
+    /** NIP-46 remote signer (e.g. Amber on Android), which holds the key and
+        signs over relays. Null unless signed in that way. */
+    bunker: BunkerSession | null;
+    loginWithBunker: (session: BunkerSession, pubkey: string) => void;
     profile: NostrProfile | null;
     setProfile: (profile: NostrProfile | null) => void;
     loginWithNip07: () => Promise<void>;
@@ -36,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
             pubkey: null,
             privkey: null,
             isNip07: false,
+            bunker: null,
             profile: null,
 
             setProfile: (profile) => set({ profile }),
@@ -46,7 +52,7 @@ export const useAuthStore = create<AuthState>()(
                         throw new Error('Nostr extension not found');
                     }
                     const pubkey = await window.nostr.getPublicKey();
-                    set({ pubkey, privkey: null, isNip07: true });
+                    set({ pubkey, privkey: null, isNip07: true, bunker: null });
                     enableSyncForNewIdentity();
                 } catch (error) {
                     console.error('Failed to login with NIP-07:', error);
@@ -72,7 +78,7 @@ export const useAuthStore = create<AuthState>()(
                     // Verify it works by generating the pubkey
                     const secretKeyBytes = new Uint8Array(privkeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
                     const pubkeyHex = getPublicKey(secretKeyBytes);
-                    set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false });
+                    set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false, bunker: null });
                     enableSyncForNewIdentity();
                 } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
@@ -83,12 +89,19 @@ export const useAuthStore = create<AuthState>()(
                 const secretKey = generateSecretKey();
                 const privkeyHex = bytesToHex(secretKey);
                 const pubkeyHex = getPublicKey(secretKey);
-                set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false });
+                set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false, bunker: null });
+                enableSyncForNewIdentity();
+            },
+
+            loginWithBunker: (bunker, pubkey) => {
+                // The signer keeps the secret key; this device only ever holds
+                // the session it talks to the signer with.
+                set({ pubkey, privkey: null, isNip07: false, bunker });
                 enableSyncForNewIdentity();
             },
 
             logout: () => {
-                set({ pubkey: null, privkey: null, isNip07: false, profile: null });
+                set({ pubkey: null, privkey: null, isNip07: false, bunker: null, profile: null });
                 clearSyncForIdentity();
             },
         }),

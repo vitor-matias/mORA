@@ -376,7 +376,6 @@ export default function Liturgy() {
     }, [selectedDateStr]);
 
     const changeDay = (delta: number) => {
-        stopScroll();
         setSelectedDate(prev => {
             const next = new Date(prev);
             next.setDate(prev.getDate() + delta);
@@ -458,6 +457,13 @@ export default function Liturgy() {
     // Hands-free scrolling through the readings.
     const scroll = useAutoScroll(displayHtml);
     const { stop: stopScroll } = scroll;
+
+    // Swapping the day swaps the whole article without remounting it, so a
+    // running scroll would carry on through the new day's text at whatever
+    // position it had reached. Keyed on the date rather than patched into each
+    // control, so the prev/next buttons, the date picker and an external
+    // ?date= change are all covered.
+    useEffect(() => { stopScroll(); }, [selectedDateStr, stopScroll]);
 
     // Rebuild TOC after the article renders with new content.
     // We depend on both displayHtml (content) and loading (mount gate).
@@ -595,9 +601,7 @@ export default function Liturgy() {
                     tabIndex={-1}
                     value={selectedDateStr}
                     onChange={(e) => {
-                        if (!e.target.value) return;
-                        stopScroll();
-                        setSelectedDate(new Date(e.target.value + 'T00:00:00'));
+                        if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
                     }}
                     className="absolute inset-0 opacity-0 pointer-events-none"
                 />
