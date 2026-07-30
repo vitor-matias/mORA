@@ -44,10 +44,10 @@ export interface NostrProfile {
 async function signNostrEvent(baseEvent: EventTemplate): Promise<Event> {
     const { privkey, isNip07, bunker } = useAuthStore.getState();
     if (bunker) {
-        const { getBunkerSigner } = await import('@/lib/signer');
+        const { getBunkerSigner, withSignerTimeout } = await import('@/lib/signer');
         const signer = await getBunkerSigner();
         if (!signer) throw new Error('Remote signer unavailable');
-        return signer.signEvent(baseEvent);
+        return withSignerTimeout(signer.signEvent(baseEvent));
     }
     if (isNip07 && typeof window !== 'undefined' && window.nostr) {
         return window.nostr.signEvent(baseEvent);
@@ -181,9 +181,9 @@ async function encryptToSelf(plaintext: string): Promise<string | null> {
     const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
     if (!pubkey) return null;
     if (bunker) {
-        const { getBunkerSigner } = await import('@/lib/signer');
+        const { getBunkerSigner, withSignerTimeout } = await import('@/lib/signer');
         const signer = await getBunkerSigner();
-        return signer ? signer.nip44Encrypt(pubkey, plaintext) : null;
+        return signer ? withSignerTimeout(signer.nip44Encrypt(pubkey, plaintext)) : null;
     }
     if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
         return window.nostr.nip44.encrypt(pubkey, plaintext);
@@ -199,9 +199,9 @@ async function decryptFromSelf(ciphertext: string): Promise<string | null> {
     const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
     if (!pubkey) return null;
     if (bunker) {
-        const { getBunkerSigner } = await import('@/lib/signer');
+        const { getBunkerSigner, withSignerTimeout } = await import('@/lib/signer');
         const signer = await getBunkerSigner();
-        return signer ? signer.nip44Decrypt(pubkey, ciphertext) : null;
+        return signer ? withSignerTimeout(signer.nip44Decrypt(pubkey, ciphertext)) : null;
     }
     if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
         return window.nostr.nip44.decrypt(pubkey, ciphertext);

@@ -83,7 +83,7 @@ export async function getBunkerSigner(): Promise<BunkerSigner | null> {
         hexToBytes(session.clientSecret),
         session.pointer,
     );
-    await signer.connect();
+    await withSignerTimeout(signer.connect());
     setActive(signer, sessionKey(session));
     return signer;
 }
@@ -158,13 +158,42 @@ export class SignerRelayError extends Error {
     the user was slow to approve — the two need different advice. */
 const RELAY_FAILURE_WINDOW_MS = 10_000;
 
+export class SignerUnreachableError extends Error {
+    constructor(message = 'O assinador não respondeu. Verifique se a aplicação está a correr e ligada à internet.') {
+        super(message);
+        this.name = 'SignerUnreachableError';
+    }
+}
+
+// Every request to the signer resolves only when a reply comes back —
+// nostr-tools sets no deadline of its own. Without one of ours, a signer that
+// is closed, offline or simply never approved leaves the caller hanging for
+// good: a spinning button, or a background sync whose in-flight guard never
+// clears and never runs again.
+const CONNECT_RPC_TIMEOUT_MS = 45_000; // first contact: the user may need to approve
+const SIGNER_RPC_TIMEOUT_MS = 20_000;  // an already-approved session should be prompt
+
+export function withSignerTimeout<T>(
+    work: Promise<T>,
+    timeoutMs = SIGNER_RPC_TIMEOUT_MS,
+    message?: string,
+): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new SignerUnreachableError(message)), timeoutMs);
+        work.then(
+            (value) => { clearTimeout(timer); resolve(value); },
+            (error) => { clearTimeout(timer); reject(error); },
+        );
+    });
+}
+
 /** Listens for the signer's answer to an already-created connection URI. */
 function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<BunkerLogin> {
     const startedAt = Date.now();
     return BunkerSigner
         .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
         .then(async (signer: BunkerSigner) => {
-            const pubkey = await signer.getPublicKey();
+            const pubkey = await withSignerTimeout(signer.getPublicKey());
             const session: BunkerSession = {
                 clientSecret: bytesToHex(clientSecretKey),
                 pointer: signer.bp,
@@ -247,8 +276,14 @@ export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> 
 
     const clientSecretKey = generateSecretKey();
     const signer = BunkerSigner.fromBunker(clientSecretKey, pointer);
-    await signer.connect();
-    const pubkey = await signer.getPublicKey();
+    // Generous: connecting for the first time can mean waiting for the user to
+    // approve the request inside the signer app.
+    await withSignerTimeout(
+        signer.connect(),
+        CONNECT_RPC_TIMEOUT_MS,
+        'O assinador não respondeu ao pedido de ligação. Aprove-o na aplicação e tente de novo.',
+    );
+    const pubkey = await withSignerTimeout(signer.getPublicKey());
 
     const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
     setActive(signer, sessionKey(session));
