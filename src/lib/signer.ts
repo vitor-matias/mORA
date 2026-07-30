@@ -39,10 +39,26 @@ const CLIENT_METADATA = {
     url: typeof window !== 'undefined' ? window.location.origin : '',
 };
 
+/** Runs a request and closes the signer if it fails. Only a signer that
+    reaches `active` is closed by setActive, so anything that dies before that
+    would keep its relay subscription for the life of the page. Kept as one
+    helper so a future call site can't forget. */
+async function runOrClose<T>(signer: BunkerSigner, work: Promise<T>): Promise<T> {
+    try {
+        return await work;
+    } catch (error) {
+        signer.close().catch(() => {});
+        throw error;
+    }
+}
+
 /** A connected signer is expensive to set up (relay subscription + handshake),
     so one is kept for the life of the page. */
 let active: BunkerSigner | null = null;
 let activeFor: string | null = null;
+/** A cold connect in progress, shared by everyone asking for the same session. */
+let connecting: Promise<BunkerSigner> | null = null;
+let connectingFor: string | null = null;
 
 /** Replaces the cached signer, closing whatever it displaces — a reconnect, a
     switch of signer, or a logout would otherwise leave the old relay
@@ -77,18 +93,44 @@ export async function getBunkerSigner(): Promise<BunkerSigner | null> {
         setActive(null, null);
         return null;
     }
-    if (active && activeFor === sessionKey(session)) return active;
+    const key = sessionKey(session);
+    if (active && activeFor === key) return active;
+    // Streaks and settings sync in parallel, so a cold start calls this twice
+    // at once. Without sharing the connect, each call would build its own
+    // signer and the second setActive would close the first — while its caller
+    // was still waiting on a request through it.
+    if (connecting && connectingFor === key) return connecting;
 
-    const signer = BunkerSigner.fromBunker(
-        hexToBytes(session.clientSecret),
-        session.pointer,
-    );
-    await signer.connect();
-    setActive(signer, sessionKey(session));
-    return signer;
+    connectingFor = key;
+    connecting = (async () => {
+        const signer = BunkerSigner.fromBunker(
+            hexToBytes(session.clientSecret),
+            session.pointer,
+        );
+        await runOrClose(signer, withSignerTimeout(signer.connect()));
+        // Logging out (or switching signer) while this was connecting clears
+        // the session; adopting the result now would resurrect a connection
+        // for an identity that no longer exists and leave it subscribed.
+        const current = useAuthStore.getState().bunker;
+        if (!current || sessionKey(current) !== key) {
+            signer.close().catch(() => {});
+            throw new Error('A sessão do assinador terminou durante a ligação.');
+        }
+        setActive(signer, key);
+        return signer;
+    })();
+    connecting.catch(() => {}).then(() => {
+        if (connectingFor === key) {
+            connecting = null;
+            connectingFor = null;
+        }
+    });
+    return connecting;
 }
 
 export function forgetBunkerSigner() {
+    connecting = null;
+    connectingFor = null;
     setActive(null, null);
 }
 
@@ -139,14 +181,17 @@ export function clearPendingConnection() {
 
 export class SignerTimeoutError extends Error {
     constructor() {
-        super('O assinador não respondeu a tempo. Tente novamente ou use o endereço bunker://.');
+        // NIP-46 secrets are single-use, so if the signer did approve while
+        // this page was suspended, its reply is gone and re-listening for it
+        // is pointless — the bunker:// address is the way through.
+        super('Não recebemos a resposta do assinador. Cole antes o endereço bunker:// (ou o identificador NIP-05) da aplicação.');
         this.name = 'SignerTimeoutError';
     }
 }
 
 export class SignerRelayError extends Error {
     constructor() {
-        super('Não foi possível manter a ligação aos relays. Verifique a internet e tente novamente, ou use o endereço bunker://.');
+        super('Não foi possível manter a ligação aos relays. Verifique a internet e tente novamente, ou use o endereço bunker:// da aplicação.');
         this.name = 'SignerRelayError';
     }
 }
@@ -155,13 +200,58 @@ export class SignerRelayError extends Error {
     the user was slow to approve — the two need different advice. */
 const RELAY_FAILURE_WINDOW_MS = 10_000;
 
+export class SignerUnreachableError extends Error {
+    constructor(message = 'O assinador não respondeu. Verifique se a aplicação está a correr e ligada à internet.') {
+        super(message);
+        this.name = 'SignerUnreachableError';
+    }
+}
+
+/**
+ * The failure that looks like nothing happening: signer apps ask for approval
+ * through a notification, and when notifications are turned off for that app
+ * the request is never shown — so it is never approved, and the wait simply
+ * expires with no clue as to why. Worth naming explicitly, because nothing on
+ * either screen points at it.
+ */
+export const SIGNER_APPROVAL_HINT =
+    'Sem resposta ainda. Abra a aplicação de assinatura e aprove o pedido. '
+    + 'Se não apareceu nenhuma notificação, verifique nas definições do Android se as '
+    + 'notificações dessa aplicação estão ativadas — sem elas o pedido fica invisível.';
+
+/** How long to wait before offering the hint above: long enough that a prompt
+    approval never sees it, early enough to still be actionable. */
+export const SIGNER_HINT_DELAY_MS = 8_000;
+
+// Every request to the signer resolves only when a reply comes back —
+// nostr-tools sets no deadline of its own. Without one of ours, a signer that
+// is closed, offline or simply never approved leaves the caller hanging for
+// good: a spinning button, or a background sync whose in-flight guard never
+// clears and never runs again.
+const CONNECT_RPC_TIMEOUT_MS = 45_000; // first contact: the user may need to approve
+const SIGNER_RPC_TIMEOUT_MS = 20_000;  // an already-approved session should be prompt
+
+export function withSignerTimeout<T>(
+    work: Promise<T>,
+    timeoutMs = SIGNER_RPC_TIMEOUT_MS,
+    message?: string,
+): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new SignerUnreachableError(message)), timeoutMs);
+        work.then(
+            (value) => { clearTimeout(timer); resolve(value); },
+            (error) => { clearTimeout(timer); reject(error); },
+        );
+    });
+}
+
 /** Listens for the signer's answer to an already-created connection URI. */
 function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<BunkerLogin> {
     const startedAt = Date.now();
     return BunkerSigner
         .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
         .then(async (signer: BunkerSigner) => {
-            const pubkey = await signer.getPublicKey();
+            const pubkey = await runOrClose(signer, withSignerTimeout(signer.getPublicKey()));
             const session: BunkerSession = {
                 clientSecret: bytesToHex(clientSecretKey),
                 pointer: signer.bp,
@@ -237,15 +327,55 @@ export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
     return awaitSignerResponse(clientSecretKey, pending.uri);
 }
 
+/**
+ * Runs a request through the connected signer.
+ *
+ * A cached signer that has stopped answering — the app was asleep, a relay
+ * dropped, the signer app was killed — would otherwise be handed to every
+ * later call, and each one would time out. Since nothing else invalidates it,
+ * the session would stay broken until a reload. A timeout therefore drops the
+ * cached signer, so the next request reconnects instead.
+ *
+ * Returns null when there is no signer session at all.
+ */
+export async function requestFromSigner<T>(
+    run: (signer: BunkerSigner) => Promise<T>,
+    timeoutMs?: number,
+): Promise<T | null> {
+    const signer = await getBunkerSigner();
+    if (!signer) return null;
+    try {
+        return await withSignerTimeout(run(signer), timeoutMs);
+    } catch (error) {
+        if (error instanceof SignerUnreachableError) forgetBunkerSigner();
+        throw error;
+    }
+}
+
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */
 export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> {
     const pointer = await parseBunkerInput(input.trim());
-    if (!pointer) throw new Error('Endereço de ligação inválido.');
+    if (!pointer) throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
 
     const clientSecretKey = generateSecretKey();
-    const signer = BunkerSigner.fromBunker(clientSecretKey, pointer);
-    await signer.connect();
-    const pubkey = await signer.getPublicKey();
+    let signer: BunkerSigner;
+    try {
+        signer = BunkerSigner.fromBunker(clientSecretKey, pointer);
+    } catch {
+        // A truncated or mistyped address parses but isn't a real key, and the
+        // curve maths then fails with something like "bad point: is not on
+        // curve" — true, and useless to whoever pasted it.
+        throw new Error('Endereço de ligação inválido: a chave do assinador não é válida. Copie o endereço outra vez.');
+    }
+    // Generous: connecting for the first time can mean waiting for the user to
+    // approve the request inside the signer app.
+    await runOrClose(signer, withSignerTimeout(
+        signer.connect(),
+        CONNECT_RPC_TIMEOUT_MS,
+        'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
+        + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
+    ));
+    const pubkey = await runOrClose(signer, withSignerTimeout(signer.getPublicKey()));
 
     const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
     setActive(signer, sessionKey(session));
