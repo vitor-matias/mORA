@@ -75,13 +75,80 @@ export function forgetBunkerSigner() {
     setActive(null, null);
 }
 
+/** How long to wait for the signer to answer before giving up. The library
+    default is five minutes, which is indistinguishable from a hung button. */
+const CONNECT_TIMEOUT_MS = 90_000;
+
+/** An attempt survives here across a reload, because opening the signer app
+    can freeze or discard this page — and the client key exists only in
+    memory, so without it the attempt would be unrecoverable. */
+const PENDING_KEY = 'mora-pending-signer';
+
+interface PendingConnection {
+    clientSecret: string;
+    uri: string;
+    startedAt: number;
+}
+
+export function readPendingConnection(): PendingConnection | null {
+    try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) return null;
+        const pending = JSON.parse(raw) as PendingConnection;
+        if (!pending?.clientSecret || !pending.uri) return null;
+        if (Date.now() - pending.startedAt > CONNECT_TIMEOUT_MS) {
+            localStorage.removeItem(PENDING_KEY);
+            return null;
+        }
+        return pending;
+    } catch {
+        return null;
+    }
+}
+
+export function clearPendingConnection() {
+    localStorage.removeItem(PENDING_KEY);
+}
+
+export class SignerTimeoutError extends Error {
+    constructor() {
+        super('O assinador não respondeu. Tente novamente ou use o endereço bunker://.');
+        this.name = 'SignerTimeoutError';
+    }
+}
+
+/** Listens for the signer's answer to an already-created connection URI. */
+function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<BunkerLogin> {
+    return BunkerSigner
+        .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
+        .then(async (signer: BunkerSigner) => {
+            const pubkey = await signer.getPublicKey();
+            const session: BunkerSession = {
+                clientSecret: bytesToHex(clientSecretKey),
+                pointer: signer.bp,
+            };
+            setActive(signer, sessionKey(session));
+            clearPendingConnection();
+            return { session, pubkey };
+        })
+        .catch((error) => {
+            // The library rejects with a closed-subscription error once its
+            // wait elapses; say what actually happened.
+            throw error instanceof Error && /subscription closed/i.test(error.message)
+                ? new SignerTimeoutError()
+                : error;
+        });
+}
+
 /**
  * Starts a connection the signer app can accept: returns the `nostrconnect://`
- * URI to hand to Amber, plus a promise that settles once the signer answers.
+ * URI to open, plus a promise that settles once the signer answers.
  *
- * The URI is opened as a link rather than pasted, so on Android the tap lands
- * straight in Amber; the handshake itself completes over relays, which is why
- * leaving the browser and coming back doesn't break it.
+ * The answer arrives as an ephemeral event on a live subscription, so it is
+ * only received while this page is listening. Opening the signer app can
+ * background the page and drop that socket, which is why the attempt is
+ * persisted and can be resumed — and why the bunker:// paste exists as the
+ * path that doesn't depend on catching a push at all.
  */
 export function startBunkerConnection(relays: string[] = DEFAULT_SIGNER_RELAYS): {
     uri: string;
@@ -101,19 +168,21 @@ export function startBunkerConnection(relays: string[] = DEFAULT_SIGNER_RELAYS):
         ...CLIENT_METADATA,
     });
 
-    const connected = BunkerSigner
-        .fromURI(clientSecretKey, uri)
-        .then(async (signer: BunkerSigner) => {
-            const pubkey = await signer.getPublicKey();
-            const session: BunkerSession = {
-                clientSecret: bytesToHex(clientSecretKey),
-                pointer: signer.bp,
-            };
-            setActive(signer, sessionKey(session));
-            return { session, pubkey };
-        });
+    localStorage.setItem(PENDING_KEY, JSON.stringify({
+        clientSecret: bytesToHex(clientSecretKey),
+        uri,
+        startedAt: Date.now(),
+    } satisfies PendingConnection));
 
-    return { uri, connected };
+    return { uri, connected: awaitSignerResponse(clientSecretKey, uri) };
+}
+
+/** Re-listens for an attempt that outlived a reload, or whose socket was
+    dropped while the signer app was in front. */
+export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
+    const pending = readPendingConnection();
+    if (!pending) return null;
+    return awaitSignerResponse(hexToBytes(pending.clientSecret), pending.uri);
 }
 
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */
