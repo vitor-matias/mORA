@@ -24,6 +24,10 @@ const D_SETTINGS = 'mora-app-settings';
 // without a ceiling a single dead relay would hang the whole sync.
 const RELAY_QUERY_TIMEOUT_MS = 5000;
 
+// Devices don't agree on the clock to the second; allow a little slack before
+// calling a settings timestamp impossible.
+const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000;
+
 // One sync of each kind at a time; overlapping callers await the same run.
 let inFlightStreakSync: Promise<void> | null = null;
 let inFlightSettingsSync: Promise<void> | null = null;
@@ -354,8 +358,17 @@ async function doSyncSettings(): Promise<void> {
 
     const snapshot = await fetchSnapshot(pubkey, D_SETTINGS);
     const state = useAppStore.getState();
-    const remoteUpdatedAt = typeof snapshot?.payload.updatedAt === 'number'
-        ? (snapshot.payload.updatedAt as number)
+    // Last-write-wins means the timestamp decides everything, so an impossible
+    // one has to be discarded rather than compared: Infinity or a year-3000
+    // value from a wrong clock would win forever and freeze this device's own
+    // edits out of the sync permanently. Treat anything unusable as "no
+    // timestamp", which makes the remote lose and this device republish.
+    const rawUpdatedAt = snapshot?.payload.updatedAt;
+    const remoteUpdatedAt = typeof rawUpdatedAt === 'number'
+        && Number.isFinite(rawUpdatedAt)
+        && rawUpdatedAt >= 0
+        && rawUpdatedAt <= Date.now() + CLOCK_SKEW_TOLERANCE_MS
+        ? rawUpdatedAt
         : 0;
     const remoteSettings = sanitizeSyncedSettings(snapshot?.payload.settings);
 

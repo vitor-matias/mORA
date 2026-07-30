@@ -141,7 +141,10 @@ export const useAuthStore = create<AuthState>()(
             // The whole point of protection: once the key is encrypted, the
             // plaintext must never reach storage again.
             partialize: (state) => (
-                state.protectedKey ? { ...state, privkey: null } : state
+                // Persist the locked state too, so storage is self-consistent
+                // on its own: an encrypted key with no plaintext is locked,
+                // whatever this session had unlocked in memory.
+                state.protectedKey ? { ...state, privkey: null, isLocked: true } : state
             ),
             // A protected key starts every session locked — `privkey` was
             // never written, so it can only come back via the passkey.
