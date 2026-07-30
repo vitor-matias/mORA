@@ -4,6 +4,7 @@ import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
 import type { NostrProfile } from '@/lib/nostr';
 import type { BunkerSession } from '@/lib/signer';
+import type { ProtectedKey } from '@/lib/keyVault';
 import { useAppStore } from '@/store/app';
 
 // Signing in is the point at which a user gets an identity to sync under, so
@@ -21,7 +22,18 @@ function clearSyncForIdentity() {
 
 interface AuthState {
     pubkey: string | null;
-    privkey: string | null; // Only stored locally-generated, not NIP-07 or NIP-46
+    /** The locally generated key, hex. While `protectedKey` is set this is
+        memory-only — it is deliberately kept out of storage (see partialize)
+        and is null again after a reload until the passkey unlocks it. */
+    privkey: string | null;
+    /** Set once the key is encrypted behind a passkey. Its presence is what
+        makes `privkey` memory-only. */
+    protectedKey: ProtectedKey | null;
+    /** Encrypted at rest and not yet unlocked this session: the app works,
+        but nothing that needs the key (signing, Nostr sync) can run. */
+    isLocked: boolean;
+    setProtectedKey: (protectedKey: ProtectedKey | null, privkey: string | null) => void;
+    unlockWithKey: (privkey: string) => void;
     isNip07: boolean;
     /** NIP-46 remote signer (e.g. Amber on Android), which holds the key and
         signs over relays. Null unless signed in that way. */
@@ -40,9 +52,21 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             pubkey: null,
             privkey: null,
+            protectedKey: null,
+            isLocked: false,
             isNip07: false,
             bunker: null,
             profile: null,
+
+            // Turning protection on keeps the key usable for this session and
+            // stops persisting it; turning it off writes it back to storage.
+            setProtectedKey: (protectedKey, privkey) => set({
+                protectedKey,
+                privkey,
+                isLocked: false,
+            }),
+
+            unlockWithKey: (privkey) => set({ privkey, isLocked: false }),
 
             setProfile: (profile) => set({ profile }),
 
@@ -52,7 +76,7 @@ export const useAuthStore = create<AuthState>()(
                         throw new Error('Nostr extension not found');
                     }
                     const pubkey = await window.nostr.getPublicKey();
-                    set({ pubkey, privkey: null, isNip07: true, bunker: null });
+                    set({ pubkey, privkey: null, protectedKey: null, isLocked: false, isNip07: true, bunker: null });
                     enableSyncForNewIdentity();
                 } catch (error) {
                     console.error('Failed to login with NIP-07:', error);
@@ -78,7 +102,7 @@ export const useAuthStore = create<AuthState>()(
                     // Verify it works by generating the pubkey
                     const secretKeyBytes = new Uint8Array(privkeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
                     const pubkeyHex = getPublicKey(secretKeyBytes);
-                    set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false, bunker: null });
+                    set({ pubkey: pubkeyHex, privkey: privkeyHex, protectedKey: null, isLocked: false, isNip07: false, bunker: null });
                     enableSyncForNewIdentity();
                 } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
@@ -89,24 +113,37 @@ export const useAuthStore = create<AuthState>()(
                 const secretKey = generateSecretKey();
                 const privkeyHex = bytesToHex(secretKey);
                 const pubkeyHex = getPublicKey(secretKey);
-                set({ pubkey: pubkeyHex, privkey: privkeyHex, isNip07: false, bunker: null });
+                set({ pubkey: pubkeyHex, privkey: privkeyHex, protectedKey: null, isLocked: false, isNip07: false, bunker: null });
                 enableSyncForNewIdentity();
             },
 
             loginWithBunker: (bunker, pubkey) => {
                 // The signer keeps the secret key; this device only ever holds
                 // the session it talks to the signer with.
-                set({ pubkey, privkey: null, isNip07: false, bunker });
+                set({ pubkey, privkey: null, protectedKey: null, isLocked: false, isNip07: false, bunker });
                 enableSyncForNewIdentity();
             },
 
             logout: () => {
-                set({ pubkey: null, privkey: null, isNip07: false, bunker: null, profile: null });
+                set({ pubkey: null, privkey: null, protectedKey: null, isLocked: false, isNip07: false, bunker: null, profile: null });
                 clearSyncForIdentity();
             },
         }),
         {
             name: 'mora-auth-storage',
+            // The whole point of protection: once the key is encrypted, the
+            // plaintext must never reach storage again.
+            partialize: (state) => (
+                state.protectedKey ? { ...state, privkey: null } : state
+            ),
+            // A protected key starts every session locked — `privkey` was
+            // never written, so it can only come back via the passkey.
+            onRehydrateStorage: () => (state) => {
+                if (state?.protectedKey) {
+                    state.privkey = null;
+                    state.isLocked = true;
+                }
+            },
         }
     )
 );

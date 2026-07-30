@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { fileToAvatarDataUrl } from "@/lib/image";
+import { passkeysAvailable } from "@/lib/keyVault";
 import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
@@ -17,7 +18,7 @@ import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib
 const REMINDER_SYNC_DEBOUNCE_MS = 600;
 
 export default function Profile() {
-    const { pubkey, privkey, isNip07, bunker, loginWithNip07, loginWithBunker, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
+    const { pubkey, privkey, protectedKey, isLocked, setProtectedKey, unlockWithKey, isNip07, bunker, loginWithNip07, loginWithBunker, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
     const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
@@ -114,6 +115,49 @@ export default function Profile() {
             setSignerPending(false);
         }
     };
+
+    // ── Passkey protection for a locally stored key ──────────────────────
+    const [vaultBusy, setVaultBusy] = useState(false);
+    const [vaultError, setVaultError] = useState("");
+    // A local key is the only thing worth protecting: NIP-07 and remote
+    // signers never hand this device the secret in the first place.
+    const hasLocalKey = Boolean(privkey || protectedKey);
+    const canOfferPasskey = hasLocalKey && !isNip07 && !bunker && passkeysAvailable();
+
+    const runVaultAction = async (action: () => Promise<void>) => {
+        setVaultError("");
+        setVaultBusy(true);
+        try {
+            await action();
+        } catch (error) {
+            // A cancelled prompt is a NotAllowedError, not a failure worth
+            // shouting about — everything else gets its message shown.
+            if (!(error instanceof DOMException && error.name === 'NotAllowedError')) {
+                setVaultError(error instanceof Error ? error.message : 'Não foi possível concluir a operação.');
+            }
+        } finally {
+            setVaultBusy(false);
+        }
+    };
+
+    const handleProtectKey = () => runVaultAction(async () => {
+        if (!privkey) throw new Error('A chave tem de estar desbloqueada.');
+        const { protectKey } = await import('@/lib/keyVault');
+        const stored = await protectKey(privkey, profileName || 'mORA');
+        // Keep it usable for this session; persistence drops the plaintext.
+        setProtectedKey(stored, privkey);
+    });
+
+    const handleUnlockKey = () => runVaultAction(async () => {
+        if (!protectedKey) return;
+        const { unlockKey } = await import('@/lib/keyVault');
+        unlockWithKey(await unlockKey(protectedKey));
+    });
+
+    const handleRemoveProtection = () => runVaultAction(async () => {
+        if (!privkey) throw new Error('Desbloqueie a chave primeiro.');
+        setProtectedKey(null, privkey);
+    });
 
     // Keys shown in their bech32 form (NIP-19) — that is what other Nostr
     // clients ask for, and what the user can carry to another device.
@@ -601,11 +645,78 @@ export default function Profile() {
                                 </code>
                             </div>
 
+                            {/* Passkey protection for the stored key. */}
+                            {canOfferPasskey && (
+                                <div className="rounded-xl bg-zinc-50 dark:bg-zinc-900/60 p-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-sm font-medium flex items-center gap-1.5">
+                                                {protectedKey ? <Lock size={13} aria-hidden="true" /> : <LockOpen size={13} aria-hidden="true" />}
+                                                {protectedKey ? 'Chave protegida' : 'Chave guardada sem proteção'}
+                                            </p>
+                                            <p className="text-xs text-zinc-500 mt-0.5">
+                                                {protectedKey
+                                                    ? (isLocked
+                                                        ? 'Desbloqueie para sincronizar e ver a chave. As orações continuam a contar neste dispositivo.'
+                                                        : 'Encriptada neste dispositivo, desbloqueada nesta sessão.')
+                                                    : 'Encripte a chave com a biometria do dispositivo. Fica ilegível para quem aceda ao armazenamento do navegador.'}
+                                            </p>
+                                        </div>
+                                        {protectedKey && !isLocked && (
+                                            <span className="shrink-0 text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400">
+                                                Ativa
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2 mt-3">
+                                        {!protectedKey && (
+                                            <button
+                                                type="button"
+                                                onClick={handleProtectKey}
+                                                disabled={vaultBusy || !privkey}
+                                                className="flex-1 py-2 px-3 rounded-lg bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-xs font-semibold transition-colors disabled:opacity-50"
+                                            >
+                                                Proteger com biometria
+                                            </button>
+                                        )}
+                                        {protectedKey && isLocked && (
+                                            <button
+                                                type="button"
+                                                onClick={handleUnlockKey}
+                                                disabled={vaultBusy}
+                                                className="flex-1 py-2 px-3 rounded-lg bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-xs font-semibold transition-colors disabled:opacity-50"
+                                            >
+                                                Desbloquear
+                                            </button>
+                                        )}
+                                        {protectedKey && !isLocked && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveProtection}
+                                                disabled={vaultBusy}
+                                                className="py-2 px-3 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-medium transition-colors disabled:opacity-50"
+                                            >
+                                                Remover proteção
+                                            </button>
+                                        )}
+                                    </div>
+                                    {vaultError && <p className="text-red-500 text-xs mt-2">{vaultError}</p>}
+                                </div>
+                            )}
+
                             {/* The secret key exists only for locally generated
                                 identities — with NIP-07 the extension keeps it.
                                 It is the only way to carry this identity (and
                                 its streaks) to another device, so it has to be
                                 reachable, but never on screen by default. */}
+                            {protectedKey && isLocked && (
+                                <div>
+                                    <p className="text-xs text-zinc-500 mb-1">Chave privada</p>
+                                    <p className="text-xs text-zinc-500">
+                                        Protegida. Desbloqueie acima para a ver ou copiar.
+                                    </p>
+                                </div>
+                            )}
                             {nsec && (
                                 <div>
                                     <div className="flex items-center justify-between gap-2 mb-1">

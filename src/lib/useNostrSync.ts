@@ -19,10 +19,14 @@ let lastSyncAt = 0;
  */
 export function useNostrSync() {
     const pubkey = useAuthStore((s) => s.pubkey);
+    const isLocked = useAuthStore((s) => s.isLocked);
     const shareStreaks = useAppStore((s) => s.shareStreaks);
 
     useEffect(() => {
-        if (!pubkey || !shareStreaks) return;
+        // A protected key that hasn't been unlocked this session can't sign or
+        // decrypt anything. Prayers still count locally; syncing resumes on
+        // unlock, which re-runs this effect.
+        if (!pubkey || !shareStreaks || isLocked) return;
 
         const pull = async (force = false) => {
             const now = Date.now();
@@ -73,5 +77,5 @@ export function useNostrSync() {
             window.clearTimeout(debounce);
             unsubscribe();
         };
-    }, [pubkey, shareStreaks]);
+    }, [pubkey, shareStreaks, isLocked]);
 }
