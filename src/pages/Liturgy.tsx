@@ -18,8 +18,8 @@ const SOURCE_RE = /^(Leitura (do|da|de|aos|ao)|Do Livro|Da Carta|Do Profeta|Dos 
 // Canonical section IDs for stable TOC anchor links.
 const SECTION_ID_MAP: Array<[RegExp, string]> = [
     [/^LEITURA\s+I$/i,          'leitura-i'],
+    [/^LEITURA\s+III/i,          'leitura-iii'], // before II — "III" also starts with "II"
     [/^LEITURA\s+II/i,           'leitura-ii'],
-    [/^LEITURA\s+III/i,          'leitura-iii'],
     [/^SALMO\s+RESPONSORIAL/i,   'salmo'],
     [/^EVANGELHO/i,              'evangelho'],
 ];
@@ -221,6 +221,27 @@ function enrichReadingTypography(doc: Document): void {
             }
             node = node.nextElementSibling;
         }
+    });
+
+    // ── Pass 4: dedupe anchor ids ────────────────────────────────────────
+    // Days with alternative readings repeat a section header (e.g. the
+    // optional gospel on the memorial of Sts Martha, Mary and Lazarus gives
+    // two EVANGELHO sections). Same id twice breaks the TOC: both chips
+    // scroll to and highlight the first. Suffix repeat ids and tell the
+    // labels apart by their scripture reference (book + chapter).
+    const anchors = Array.from(doc.querySelectorAll<HTMLElement>('[id][data-toc-label]'));
+    const idTotals = new Map<string, number>();
+    anchors.forEach((h) => idTotals.set(h.id, (idTotals.get(h.id) ?? 0) + 1));
+    const idSeen = new Map<string, number>();
+    anchors.forEach((h) => {
+        if ((idTotals.get(h.id) ?? 0) < 2) return;
+        const base = h.id;
+        const n = (idSeen.get(base) ?? 0) + 1;
+        idSeen.set(base, n);
+        if (n > 1) h.id = `${base}-${n}`;
+        const ref = h.querySelector('.reading-ref')?.textContent?.split(',')[0].trim();
+        const label = h.getAttribute('data-toc-label') ?? '';
+        h.setAttribute('data-toc-label', ref ? `${label} (${ref})` : `${label} ${n}`);
     });
 }
 
