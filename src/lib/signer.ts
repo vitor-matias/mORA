@@ -108,6 +108,14 @@ export async function getBunkerSigner(): Promise<BunkerSigner | null> {
             session.pointer,
         );
         await runOrClose(signer, withSignerTimeout(signer.connect()));
+        // Logging out (or switching signer) while this was connecting clears
+        // the session; adopting the result now would resurrect a connection
+        // for an identity that no longer exists and leave it subscribed.
+        const current = useAuthStore.getState().bunker;
+        if (!current || sessionKey(current) !== key) {
+            signer.close().catch(() => {});
+            throw new Error('A sessão do assinador terminou durante a ligação.');
+        }
         setActive(signer, key);
         return signer;
     })();
@@ -317,6 +325,31 @@ export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
         return null;
     }
     return awaitSignerResponse(clientSecretKey, pending.uri);
+}
+
+/**
+ * Runs a request through the connected signer.
+ *
+ * A cached signer that has stopped answering — the app was asleep, a relay
+ * dropped, the signer app was killed — would otherwise be handed to every
+ * later call, and each one would time out. Since nothing else invalidates it,
+ * the session would stay broken until a reload. A timeout therefore drops the
+ * cached signer, so the next request reconnects instead.
+ *
+ * Returns null when there is no signer session at all.
+ */
+export async function requestFromSigner<T>(
+    run: (signer: BunkerSigner) => Promise<T>,
+    timeoutMs?: number,
+): Promise<T | null> {
+    const signer = await getBunkerSigner();
+    if (!signer) return null;
+    try {
+        return await withSignerTimeout(run(signer), timeoutMs);
+    } catch (error) {
+        if (error instanceof SignerUnreachableError) forgetBunkerSigner();
+        throw error;
+    }
 }
 
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */

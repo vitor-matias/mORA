@@ -44,10 +44,10 @@ export interface NostrProfile {
 async function signNostrEvent(baseEvent: EventTemplate): Promise<Event> {
     const { privkey, isNip07, bunker } = useAuthStore.getState();
     if (bunker) {
-        const { getBunkerSigner, withSignerTimeout } = await import('@/lib/signer');
-        const signer = await getBunkerSigner();
-        if (!signer) throw new Error('Remote signer unavailable');
-        return withSignerTimeout(signer.signEvent(baseEvent));
+        const { requestFromSigner } = await import('@/lib/signer');
+        const signed = await requestFromSigner((signer) => signer.signEvent(baseEvent));
+        if (!signed) throw new Error('Remote signer unavailable');
+        return signed;
     }
     if (isNip07 && typeof window !== 'undefined' && window.nostr) {
         return window.nostr.signEvent(baseEvent);
@@ -181,9 +181,8 @@ async function encryptToSelf(plaintext: string): Promise<string | null> {
     const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
     if (!pubkey) return null;
     if (bunker) {
-        const { getBunkerSigner, withSignerTimeout } = await import('@/lib/signer');
-        const signer = await getBunkerSigner();
-        return signer ? withSignerTimeout(signer.nip44Encrypt(pubkey, plaintext)) : null;
+        const { requestFromSigner } = await import('@/lib/signer');
+        return requestFromSigner((signer) => signer.nip44Encrypt(pubkey, plaintext));
     }
     if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
         return window.nostr.nip44.encrypt(pubkey, plaintext);
@@ -199,9 +198,8 @@ async function decryptFromSelf(ciphertext: string): Promise<string | null> {
     const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
     if (!pubkey) return null;
     if (bunker) {
-        const { getBunkerSigner, withSignerTimeout } = await import('@/lib/signer');
-        const signer = await getBunkerSigner();
-        return signer ? withSignerTimeout(signer.nip44Decrypt(pubkey, ciphertext)) : null;
+        const { requestFromSigner } = await import('@/lib/signer');
+        return requestFromSigner((signer) => signer.nip44Decrypt(pubkey, ciphertext));
     }
     if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
         return window.nostr.nip44.decrypt(pubkey, ciphertext);
