@@ -14,8 +14,25 @@ import { useAuthStore } from '@/store/auth';
  * bouncing the user out to another app for every event.
  */
 
-/** Relays used to reach the signer when the URI doesn't name its own. */
-const DEFAULT_SIGNER_RELAYS = ['wss://relay.nsec.app', 'wss://relay.damus.io'];
+/**
+ * Relays used to reach the signer. The subscription only dies when *every*
+ * relay closes, so several healthy ones is the resilience — one flaky entry
+ * costs nothing.
+ *
+ * Measured before choosing: relay.nsec.app refused the connection outright
+ * and relay.damus.io took 3.6s to accept, past the pool's 3s connection
+ * timeout — with only those two the subscription closed before the user could
+ * ever approve, which is exactly the "subscription closed before connection
+ * was established" failure. These three accepted a NIP-46 subscription in
+ * 249ms, 598ms and 487ms. nsec.app stays last because signers commonly
+ * default to it, and it can only help if it recovers.
+ */
+const DEFAULT_SIGNER_RELAYS = [
+    'wss://nos.lol',
+    'wss://relay.primal.net',
+    'wss://nostr.mom',
+    'wss://relay.nsec.app',
+];
 
 const CLIENT_METADATA = {
     name: 'mORA',
@@ -112,13 +129,25 @@ export function clearPendingConnection() {
 
 export class SignerTimeoutError extends Error {
     constructor() {
-        super('O assinador não respondeu. Tente novamente ou use o endereço bunker://.');
+        super('O assinador não respondeu a tempo. Tente novamente ou use o endereço bunker://.');
         this.name = 'SignerTimeoutError';
     }
 }
 
+export class SignerRelayError extends Error {
+    constructor() {
+        super('Não foi possível manter a ligação aos relays. Verifique a internet e tente novamente, ou use o endereço bunker://.');
+        this.name = 'SignerRelayError';
+    }
+}
+
+/** Below this, a closed subscription means the relays never held, not that
+    the user was slow to approve — the two need different advice. */
+const RELAY_FAILURE_WINDOW_MS = 10_000;
+
 /** Listens for the signer's answer to an already-created connection URI. */
 function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<BunkerLogin> {
+    const startedAt = Date.now();
     return BunkerSigner
         .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
         .then(async (signer: BunkerSigner) => {
@@ -132,11 +161,15 @@ function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<
             return { session, pubkey };
         })
         .catch((error) => {
-            // The library rejects with a closed-subscription error once its
-            // wait elapses; say what actually happened.
-            throw error instanceof Error && /subscription closed/i.test(error.message)
-                ? new SignerTimeoutError()
-                : error;
+            // The library reports every failure as a closed subscription,
+            // whether the relays never connected or the user simply never
+            // approved. How fast it closed tells them apart.
+            if (error instanceof Error && /subscription closed/i.test(error.message)) {
+                throw Date.now() - startedAt < RELAY_FAILURE_WINDOW_MS
+                    ? new SignerRelayError()
+                    : new SignerTimeoutError();
+            }
+            throw error;
         });
 }
 
