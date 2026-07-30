@@ -3,12 +3,16 @@ import { persist } from 'zustand/middleware';
 import type { RosaryBeadMode } from '@/lib/rosary';
 import { formatISODate } from '@/lib/format';
 
-interface StreakData {
+export interface StreakData {
     days: number;
     lastCompletedDate: string | null;
 }
 
 export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+
+export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours'];
+
+export type Streaks = Record<StreakItem, StreakData>;
 
 /** An in-progress rosary, so an accidental exit never loses the user's place. */
 export interface RosarySession {
@@ -19,6 +23,144 @@ export interface RosarySession {
 
 export function isCompletedToday(streak: StreakData): boolean {
     return streak.lastCompletedDate === formatISODate(new Date());
+}
+
+// ── Cross-device streak merging ──────────────────────────────────────────
+// Every device keeps its own count and publishes a snapshot; nothing else
+// knows what the others recorded, so pulling one in means reconciling two
+// partial histories rather than picking a winner.
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Whole days from `a` to `b`, both YYYY-MM-DD.
+    Built from the date parts in UTC rather than parsed as local time: local
+    midnights are 23 or 25 hours apart across a DST change (and don't exist at
+    all in a few zones), which rounding happens to absorb — but the merge rule
+    turns on this being exactly 1, so it shouldn't rest on that. */
+function daysApart(a: string, b: string): number {
+    const utc = (iso: string) => {
+        const [y, m, d] = iso.split('-').map(Number);
+        return Date.UTC(y, m - 1, d);
+    };
+    return (utc(b) - utc(a)) / 86400000;
+}
+
+export function emptyStreak(): StreakData {
+    return { days: 0, lastCompletedDate: null };
+}
+
+export function emptyStreaks(): Streaks {
+    return { rosary: emptyStreak(), liturgy: emptyStreak(), liturgy_hours: emptyStreak() };
+}
+
+// A century of unbroken daily prayer. Past this the number is not a streak,
+// it's a corrupted snapshot.
+const MAX_STREAK_DAYS = 36_500;
+
+/** A snapshot from a relay is only as trustworthy as its shape — and a device
+    with a wrong clock could otherwise park a streak in the future, where no
+    later prayer can ever extend it. */
+function isUsableStreak(value: unknown): value is StreakData {
+    if (!value || typeof value !== 'object') return false;
+    const { days, lastCompletedDate } = value as StreakData;
+    if (!Number.isInteger(days) || days < 0 || days > MAX_STREAK_DAYS) return false;
+    // The two fields have to agree: a count with no date it was earned on (or
+    // a date with a zero count) is an impossible state that would otherwise
+    // overwrite a good local streak.
+    if (lastCompletedDate === null) return days === 0;
+    if (days === 0) return false;
+    if (typeof lastCompletedDate !== 'string' || !ISO_DATE_RE.test(lastCompletedDate)) return false;
+    return lastCompletedDate <= formatISODate(new Date());
+}
+
+/** Persisted state from an older build can predate a streak item, so an entry
+    may simply be absent. */
+function localStreak(streaks: Streaks, item: StreakItem): StreakData {
+    const entry = streaks?.[item];
+    return isUsableStreak(entry) ? entry : emptyStreak();
+}
+
+function mergeStreakEntry(local: StreakData, remote: StreakData): StreakData {
+    if (!remote.lastCompletedDate) return local;
+    if (!local.lastCompletedDate) return remote;
+    // Same day on both: whichever counted higher already accounts for the
+    // other's history.
+    if (local.lastCompletedDate === remote.lastCompletedDate) {
+        return local.days >= remote.days ? local : remote;
+    }
+
+    const [earlier, later] = local.lastCompletedDate < remote.lastCompletedDate
+        ? [local, remote]
+        : [remote, local];
+    // Consecutive days on two devices are one unbroken streak: praying Monday
+    // on the phone and Tuesday on the laptop is two days, but neither device
+    // can see that alone. A wider gap means the streak really did break, and
+    // the later device's own count is the truth.
+    const consecutive = daysApart(earlier.lastCompletedDate!, later.lastCompletedDate!) === 1;
+    return {
+        days: consecutive ? Math.max(later.days, earlier.days + 1) : later.days,
+        lastCompletedDate: later.lastCompletedDate,
+    };
+}
+
+/** Folds a snapshot from another device into this one's streaks. Unusable or
+    missing entries leave the local value untouched. */
+export function mergeStreaks(local: Streaks, remote: unknown): Streaks {
+    const incoming = (remote && typeof remote === 'object' ? remote : {}) as Record<string, unknown>;
+    const merged = { ...local };
+    for (const item of STREAK_ITEMS) {
+        const mine = localStreak(local, item);
+        const entry = incoming[item];
+        merged[item] = isUsableStreak(entry) ? mergeStreakEntry(mine, entry) : mine;
+    }
+    return merged;
+}
+
+export function streaksEqual(a: Streaks, b: Streaks): boolean {
+    return STREAK_ITEMS.every((item) => {
+        const x = localStreak(a, item);
+        const y = localStreak(b, item);
+        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate;
+    });
+}
+
+// ── Synced settings ──────────────────────────────────────────────────────
+// How the app looks and reads — worth carrying across a user's devices.
+// Deliberately excluded: notificationTime and hourReminders (a reminder is a
+// property of the device meant to buzz, and syncing them would fire the same
+// notification on every signed-in device), pushSubscribed and shareStreaks
+// (device-level by design), and session/cache state.
+
+export interface SyncedSettings {
+    theme: ThemeMode;
+    fontSize: FontSize;
+    fontFamily: FontFamily;
+    autoScrollSpeed: AutoScrollSpeed;
+    rosaryMode: RosaryBeadMode;
+}
+
+const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark'];
+const FONT_SIZES: FontSize[] = ['small', 'medium', 'large', 'xlarge'];
+const FONT_FAMILIES: FontFamily[] = ['system', 'serif', 'sans'];
+const ROSARY_MODES: RosaryBeadMode[] = ['beginner', 'advanced'];
+
+/** Keeps only the values this version understands: a snapshot written by a
+    newer build (or a corrupted one) must not put the store in a state the UI
+    can't render. */
+export function sanitizeSyncedSettings(raw: unknown): Partial<SyncedSettings> {
+    if (!raw || typeof raw !== 'object') return {};
+    const input = raw as Record<string, unknown>;
+    const out: Partial<SyncedSettings> = {};
+    if (THEME_MODES.includes(input.theme as ThemeMode)) out.theme = input.theme as ThemeMode;
+    if (FONT_SIZES.includes(input.fontSize as FontSize)) out.fontSize = input.fontSize as FontSize;
+    if (FONT_FAMILIES.includes(input.fontFamily as FontFamily)) out.fontFamily = input.fontFamily as FontFamily;
+    if (ROSARY_MODES.includes(input.rosaryMode as RosaryBeadMode)) out.rosaryMode = input.rosaryMode as RosaryBeadMode;
+    if (typeof input.autoScrollSpeed === 'number') out.autoScrollSpeed = clampScrollLevel(input.autoScrollSpeed);
+    return out;
+}
+
+export function settingsEqual(a: SyncedSettings, b: Partial<SyncedSettings>): boolean {
+    return (Object.keys(a) as (keyof SyncedSettings)[]).every((key) => a[key] === b[key]);
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
@@ -61,12 +203,22 @@ interface AppState {
     toggleRosaryMode: () => void;
     rosarySession: RosarySession | null;
     setRosarySession: (session: RosarySession | null) => void;
-    streaks: {
-        rosary: StreakData;
-        liturgy: StreakData;
-        liturgy_hours: StreakData;
-    };
+    streaks: Streaks;
     incrementStreak: (item: StreakItem) => void;
+    /** Replaces the whole set — used by the Nostr pull after merging. */
+    setStreaks: (streaks: Streaks) => void;
+
+    /** When the synced settings last changed on this device (epoch ms).
+        Settings are last-write-wins, so this is what decides a conflict. */
+    settingsUpdatedAt: number;
+    /** True when the last settings change came from another device rather than
+        this user, so the sync hook doesn't publish it straight back. Never
+        persisted — it describes the last change, not the state. */
+    settingsFromRemote: boolean;
+    /** Applies a snapshot pulled from another device, adopting its timestamp
+        rather than stamping "now" — otherwise every pull would look like a
+        local edit and ping-pong back. */
+    applySyncedSettings: (settings: Partial<SyncedSettings>, updatedAt: number) => void;
 
     // Publishing streaks to Nostr relays is opt-in (and encrypted) — prayer
     // activity is sensitive by default.
@@ -108,9 +260,11 @@ export const useAppStore = create<AppState>()(
     persist(
         (set) => ({
             rosaryMode: 'beginner',
-            setRosaryMode: (rosaryMode) => set({ rosaryMode }),
+            setRosaryMode: (rosaryMode) => set({ rosaryMode, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             toggleRosaryMode: () => set((state) => ({
-                rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner'
+                rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner',
+                settingsUpdatedAt: Date.now(),
+                settingsFromRemote: false,
             })),
             rosarySession: null,
             setRosarySession: (rosarySession) => set({ rosarySession }),
@@ -119,7 +273,7 @@ export const useAppStore = create<AppState>()(
 
             // Default preferences
             theme: 'system',
-            setTheme: (theme) => set({ theme }),
+            setTheme: (theme) => set({ theme, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             notificationTime: null,
             setNotificationTime: (notificationTime) => set({ notificationTime }),
             hourReminders: {},
@@ -138,20 +292,16 @@ export const useAppStore = create<AppState>()(
             liturgicalColorOverride: null,
             setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
-            setFontSize: (fontSize) => set({ fontSize }),
+            setFontSize: (fontSize) => set({ fontSize, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             fontFamily: 'system',
-            setFontFamily: (fontFamily) => set({ fontFamily }),
+            setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             autoScrollSpeed: 2,
-            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
-            streaks: {
-                rosary: { days: 0, lastCompletedDate: null },
-                liturgy: { days: 0, lastCompletedDate: null },
-                liturgy_hours: { days: 0, lastCompletedDate: null }
-            },
+            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
+            streaks: emptyStreaks(),
             incrementStreak: (item) => set((state) => {
                 const userToday = formatISODate(new Date());
 
-                const currentStreak = state.streaks[item] ?? { days: 0, lastCompletedDate: null };
+                const currentStreak = state.streaks[item] ?? emptyStreak();
 
                 if (currentStreak.lastCompletedDate === userToday) {
                     // Already completed today, no streak increment needed.
@@ -178,6 +328,14 @@ export const useAppStore = create<AppState>()(
                         [item]: { days: newDays, lastCompletedDate: userToday }
                     }
                 };
+            }),
+            setStreaks: (streaks) => set({ streaks }),
+            settingsUpdatedAt: 0,
+            settingsFromRemote: false,
+            applySyncedSettings: (settings, updatedAt) => set({
+                ...settings,
+                settingsUpdatedAt: updatedAt,
+                settingsFromRemote: true,
             })
         }),
         {
@@ -185,8 +343,9 @@ export const useAppStore = create<AppState>()(
             // The override is transient page state; persisting it would leave
             // a wrong theme stuck after a hard close mid-browse.
             partialize: (state) => Object.fromEntries(
-                Object.entries(state).filter(([key]) => key !== 'liturgicalColorOverride')
-            ) as Omit<AppState, 'liturgicalColorOverride'>,
+                Object.entries(state).filter(([key]) =>
+                    key !== 'liturgicalColorOverride' && key !== 'settingsFromRemote')
+            ) as Omit<AppState, 'liturgicalColorOverride' | 'settingsFromRemote'>,
         }
     )
 );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { LiturgicalColor } from "@/lib/liturgy";
 import { COLOR_DOTS, splitDayDescription } from "@/lib/dayInfo";
 
@@ -15,6 +16,61 @@ export function LiturgicalColorDot({ color, className = '' }: { color: Liturgica
             className={`inline-block h-2.5 w-2.5 rounded-full align-middle ${color === 'branco' ? 'ring-1 ring-zinc-300 dark:ring-zinc-600' : ''} ${className}`}
             style={{ backgroundColor: COLOR_DOTS[color].bg }}
         />
+    );
+}
+
+/** Collapsible day card: date and day name up front, the day's description
+    (rank, colour, readings list) behind a tap — same shape as the "Santo do
+    dia" card, so the sidebar stays scannable on a laptop screen. */
+export function DayCard({ dateLabel, color, title, description, className = '' }: {
+    dateLabel: string;
+    color?: LiturgicalColor;
+    title: string;
+    description?: string | null;
+    className?: string;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    // Trimmed once: a whitespace-only description would otherwise show a
+    // chevron that expands to an empty body.
+    const body = description?.trim() ?? '';
+    const hasBody = body.length > 0;
+
+    return (
+        <section className={`surface surface-accent rounded-2xl ${className}`}>
+            <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                aria-expanded={expanded}
+                disabled={!hasBody}
+                className="w-full flex items-start justify-between gap-2 p-4 text-left"
+            >
+                <span>
+                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+                        {/* The dot is the color signal; its name is already in
+                            the description text, so no "Cor litúrgica" line. */}
+                        {color && <LiturgicalColorDot color={color} />}
+                        {dateLabel}
+                    </span>
+                    <span className="block text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
+                        {title}
+                    </span>
+                </span>
+                {hasBody && (
+                    <ChevronDown
+                        size={16}
+                        aria-hidden="true"
+                        className={`mt-0.5 shrink-0 text-liturgy-600/70 dark:text-liturgy-400/70 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    />
+                )}
+            </button>
+            {expanded && hasBody && (
+                // Whole description at once — the card itself is the collapse,
+                // so a second "Ver mais" inside it would just be another tap.
+                <p className="px-4 pb-4 text-sm text-liturgy-800/80 dark:text-liturgy-200/70 whitespace-pre-line">
+                    {body}
+                </p>
+            )}
+        </section>
     );
 }
 

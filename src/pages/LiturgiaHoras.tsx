@@ -6,6 +6,8 @@ import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
+import { useAutoScroll } from "@/lib/useAutoScroll";
 import { getHourForTime } from "@/lib/hours";
 
 // The 5 canonical moments we display
@@ -212,13 +214,26 @@ export default function LiturgiaHoras() {
         return selectedMoment.parts;
     }, [selectedMoment, activeSubHour]);
 
+    // Hands-free scrolling through the hour, same as the Missa page. The key
+    // covers everything that changes the page height, so `atPageEnd` is
+    // re-measured after switching hour or folding the Invitatório away.
+    const scroll = useAutoScroll(`${activeHour}:${activeSubHour}:${collapsedSections.size}:${loading}`);
+
+    // Switching what's on screen mid-scroll would leave the loop running
+    // through text the user didn't choose — stop and let them restart.
     const selectHour = (id: string) => {
+        scroll.stop();
         setUserActiveHour(id);
         if (id === 'intermedia') {
             setUserActiveSubHour('Tércia');
         } else {
             setUserActiveSubHour(null);
         }
+    };
+
+    const selectSubHour = (sub: string) => {
+        scroll.stop();
+        setUserActiveSubHour(sub);
     };
 
     return (
@@ -259,7 +274,7 @@ export default function LiturgiaHoras() {
                                                 {['Tércia', 'Sexta', 'Noa'].map(sub => (
                                                     <button
                                                         key={sub}
-                                                        onClick={() => setUserActiveSubHour(sub)}
+                                                        onClick={() => selectSubHour(sub)}
                                                         className={`text-left text-xs py-1 px-2 rounded-lg transition-colors ${
                                                             activeSubHour === sub
                                                                 ? 'text-liturgy-600 dark:text-liturgy-400 font-semibold bg-liturgy-50/50 dark:bg-liturgy-950/20'
@@ -275,6 +290,11 @@ export default function LiturgiaHoras() {
                                 ))}
                             </ul>
                         </nav>
+
+                        <div className="flex flex-col gap-2">
+                            <AutoScrollSpeedRow scroll={scroll} />
+                            <AutoScrollButton scroll={scroll} />
+                        </div>
                     </aside>
                 )}
 
@@ -312,7 +332,7 @@ export default function LiturgiaHoras() {
                                     {['Tércia', 'Sexta', 'Noa'].map(sub => (
                                         <button
                                             key={sub}
-                                            onClick={() => setUserActiveSubHour(sub)}
+                                            onClick={() => selectSubHour(sub)}
                                             className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-all ${activeSubHour === sub
                                                 ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                                 : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -389,6 +409,7 @@ export default function LiturgiaHoras() {
                                                                 <div className="sticky bottom-4 z-20 pb-2 pt-2">
                                                                     <button
                                                                         onClick={() => {
+                                                                            scroll.stop();
                                                                             const nextPart = displayParts.find(p => p.title !== 'Invitatório');
                                                                             if (nextPart) {
                                                                                 const sectionEl = document.getElementById(`section-${nextPart.title}`);
@@ -455,6 +476,9 @@ export default function LiturgiaHoras() {
                     )}
                 </div>
             </div>
+
+            {/* ── Floating autoscroll FAB — mobile / tablet only ────────── */}
+            {!loading && canonicalHours.length > 0 && <AutoScrollFab scroll={scroll} />}
         </div>
     );
 }

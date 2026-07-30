@@ -11,6 +11,21 @@ export const COLOR_DOTS: Record<LiturgicalColor, { bg: string; label: string }> 
     rosa: { bg: '#ec4899', label: 'Rosa' },
 };
 
+// Scripture reference lines: "L 1: Jr 18, 1-6", "Ev: Mt 13, 47-53", a
+// tab-separated "L 2<TAB>Heb 11, 8" and the standalone "Sl 103 (104), …"
+// continuations. The digit is what tells "L 1:" from a word starting with L.
+const READING_LINE_RE = /^(L\s*\d+\s*[:\t]|Ev\s*[:\t]|Sl\s+\d)/i;
+
+/** The day description without its readings list — for cards that say which
+    day it is rather than what is read at Mass. */
+export function stripReadingLines(text: string): string {
+    return text
+        .split('\n')
+        .filter((line) => !READING_LINE_RE.test(line.trim()))
+        .join('\n')
+        .trim();
+}
+
 /**
  * Splits a liturgical-calendar day description into the part shown by
  * default — celebration, office notes and the day's readings — and the
