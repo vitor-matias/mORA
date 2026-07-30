@@ -376,6 +376,7 @@ export default function Liturgy() {
     }, [selectedDateStr]);
 
     const changeDay = (delta: number) => {
+        stopScroll();
         setSelectedDate(prev => {
             const next = new Date(prev);
             next.setDate(prev.getDate() + delta);
@@ -541,7 +542,7 @@ export default function Liturgy() {
             {([[true, 'Leituras'], [false, 'Missal']] as [boolean, string][]).map(([value, label]) => (
                 <button
                     key={label}
-                    onClick={() => setShowOnlyReadings(value)}
+                    onClick={() => { stopScroll(); setShowOnlyReadings(value); }}
                     aria-pressed={showOnlyReadings === value}
                     className={`flex-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         showOnlyReadings === value
@@ -594,7 +595,9 @@ export default function Liturgy() {
                     tabIndex={-1}
                     value={selectedDateStr}
                     onChange={(e) => {
-                        if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
+                        if (!e.target.value) return;
+                        stopScroll();
+                        setSelectedDate(new Date(e.target.value + 'T00:00:00'));
                     }}
                     className="absolute inset-0 opacity-0 pointer-events-none"
                 />

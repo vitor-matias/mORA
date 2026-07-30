@@ -23,7 +23,7 @@ export interface AutoScroll {
  * the page height isn't final at the moment the content state updates.
  */
 export function useAutoScroll(contentKey: unknown): AutoScroll {
-    const { autoScrollSpeed } = useAppStore();
+    const autoScrollSpeed = useAppStore((s) => s.autoScrollSpeed);
 
     const [isScrolling, setIsScrolling] = useState(false);
     // Starts at the default configured in Profile — the +/- controls only
@@ -49,6 +49,10 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
     }, []);
 
     const start = useCallback(() => {
+        // A double-tap can call this twice before `isScrolling` re-renders;
+        // without this the first loop keeps running untracked and `stop()`
+        // only ever cancels the last one.
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
         setIsScrolling(true);
         // Seed the float accumulator with the current position so we don't
         // jump on start.

@@ -30,7 +30,10 @@ export function DayCard({ dateLabel, color, title, description, className = '' }
     className?: string;
 }) {
     const [expanded, setExpanded] = useState(false);
-    const hasBody = Boolean(description);
+    // Trimmed once: a whitespace-only description would otherwise show a
+    // chevron that expands to an empty body.
+    const body = description?.trim() ?? '';
+    const hasBody = body.length > 0;
 
     return (
         <section className={`surface surface-accent rounded-2xl ${className}`}>
@@ -60,11 +63,11 @@ export function DayCard({ dateLabel, color, title, description, className = '' }
                     />
                 )}
             </button>
-            {expanded && description && (
+            {expanded && hasBody && (
                 // Whole description at once — the card itself is the collapse,
                 // so a second "Ver mais" inside it would just be another tap.
                 <p className="px-4 pb-4 text-sm text-liturgy-800/80 dark:text-liturgy-200/70 whitespace-pre-line">
-                    {description.trim()}
+                    {body}
                 </p>
             )}
         </section>

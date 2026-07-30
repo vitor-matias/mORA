@@ -6,6 +6,7 @@ import type { AutoScroll } from "@/lib/useAutoScroll";
 export function AutoScrollButton({ scroll }: { scroll: AutoScroll }) {
     return (
         <button
+            type="button"
             onClick={scroll.toggle}
             disabled={!scroll.isScrolling && scroll.atPageEnd}
             aria-label={scroll.isScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
@@ -32,6 +33,7 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Velocidade</span>
             <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-1 py-0.5">
                 <button
+                    type="button"
                     onClick={scroll.slower}
                     aria-label="Mais lento"
                     className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
@@ -42,6 +44,7 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
                     {SCROLL_LEVELS[scroll.speed].label}
                 </span>
                 <button
+                    type="button"
                     onClick={scroll.faster}
                     aria-label="Mais rápido"
                     className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
@@ -63,6 +66,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                    readable. */
                 <div className="flex items-stretch h-12 rounded-full bg-zinc-900/60 dark:bg-zinc-800/60 backdrop-blur-md shadow-xl overflow-hidden">
                     <button
+                        type="button"
                         onClick={scroll.slower}
                         aria-label="Mais lento"
                         className="pl-4 pr-2.5 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
@@ -73,6 +77,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                         {SCROLL_LEVELS[scroll.speed].label}
                     </span>
                     <button
+                        type="button"
                         onClick={scroll.faster}
                         aria-label="Mais rápido"
                         className="pl-2.5 pr-3 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
@@ -81,6 +86,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                     </button>
                     <div className="w-px my-3 bg-white/20" aria-hidden="true" />
                     <button
+                        type="button"
                         onClick={scroll.toggle}
                         aria-label="Parar auto-scroll"
                         className="pl-3.5 pr-4 flex items-center text-white transition-colors"
@@ -90,6 +96,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                 </div>
             ) : (
                 <button
+                    type="button"
                     onClick={scroll.toggle}
                     disabled={scroll.atPageEnd}
                     aria-label="Iniciar auto-scroll"
