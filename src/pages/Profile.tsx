@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert } from "lucide-react";
+import { nip19 } from "nostr-tools";
+import { hexToBytes } from "@noble/hashes/utils";
+import { fileToAvatarDataUrl } from "@/lib/image";
 import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
@@ -14,7 +17,7 @@ import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib
 const REMINDER_SYNC_DEBOUNCE_MS = 600;
 
 export default function Profile() {
-    const { pubkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
+    const { pubkey, privkey, isNip07, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
     const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
@@ -23,9 +26,51 @@ export default function Profile() {
     const [profilePicture, setProfilePicture] = useState("");
     const [isSaving, setIsSaving] = useState(false);
 
+    const [pictureError, setPictureError] = useState("");
+    const [isProcessingPicture, setIsProcessingPicture] = useState(false);
+    const pictureInputRef = useRef<HTMLInputElement>(null);
+
     // Custom key input
     const [customKey, setCustomKey] = useState("");
     const [keyError, setKeyError] = useState("");
+
+    // Keys shown in their bech32 form (NIP-19) — that is what other Nostr
+    // clients ask for, and what the user can carry to another device.
+    const npub = pubkey ? nip19.npubEncode(pubkey) : "";
+    // Only a locally generated key can be revealed; a NIP-07 extension never
+    // hands the secret to the page.
+    const nsec = privkey && !isNip07 ? nip19.nsecEncode(hexToBytes(privkey)) : "";
+    const [nsecRevealed, setNsecRevealed] = useState(false);
+    const [copied, setCopied] = useState<'npub' | 'nsec' | null>(null);
+
+    // Revealing is per-visit: leaving the page re-hides the secret.
+    useEffect(() => () => setNsecRevealed(false), []);
+
+    const copyKey = async (which: 'npub' | 'nsec', value: string) => {
+        try {
+            await navigator.clipboard.writeText(value);
+            setCopied(which);
+            window.setTimeout(() => setCopied(null), 2000);
+        } catch {
+            // Clipboard denied (insecure context, permissions) — the key is
+            // on screen to copy by hand.
+        }
+    };
+
+    const handlePictureFile = async (file: File | undefined) => {
+        if (!file) return;
+        setPictureError("");
+        setIsProcessingPicture(true);
+        try {
+            setProfilePicture(await fileToAvatarDataUrl(file));
+        } catch (error) {
+            setPictureError(error instanceof Error ? error.message : 'Não foi possível usar esta imagem.');
+        } finally {
+            setIsProcessingPicture(false);
+            // Let the same file be picked again after an error.
+            if (pictureInputRef.current) pictureInputRef.current.value = "";
+        }
+    };
 
     // New-identity name
     const [newIdentityName, setNewIdentityName] = useState("");
@@ -382,12 +427,54 @@ export default function Profile() {
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-zinc-500 mb-1 block">URL da Imagem de Perfil</label>
+                                <label className="text-xs font-medium text-zinc-500 mb-1 block">Imagem de Perfil</label>
+                                <div className="flex items-center gap-3">
+                                    {profilePicture ? (
+                                        <img src={profilePicture} alt="" className="w-12 h-12 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shrink-0" />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
+                                            <User size={20} />
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => pictureInputRef.current?.click()}
+                                        disabled={isProcessingPicture}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-sm font-medium text-zinc-700 dark:text-zinc-200 transition-colors disabled:opacity-50"
+                                    >
+                                        {isProcessingPicture ? (
+                                            <div className="w-4 h-4 border-2 border-zinc-400/40 border-t-zinc-500 rounded-full animate-spin" />
+                                        ) : (
+                                            <Upload size={15} aria-hidden="true" />
+                                        )}
+                                        Carregar imagem
+                                    </button>
+                                    {profilePicture && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setProfilePicture(""); setPictureError(""); }}
+                                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                                        >
+                                            Remover
+                                        </button>
+                                    )}
+                                </div>
+                                <input
+                                    ref={pictureInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => handlePictureFile(e.target.files?.[0])}
+                                    className="hidden"
+                                />
+                                {pictureError && (
+                                    <p className="text-xs text-red-600 dark:text-red-400 mt-2">{pictureError}</p>
+                                )}
+                                <label className="text-xs font-medium text-zinc-500 mt-3 mb-1 block">ou um endereço (URL)</label>
                                 <input
                                     type="url"
-                                    value={profilePicture}
+                                    value={profilePicture.startsWith('data:') ? '' : profilePicture}
                                     onChange={e => setProfilePicture(e.target.value)}
-                                    placeholder="https://"
+                                    placeholder={profilePicture.startsWith('data:') ? 'A usar a imagem carregada' : 'https://'}
                                     className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none"
                                 />
                             </div>
@@ -416,20 +503,83 @@ export default function Profile() {
                     ) : (
                         <div className="space-y-4">
                             <div>
-                                <p className="text-xs text-zinc-500 mb-1">{t.pubkey}</p>
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <p className="text-xs text-zinc-500">{t.pubkey}</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => copyKey('npub', npub)}
+                                        className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1"
+                                    >
+                                        {copied === 'npub'
+                                            ? <><Check size={12} aria-hidden="true" /> Copiado</>
+                                            : <><Copy size={12} aria-hidden="true" /> Copiar</>}
+                                    </button>
+                                </div>
                                 <code className="text-xs break-all bg-zinc-100 dark:bg-zinc-950 p-2 rounded-lg block">
-                                    {pubkey}
+                                    {npub}
                                 </code>
                             </div>
+
+                            {/* The secret key exists only for locally generated
+                                identities — with NIP-07 the extension keeps it.
+                                It is the only way to carry this identity (and
+                                its streaks) to another device, so it has to be
+                                reachable, but never on screen by default. */}
+                            {nsec && (
+                                <div>
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <p className="text-xs text-zinc-500">Chave privada</p>
+                                        <div className="flex items-center gap-3">
+                                            {nsecRevealed && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyKey('nsec', nsec)}
+                                                    className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1"
+                                                >
+                                                    {copied === 'nsec'
+                                                        ? <><Check size={12} aria-hidden="true" /> Copiado</>
+                                                        : <><Copy size={12} aria-hidden="true" /> Copiar</>}
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => setNsecRevealed(v => !v)}
+                                                aria-pressed={nsecRevealed}
+                                                className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1"
+                                            >
+                                                {nsecRevealed
+                                                    ? <><EyeOff size={12} aria-hidden="true" /> Ocultar</>
+                                                    : <><Eye size={12} aria-hidden="true" /> Mostrar</>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {nsecRevealed ? (
+                                        <>
+                                            <code className="text-xs break-all bg-zinc-100 dark:bg-zinc-950 p-2 rounded-lg block">
+                                                {nsec}
+                                            </code>
+                                            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 mt-2">
+                                                <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                                                Quem tiver esta chave assume a sua identidade. Guarde-a num sítio seguro e nunca a partilhe.
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="text-xs text-zinc-500">
+                                            Use-a para entrar na mesma conta noutro dispositivo, para manter os seus dados.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
-                    {/* Streak sync — opt-in, encrypted before leaving the device */}
+                    {/* Streak + settings sync — opt-in, encrypted before leaving the device */}
                     <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
-                            <p className="text-sm font-medium">Sincronizar sequências</p>
+                            <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
                             <p className="text-xs text-zinc-500 mt-0.5">
-                                Guarda as suas sequências de oração na rede, encriptadas — só o seu dispositivo as consegue ler.
+                                Guarda as suas sequências de oração e preferências (tema, tipo de letra, velocidade de leitura)
+                                na rede, encriptadas — só os seus dispositivos as conseguem ler.
                                 O seu nome de perfil pode aparecer a outras pessoas na lista de quem rezou hoje.
                             </p>
                         </div>
@@ -437,7 +587,7 @@ export default function Profile() {
                             onClick={() => setShareStreaks(!shareStreaks)}
                             role="switch"
                             aria-checked={shareStreaks}
-                            aria-label="Sincronizar sequências"
+                            aria-label="Sincronizar entre dispositivos"
                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${shareStreaks ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span
