@@ -43,4 +43,9 @@ export default defineConfig(({ command }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Honour an assigned port (e.g. from tooling that sets PORT) so multiple
+  // dev servers can run against this folder without fighting over 5173.
+  server: {
+    port: process.env.PORT ? Number(process.env.PORT) : undefined,
+  },
 }))
