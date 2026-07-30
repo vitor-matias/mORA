@@ -8,15 +8,8 @@ import { getGreeting, formatDisplayDate, formatISODate, joinWithE } from "@/lib/
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { getDefaultMassDate } from "@/lib/liturgy";
+import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 import type { PrayerPulse } from "@/lib/nostr";
-
-const COLOR_LABELS: Record<string, string> = {
-    verde: 'Verde',
-    roxo: 'Roxo',
-    vermelho: 'Vermelho',
-    branco: 'Branco',
-    rosa: 'Rosa',
-};
 
 /** The community-pulse line. Falls back to a bare count when nobody who
     prayed today has a public profile name. */
@@ -31,7 +24,7 @@ function prayerPulseText({ count, names }: PrayerPulse): string {
 }
 
 export default function Home() {
-    const { streaks, liturgicalColor, liturgicalDayName, liturgicalColorDate } = useAppStore();
+    const { streaks, liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
     const { pubkey, profile, setProfile } = useAuthStore();
     const t = useTranslations().home;
 
@@ -78,9 +71,11 @@ export default function Home() {
     // From Saturday 16:00 the Missa page opens on Sunday's (vigil) readings
     const anticipatingSunday = formatISODate(getDefaultMassDate()) !== formatISODate(new Date());
 
-    // The persisted day name may be yesterday's if today's calendar fetch
+    // The persisted day info may be yesterday's if today's calendar fetch
     // hasn't succeeded yet — only show it when it belongs to today.
-    const todayDayName = liturgicalColorDate === formatISODate(new Date()) ? liturgicalDayName : null;
+    const infoIsToday = liturgicalColorDate === formatISODate(new Date());
+    const todayDayName = infoIsToday ? liturgicalDayName : null;
+    const todayDescription = infoIsToday ? liturgicalDescription : null;
 
     // Two-tier hub: "Rezar" is the daily practice, "Explorar" hosts every
     // secondary feature — new ones join this list instead of a new tab.
@@ -130,24 +125,24 @@ export default function Home() {
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
             {/* Liturgical day hero */}
             <section className="relative z-10 surface surface-accent rounded-3xl p-5 lg:col-span-3">
-                <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+                    {/* The dot is the color signal; its name is already in the
+                        description text, so no "Cor litúrgica" line here. */}
+                    {infoIsToday && <LiturgicalColorDot color={liturgicalColor} />}
                     {formatDisplayDate(new Date())}
                 </p>
                 <h2 className="text-lg font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100 line-clamp-2">
                     {todayDayName || 'A liturgia de hoje'}
                 </h2>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-liturgy-800 dark:text-liturgy-300">
-                        <span className="h-2.5 w-2.5 rounded-full bg-liturgy-500 ring-2 ring-liturgy-200 dark:ring-liturgy-900" aria-hidden="true" />
-                        Cor litúrgica: {COLOR_LABELS[liturgicalColor] || 'Verde'}
-                    </span>
-                    <Link
-                        to="/liturgia-horas"
-                        className="inline-flex items-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2 transition-colors active:scale-[0.97]"
-                    >
-                        Rezar agora <ArrowRight size={15} aria-hidden="true" />
-                    </Link>
-                </div>
+                {todayDescription && <DayDescription text={todayDescription} className="mt-2" />}
+                {/* Full-width footer CTA — since the color label moved into
+                    the title dot, a lone right-aligned pill floated oddly. */}
+                <Link
+                    to="/liturgia-horas"
+                    className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                >
+                    Rezar agora <ArrowRight size={15} aria-hidden="true" />
+                </Link>
             </section>
 
             {/* Streaks */}

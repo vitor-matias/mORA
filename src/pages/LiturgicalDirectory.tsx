@@ -3,19 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, BookOpen, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { fetchLiturgicalCalendarMap } from "@/lib/liturgy";
-import type { LiturgicalColor, LiturgicalDayInfo } from "@/lib/liturgy";
+import type { LiturgicalDayInfo } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useAppStore } from "@/store/app";
-
-// Fixed swatches per liturgical color — the calendar shows every day's own
-// color at once, so these can't follow the app-wide `data-theme` palette.
-const COLOR_DOTS: Record<LiturgicalColor, { bg: string; label: string }> = {
-    verde: { bg: '#059669', label: 'Verde' },
-    roxo: { bg: '#9333ea', label: 'Roxo' },
-    vermelho: { bg: '#dc2626', label: 'Vermelho' },
-    branco: { bg: '#e4e4e7', label: 'Branco' },
-    rosa: { bg: '#ec4899', label: 'Rosa' },
-};
+import { COLOR_DOTS } from "@/lib/dayInfo";
+import { LiturgicalColorDot } from "@/components/DayInfo";
 
 const WEEKDAYS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']; // Monday-first, pt-PT
 
@@ -173,7 +165,10 @@ export default function LiturgicalDirectory() {
 
             {/* Selected day details */}
             <section className="surface surface-accent rounded-2xl p-4 lg:flex-1 lg:min-w-0">
-                <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5 capitalize">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5 capitalize">
+                    {/* The dot is the color signal; its name is already in the
+                        description text, so no "Cor litúrgica" line here. */}
+                    {selectedInfo && <LiturgicalColorDot color={selectedInfo.color} />}
                     {new Date(selected + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </p>
                 {loading ? (
@@ -183,14 +178,6 @@ export default function LiturgicalDirectory() {
                         <h2 className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
                             {selectedInfo.dayName}
                         </h2>
-                        <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-liturgy-800 dark:text-liturgy-300">
-                            <span
-                                aria-hidden="true"
-                                className={`h-2.5 w-2.5 rounded-full ${selectedInfo.color === 'branco' ? 'ring-1 ring-zinc-300 dark:ring-zinc-600' : ''}`}
-                                style={{ backgroundColor: COLOR_DOTS[selectedInfo.color].bg }}
-                            />
-                            Cor litúrgica: {COLOR_DOTS[selectedInfo.color].label}
-                        </span>
                         {selectedInfo.description && (
                             <p className="mt-2 text-sm text-liturgy-800/80 dark:text-liturgy-200/70 whitespace-pre-line">
                                 {selectedInfo.description}

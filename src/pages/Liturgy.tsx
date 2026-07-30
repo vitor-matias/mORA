@@ -7,6 +7,7 @@ import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday, SCROLL_LEVELS, clampScrollLevel } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 
 // Labels that open a liturgical reading section.
 const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
@@ -287,7 +288,6 @@ export default function Liturgy() {
     const [loadFailed, setLoadFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
     const [showOnlyReadings, setShowOnlyReadings] = useState(true);
-    const [dateCardExpanded, setDateCardExpanded] = useState(false);
 
     const { streaks, incrementStreak, setLiturgicalColorOverride, autoScrollSpeed } = useAppStore();
 
@@ -397,7 +397,7 @@ export default function Liturgy() {
         });
     };
 
-    const markAsRead = async () => {
+    const markAsRead = useCallback(async () => {
         incrementStreak('liturgy');
         try {
             const { publishStreakToNostr } = await import('@/lib/nostr');
@@ -407,7 +407,38 @@ export default function Liturgy() {
             // never break the completion action itself.
             console.warn('Streak sync skipped:', error);
         }
-    };
+    }, [incrementStreak]);
+
+    // Completion is automatic: reaching the end of the readings counts the
+    // day. Requires real overflow so a short spinner/error page can't count;
+    // when the whole text fits the viewport (nothing to scroll), a dwell
+    // timer counts instead — otherwise the streak would be unearnable there.
+    const autoCompletedRef = useRef(false);
+    useEffect(() => {
+        if (loading || !liturgy || !canMarkPrayed || readToday) return;
+        autoCompletedRef.current = false;
+
+        const complete = () => {
+            if (autoCompletedRef.current) return;
+            autoCompletedRef.current = true;
+            markAsRead();
+        };
+        const onScroll = () => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll > 0 && window.scrollY >= maxScroll - 2) complete();
+        };
+        const dwellTimer = window.setTimeout(() => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll <= 0) complete();
+        }, 20000);
+
+        onScroll(); // scroll restoration may land already at the end
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => {
+            window.clearTimeout(dwellTimer);
+            window.removeEventListener('scroll', onScroll);
+        };
+    }, [loading, liturgy, canMarkPrayed, readToday, markAsRead]);
 
     const displayHtml = useMemo(() => {
         if (!liturgy?.htmlContent) return '';
@@ -754,21 +785,25 @@ export default function Liturgy() {
 
     const dateCard = liturgy && (
         <div className="surface surface-accent rounded-2xl p-4">
-            <p className="font-semibold text-liturgy-900 dark:text-liturgy-100 leading-snug text-base">
+            <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+                {/* The dot is the color signal; its name is already in the
+                    description text, so no "Cor litúrgica" line here. */}
+                {dayInfo && <LiturgicalColorDot color={dayInfo.color} />}
                 {formatDisplayDate(new Date(liturgy.date + 'T00:00:00'))}
             </p>
-            {dayInfo?.description && (
+            {dayInfo ? (
                 <>
-                    <p className={`mt-1 text-liturgy-800 dark:text-liturgy-300 leading-snug whitespace-pre-line text-sm ${dateCardExpanded ? '' : 'line-clamp-4'}`}>
-                        {dayInfo.description}
-                    </p>
-                    <button
-                        onClick={() => setDateCardExpanded((v) => !v)}
-                        className="mt-1 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
-                    >
-                        {dateCardExpanded ? '▴ Ver menos' : '▾ Ver mais'}
-                    </button>
+                    <h2 className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
+                        {dayInfo.dayName}
+                    </h2>
+                    {dayInfo.description && (
+                        <DayDescription key={selectedDateStr} text={dayInfo.description} className="mt-2" />
+                    )}
                 </>
+            ) : (
+                <p className="text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
+                    {liturgy.saintOfDay}
+                </p>
             )}
         </div>
     );
@@ -890,25 +925,16 @@ export default function Liturgy() {
                                 <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
                             </article>
 
-                            {/* Explicit completion — the streak counts prayer,
-                                not page loads, and only for today's readings
-                                (or Sunday's during Saturday-evening vigil time). */}
-                            {canMarkPrayed && (
+                            {/* Completion is automatic (reaching the end of the
+                                readings) and only for today's — or, during
+                                Saturday-evening vigil time, Sunday's. This
+                                confirms it happened. */}
+                            {canMarkPrayed && readToday && (
                                 <div className="mt-10 mb-4">
-                                    {readToday ? (
-                                        <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
-                                            <CheckCircle2 size={18} aria-hidden="true" />
-                                            Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={markAsRead}
-                                            className="w-full py-4 px-6 rounded-2xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-liturgy-900/10"
-                                        >
-                                            <CheckCircle2 size={18} aria-hidden="true" />
-                                            Rezei as leituras de hoje
-                                        </button>
-                                    )}
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                        <CheckCircle2 size={18} aria-hidden="true" />
+                                        Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
+                                    </div>
                                 </div>
                             )}
                         </>

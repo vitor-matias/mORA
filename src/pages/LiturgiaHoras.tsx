@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { ChevronRight, Clock, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
@@ -133,7 +133,7 @@ export default function LiturgiaHoras() {
         return () => { cancelled = true; };
     }, [retryToken]);
 
-    const markAsPrayed = async () => {
+    const markAsPrayed = useCallback(async () => {
         incrementStreak('liturgy_hours');
         try {
             const { publishStreakToNostr } = await import('@/lib/nostr');
@@ -143,7 +143,38 @@ export default function LiturgiaHoras() {
             // never break the completion action itself.
             console.warn('Streak sync skipped:', error);
         }
-    };
+    }, [incrementStreak]);
+
+    // Completion is automatic: reaching the end of the prayed hour counts the
+    // day (one per day, whatever hour). Requires real overflow so a short
+    // spinner/error page can't count; when the whole text fits the viewport,
+    // a dwell timer counts instead — the streak must stay earnable there.
+    const autoCompletedRef = useRef(false);
+    useEffect(() => {
+        if (loading || !liturgy || prayedToday) return;
+        autoCompletedRef.current = false;
+
+        const complete = () => {
+            if (autoCompletedRef.current) return;
+            autoCompletedRef.current = true;
+            markAsPrayed();
+        };
+        const onScroll = () => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll > 0 && window.scrollY >= maxScroll - 2) complete();
+        };
+        const dwellTimer = window.setTimeout(() => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll <= 0) complete();
+        }, 20000);
+
+        onScroll(); // scroll restoration may land already at the end
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => {
+            window.clearTimeout(dwellTimer);
+            window.removeEventListener('scroll', onScroll);
+        };
+    }, [loading, liturgy, prayedToday, markAsPrayed]);
 
     const canonicalHours = useMemo(() => {
         if (!liturgy?.memories || liturgy.memories.length === 0) return [];
@@ -396,23 +427,17 @@ export default function LiturgiaHoras() {
                                 )}
                             </div>
 
-                            {/* Explicit completion — one per day, whatever hour was prayed */}
-                            <div className="mt-6 mb-2">
-                                {prayedToday ? (
+                            {/* Completion is automatic (reaching the end of the
+                                hour) — one per day, whatever hour was prayed.
+                                This confirms it happened. */}
+                            {prayedToday && (
+                                <div className="mt-6 mb-2">
                                     <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />
                                         Rezado hoje — {streaks.liturgy_hours.days} {streaks.liturgy_hours.days === 1 ? 'dia' : 'dias'} seguidos
                                     </div>
-                                ) : (
-                                    <button
-                                        onClick={markAsPrayed}
-                                        className="w-full py-4 px-6 rounded-2xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-liturgy-900/10"
-                                    >
-                                        <CheckCircle2 size={18} aria-hidden="true" />
-                                        Rezei esta hora
-                                    </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
