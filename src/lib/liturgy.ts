@@ -19,12 +19,20 @@ export interface LiturgyMemory {
     parts: LiturgyHourPart[];
 }
 
+export interface SaintOfDay {
+    name: string;
+    date: string;
+    /** HTML: biography, then the day's numbered Roman Martyrology entries. */
+    description: string;
+}
+
 export interface DailyLiturgy {
     date: string;
     liturgicalColor: string;
     saintOfDay: string;
     htmlContent: string;
     memories: LiturgyMemory[];
+    saint: SaintOfDay | null;
 }
 
 // ---- Daily liturgy cache (mass text + hours + day info, keyed by date) -----
@@ -39,13 +47,22 @@ function formatLocalDate(d: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-function readLiturgyCache(dateStr: string): DailyLiturgy | null {
+function readLiturgyCacheEntry(dateStr: string): DailyLiturgy | null {
     try {
         const raw = localStorage.getItem(LITURGY_CACHE_PREFIX + dateStr);
         return raw ? (JSON.parse(raw) as DailyLiturgy) : null;
     } catch {
         return null;
     }
+}
+
+// Entries cached before the `saint` field existed lack the key entirely
+// (present-but-null means the API has no saint for that day). Those count
+// as misses so the day is re-fetched with the full query; fetchDailyLiturgy
+// still falls back to the raw entry when the re-fetch fails (e.g. offline).
+function readLiturgyCache(dateStr: string): DailyLiturgy | null {
+    const entry = readLiturgyCacheEntry(dateStr);
+    return entry && 'saint' in entry ? entry : null;
 }
 
 function writeLiturgyCache(dateStr: string, data: DailyLiturgy): void {
@@ -118,7 +135,12 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
                         verses { id text audio_url order }
                     }
                 }
-            } 
+                saint {
+                    name
+                    date
+                    description
+                }
+            }
         }`;
 
         const response = await fetch('https://apiapp.glauco.it/liturgiadashoras/graphql', {
@@ -155,7 +177,8 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             liturgicalColor: color,
             saintOfDay: mass.title,
             htmlContent: mass.text,
-            memories: data.memories || []
+            memories: data.memories || [],
+            saint: data.saint ?? null
         };
 
         writeLiturgyCache(dateStr, result);
@@ -163,6 +186,11 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
 
     } catch (error) {
         console.error('Error fetching liturgy:', error);
+        // A pre-`saint` cache entry still holds the readings — better stale
+        // than an error page when the upgrade fetch fails (e.g. offline).
+        // Not written back, so it upgrades on the next successful fetch.
+        const stale = readLiturgyCacheEntry(dateStr);
+        if (stale) return { ...stale, saint: stale.saint ?? null };
         throw error;
     }
 }

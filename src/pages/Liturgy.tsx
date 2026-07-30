@@ -8,6 +8,7 @@ import { useAppStore, isCompletedToday, SCROLL_LEVELS, clampScrollLevel } from "
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
+import { SaintOfDayCard } from "@/components/SaintOfDay";
 
 // Labels that open a liturgical reading section.
 const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
@@ -808,6 +809,11 @@ export default function Liturgy() {
         </div>
     );
 
+    // Keyed by date so the expanded state resets when browsing to another day.
+    const saintCard = liturgy?.saint && (
+        <SaintOfDayCard key={selectedDateStr} saint={liturgy.saint} />
+    );
+
     return (
         <div className="flex-1 w-full flex flex-col">
 
@@ -847,6 +853,7 @@ export default function Liturgy() {
                     <aside className="hidden lg:flex flex-col gap-4 w-52 xl:w-60 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
                         {dateNav}
                         {dateCard}
+                        {saintCard}
 
                         <div className="flex flex-col gap-2">
                             {filterButton}
@@ -899,6 +906,7 @@ export default function Liturgy() {
                             <div className="lg:hidden mb-4 space-y-3">
                                 {dateNav}
                                 {dateCard}
+                                {saintCard}
                             </div>
 
                             {/* Filter + autoscroll row — mobile / tablet only.
