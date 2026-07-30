@@ -107,18 +107,28 @@ interface PendingConnection {
     startedAt: number;
 }
 
+const HEX64_RE = /^[0-9a-f]{64}$/i;
+
 export function readPendingConnection(): PendingConnection | null {
     try {
         const raw = localStorage.getItem(PENDING_KEY);
         if (!raw) return null;
         const pending = JSON.parse(raw) as PendingConnection;
-        if (!pending?.clientSecret || !pending.uri) return null;
-        if (Date.now() - pending.startedAt > CONNECT_TIMEOUT_MS) {
+        // Everything here is validated rather than assumed: this is storage a
+        // half-written attempt or another build could have left behind, and a
+        // malformed entry that never expires would have the app retrying a
+        // dead attempt on every foreground, forever.
+        const usable = pending
+            && typeof pending.clientSecret === 'string' && HEX64_RE.test(pending.clientSecret)
+            && typeof pending.uri === 'string' && pending.uri.startsWith('nostrconnect://')
+            && typeof pending.startedAt === 'number' && Number.isFinite(pending.startedAt);
+        if (!usable || Date.now() - pending.startedAt > CONNECT_TIMEOUT_MS) {
             localStorage.removeItem(PENDING_KEY);
             return null;
         }
         return pending;
     } catch {
+        localStorage.removeItem(PENDING_KEY);
         return null;
     }
 }
@@ -215,7 +225,16 @@ export function startBunkerConnection(relays: string[] = DEFAULT_SIGNER_RELAYS):
 export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
     const pending = readPendingConnection();
     if (!pending) return null;
-    return awaitSignerResponse(hexToBytes(pending.clientSecret), pending.uri);
+    let clientSecretKey: Uint8Array;
+    try {
+        clientSecretKey = hexToBytes(pending.clientSecret);
+    } catch {
+        // Validated above, so this shouldn't happen — but throwing here would
+        // land in a caller that isn't awaiting, as an unhandled rejection.
+        clearPendingConnection();
+        return null;
+    }
+    return awaitSignerResponse(clientSecretKey, pending.uri);
 }
 
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */

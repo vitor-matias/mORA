@@ -79,17 +79,27 @@ export default function Profile() {
     const [signerError, setSignerError] = useState("");
     const [bunkerUri, setBunkerUri] = useState("");
 
+    // Identifies the attempt currently on screen. Cancelling or re-arming bumps
+    // it, so a wait that was already in flight can't sign the user in after
+    // they cancelled, or flip the pending state back for an attempt nobody is
+    // watching any more.
+    const signerAttempt = useRef(0);
+
     const awaitSigner = async (connected: Promise<{ session: BunkerSession; pubkey: string }>) => {
+        const attempt = ++signerAttempt.current;
+        const isCurrent = () => attempt === signerAttempt.current;
         setSignerPending(true);
         try {
             const { session, pubkey: signerPubkey } = await connected;
+            if (!isCurrent()) return;
             loginWithBunker(session, signerPubkey);
         } catch (error) {
+            if (!isCurrent()) return;
             setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
             const { clearPendingConnection } = await import('@/lib/signer');
             clearPendingConnection();
         } finally {
-            setSignerPending(false);
+            if (isCurrent()) setSignerPending(false);
         }
     };
 
@@ -98,18 +108,31 @@ export default function Profile() {
     // page is listening — hence the resume below.
     const handleSignerConnect = async () => {
         setSignerError("");
-        const { startBunkerConnection } = await import('@/lib/signer');
-        const { uri, connected } = startBunkerConnection();
-        const waiting = awaitSigner(connected);
-        window.location.href = uri;
-        await waiting;
+        try {
+            const { startBunkerConnection } = await import('@/lib/signer');
+            const { uri, connected } = startBunkerConnection();
+            const waiting = awaitSigner(connected);
+            window.location.href = uri;
+            await waiting;
+        } catch (error) {
+            // A failed chunk load or a throw before the wait even starts would
+            // otherwise be an unhandled rejection with nothing on screen.
+            signerAttempt.current++;
+            setSignerPending(false);
+            setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
+            const { clearPendingConnection } = await import('@/lib/signer').catch(() => ({ clearPendingConnection: () => {} }));
+            clearPendingConnection();
+        }
     };
 
     const handleCancelSigner = async () => {
-        const { clearPendingConnection } = await import('@/lib/signer');
-        clearPendingConnection();
+        // Bump first: any wait already in flight is now stale and must not be
+        // able to complete a login behind the user's back.
+        signerAttempt.current++;
         setSignerPending(false);
         setSignerError("");
+        const { clearPendingConnection } = await import('@/lib/signer').catch(() => ({ clearPendingConnection: () => {} }));
+        clearPendingConnection();
     };
 
     // Opening the signer app can freeze this page or drop its relay socket.
@@ -120,10 +143,17 @@ export default function Profile() {
         let cancelled = false;
 
         const resume = async () => {
-            const { readPendingConnection, resumeBunkerConnection } = await import('@/lib/signer');
-            if (cancelled || !readPendingConnection()) return;
-            const connected = resumeBunkerConnection();
-            if (connected) awaitSigner(connected);
+            try {
+                const { readPendingConnection, resumeBunkerConnection } = await import('@/lib/signer');
+                if (cancelled || !readPendingConnection()) return;
+                const connected = resumeBunkerConnection();
+                // Re-arming supersedes whatever was waiting: awaitSigner bumps
+                // the attempt id, so the old wait's result is ignored rather
+                // than racing this one.
+                if (connected) awaitSigner(connected);
+            } catch {
+                // Nothing is awaiting this; a failure here just means no resume.
+            }
         };
 
         resume();
