@@ -7,6 +7,7 @@ import { nip19 } from "nostr-tools";
 import { hexToBytes } from "@noble/hashes/utils";
 import { fileToAvatarDataUrl } from "@/lib/image";
 import { passkeysAvailable } from "@/lib/keyVault";
+import type { BunkerSession } from "@/lib/signer";
 import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
@@ -78,24 +79,93 @@ export default function Profile() {
     const [signerError, setSignerError] = useState("");
     const [bunkerUri, setBunkerUri] = useState("");
 
-    // Hands the connection request to the signer app and waits for it to
-    // answer over relays — which is why leaving the browser for Amber and
-    // coming back doesn't break the handshake.
+    // Identifies the attempt currently on screen. Cancelling or re-arming bumps
+    // it, so a wait that was already in flight can't sign the user in after
+    // they cancelled, or flip the pending state back for an attempt nobody is
+    // watching any more.
+    const signerAttempt = useRef(0);
+
+    const awaitSigner = async (connected: Promise<{ session: BunkerSession; pubkey: string }>) => {
+        const attempt = ++signerAttempt.current;
+        const isCurrent = () => attempt === signerAttempt.current;
+        setSignerPending(true);
+        try {
+            const { session, pubkey: signerPubkey } = await connected;
+            if (!isCurrent()) return;
+            loginWithBunker(session, signerPubkey);
+        } catch (error) {
+            if (!isCurrent()) return;
+            setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
+            const { clearPendingConnection } = await import('@/lib/signer');
+            clearPendingConnection();
+        } finally {
+            if (isCurrent()) setSignerPending(false);
+        }
+    };
+
+    // Hands the connection request to the signer app. The reply comes back as
+    // an ephemeral event on a live subscription, so it only lands while this
+    // page is listening — hence the resume below.
     const handleSignerConnect = async () => {
         setSignerError("");
-        setSignerPending(true);
         try {
             const { startBunkerConnection } = await import('@/lib/signer');
             const { uri, connected } = startBunkerConnection();
+            const waiting = awaitSigner(connected);
             window.location.href = uri;
-            const { session, pubkey: signerPubkey } = await connected;
-            loginWithBunker(session, signerPubkey);
+            await waiting;
         } catch (error) {
-            setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
-        } finally {
+            // A failed chunk load or a throw before the wait even starts would
+            // otherwise be an unhandled rejection with nothing on screen.
+            signerAttempt.current++;
             setSignerPending(false);
+            setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
+            const { clearPendingConnection } = await import('@/lib/signer').catch(() => ({ clearPendingConnection: () => {} }));
+            clearPendingConnection();
         }
     };
+
+    const handleCancelSigner = async () => {
+        // Bump first: any wait already in flight is now stale and must not be
+        // able to complete a login behind the user's back.
+        signerAttempt.current++;
+        setSignerPending(false);
+        setSignerError("");
+        const { clearPendingConnection } = await import('@/lib/signer').catch(() => ({ clearPendingConnection: () => {} }));
+        clearPendingConnection();
+    };
+
+    // Opening the signer app can freeze this page or drop its relay socket.
+    // On the way back, pick the attempt up again rather than leaving a button
+    // spinning against a subscription that is no longer listening.
+    useEffect(() => {
+        if (pubkey) return;
+        let cancelled = false;
+
+        const resume = async () => {
+            try {
+                const { readPendingConnection, resumeBunkerConnection } = await import('@/lib/signer');
+                if (cancelled || !readPendingConnection()) return;
+                const connected = resumeBunkerConnection();
+                // Re-arming supersedes whatever was waiting: awaitSigner bumps
+                // the attempt id, so the old wait's result is ignored rather
+                // than racing this one.
+                if (connected) awaitSigner(connected);
+            } catch {
+                // Nothing is awaiting this; a failure here just means no resume.
+            }
+        };
+
+        resume();
+        const onVisible = () => { if (document.visibilityState === 'visible') resume(); };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            cancelled = true;
+            document.removeEventListener('visibilitychange', onVisible);
+        };
+        // Runs for the signed-out page only; awaitSigner is stable enough here.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pubkey]);
 
     const handleBunkerUriLogin = async () => {
         const input = bunkerUri.trim();
@@ -819,10 +889,25 @@ export default function Profile() {
                                 )}
                                 Entrar com assinador
                             </button>
-                            <p className="text-xs text-zinc-500 px-1">
-                                Abre a sua aplicação de assinatura para aprovar. A chave nunca sai de lá.
-                            </p>
-                            <details className="px-1">
+                            {signerPending ? (
+                                <div className="flex items-center justify-between gap-2 px-1">
+                                    <p className="text-xs text-zinc-500">
+                                        À espera da aprovação no assinador...
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelSigner}
+                                        className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 shrink-0"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-zinc-500 px-1">
+                                    Abre a sua aplicação de assinatura para aprovar. A chave nunca sai de lá.
+                                </p>
+                            )}
+                            <details className="px-1" open={!!signerError}>
                                 <summary className="text-xs text-liturgy-600 dark:text-liturgy-400 cursor-pointer">
                                     A aplicação não abriu? Colar endereço bunker://
                                 </summary>
