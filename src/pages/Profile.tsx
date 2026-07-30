@@ -77,7 +77,24 @@ export default function Profile() {
     // NIP-46 remote signer (Amber and friends)
     const [signerPending, setSignerPending] = useState(false);
     const [signerError, setSignerError] = useState("");
+    const [signerHint, setSignerHint] = useState("");
     const [bunkerUri, setBunkerUri] = useState("");
+
+    // Waiting in silence is the worst version of this: the signer may be
+    // asking for approval through a notification the user never sees. Say so
+    // while there is still time to act on it, not only once it has failed.
+    useEffect(() => {
+        if (!signerPending) return;
+        let cancelled = false;
+        let timer: number | undefined;
+        import('@/lib/signer')
+            .then(({ SIGNER_APPROVAL_HINT, SIGNER_HINT_DELAY_MS }) => {
+                if (cancelled) return;
+                timer = window.setTimeout(() => setSignerHint(SIGNER_APPROVAL_HINT), SIGNER_HINT_DELAY_MS);
+            })
+            .catch(() => {});
+        return () => { cancelled = true; window.clearTimeout(timer); };
+    }, [signerPending]);
 
     // Identifies the attempt currently on screen. Cancelling or re-arming bumps
     // it, so a wait that was already in flight can't sign the user in after
@@ -87,6 +104,7 @@ export default function Profile() {
 
     const awaitSigner = async (connected: Promise<{ session: BunkerSession; pubkey: string }>) => {
         const attempt = ++signerAttempt.current;
+        setSignerHint("");
         const isCurrent = () => attempt === signerAttempt.current;
         setSignerPending(true);
         try {
@@ -170,19 +188,20 @@ export default function Profile() {
     const handleBunkerUriLogin = async () => {
         const input = bunkerUri.trim();
         if (!input) {
-            setSignerError('Cole o endereço bunker:// do seu assinador.');
+            setSignerError('Cole o endereço do seu assinador.');
             return;
         }
         setSignerError("");
-        setSignerPending(true);
         try {
             const { connectWithBunkerUri } = await import('@/lib/signer');
-            const { session, pubkey: signerPubkey } = await connectWithBunkerUri(input);
-            loginWithBunker(session, signerPubkey);
+            // Through awaitSigner like the deep link, so Cancelar invalidates
+            // this wait too — otherwise cancelling still ended in a login when
+            // the signer eventually answered.
+            await awaitSigner(connectWithBunkerUri(input));
         } catch (error) {
-            setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
-        } finally {
+            signerAttempt.current++;
             setSignerPending(false);
+            setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
         }
     };
 
@@ -886,13 +905,14 @@ export default function Profile() {
                             </p>
                             <p className="text-xs text-zinc-500">
                                 No Amber (ou outro assinador): adicione uma aplicação, copie o endereço
-                                <span className="font-mono"> bunker://</span> e cole-o aqui. A chave nunca sai de lá.
+                                <span className="font-mono"> bunker://</span> e cole-o aqui — também aceita um
+                                identificador NIP-05 (nome@dominio). A chave nunca sai de lá.
                             </p>
                             <input
                                 type="text"
                                 value={bunkerUri}
                                 onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
-                                placeholder="bunker://..."
+                                placeholder="bunker://... ou nome@dominio"
                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
                             />
                             <button
@@ -928,16 +948,24 @@ export default function Profile() {
                             </details>
 
                             {signerPending && (
-                                <div className="flex items-center justify-between gap-2 px-1">
-                                    <p className="text-xs text-zinc-500">A ligar ao assinador...</p>
-                                    <button
-                                        type="button"
-                                        onClick={handleCancelSigner}
-                                        className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 shrink-0"
-                                    >
-                                        Cancelar
-                                    </button>
-                                </div>
+                                <>
+                                    <div className="flex items-center justify-between gap-2 px-1">
+                                        <p className="text-xs text-zinc-500">A ligar ao assinador...</p>
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelSigner}
+                                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 shrink-0"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                    {signerHint && (
+                                        <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 px-1">
+                                            <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                                            {signerHint}
+                                        </p>
+                                    )}
+                                </>
                             )}
                             {signerError && <p className="text-red-500 text-xs px-1">{signerError}</p>}
                         </div>

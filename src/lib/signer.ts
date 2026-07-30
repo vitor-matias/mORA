@@ -142,14 +142,14 @@ export class SignerTimeoutError extends Error {
         // NIP-46 secrets are single-use, so if the signer did approve while
         // this page was suspended, its reply is gone and re-listening for it
         // is pointless — the bunker:// address is the way through.
-        super('Não recebemos a resposta do assinador. Cole antes o endereço bunker:// da aplicação.');
+        super('Não recebemos a resposta do assinador. Cole antes o endereço bunker:// (ou o identificador NIP-05) da aplicação.');
         this.name = 'SignerTimeoutError';
     }
 }
 
 export class SignerRelayError extends Error {
     constructor() {
-        super('Não foi possível manter a ligação aos relays. Verifique a internet e tente novamente, ou use o endereço bunker://.');
+        super('Não foi possível manter a ligação aos relays. Verifique a internet e tente novamente, ou use o endereço bunker:// da aplicação.');
         this.name = 'SignerRelayError';
     }
 }
@@ -164,6 +164,22 @@ export class SignerUnreachableError extends Error {
         this.name = 'SignerUnreachableError';
     }
 }
+
+/**
+ * The failure that looks like nothing happening: signer apps ask for approval
+ * through a notification, and when notifications are turned off for that app
+ * the request is never shown — so it is never approved, and the wait simply
+ * expires with no clue as to why. Worth naming explicitly, because nothing on
+ * either screen points at it.
+ */
+export const SIGNER_APPROVAL_HINT =
+    'Sem resposta ainda. Abra a aplicação de assinatura e aprove o pedido. '
+    + 'Se não apareceu nenhuma notificação, verifique nas definições do Android se as '
+    + 'notificações dessa aplicação estão ativadas — sem elas o pedido fica invisível.';
+
+/** How long to wait before offering the hint above: long enough that a prompt
+    approval never sees it, early enough to still be actionable. */
+export const SIGNER_HINT_DELAY_MS = 8_000;
 
 // Every request to the signer resolves only when a reply comes back —
 // nostr-tools sets no deadline of its own. Without one of ours, a signer that
@@ -272,16 +288,25 @@ export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */
 export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> {
     const pointer = await parseBunkerInput(input.trim());
-    if (!pointer) throw new Error('Endereço de ligação inválido.');
+    if (!pointer) throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
 
     const clientSecretKey = generateSecretKey();
-    const signer = BunkerSigner.fromBunker(clientSecretKey, pointer);
+    let signer: BunkerSigner;
+    try {
+        signer = BunkerSigner.fromBunker(clientSecretKey, pointer);
+    } catch {
+        // A truncated or mistyped address parses but isn't a real key, and the
+        // curve maths then fails with something like "bad point: is not on
+        // curve" — true, and useless to whoever pasted it.
+        throw new Error('Endereço de ligação inválido: a chave do assinador não é válida. Copie o endereço outra vez.');
+    }
     // Generous: connecting for the first time can mean waiting for the user to
     // approve the request inside the signer app.
     await withSignerTimeout(
         signer.connect(),
         CONNECT_RPC_TIMEOUT_MS,
-        'O assinador não respondeu ao pedido de ligação. Aprove-o na aplicação e tente de novo.',
+        'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
+        + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
     );
     const pubkey = await withSignerTimeout(signer.getPublicKey());
 
