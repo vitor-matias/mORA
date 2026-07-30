@@ -83,7 +83,12 @@ export async function getBunkerSigner(): Promise<BunkerSigner | null> {
         hexToBytes(session.clientSecret),
         session.pointer,
     );
-    await withSignerTimeout(signer.connect());
+    try {
+        await withSignerTimeout(signer.connect());
+    } catch (error) {
+        signer.close().catch(() => {});
+        throw error;
+    }
     setActive(signer, sessionKey(session));
     return signer;
 }
@@ -209,7 +214,16 @@ function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<
     return BunkerSigner
         .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
         .then(async (signer: BunkerSigner) => {
-            const pubkey = await withSignerTimeout(signer.getPublicKey());
+            let pubkey: string;
+            try {
+                pubkey = await withSignerTimeout(signer.getPublicKey());
+            } catch (error) {
+                // Only a signer that reached `active` gets closed by setActive,
+                // so one that fails here would keep its subscription for the
+                // life of the page.
+                signer.close().catch(() => {});
+                throw error;
+            }
             const session: BunkerSession = {
                 clientSecret: bytesToHex(clientSecretKey),
                 pointer: signer.bp,
@@ -300,15 +314,21 @@ export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> 
         // curve" — true, and useless to whoever pasted it.
         throw new Error('Endereço de ligação inválido: a chave do assinador não é válida. Copie o endereço outra vez.');
     }
-    // Generous: connecting for the first time can mean waiting for the user to
-    // approve the request inside the signer app.
-    await withSignerTimeout(
-        signer.connect(),
-        CONNECT_RPC_TIMEOUT_MS,
-        'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
-        + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
-    );
-    const pubkey = await withSignerTimeout(signer.getPublicKey());
+    let pubkey: string;
+    try {
+        // Generous: connecting for the first time can mean waiting for the
+        // user to approve the request inside the signer app.
+        await withSignerTimeout(
+            signer.connect(),
+            CONNECT_RPC_TIMEOUT_MS,
+            'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
+            + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
+        );
+        pubkey = await withSignerTimeout(signer.getPublicKey());
+    } catch (error) {
+        signer.close().catch(() => {});
+        throw error;
+    }
 
     const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
     setActive(signer, sessionKey(session));

@@ -78,6 +78,7 @@ export default function Profile() {
     const [signerPending, setSignerPending] = useState(false);
     const [signerError, setSignerError] = useState("");
     const [signerHint, setSignerHint] = useState("");
+    const [waitToken, setWaitToken] = useState(0);
     const [bunkerUri, setBunkerUri] = useState("");
 
     // Waiting in silence is the worst version of this: the signer may be
@@ -94,7 +95,7 @@ export default function Profile() {
             })
             .catch(() => {});
         return () => { cancelled = true; window.clearTimeout(timer); };
-    }, [signerPending]);
+    }, [signerPending, waitToken]);
 
     // Identifies the attempt currently on screen. Cancelling or re-arming bumps
     // it, so a wait that was already in flight can't sign the user in after
@@ -105,6 +106,11 @@ export default function Profile() {
     const awaitSigner = async (connected: Promise<{ session: BunkerSession; pubkey: string }>) => {
         const attempt = ++signerAttempt.current;
         setSignerHint("");
+        // The hint timer keys on this, so a re-armed wait (a resume while one
+        // is already pending) restarts it. Without that the hint is cleared
+        // above and never scheduled again, hiding the warning exactly when
+        // the user is still waiting for an approval.
+        setWaitToken(attempt);
         const isCurrent = () => attempt === signerAttempt.current;
         setSignerPending(true);
         try {
