@@ -9,6 +9,7 @@ import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
+import { stripReadingLines } from "@/lib/dayInfo";
 import type { PrayerPulse } from "@/lib/nostr";
 
 /** The community-pulse line. Falls back to a bare count when nobody who
@@ -75,7 +76,11 @@ export default function Home() {
     // hasn't succeeded yet — only show it when it belongs to today.
     const infoIsToday = liturgicalColorDate === formatISODate(new Date());
     const todayDayName = infoIsToday ? liturgicalDayName : null;
-    const todayDescription = infoIsToday ? liturgicalDescription : null;
+    // Without the readings list: this card says what day it is, and the
+    // references belong on the Missa page where they're actually read.
+    const todayDescription = infoIsToday && liturgicalDescription
+        ? stripReadingLines(liturgicalDescription)
+        : null;
 
     // Two-tier hub: "Rezar" is the daily practice, "Explorar" hosts every
     // secondary feature — new ones join this list instead of a new tab.
