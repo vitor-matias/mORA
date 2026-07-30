@@ -899,56 +899,56 @@ export default function Profile() {
                         </p>
 
                         {/* Signer apps are the phone's answer — they are not
-                            extensions and never inject window.nostr. Pasting
-                            the signer's own bunker:// address is the flow that
-                            holds: this device connects outward while it is in
-                            the foreground, instead of hoping to catch a reply
-                            that arrives while the browser is suspended. */}
+                            extensions and never inject window.nostr. Opening
+                            the app is one tap, so it leads; the paste is the
+                            fallback for when it doesn't land, and opens itself
+                            after a failure. */}
                         <div className="space-y-2">
                             <p className="text-sm font-medium flex items-center gap-1.5">
                                 <Smartphone size={15} aria-hidden="true" />
                                 Entrar com assinador
                             </p>
                             <p className="text-xs text-zinc-500">
-                                No Amber (ou outro assinador): adicione uma aplicação, copie o endereço
-                                <span className="font-mono"> bunker://</span> e cole-o aqui — também aceita um
-                                identificador NIP-05 (nome@dominio). A chave nunca sai de lá.
+                                Abre a sua aplicação de assinatura para aprovar a ligação. A chave nunca sai de lá.
                             </p>
-                            <input
-                                type="text"
-                                value={bunkerUri}
-                                onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
-                                placeholder="bunker://... ou nome@dominio"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
-                            />
                             <button
                                 type="button"
-                                onClick={handleBunkerUriLogin}
+                                onClick={handleSignerConnect}
                                 disabled={signerPending}
                                 className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                             >
                                 {signerPending && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                                Ligar ao assinador
+                                Abrir aplicação de assinatura
                             </button>
 
-                            <details className="px-1">
+                            {/* Opens on failure: after a lost approval this is
+                                the way through, and the request that was just
+                                approved cannot be retried. */}
+                            <details className="px-1" open={!!signerError}>
                                 <summary className="text-xs text-liturgy-600 dark:text-liturgy-400 cursor-pointer">
-                                    Ou tentar abrir a aplicação automaticamente
+                                    Não resultou? Colar o endereço do assinador
                                 </summary>
                                 <div className="space-y-2 mt-2">
                                     <p className="text-xs text-zinc-500">
-                                        Abre o assinador com um pedido de ligação. Pode falhar: enquanto o
-                                        assinador está à frente, o navegador suspende esta página e a resposta
-                                        pode perder-se — e cada pedido só pode ser aprovado uma vez, pelo que
-                                        é preciso recomeçar.
+                                        No Amber (ou outro assinador): adicione uma aplicação, copie o endereço
+                                        <span className="font-mono"> bunker://</span> e cole-o aqui — também aceita
+                                        um identificador NIP-05 (nome@dominio). Ligar por aqui não depende de
+                                        apanhar a resposta enquanto o navegador está suspenso.
                                     </p>
+                                    <input
+                                        type="text"
+                                        value={bunkerUri}
+                                        onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
+                                        placeholder="bunker://... ou nome@dominio"
+                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                                    />
                                     <button
                                         type="button"
-                                        onClick={handleSignerConnect}
+                                        onClick={handleBunkerUriLogin}
                                         disabled={signerPending}
                                         className="w-full py-2 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
                                     >
-                                        Abrir aplicação de assinatura
+                                        Ligar ao assinador
                                     </button>
                                 </div>
                             </details>
