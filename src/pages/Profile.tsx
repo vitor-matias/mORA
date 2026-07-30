@@ -873,27 +873,63 @@ export default function Profile() {
                             {t.loginPrompt}
                         </p>
 
-                        {/* Remote signer first: on a phone this is the option
-                            that works — signer apps are not extensions and
-                            never inject window.nostr, least of all in a PWA. */}
+                        {/* Signer apps are the phone's answer — they are not
+                            extensions and never inject window.nostr. Pasting
+                            the signer's own bunker:// address is the flow that
+                            holds: this device connects outward while it is in
+                            the foreground, instead of hoping to catch a reply
+                            that arrives while the browser is suspended. */}
                         <div className="space-y-2">
+                            <p className="text-sm font-medium flex items-center gap-1.5">
+                                <Smartphone size={15} aria-hidden="true" />
+                                Entrar com assinador
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                                No Amber (ou outro assinador): adicione uma aplicação, copie o endereço
+                                <span className="font-mono"> bunker://</span> e cole-o aqui. A chave nunca sai de lá.
+                            </p>
+                            <input
+                                type="text"
+                                value={bunkerUri}
+                                onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
+                                placeholder="bunker://..."
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                            />
                             <button
-                                onClick={handleSignerConnect}
+                                type="button"
+                                onClick={handleBunkerUriLogin}
                                 disabled={signerPending}
                                 className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                             >
-                                {signerPending ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <Smartphone size={16} aria-hidden="true" />
-                                )}
-                                Entrar com assinador
+                                {signerPending && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                Ligar ao assinador
                             </button>
-                            {signerPending ? (
-                                <div className="flex items-center justify-between gap-2 px-1">
+
+                            <details className="px-1">
+                                <summary className="text-xs text-liturgy-600 dark:text-liturgy-400 cursor-pointer">
+                                    Ou tentar abrir a aplicação automaticamente
+                                </summary>
+                                <div className="space-y-2 mt-2">
                                     <p className="text-xs text-zinc-500">
-                                        À espera da aprovação no assinador...
+                                        Abre o assinador com um pedido de ligação. Pode falhar: enquanto o
+                                        assinador está à frente, o navegador suspende esta página e a resposta
+                                        pode perder-se — e cada pedido só pode ser aprovado uma vez, pelo que
+                                        é preciso recomeçar.
                                     </p>
+                                    <button
+                                        type="button"
+                                        onClick={handleSignerConnect}
+                                        disabled={signerPending}
+                                        className="w-full py-2 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
+                                    >
+                                        Abrir aplicação de assinatura
+                                    </button>
+                                </div>
+                            </details>
+
+                            {signerPending && (
+                                <div className="flex items-center justify-between gap-2 px-1">
+                                    <p className="text-xs text-zinc-500">A ligar ao assinador...</p>
                                     <button
                                         type="button"
                                         onClick={handleCancelSigner}
@@ -902,32 +938,7 @@ export default function Profile() {
                                         Cancelar
                                     </button>
                                 </div>
-                            ) : (
-                                <p className="text-xs text-zinc-500 px-1">
-                                    Abre a sua aplicação de assinatura para aprovar. A chave nunca sai de lá.
-                                </p>
                             )}
-                            <details className="px-1" open={!!signerError}>
-                                <summary className="text-xs text-liturgy-600 dark:text-liturgy-400 cursor-pointer">
-                                    A aplicação não abriu? Colar endereço bunker://
-                                </summary>
-                                <div className="space-y-2 mt-2">
-                                    <input
-                                        type="text"
-                                        value={bunkerUri}
-                                        onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
-                                        placeholder="bunker://..."
-                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
-                                    />
-                                    <button
-                                        onClick={handleBunkerUriLogin}
-                                        disabled={signerPending}
-                                        className="w-full py-2 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-medium transition-colors disabled:opacity-60"
-                                    >
-                                        Ligar
-                                    </button>
-                                </div>
-                            </details>
                             {signerError && <p className="text-red-500 text-xs px-1">{signerError}</p>}
                         </div>
 

@@ -139,7 +139,10 @@ export function clearPendingConnection() {
 
 export class SignerTimeoutError extends Error {
     constructor() {
-        super('O assinador não respondeu a tempo. Tente novamente ou use o endereço bunker://.');
+        // NIP-46 secrets are single-use, so if the signer did approve while
+        // this page was suspended, its reply is gone and re-listening for it
+        // is pointless — the bunker:// address is the way through.
+        super('Não recebemos a resposta do assinador. Cole antes o endereço bunker:// da aplicação.');
         this.name = 'SignerTimeoutError';
     }
 }
