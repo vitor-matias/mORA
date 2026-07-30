@@ -953,8 +953,12 @@ export default function Profile() {
                                 </div>
                             </details>
 
+                            {/* Announced: the hint exists for someone with no
+                                other signal that anything is wrong, so it has
+                                to reach a screen reader that isn't re-scanning
+                                the page. */}
                             {signerPending && (
-                                <>
+                                <div aria-live="polite">
                                     <div className="flex items-center justify-between gap-2 px-1">
                                         <p className="text-xs text-zinc-500">A ligar ao assinador...</p>
                                         <button
@@ -966,14 +970,14 @@ export default function Profile() {
                                         </button>
                                     </div>
                                     {signerHint && (
-                                        <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 px-1">
+                                        <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 px-1 mt-1">
                                             <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
                                             {signerHint}
                                         </p>
                                     )}
-                                </>
+                                </div>
                             )}
-                            {signerError && <p className="text-red-500 text-xs px-1">{signerError}</p>}
+                            {signerError && <p role="alert" className="text-red-500 text-xs px-1">{signerError}</p>}
                         </div>
 
                         <div className="space-y-2">

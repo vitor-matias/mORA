@@ -39,10 +39,26 @@ const CLIENT_METADATA = {
     url: typeof window !== 'undefined' ? window.location.origin : '',
 };
 
+/** Runs a request and closes the signer if it fails. Only a signer that
+    reaches `active` is closed by setActive, so anything that dies before that
+    would keep its relay subscription for the life of the page. Kept as one
+    helper so a future call site can't forget. */
+async function runOrClose<T>(signer: BunkerSigner, work: Promise<T>): Promise<T> {
+    try {
+        return await work;
+    } catch (error) {
+        signer.close().catch(() => {});
+        throw error;
+    }
+}
+
 /** A connected signer is expensive to set up (relay subscription + handshake),
     so one is kept for the life of the page. */
 let active: BunkerSigner | null = null;
 let activeFor: string | null = null;
+/** A cold connect in progress, shared by everyone asking for the same session. */
+let connecting: Promise<BunkerSigner> | null = null;
+let connectingFor: string | null = null;
 
 /** Replaces the cached signer, closing whatever it displaces — a reconnect, a
     switch of signer, or a logout would otherwise leave the old relay
@@ -77,23 +93,36 @@ export async function getBunkerSigner(): Promise<BunkerSigner | null> {
         setActive(null, null);
         return null;
     }
-    if (active && activeFor === sessionKey(session)) return active;
+    const key = sessionKey(session);
+    if (active && activeFor === key) return active;
+    // Streaks and settings sync in parallel, so a cold start calls this twice
+    // at once. Without sharing the connect, each call would build its own
+    // signer and the second setActive would close the first — while its caller
+    // was still waiting on a request through it.
+    if (connecting && connectingFor === key) return connecting;
 
-    const signer = BunkerSigner.fromBunker(
-        hexToBytes(session.clientSecret),
-        session.pointer,
-    );
-    try {
-        await withSignerTimeout(signer.connect());
-    } catch (error) {
-        signer.close().catch(() => {});
-        throw error;
-    }
-    setActive(signer, sessionKey(session));
-    return signer;
+    connectingFor = key;
+    connecting = (async () => {
+        const signer = BunkerSigner.fromBunker(
+            hexToBytes(session.clientSecret),
+            session.pointer,
+        );
+        await runOrClose(signer, withSignerTimeout(signer.connect()));
+        setActive(signer, key);
+        return signer;
+    })();
+    connecting.catch(() => {}).then(() => {
+        if (connectingFor === key) {
+            connecting = null;
+            connectingFor = null;
+        }
+    });
+    return connecting;
 }
 
 export function forgetBunkerSigner() {
+    connecting = null;
+    connectingFor = null;
     setActive(null, null);
 }
 
@@ -214,16 +243,7 @@ function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<
     return BunkerSigner
         .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
         .then(async (signer: BunkerSigner) => {
-            let pubkey: string;
-            try {
-                pubkey = await withSignerTimeout(signer.getPublicKey());
-            } catch (error) {
-                // Only a signer that reached `active` gets closed by setActive,
-                // so one that fails here would keep its subscription for the
-                // life of the page.
-                signer.close().catch(() => {});
-                throw error;
-            }
+            const pubkey = await runOrClose(signer, withSignerTimeout(signer.getPublicKey()));
             const session: BunkerSession = {
                 clientSecret: bytesToHex(clientSecretKey),
                 pointer: signer.bp,
@@ -314,21 +334,15 @@ export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> 
         // curve" — true, and useless to whoever pasted it.
         throw new Error('Endereço de ligação inválido: a chave do assinador não é válida. Copie o endereço outra vez.');
     }
-    let pubkey: string;
-    try {
-        // Generous: connecting for the first time can mean waiting for the
-        // user to approve the request inside the signer app.
-        await withSignerTimeout(
-            signer.connect(),
-            CONNECT_RPC_TIMEOUT_MS,
-            'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
-            + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
-        );
-        pubkey = await withSignerTimeout(signer.getPublicKey());
-    } catch (error) {
-        signer.close().catch(() => {});
-        throw error;
-    }
+    // Generous: connecting for the first time can mean waiting for the user to
+    // approve the request inside the signer app.
+    await runOrClose(signer, withSignerTimeout(
+        signer.connect(),
+        CONNECT_RPC_TIMEOUT_MS,
+        'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
+        + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
+    ));
+    const pubkey = await runOrClose(signer, withSignerTimeout(signer.getPublicKey()));
 
     const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
     setActive(signer, sessionKey(session));
