@@ -293,7 +293,9 @@ export const useAppStore = create<AppState>()(
             setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
             setFontSize: (fontSize) => set({ fontSize, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
-            fontFamily: 'system',
+            // Serif (Lora) by default: long-form liturgical text reads better
+            // in a book face; the chrome stays in Inter regardless.
+            fontFamily: 'serif',
             setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             autoScrollSpeed: 2,
             setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),

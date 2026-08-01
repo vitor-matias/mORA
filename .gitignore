@@ -25,3 +25,6 @@ dist-ssr
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# parse-lh download cache (copyrighted PDFs — never commit)
+tools/.cache
