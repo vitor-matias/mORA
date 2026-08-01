@@ -70,11 +70,17 @@ function resolveMarks(blocks: ComumBlock[], pascal: boolean): ComumBlock[] {
 }
 
 function properBlocks(entry: ProprioEntry, hour: string): ComumBlock[] {
-    return (entry.hours[hour] ?? []).map((b) => ({
-        kind: PROPER_KIND[b.kind] ?? b.kind,
-        ref: b.ref,
-        text: b.text,
-    }));
+    return (entry.hours[hour] ?? [])
+        // Printed-book pointer rubrics ("Preces do Comum dos Apóstolos:
+        // p. 1887.") reference content the common already supplies — letting
+        // them through would kind-replace the common's real rubrics in the
+        // overlay and render redundant instructions.
+        .filter((b) => !(b.kind === 'rubrica' && /\bp\.\s*\d/.test(b.text)))
+        .map((b) => ({
+            kind: PROPER_KIND[b.kind] ?? b.kind,
+            ref: b.ref,
+            text: b.text,
+        }));
 }
 
 /**
