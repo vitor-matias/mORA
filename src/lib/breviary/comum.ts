@@ -91,6 +91,10 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
     // resumes — at the first block kind the first run did not contain
     // (e.g. preces after the two seasonal responsórios).
     let seasonRun: { kinds: Set<string>; second: boolean } | null = null;
+    // A season rubric with no open run and no "Fora …" partner tags only the
+    // single alternative block that follows (Defuntos inserts a Paschal
+    // Benedictus antiphon into otherwise neutral content).
+    let seasonOneShot = false;
     let variant: string | undefined; // "Para um Santo Mártir" — sticky likewise
     let canticle: string | null = null; // Magnificat/Benedictus for the next Ant.
     let psalmBase: string | null = null; // for bare roman-numeral divisions
@@ -100,7 +104,14 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
     const blocksOf = () => (doc.hours[(hour ??= '(preâmbulo)')] ??= []);
     /** The season a new block of `kind` belongs to, ending runs as needed. */
     const seasonFor = (kind: string): string | undefined => {
-        if (!season || !seasonRun) return season;
+        if (!season) return undefined;
+        if (seasonOneShot) {
+            const s = season;
+            seasonOneShot = false;
+            season = undefined;
+            return s;
+        }
+        if (!seasonRun) return season;
         if (!seasonRun.second) {
             seasonRun.kinds.add(kind);
             return season;
@@ -110,7 +121,8 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
         seasonRun = null;
         return undefined;
     };
-    const isEmpty = (b: OpenBlock) => (b.buf ? b.buf.length === 0 : !b.verses?.length);
+    const isEmpty = (b: OpenBlock) =>
+        !b.hymn?.length && (b.buf ? b.buf.length === 0 : !b.verses?.length);
     const flush = () => {
         if (!block) return;
         if (block.hymn) {
@@ -125,7 +137,14 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             delete block.buf;
             delete block.verseLike;
         }
-        if (block.verses?.length || block.text) blocksOf().push(block);
+        if (block.verses?.length || block.text) {
+            blocksOf().push(block);
+            // A one-shot season is spent once its tagged block lands.
+            if (seasonOneShot && block.season === season) {
+                seasonOneShot = false;
+                season = undefined;
+            }
+        }
         block = null;
     };
 
@@ -148,6 +167,19 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             season = undefined;
             variant = undefined;
             canticle = null;
+            psalmBase = null;
+            continue;
+        }
+
+        // The Ofício de Leitura (only Defuntos has one) is not in the app's
+        // hour set — park it like the hymn appendix.
+        if (text === 'Ofício de Leitura') {
+            flush();
+            hour = '(ofício de leitura)';
+            season = undefined;
+            variant = undefined;
+            canticle = null;
+            psalmBase = null;
             continue;
         }
 
@@ -160,6 +192,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             season = undefined;
             variant = undefined;
             canticle = null;
+            psalmBase = null;
             continue;
         }
 
@@ -203,19 +236,43 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
         // same attach-or-sibling rule as variants applies, or the second
         // season's lines would be orphaned by the flush.
         if (SEASONS.includes(text)) {
-            if (season === undefined || !seasonRun) seasonRun = { kinds: new Set(), second: false };
-            else seasonRun.second = true;
-            season = text;
-            variant = undefined;
-            if (block && isEmpty(block)) {
-                block.season = text;
-                if (!seasonRun.second) seasonRun.kinds.add(block.kind);
-            } else if (block) {
-                const kind: string = block.kind;
-                const ref: string | undefined = block.ref;
-                flush();
-                if (!seasonRun.second) seasonRun.kinds.add(kind);
-                block = { kind, ref, season, buf: [], verseLike: VERSE_LIKE.has(kind) };
+            const runOpen = season !== undefined && seasonRun !== null;
+            if (text === 'Fora do Tempo Pascal' || runOpen) {
+                // Paired form: "Fora …" opens a run; its partner continues it.
+                if (!runOpen) seasonRun = { kinds: new Set(), second: false };
+                else seasonRun!.second = true;
+                season = text;
+                seasonOneShot = false;
+                variant = undefined;
+                if (block && isEmpty(block)) {
+                    block.season = text;
+                    if (!seasonRun!.second) seasonRun!.kinds.add(block.kind);
+                } else if (block) {
+                    const kind: string = block.kind;
+                    const ref: string | undefined = block.ref;
+                    flush();
+                    if (!seasonRun!.second) seasonRun!.kinds.add(kind);
+                    block = { kind, ref, season, buf: [], verseLike: VERSE_LIKE.has(kind) };
+                }
+            } else {
+                // Unpaired insert: tag only the following alternative. It may
+                // arrive as a bare continuation of the current kind (the
+                // Paschal Magnificat antiphon given without its own "Ant."),
+                // so reopen a same-kind sibling carrying the season; the
+                // one-shot is consumed when a tagged block lands (see flush
+                // and seasonFor).
+                season = text;
+                seasonRun = null;
+                seasonOneShot = true;
+                variant = undefined;
+                if (block && isEmpty(block)) {
+                    block.season = text;
+                } else if (block) {
+                    const kind: string = block.kind;
+                    const ref: string | undefined = block.ref;
+                    flush();
+                    block = { kind, ref, season: text, buf: [], verseLike: VERSE_LIKE.has(kind) };
+                }
             }
             continue;
         }
@@ -324,18 +381,18 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
         }
 
         if (block?.buf) {
-            // A small-size line inside a prose block is a rubric ("Salmo
-            // invitatório." after the invitatory antiphon, "Oração própria.
-            // Na sua falta…" before a collect) — never part of the prayer.
-            // A same-kind block reopens after it: alternate collects follow
-            // their separating rubric with no header of their own.
-            if (!block.verseLike && l.h === 9) {
+            // A small-size line inside an open block is a rubric ("Salmo
+            // invitatório.", "Oração própria. Na sua falta…", the "Ou"
+            // between alternative responsories) — never part of the prayer.
+            // A same-kind block reopens after it: alternates follow their
+            // separating rubric with no header of their own.
+            if (l.h === 9) {
                 const kind: string = block.kind;
                 const ref: string | undefined = block.ref;
-                if (block.buf.length > 0) flush();
-                else block = null;
+                if (isEmpty(block)) block = null;
+                else flush();
                 blocksOf().push({ kind: 'rubrica', season: seasonFor('rubrica'), variant, text });
-                block = { kind, ref, season: seasonFor(kind), variant, buf: [] };
+                block = { kind, ref, season: seasonFor(kind), variant, buf: [], verseLike: VERSE_LIKE.has(kind) };
                 continue;
             }
             if (block.kind === 'hino') {

@@ -43,24 +43,39 @@ function cutPsalmody(html: string): string | null {
 const API_HTML_CLASSES = "content-text text-zinc-800 dark:text-zinc-200 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4";
 
 // The Ofício de Defuntos prays Completas "como no domingo" — serve the most
-// recent Sunday's Compline, whatever day is being viewed.
-let sundayComplineCache: { title: string; html: string } | null = null;
+// recent Sunday's Compline, whatever day is being viewed. Cached per Sunday
+// so navigating to another week or season fetches that week's text.
+interface SundayCompline { key: string; title: string; html: string }
+const sundayComplineCache = new Map<string, SundayCompline>();
 
-async function findSundayCompline(from: Date): Promise<{ title: string; html: string } | null> {
-    if (sundayComplineCache) return sundayComplineCache;
+/** The ISO date of the week's Sunday for the viewed date. */
+function sundayKeyFor(from: Date): string {
     const d = new Date(from);
-    d.setDate(d.getDate() - d.getDay()); // this week's Sunday
+    d.setDate(d.getDate() - d.getDay());
+    return formatISODate(d);
+}
+
+async function findSundayCompline(from: Date): Promise<SundayCompline | null> {
+    const key = sundayKeyFor(from);
+    const cached = sundayComplineCache.get(key);
+    if (cached) return cached;
     try {
-        const data = await fetchDailyLiturgy(formatISODate(d));
-        const part = data?.memories?.[0]?.parts.find(p => p.title.startsWith('Compl'));
+        const data = await fetchDailyLiturgy(key);
+        const parts = data?.memories?.[0]?.parts ?? [];
+        // Sunday has two Complines; the Office of the Dead uses the one
+        // after second Vespers.
+        const part = parts.find(p => /Vésp\. II/.test(p.title))
+            ?? parts.find(p => p.title.startsWith('Compl'));
         if (part) {
             const html = [...part.verses].sort((a, b) => a.order - b.order).map(v => v.text).join('');
-            sundayComplineCache = { title: part.title, html };
+            const entry = { key, title: part.title, html };
+            sundayComplineCache.set(key, entry);
+            return entry;
         }
     } catch {
         // Offline — the caller keeps the day's Compline.
     }
-    return sundayComplineCache;
+    return null;
 }
 
 async function findSundayIPsalmody(from: Date): Promise<string | null> {
@@ -251,12 +266,16 @@ export default function LiturgiaHoras() {
     }, [altOffice, sundayPsalmody, selectedDateStr]);
 
     // Sunday Compline for the Ofício de Defuntos (see findSundayCompline).
-    const [sundayCompline, setSundayCompline] = useState<{ title: string; html: string } | null>(sundayComplineCache);
+    const sundayKey = sundayKeyFor(new Date(selectedDateStr + 'T00:00:00'));
+    const [sundayComplineState, setSundayComplineState] = useState<SundayCompline | null>(null);
+    const sundayCompline = sundayComplineState?.key === sundayKey
+        ? sundayComplineState
+        : sundayComplineCache.get(sundayKey) ?? null;
     useEffect(() => {
         if (altOffice !== 'defuntos' || sundayCompline) return;
         let cancelled = false;
         findSundayCompline(new Date(selectedDateStr + 'T00:00:00'))
-            .then((r) => { if (!cancelled && r) setSundayCompline(r); });
+            .then((r) => { if (!cancelled && r) setSundayComplineState(r); });
         return () => { cancelled = true; };
     }, [altOffice, sundayCompline, selectedDateStr]);
 
@@ -400,6 +419,22 @@ export default function LiturgiaHoras() {
         setUserActiveSubHour(sub);
     };
 
+    // Close the chooser on Escape or a click outside the panel.
+    const chooserRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!chooserOpen) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setChooserOpen(false); };
+        const onPointer = (e: PointerEvent) => {
+            if (!chooserRef.current?.contains(e.target as Node)) setChooserOpen(false);
+        };
+        document.addEventListener('keydown', onKey);
+        document.addEventListener('pointerdown', onPointer);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('pointerdown', onPointer);
+        };
+    }, [chooserOpen]);
+
     const selectOffice = (value: 'defuntos' | number | null) => {
         scroll.stop();
         setAltState(value === null ? null : { dateStr: selectedDateStr, sel: value });
@@ -487,6 +522,7 @@ export default function LiturgiaHoras() {
                                 picker on the label — same as the Missa page */}
                             <div className="flex items-center justify-between gap-1 surface rounded-xl px-1 py-1 shrink-0">
                                 <button
+                                    type="button"
                                     onClick={() => changeDay(-1)}
                                     aria-label="Dia anterior"
                                     className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -527,6 +563,7 @@ export default function LiturgiaHoras() {
                                     />
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => changeDay(1)}
                                     aria-label="Dia seguinte"
                                     className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -537,10 +574,12 @@ export default function LiturgiaHoras() {
 
                             {/* Office chooser: the API office by default, a saint
                                 of the day or the Ofício de Defuntos on demand */}
-                            <div className="relative shrink-0">
+                            <div ref={chooserRef} className="relative shrink-0">
                                 <button
+                                    type="button"
                                     onClick={() => setChooserOpen(o => !o)}
                                     aria-expanded={chooserOpen}
+                                    aria-haspopup="menu"
                                     className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm transition-colors ${altActive
                                         ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-300 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
@@ -553,6 +592,7 @@ export default function LiturgiaHoras() {
                                 {chooserOpen && (
                                     <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
                                         <button
+                                            type="button"
                                             onClick={() => selectOffice(null)}
                                             className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === null ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
                                         >
@@ -563,6 +603,7 @@ export default function LiturgiaHoras() {
                                             const available = hasRenderableOffice(saint);
                                             return (
                                                 <button
+                                                    type="button"
                                                     key={`${saint.day}-${i}`}
                                                     onClick={() => available && selectOffice(i)}
                                                     disabled={!available}
@@ -579,6 +620,7 @@ export default function LiturgiaHoras() {
                                             );
                                         })}
                                         <button
+                                            type="button"
                                             onClick={() => selectOffice('defuntos')}
                                             className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === 'defuntos' ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
                                         >
@@ -669,11 +711,7 @@ export default function LiturgiaHoras() {
                                             const renderHtml = (html: string) => (
                                                 <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
                                             );
-                                            const partHtml = (title: string) => {
-                                                const part = liturgy?.memories?.[0]?.parts.find(p => p.title === title);
-                                                if (!part) return null;
-                                                return [...part.verses].sort((a, b) => a.order - b.order).map(v => v.text).join('');
-                                            };
+                                            const partHtml = (title: string) => partHtmlOf(liturgy, title);
 
                                             // Hora Intermédia: the hymn and psalmody are the
                                             // day's — splice the API sub-hour up to its Leitura

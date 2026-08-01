@@ -138,7 +138,13 @@ export function mergeComumOverlay(base: ComumDoc, over: ComumDoc): ComumDoc {
         const baseBlocks = hours[hour];
         hours[hour] = baseBlocks ? overlay(baseBlocks, blocks) : blocks;
     }
-    return { title: over.title, hours };
+    // `note` is intentionally omitted: the inheritance it describes is now
+    // resolved, so loadComum must not follow it again.
+    return {
+        title: over.title ?? base.title,
+        subtitle: over.subtitle ?? base.subtitle,
+        hours,
+    };
 }
 
 /**

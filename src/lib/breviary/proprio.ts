@@ -77,9 +77,13 @@ const COMMON_IDS: [RegExp, string][] = [
  * was meant to be all caps.
  */
 function fixSmallCapsWords(name: string): string {
-    return name.replace(/\S+/g, (w) =>
-        /^[A-ZÀ-Ú].*[a-zà-ú].*[A-ZÀ-Ú]/.test(w) ? w.toUpperCase() : w
-    );
+    return name.replace(/\S+/g, (w) => {
+        const uppers = (w.match(/[A-ZÀ-Ú]/g) ?? []).length;
+        // Two or more capitals alongside any lowercase glyph marks a
+        // small-caps artifact ("EyMARD", "CRUz", "áGUEDA", "lURDES");
+        // connectives ("e", "de") and normal capitalised words are left.
+        return uppers >= 2 && /[a-zà-ú]/.test(w) ? w.toUpperCase() : w;
+    });
 }
 
 export function parseCommonsPointer(text: string): string[] {
@@ -89,6 +93,34 @@ export function parseCommonsPointer(text: string): string[] {
         .sort((a, b) => a.at - b.at)
         .map((m) => m.id);
 }
+
+/**
+ * Applies a header line to the entry's name/descriptor. Multi-saint headers
+ * ("S. CIRILO, monge, e S. METÓDIO, bispo") keep the whole line as the name
+ * so no saint is lost to the descriptor split.
+ */
+function tryName(cur: ProprioEntry, text: string): boolean {
+    if (cur.name) return false;
+    const m = text.match(/^(.*?),\s*(.+)$/);
+    const namePart = m ? m[1] : text;
+    const caps = namePart.replace(/[^A-ZÁÉÍÓÚÂÊÔÃÕÇ]/g, '').length;
+    if (caps <= namePart.length / 3) return false;
+    if (m && !/\b(?:SS?|B)\.\s/.test(m[2])) {
+        cur.name = fixSmallCapsWords(m[1]);
+        cur.descriptor = m[2];
+    } else {
+        // Multi-saint line, or a descriptor that wraps to the next line
+        // leaving the name's trailing comma behind.
+        cur.name = fixSmallCapsWords(text.replace(/,$/, ''));
+    }
+    return true;
+}
+
+// Typesetting errata in the source PDFs, applied after parsing.
+const ERRATA: { month: Month; day: number; find: string; replace: string }[] = [
+    // S. Inês' second Vespers psalm antiphon is misprinted "Ant. 3".
+    { month: 'Janeiro', day: 21, find: 'Ant. 3 Só a Ele', replace: 'Ant. 2 Só a Ele' },
+];
 
 interface OpenSub {
     kind: string;
@@ -104,7 +136,15 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
     // Some months set the name lowercase ("3 de julho" vs "2 de Janeiro") —
     // accept both. Running heads are filtered before this regex is tried, so
     // the ALL-CAPS forms can't leak in.
-    const dateRe = new RegExp(`^(No mesmo dia )?(\\d+) de (?:${month}|${month.toLowerCase()})$`);
+    // "Dia 14 de Maio" and "No mesmo dia 16 de Novembro" are real header
+    // forms; long ones start left of the usual centering, hence the x > 60
+    // guard at the use site rather than x > 90.
+    const dateRe = new RegExp(`^(No mesmo dia |Dia )?(\\d+) de (?:${month}|${month.toLowerCase()})$`);
+    // Date phrase sharing the line with a saint heading; the remainder must
+    // start like a heading so biography lines mentioning dates can't match.
+    const compositeRe = new RegExp(
+        `^(No mesmo dia |Dia )?(\\d+) de (?:${month}|${month.toLowerCase()})\\s+((?:SS?\\.|B\\.|N[oa]ssa Senhora|[A-ZÀ-Ú]{2,}).*)$`
+    );
     // Case-sensitive on purpose: running heads are ALL CAPS ("20 E 21 DE
     // JANEIRO"), real entry headers are "2 de Janeiro".
     const headRe = new RegExp(
@@ -150,8 +190,36 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
         commonsOpen = false;
 
+        // Secondary entries can share their line with the saint's heading
+        // ("No mesmo dia 16 de Novembro S. GERTRUDES, virgem Nasceu…") —
+        // split the heading (and any biography start) out of the date line.
+        const composite = text.match(compositeRe);
+        if (composite && cur) {
+            flushSub();
+            cur = {
+                day: Number(composite[2]),
+                sameDay: composite[1] ? true : undefined,
+                name: null,
+                descriptor: null,
+                rank: 'Memória facultativa',
+                commons: [],
+                bio: '',
+                hours: {},
+            };
+            entries.push(cur);
+            section = null;
+            const rest = composite[3];
+            const bioSplit = rest.match(/^(.*?)\s+((?:Foi|Era|Nasceu|Viveu|Morreu|Entrou|Estudou|Depois|Segundo|Diz-se)\b.*)$/);
+            tryName(cur, (bioSplit ? bioSplit[1] : rest).trim());
+            if (bioSplit) {
+                section = 'bio';
+                sub = { kind: 'bio', buf: [bioSplit[2]] };
+            }
+            continue;
+        }
+
         const dateMatch = text.match(dateRe);
-        if (dateMatch && l.x > 90) {
+        if (dateMatch && l.x > 60) {
             flushSub();
             cur = {
                 day: Number(dateMatch[2]),
@@ -175,22 +243,17 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         // ("bispo e doutor da Igreja") or capitalised ("Apóstolo e
         // Evangelista") and would dilute it either way.
         if (!section && l.h >= 10 && !HOURS.includes(text)) {
-            const m = text.match(/^(.*?),\s*(.+)$/);
-            const namePart = m ? m[1] : text;
-            const caps = namePart.replace(/[^A-ZÁÉÍÓÚÂÊÔÃÕÇ]/g, '').length;
-            if (!cur.name && caps > namePart.length / 3) {
-                if (m) {
-                    cur.name = fixSmallCapsWords(m[1]);
-                    cur.descriptor = m[2];
-                } else {
-                    // The descriptor may wrap to the next line, leaving the
-                    // name's trailing comma behind.
-                    cur.name = fixSmallCapsWords(text.replace(/,$/, ''));
-                }
-                continue;
-            }
-            if (cur.name && !cur.descriptor && /^[a-zà-ú]/.test(text)) {
-                cur.descriptor = text;
+            if (tryName(cur, text)) continue;
+            // Descriptor on its own line — or its continuation when the
+            // previous line ended mid-list ("papa, e S. HIPÓLITO,"). Prose
+            // that happens to start lowercase (S. Casimiro's entry) is
+            // rejected by length and by connective-word openings.
+            if (
+                cur.name && /^[a-zà-ú]/.test(text) &&
+                (cur.descriptor ? /,$/.test(cur.descriptor) : true) &&
+                (cur.descriptor || (text.length <= 60 && !/^(para|que|com|sem|por|pel[oa]s?)\b/.test(text)))
+            ) {
+                cur.descriptor = cur.descriptor ? `${cur.descriptor} ${text}` : text;
                 continue;
             }
         }
@@ -256,11 +319,19 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
                 continue;
             }
             const label = LABELS.find((L) => L.re.test(despace(text)));
-            if (label && l.x < 90 && text.length < 60) {
+            if (label && l.x < 90 && text.length < 100) {
                 flushSub();
+                const ref = prettifyRef(afterDespaced(text, label.skip));
+                // "Preces, p. 1928; ou do dia ferial correspondente." is a
+                // pointer into the printed book, not content — keep it as a
+                // rubric (with its wrapped continuation).
+                if (/\bp\.\s*\d/.test(ref)) {
+                    sub = { kind: 'rubrica', buf: [text] };
+                    continue;
+                }
                 sub = {
                     kind: label.kind,
-                    ref: prettifyRef(afterDespaced(text, label.skip)) || undefined,
+                    ref: ref || undefined,
                     buf: [],
                     verseLike: label.verseLike,
                 };
@@ -286,6 +357,13 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
     // duplicate prayers. Identical blocks within an hour are never
     // meaningful — keep the first.
     for (const entry of entries) {
+        if (entry.descriptor) entry.descriptor = entry.descriptor.replace(/,+$/, '');
+        for (const erratum of ERRATA) {
+            if (erratum.month !== month || erratum.day !== entry.day) continue;
+            for (const blocks of Object.values(entry.hours)) {
+                for (const b of blocks) b.text = b.text.replace(erratum.find, erratum.replace);
+            }
+        }
         for (const [hour, blocks] of Object.entries(entry.hours)) {
             const seen = new Set<string>();
             entry.hours[hour] = blocks.filter((b) => {

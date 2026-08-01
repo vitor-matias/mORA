@@ -63,7 +63,7 @@ function Block({ block }: { block: ComumBlock }) {
             )}
 
             {block.kind === 'rubrica' || block.kind === 'introdução' ? (
-                <p className={RED}>{block.text}</p>
+                <p className={`whitespace-pre-line ${RED}`}>{block.text}</p>
             ) : block.kind === 'salmo' ? (
                 <div>
                     <p className={`text-sm font-semibold text-center mb-2 ${RED}`}>{block.ref}</p>

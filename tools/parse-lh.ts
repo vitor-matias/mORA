@@ -87,6 +87,12 @@ function checkComum(doc: ComumDoc): string[] {
         if (hour.startsWith('(')) continue; // pseudo-hours are never rendered
         const strays = blocks.filter((b) => b.kind === 'texto').length;
         if (strays > 0) warnings.push(`${hour}: ${strays} unclassified block(s)`);
+        // A short-form kind that runs long is swallowed body text.
+        for (const b of blocks) {
+            if (/^ant/.test(b.kind) && (b.text?.length ?? 0) > 600) {
+                warnings.push(`${hour}: over-long ${b.kind} (${b.text!.length} chars)`);
+            }
+        }
     }
     return warnings;
 }

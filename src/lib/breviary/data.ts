@@ -39,12 +39,15 @@ export async function loadProprio(month: number): Promise<ProprioEntry[]> {
  * resolved: a common declared as an overlay on another ("Como no Comum dos
  * Pastores da Igreja, excepto:") comes back whole.
  */
-export async function loadComum(id: string): Promise<ComumDoc> {
+export async function loadComum(id: string, seen: Set<string> = new Set()): Promise<ComumDoc> {
     const doc = await loadJson<ComumDoc>(`comum-${id}.json`);
+    seen.add(id);
     if (doc.note) {
         const baseId = parseCommonsPointer(doc.note)[0];
-        if (baseId && baseId !== id) {
-            return mergeComumOverlay(await loadComum(baseId), doc);
+        // The visited set guards against cyclic inheritance in a future
+        // regeneration — a → b → a would otherwise recurse forever.
+        if (baseId && !seen.has(baseId)) {
+            return mergeComumOverlay(await loadComum(baseId, seen), doc);
         }
     }
     return doc;
