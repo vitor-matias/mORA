@@ -76,7 +76,7 @@ const COMMON_IDS: [RegExp, string][] = [
  * name ("EyMARD") — a word with capitals on both sides of a lowercase run
  * was meant to be all caps.
  */
-function fixSmallCapsWords(name: string): string {
+export function fixSmallCapsWords(name: string): string {
     return name.replace(/\S+/g, (w) => {
         const uppers = (w.match(/[A-ZÀ-Ú]/g) ?? []).length;
         // Two or more capitals alongside any lowercase glyph marks a
