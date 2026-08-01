@@ -281,5 +281,21 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
     }
     flushSub();
 
+    // Some entries print the same collect at both Laudes and Vésperas
+    // (S. Inês, S. Marcos…); both land under "Oração" and would render as
+    // duplicate prayers. Identical blocks within an hour are never
+    // meaningful — keep the first.
+    for (const entry of entries) {
+        for (const [hour, blocks] of Object.entries(entry.hours)) {
+            const seen = new Set<string>();
+            entry.hours[hour] = blocks.filter((b) => {
+                const key = `${b.kind} ${b.text}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+    }
+
     return entries;
 }

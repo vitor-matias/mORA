@@ -162,6 +162,6 @@ if (command === 'proprio' && arg) {
     console.error(warnings === 0 ? '\nAll clean.' : `\n${warnings} warning(s).`);
     if (warnings > 0) process.exitCode = 1;
 } else {
-    console.error('usage: parse-lh proprio <1-12|month> | comum <id> | sweep');
+    console.error('usage: parse-lh proprio <1-12|month> | comum <id> | sweep | generate');
     process.exitCode = 2;
 }

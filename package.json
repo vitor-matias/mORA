@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "parse-lh": "node tools/parse-lh.ts"
+    "parse-lh": "node --experimental-strip-types tools/parse-lh.ts"
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
