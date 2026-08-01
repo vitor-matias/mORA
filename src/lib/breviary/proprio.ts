@@ -367,7 +367,7 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         for (const [hour, blocks] of Object.entries(entry.hours)) {
             const seen = new Set<string>();
             entry.hours[hour] = blocks.filter((b) => {
-                const key = `${b.kind} ${b.text}`;
+                const key = `${b.kind}\u0000${b.text}`;
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
