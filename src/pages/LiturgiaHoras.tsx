@@ -546,7 +546,7 @@ export default function LiturgiaHoras() {
 
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && canonicalHours.length > 0 && (
-                    <aside className="hidden lg:flex flex-col gap-4 w-52 xl:w-60 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                    <aside className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
                         {dateNav}
                         {officeChooser}
                         <nav aria-label="Horas do Ofício">
