@@ -225,13 +225,12 @@ function enrichReadingTypography(doc: Document): void {
         const label = header.querySelector('.reading-label')?.textContent ?? '';
         if (!/^SALMO/i.test(label)) return;
 
-        // The header title carries "(R. 97a) Refrão: … Repete-se" — lift the
-        // refrain into its own highlighted line right under the header.
-        const title = header.querySelector('.reading-title');
-        const titleText = title?.textContent ?? '';
-        const m = titleText.match(/Refrão:\s*(.*)$/i);
-        if (title && m) {
-            let refrain = m[1].trim();
+        // The refrain arrives in one of two shapes: inside the header title
+        // ("(R. 97a) Refrão: … Repete-se"), or as its own plain paragraph
+        // right after the header on days where the API keeps them apart.
+        // Lift either into the same highlighted line under the header.
+        const buildRefrainP = (text: string) => {
+            let refrain = text.trim();
             const repeats = /\bRepete-se\b\.?\s*$/i.test(refrain);
             refrain = refrain.replace(/\s*Repete-se\.?\s*$/i, '').trim();
 
@@ -244,10 +243,25 @@ function enrichReadingTypography(doc: Document): void {
                 note.textContent = 'Repete-se';
                 refrainP.appendChild(note);
             }
+            return refrainP;
+        };
+
+        const title = header.querySelector('.reading-title');
+        const titleText = title?.textContent ?? '';
+        const m = titleText.match(/Refrão:\s*(.*)$/i);
+        if (title && m) {
             // Keep only the psalm-number reference in the small title
             const before = titleText.slice(0, m.index ?? 0).trim();
             if (before) title.textContent = before; else title.remove();
-            header.after(refrainP);
+            header.after(buildRefrainP(m[1]));
+        } else {
+            // Standalone refrain paragraph: unclassed, single-line (no <br> —
+            // stanzas are multi-line), starting with "Refrão:".
+            const next = header.nextElementSibling;
+            if (next?.tagName === 'P' && next.classList.length === 0 && !next.querySelector('br')) {
+                const nm = (next.textContent ?? '').replace(/\s+/g, ' ').trim().match(/^Refrão:\s*(.*)$/i);
+                if (nm) next.replaceWith(buildRefrainP(nm[1]));
+            }
         }
 
         // Color the "Refrão" cue that closes each stanza
