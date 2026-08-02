@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { ChevronRight, ChevronLeft, ChevronDown, Calendar, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
+import { ChevronRight, ChevronDown, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
@@ -10,7 +10,8 @@ import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/component
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { getHourForTime } from "@/lib/hours";
-import { formatDisplayDate, formatShortDisplayDate, formatISODate } from "@/lib/format";
+import { formatISODate } from "@/lib/format";
+import { DateNav } from "@/components/DateNav";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
 import { saintsForDay, hasRenderableOffice, assembleHour } from "@/lib/breviary/assemble";
 import type { ProprioEntry } from "@/lib/breviary/proprio";
@@ -193,7 +194,6 @@ export default function LiturgiaHoras() {
 
     // Date being viewed — browsable like the Missa page.
     const [selectedDate, setSelectedDate] = useState(() => new Date());
-    const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
     const changeDay = (delta: number) => {
@@ -434,7 +434,9 @@ export default function LiturgiaHoras() {
         if (!chooserOpen) return;
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setChooserOpen(false); };
         const onPointer = (e: PointerEvent) => {
-            if (!(e.target as Element).closest?.('[data-office-chooser]')) setChooserOpen(false);
+            if (!(e.target instanceof Element && e.target.closest('[data-office-chooser]'))) {
+                setChooserOpen(false);
+            }
         };
         document.addEventListener('keydown', onKey);
         document.addEventListener('pointerdown', onPointer);
@@ -457,68 +459,16 @@ export default function LiturgiaHoras() {
             : altEntry?.name ?? 'Ofício do dia';
 
     // Rendered twice — mobile flow and desktop sidebar — same as the Missa
-    // page's date pill. Prev / next day navigation with a native date picker
-    // on the label.
+    // page's date pill. Each render site mounts its own DateNav instance,
+    // which owns its picker input ref internally.
     const dateNav = (
-        <div className="flex items-center justify-between gap-1 surface rounded-xl px-1 py-1 shrink-0">
-            <button
-                type="button"
-                onClick={() => changeDay(-1)}
-                aria-label="Dia anterior"
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-                <ChevronLeft size={18} />
-            </button>
-            <div className="relative flex-1">
-                <button
-                    type="button"
-                    onClick={() => {
-                        const input = dateInputRef.current;
-                        if (!input) return;
-                        if ('showPicker' in input) {
-                            try { input.showPicker(); } catch { input.focus(); }
-                        } else {
-                            (input as HTMLInputElement).focus();
-                        }
-                    }}
-                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                    <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
-                        {isToday ? 'Hoje' : (
-                            // Full-width pill on mobile fits the weekday; the
-                            // lg+ sidebar pill doesn't, and the day card
-                            // names it anyway.
-                            <>
-                                <span className="lg:hidden">{formatDisplayDate(selectedDate)}</span>
-                                <span className="hidden lg:inline">{formatShortDisplayDate(selectedDate)}</span>
-                            </>
-                        )}
-                    </span>
-                </button>
-                {/* Sibling overlay, not a child — an interactive element
-                    inside a <button> is invalid HTML. */}
-                <input
-                    ref={dateInputRef}
-                    type="date"
-                    aria-hidden="true"
-                    tabIndex={-1}
-                    value={selectedDateStr}
-                    onChange={(e) => {
-                        if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
-                    }}
-                    className="absolute inset-0 opacity-0 pointer-events-none"
-                />
-            </div>
-            <button
-                type="button"
-                onClick={() => changeDay(1)}
-                aria-label="Dia seguinte"
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-                <ChevronRight size={18} />
-            </button>
-        </div>
+        <DateNav
+            selectedDate={selectedDate}
+            selectedDateStr={selectedDateStr}
+            isToday={isToday}
+            onChangeDay={changeDay}
+            onSelectDate={setSelectedDate}
+        />
     );
 
     // Office chooser: the API office by default, a saint of the day or the

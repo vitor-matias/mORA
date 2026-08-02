@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronRight, ChevronLeft, Calendar, CheckCircle2, RotateCcw } from "lucide-react";
+import { CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
-import { formatDisplayDate, formatShortDisplayDate, formatISODate } from "@/lib/format";
+import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
 import { DayCard } from "@/components/DayInfo";
+import { DateNav } from "@/components/DateNav";
 import { SaintOfDayCard } from "@/components/SaintOfDay";
 
 // Labels that open a liturgical reading section.
@@ -366,7 +367,6 @@ export default function Liturgy() {
         }
     );
 
-    const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
     // Completion also applies to the anticipated Sunday on Saturday evening —
@@ -619,65 +619,16 @@ export default function Liturgy() {
     );
 
     // Prev / next day navigation with a native date picker on the label.
+    // Each of its render sites (sidebar, mobile toolbar, empty state) mounts
+    // its own DateNav instance, which owns its picker input ref internally.
     const dateNav = (
-        <div className="flex items-center justify-between gap-1 surface rounded-xl px-1 py-1">
-            <button
-                onClick={() => changeDay(-1)}
-                aria-label="Dia anterior"
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-                <ChevronLeft size={18} />
-            </button>
-            <div className="relative flex-1">
-                <button
-                    type="button"
-                    onClick={() => {
-                        const input = dateInputRef.current;
-                        if (!input) return;
-                        if ('showPicker' in input) {
-                            try { input.showPicker(); } catch { input.focus(); }
-                        } else {
-                            (input as HTMLInputElement).focus();
-                        }
-                    }}
-                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                    <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
-                    <span className="truncate">
-                        {isToday ? 'Hoje' : (
-                            // Full-width pill on mobile fits the weekday; the
-                            // lg+ sidebar pill doesn't, and the day card
-                            // below it names the weekday anyway.
-                            <>
-                                <span className="lg:hidden">{formatDisplayDate(selectedDate)}</span>
-                                <span className="hidden lg:inline">{formatShortDisplayDate(selectedDate)}</span>
-                            </>
-                        )}
-                    </span>
-                </button>
-                {/* Sibling overlay, not a child — an interactive element
-                    inside a <button> is invalid HTML. The button above is
-                    the control; this input only hosts the native picker. */}
-                <input
-                    ref={dateInputRef}
-                    type="date"
-                    aria-hidden="true"
-                    tabIndex={-1}
-                    value={selectedDateStr}
-                    onChange={(e) => {
-                        if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
-                    }}
-                    className="absolute inset-0 opacity-0 pointer-events-none"
-                />
-            </div>
-            <button
-                onClick={() => changeDay(1)}
-                aria-label="Dia seguinte"
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-                <ChevronRight size={18} />
-            </button>
-        </div>
+        <DateNav
+            selectedDate={selectedDate}
+            selectedDateStr={selectedDateStr}
+            isToday={isToday}
+            onChangeDay={changeDay}
+            onSelectDate={setSelectedDate}
+        />
     );
 
     // Keyed by date so the expanded state resets when browsing to another day.
