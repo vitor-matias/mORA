@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { ChevronRight, ChevronLeft, ChevronDown, Calendar, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
+import { ChevronRight, ChevronDown, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
@@ -10,7 +10,8 @@ import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/component
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { getHourForTime } from "@/lib/hours";
-import { formatDisplayDate, formatShortDisplayDate, formatISODate } from "@/lib/format";
+import { formatISODate } from "@/lib/format";
+import { DateNav } from "@/components/DateNav";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
 import { saintsForDay, hasRenderableOffice, assembleHour } from "@/lib/breviary/assemble";
 import type { ProprioEntry } from "@/lib/breviary/proprio";
@@ -193,7 +194,6 @@ export default function LiturgiaHoras() {
 
     // Date being viewed — browsable like the Missa page.
     const [selectedDate, setSelectedDate] = useState(() => new Date());
-    const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());
     const changeDay = (delta: number) => {
@@ -427,13 +427,16 @@ export default function LiturgiaHoras() {
         setUserActiveSubHour(sub);
     };
 
-    // Close the chooser on Escape or a click outside the panel.
-    const chooserRef = useRef<HTMLDivElement>(null);
+    // Close the chooser on Escape or a click outside the panel. Detection by
+    // data attribute, not ref: the chooser renders twice (mobile flow and
+    // desktop sidebar) and a single ref would only cover one instance.
     useEffect(() => {
         if (!chooserOpen) return;
         const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setChooserOpen(false); };
         const onPointer = (e: PointerEvent) => {
-            if (!chooserRef.current?.contains(e.target as Node)) setChooserOpen(false);
+            if (!(e.target instanceof Element && e.target.closest('[data-office-chooser]'))) {
+                setChooserOpen(false);
+            }
         };
         document.addEventListener('keydown', onKey);
         document.addEventListener('pointerdown', onPointer);
@@ -455,6 +458,80 @@ export default function LiturgiaHoras() {
             ? 'Ofício de Defuntos'
             : altEntry?.name ?? 'Ofício do dia';
 
+    // Rendered twice — mobile flow and desktop sidebar — same as the Missa
+    // page's date pill. Each render site mounts its own DateNav instance,
+    // which owns its picker input ref internally.
+    const dateNav = (
+        <DateNav
+            selectedDate={selectedDate}
+            selectedDateStr={selectedDateStr}
+            isToday={isToday}
+            onChangeDay={changeDay}
+            onSelectDate={setSelectedDate}
+        />
+    );
+
+    // Office chooser: the API office by default, a saint of the day or the
+    // Ofício de Defuntos on demand. Also rendered in both layouts.
+    const officeChooser = (
+        <div data-office-chooser className="relative shrink-0">
+            <button
+                type="button"
+                onClick={() => setChooserOpen(o => !o)}
+                aria-expanded={chooserOpen}
+                aria-haspopup="menu"
+                className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm transition-colors ${altActive
+                    ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-300 border border-liturgy-200 dark:border-liturgy-800'
+                    : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                    }`}
+            >
+                <Cross size={14} aria-hidden="true" className="shrink-0" />
+                <span className="font-semibold truncate">{officeLabel}</span>
+                <ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform ${chooserOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {chooserOpen && (
+                <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                    <button
+                        type="button"
+                        onClick={() => selectOffice(null)}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === null ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
+                    >
+                        Ofício do dia
+                        <span className="block text-xs text-zinc-400 font-normal">{liturgy?.saintOfDay}</span>
+                    </button>
+                    {saints.map((saint, i) => {
+                        const available = hasRenderableOffice(saint);
+                        return (
+                            <button
+                                type="button"
+                                key={`${saint.day}-${i}`}
+                                onClick={() => available && selectOffice(i)}
+                                disabled={!available}
+                                className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${available
+                                    ? `hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === i ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`
+                                    : 'opacity-50 cursor-not-allowed'}`}
+                            >
+                                {saint.name}
+                                <span className="block text-xs text-zinc-400 font-normal">
+                                    {[saint.descriptor, saint.rank].filter(Boolean).join(' — ')}
+                                    {!available && ' — texto não disponível'}
+                                </span>
+                            </button>
+                        );
+                    })}
+                    <button
+                        type="button"
+                        onClick={() => selectOffice('defuntos')}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === 'defuntos' ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
+                    >
+                        Ofício de Defuntos
+                        <span className="block text-xs text-zinc-400 font-normal">Pelos fiéis defuntos</span>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="flex-1 w-full flex flex-col">
 
@@ -470,6 +547,8 @@ export default function LiturgiaHoras() {
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && canonicalHours.length > 0 && (
                     <aside className="hidden lg:flex flex-col gap-4 w-52 xl:w-60 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                        {dateNav}
+                        {officeChooser}
                         <nav aria-label="Horas do Ofício">
                             <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 px-2">
                                 Horas
@@ -526,125 +605,11 @@ export default function LiturgiaHoras() {
                         </div>
                     ) : canonicalHours.length > 0 ? (
                         <div className="space-y-5 flex-1 flex flex-col">
-                            {/* Prev / next day navigation with a native date
-                                picker on the label — same as the Missa page */}
-                            <div className="flex items-center justify-between gap-1 surface rounded-xl px-1 py-1 shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => changeDay(-1)}
-                                    aria-label="Dia anterior"
-                                    className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                    <ChevronLeft size={18} />
-                                </button>
-                                <div className="relative flex-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const input = dateInputRef.current;
-                                            if (!input) return;
-                                            if ('showPicker' in input) {
-                                                try { input.showPicker(); } catch { input.focus(); }
-                                            } else {
-                                                (input as HTMLInputElement).focus();
-                                            }
-                                        }}
-                                        className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
-                                        <span className="truncate">
-                                            {isToday ? 'Hoje' : (
-                                                // Full-width pill on mobile fits the
-                                                // weekday; the lg+ sidebar pill doesn't,
-                                                // and the day card names it anyway.
-                                                <>
-                                                    <span className="lg:hidden">{formatDisplayDate(selectedDate)}</span>
-                                                    <span className="hidden lg:inline">{formatShortDisplayDate(selectedDate)}</span>
-                                                </>
-                                            )}
-                                        </span>
-                                    </button>
-                                    {/* Sibling overlay, not a child — an interactive
-                                        element inside a <button> is invalid HTML. */}
-                                    <input
-                                        ref={dateInputRef}
-                                        type="date"
-                                        aria-hidden="true"
-                                        tabIndex={-1}
-                                        value={selectedDateStr}
-                                        onChange={(e) => {
-                                            if (e.target.value) setSelectedDate(new Date(e.target.value + 'T00:00:00'));
-                                        }}
-                                        className="absolute inset-0 opacity-0 pointer-events-none"
-                                    />
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => changeDay(1)}
-                                    aria-label="Dia seguinte"
-                                    className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                    <ChevronRight size={18} />
-                                </button>
-                            </div>
-
-                            {/* Office chooser: the API office by default, a saint
-                                of the day or the Ofício de Defuntos on demand */}
-                            <div ref={chooserRef} className="relative shrink-0">
-                                <button
-                                    type="button"
-                                    onClick={() => setChooserOpen(o => !o)}
-                                    aria-expanded={chooserOpen}
-                                    aria-haspopup="menu"
-                                    className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm transition-colors ${altActive
-                                        ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-300 border border-liturgy-200 dark:border-liturgy-800'
-                                        : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
-                                        }`}
-                                >
-                                    <Cross size={14} aria-hidden="true" className="shrink-0" />
-                                    <span className="font-semibold truncate">{officeLabel}</span>
-                                    <ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform ${chooserOpen ? 'rotate-180' : ''}`} />
-                                </button>
-                                {chooserOpen && (
-                                    <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
-                                        <button
-                                            type="button"
-                                            onClick={() => selectOffice(null)}
-                                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === null ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
-                                        >
-                                            Ofício do dia
-                                            <span className="block text-xs text-zinc-400 font-normal">{liturgy?.saintOfDay}</span>
-                                        </button>
-                                        {saints.map((saint, i) => {
-                                            const available = hasRenderableOffice(saint);
-                                            return (
-                                                <button
-                                                    type="button"
-                                                    key={`${saint.day}-${i}`}
-                                                    onClick={() => available && selectOffice(i)}
-                                                    disabled={!available}
-                                                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${available
-                                                        ? `hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === i ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`
-                                                        : 'opacity-50 cursor-not-allowed'}`}
-                                                >
-                                                    {saint.name}
-                                                    <span className="block text-xs text-zinc-400 font-normal">
-                                                        {[saint.descriptor, saint.rank].filter(Boolean).join(' — ')}
-                                                        {!available && ' — texto não disponível'}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                        <button
-                                            type="button"
-                                            onClick={() => selectOffice('defuntos')}
-                                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === 'defuntos' ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
-                                        >
-                                            Ofício de Defuntos
-                                            <span className="block text-xs text-zinc-400 font-normal">Pelos fiéis defuntos</span>
-                                        </button>
-                                    </div>
-                                )}
+                            {/* Mobile: date + office controls in the flow; on
+                                lg+ both live in the sidebar, like Missa. */}
+                            <div className="lg:hidden space-y-5 shrink-0">
+                                {dateNav}
+                                {officeChooser}
                             </div>
 
                             {/* Mobile: horizontal hour buttons — icon + label, so
