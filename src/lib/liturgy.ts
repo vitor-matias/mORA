@@ -169,11 +169,21 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             return null;
         }
 
-        // The Mass for the requested date — masses[] should be exactly that,
-        // but an upstream date mixup would otherwise be frozen forever under
-        // the wrong key by the cache below, so verify before trusting.
+        // The upstream has been seen answering with another day's liturgy
+        // (an ~5-minute server-cache window in late July 2026 served Monday's
+        // Mass for a Sunday query). Wrong-day data must never render or be
+        // cached: treat it as an outage — the catch below falls back to a
+        // stale entry or the retry UI, both more honest than wrong readings.
+        if (data.date && data.date !== dateStr) {
+            console.warn(`Liturgy for ${dateStr} answered with ${data.date}; treating as outage`);
+            throw new Error(`Liturgy response is for ${data.date}, not ${dateStr}`);
+        }
         const masses: Array<{ title: string; date?: string; text: string }> = data.masses;
-        const mass = masses.find((m) => m.date === dateStr) ?? masses[0];
+        const mass = masses.find((m) => m.date === dateStr);
+        if (!mass) {
+            console.warn(`No Mass dated ${dateStr} in response; got:`, masses.map((m) => m.date));
+            throw new Error(`No Mass dated ${dateStr} in liturgy response`);
+        }
 
         // Try to infer color from title roughly
         let color = 'Verde';
@@ -192,9 +202,9 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             saint: data.saint ?? null
         };
 
-        // A mass without the requested date still renders, but is not cached:
-        // better to refetch tomorrow than to pin the wrong day permanently.
-        if (mass.date === dateStr) writeLiturgyCache(dateStr, result);
+        // mass.date === dateStr is guaranteed above, so whatever renders is
+        // also safe to cache; massDate stamps the entry for readLiturgyCache.
+        writeLiturgyCache(dateStr, result);
         return result;
 
     } catch (error) {
