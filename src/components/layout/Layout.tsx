@@ -5,7 +5,21 @@ import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
+import { useDayRollover } from "@/lib/useDayRollover";
 import { TabBar } from "./TabBar";
+
+// Today's liturgical color/day info for the store (app theme + Home's day
+// card). Module scope so it runs both at mount and on day rollover.
+async function refreshLiturgicalColor(): Promise<void> {
+    const today = new Date();
+    // Local date, matching how consumers (Home) compare it
+    const dateStr = formatISODate(today);
+    const { setLiturgicalColor } = useAppStore.getState();
+    const dayInfo = await fetchLiturgicalColorFromCalendar(today);
+    if (dayInfo) {
+        setLiturgicalColor(dayInfo.color, dateStr, dayInfo.dayName, dayInfo.description);
+    }
+}
 
 // Each page starts at the top — without this, the previous page's scroll
 // position carries over across route changes.
@@ -24,17 +38,7 @@ export function Layout() {
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
     useEffect(() => {
-        async function checkLiturgicalColor() {
-            const today = new Date();
-            // Local date, matching how consumers (Home) compare it
-            const dateStr = formatISODate(today);
-            const { setLiturgicalColor } = useAppStore.getState();
-            const dayInfo = await fetchLiturgicalColorFromCalendar(today);
-            if (dayInfo) {
-                setLiturgicalColor(dayInfo.color, dateStr, dayInfo.dayName, dayInfo.description);
-            }
-        }
-        checkLiturgicalColor();
+        refreshLiturgicalColor();
 
         // Warm the cache for the next few days of Mass + Liturgy of the Hours
         // once the app is open. Deferred to idle time so it never competes with
@@ -54,6 +58,17 @@ export function Layout() {
         }
         return cancel;
     }, []);
+
+    // A PWA resumed from the background on a later day would keep yesterday's
+    // theme color and day card: re-anchor "today" and top up the preload
+    // window when the app returns on a new date.
+    useDayRollover(
+        () => formatISODate(new Date()),
+        () => {
+            refreshLiturgicalColor();
+            preloadUpcomingLiturgy(5);
+        }
+    );
 
     // Apply color theme, dark mode, font settings
     useEffect(() => {

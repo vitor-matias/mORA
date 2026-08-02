@@ -8,6 +8,7 @@ import { useAppStore, isCompletedToday } from "@/store/app";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
 import { useAutoScroll } from "@/lib/useAutoScroll";
+import { useDayRollover } from "@/lib/useDayRollover";
 import { getHourForTime } from "@/lib/hours";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
@@ -299,6 +300,13 @@ export default function LiturgiaHoras() {
         loadLiturgy();
         return () => { cancelled = true; };
     }, [selectedDateStr, retryToken]);
+
+    // A PWA resumed from the background on a later day keeps showing the day
+    // it was left at. Re-anchor to today when the app returns on a new date.
+    useDayRollover(
+        () => formatISODate(new Date()),
+        () => setSelectedDate(new Date())
+    );
 
     const markAsPrayed = useCallback(async () => {
         incrementStreak('liturgy_hours');

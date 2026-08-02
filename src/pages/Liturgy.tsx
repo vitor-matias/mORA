@@ -7,6 +7,7 @@ import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { useAutoScroll } from "@/lib/useAutoScroll";
+import { useDayRollover } from "@/lib/useDayRollover";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
 import { DayCard } from "@/components/DayInfo";
@@ -297,7 +298,7 @@ export default function Liturgy() {
     // Date being viewed — a ?date=YYYY-MM-DD param (e.g. from the calendar
     // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
     // Masses start). Browsable via the date nav either way.
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const dateParam = searchParams.get('date');
     const [selectedDate, setSelectedDate] = useState(
         () => parseDateParam(dateParam) ?? getDefaultMassDate()
@@ -315,6 +316,19 @@ export default function Liturgy() {
             setSelectedDate(d);
         }
     }
+    // An installed PWA is often resumed from the background days later with
+    // this page still mounted on whatever day it was left at. When the app
+    // returns to the foreground and the default date has meanwhile moved on
+    // (midnight passed, or the Saturday-16:00 vigil switch), re-anchor to it
+    // — dropping any stale ?date= pin the restored URL still carries.
+    useDayRollover(
+        () => formatISODate(getDefaultMassDate()),
+        () => {
+            setSelectedDate(getDefaultMassDate());
+            if (dateParam) setSearchParams({}, { replace: true });
+        }
+    );
+
     const dateInputRef = useRef<HTMLInputElement>(null);
     const selectedDateStr = formatISODate(selectedDate);
     const isToday = selectedDateStr === formatISODate(new Date());

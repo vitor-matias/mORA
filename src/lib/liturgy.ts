@@ -163,7 +163,11 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             return null;
         }
 
-        const mass = data.masses[0];
+        // The Mass for the requested date — masses[] should be exactly that,
+        // but an upstream date mixup would otherwise be frozen forever under
+        // the wrong key by the cache below, so verify before trusting.
+        const masses: Array<{ title: string; date?: string; text: string }> = data.masses;
+        const mass = masses.find((m) => m.date === dateStr) ?? masses[0];
 
         // Try to infer color from title roughly
         let color = 'Verde';
@@ -181,7 +185,9 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             saint: data.saint ?? null
         };
 
-        writeLiturgyCache(dateStr, result);
+        // A mass without the requested date still renders, but is not cached:
+        // better to refetch tomorrow than to pin the wrong day permanently.
+        if (mass.date === dateStr) writeLiturgyCache(dateStr, result);
         return result;
 
     } catch (error) {
