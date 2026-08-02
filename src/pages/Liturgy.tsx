@@ -198,6 +198,24 @@ function enrichReadingTypography(doc: Document): void {
             span.className = 'reading-source';
             span.textContent = parts.join(' ').replace(/\s+/g, ' ').trim();
             firstChild.replaceWith(span);
+
+            // Drop the <br> separating attribution from body: the span is
+            // display:block (its margin provides the gap), and a leading
+            // forced break would keep the body's first line out of reach of
+            // the prose text-indent.
+            let after = span.nextSibling;
+            while (after && after.nodeType === Node.TEXT_NODE && !after.textContent?.trim()) {
+                after = after.nextSibling;
+            }
+            if (after?.nodeName === 'BR') after.parentNode?.removeChild(after);
+
+            // Wrap the body in its own block so the first-line indent can
+            // land on it — browsers don't indent the first line of the
+            // anonymous box that follows the block-level attribution.
+            const body = doc.createElement('span');
+            body.className = 'reading-body';
+            while (span.nextSibling) body.appendChild(span.nextSibling);
+            p.appendChild(body);
         }
     });
 

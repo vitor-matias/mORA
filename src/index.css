@@ -366,6 +366,37 @@ html[data-theme="rosa"] {
   margin-bottom: 0.6em;
 }
 
+/* First-line indents — the book convention, chosen over justification
+   (which WCAG advises against and browsers typeset poorly). Prose only:
+   paragraphs with hard line breaks are verse (psalm stanzas, sense-lined
+   orações) and keep flush lines; labelled/header/refrain paragraphs are
+   chrome. The reading body — the anonymous block after the block-level
+   source span — picks the indent up by inheritance. */
+.content-text p {
+  text-indent: 1.2em;
+}
+.content-text p:has(br),
+.content-text p.reading-section-header,
+.content-text p.reading-prayer-header,
+.content-text p.psalm-refrain,
+.content-text p.reading-ending {
+  text-indent: 0;
+}
+/* Block children of an indented paragraph (the source attribution line)
+   stay flush left. */
+.content-text .reading-source {
+  text-indent: 0;
+}
+
+/* The reading body, wrapped by enrichReadingTypography into its own block
+   (browsers won't indent the anonymous box after the block-level source
+   span). Indented even when the reading itself contains hard breaks
+   (dialogue, Passion parts) — only its opening line is affected. */
+.content-text .reading-body {
+  display: block;
+  text-indent: 1.2em;
+}
+
 .content-text p:last-child {
   margin-bottom: 0;
 }
