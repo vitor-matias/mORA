@@ -101,7 +101,7 @@ export default function Home() {
     const hasAnyStreak = streakItems.some(s => s.days > 0);
 
     return (
-        <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-2xl mx-auto w-full">
+        <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
                     <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
@@ -109,10 +109,12 @@ export default function Home() {
                     </h1>
                     <p className="text-zinc-500 text-lg">{t.whatToPray}</p>
                 </div>
+                {/* xl:hidden — the global top bar already carries Perfil, and
+                    a launcher shouldn't duplicate the chrome above it. */}
                 <Link
                     to="/perfil"
                     aria-label="Perfil e configurações"
-                    className="shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center hover:border-liturgy-400 dark:hover:border-liturgy-600 transition-colors"
+                    className="xl:hidden shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center hover:border-liturgy-400 dark:hover:border-liturgy-600 transition-colors"
                 >
                     {profile?.picture ? (
                         <img
@@ -190,6 +192,9 @@ export default function Home() {
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 pt-2">
                             {title}
                         </h2>
+                        {/* Desktop: tiles across the frame instead of a
+                            phone-style stack of full-width rows. */}
+                        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
                         {items.map((area) => (
                             <Link
                                 key={area.path}
@@ -206,6 +211,7 @@ export default function Home() {
                                 <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
                             </Link>
                         ))}
+                        </div>
                     </section>
                 ))}
             </div>

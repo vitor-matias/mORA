@@ -14,6 +14,15 @@
 /* ------------------------------------------------------------------ */
 
 @layer base {
+  /* Always reserve the scrollbar's space (classic, non-overlay scrollbars).
+     Otherwise the viewport width flips as routes and loading states toggle
+     page overflow, and everything centered — including the top bar's
+     buttons — shifts sideways for a moment. overflow-y: scroll rather than
+     scrollbar-gutter: stable, which some engines ignore on the root. */
+  html {
+    overflow-y: scroll;
+  }
+
   /* Headings use the same sans as the rest of the chrome — one family
      everywhere outside the readings. Reading content picks its own size and
      family via the inline --content-font-* variables. */
@@ -343,9 +352,49 @@ html[data-theme="rosa"] {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* On 2xl screens the page frame widens (max-w-6xl); scale the reading type
+   with it so the wider column keeps roughly the same characters per line
+   instead of just growing longer lines. Multiplies the user's chosen size. */
+@media (min-width: 1536px) {
+  .content-text {
+    font-size: calc(var(--content-font-size, 20px) * 1.1);
+  }
+}
+
 /* Paragraph rhythm */
 .content-text p {
   margin-bottom: 0.6em;
+}
+
+/* First-line indents — the book convention, chosen over justification
+   (which WCAG advises against and browsers typeset poorly). Prose only:
+   paragraphs with hard line breaks are verse (psalm stanzas, sense-lined
+   orações) and keep flush lines; labelled/header/refrain paragraphs are
+   chrome. The reading body — the anonymous block after the block-level
+   source span — picks the indent up by inheritance. */
+.content-text p {
+  text-indent: 1.2em;
+}
+.content-text p:has(br),
+.content-text p.reading-section-header,
+.content-text p.reading-prayer-header,
+.content-text p.psalm-refrain,
+.content-text p.reading-ending {
+  text-indent: 0;
+}
+/* Block children of an indented paragraph (the source attribution line)
+   stay flush left. */
+.content-text .reading-source {
+  text-indent: 0;
+}
+
+/* The reading body, wrapped by enrichReadingTypography into its own block
+   (browsers won't indent the anonymous box after the block-level source
+   span). Indented even when the reading itself contains hard breaks
+   (dialogue, Passion parts) — only its opening line is affected. */
+.content-text .reading-body {
+  display: block;
+  text-indent: 1.2em;
 }
 
 .content-text p:last-child {

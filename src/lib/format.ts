@@ -21,6 +21,13 @@ export function formatDisplayDate(date: Date): string {
     );
 }
 
+/** Weekday-less variant, e.g. "11 de julho" — for tight spots (the desktop
+ *  sidebar's date pill) where the full form truncates and the weekday is
+ *  shown by the day card anyway. */
+export function formatShortDisplayDate(date: Date): string {
+    return date.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+}
+
 /** Local YYYY-MM-DD (no UTC drift). */
 export function formatISODate(date: Date): string {
     const year = date.getFullYear();

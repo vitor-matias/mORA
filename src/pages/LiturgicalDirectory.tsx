@@ -79,10 +79,10 @@ export default function LiturgicalDirectory() {
 
     return (
         <div className="flex-1 w-full flex flex-col">
-            <PageHeader title="Diretório Litúrgico" subtitle="O ano litúrgico, dia a dia" width="max-w-md lg:max-w-4xl" />
+            <PageHeader title="Diretório Litúrgico" subtitle="O ano litúrgico, dia a dia" />
             {/* Desktop: calendar stays put on the left, the day's entry reads
                 on the right; mobile keeps the stacked flow. */}
-            <div className="p-6 max-w-md lg:max-w-4xl mx-auto space-y-6 lg:space-y-0 flex-1 w-full flex flex-col lg:flex-row lg:gap-8 lg:items-start">
+            <div className="p-6 max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto space-y-6 lg:space-y-0 flex-1 w-full flex flex-col lg:flex-row lg:gap-8 lg:items-start">
 
             <section className="surface rounded-2xl p-3 lg:w-96 lg:shrink-0 lg:sticky lg:top-24">
                 {/* Month navigation */}

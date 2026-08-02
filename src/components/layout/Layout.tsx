@@ -138,13 +138,16 @@ export function Layout() {
             <ScrollToTop />
             {/* Faint backdrop wash tinted by the day's liturgical color */}
             <div aria-hidden="true" className="app-ambient" />
+            {/* Before <main> so the xl sticky top bar occupies the top of the
+                page flow (the mobile bottom bar is fixed and doesn't care). */}
+            <TabBar />
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device
-                safe-area inset it hovers over. */}
-            <main className="relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+                safe-area inset it hovers over — until xl, where navigation
+                moves to the top bar and only breathing room remains. */}
+            <main className="relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-8">
                 <Outlet />
             </main>
-            <TabBar />
         </div>
     );
 }

@@ -128,7 +128,6 @@ export default function Rosary() {
             <PageHeader
                 title="Terço"
                 subtitle={`Mistérios ${MYSTERY_LABELS[todayMysteryClass]}`}
-                width="max-w-md lg:max-w-2xl"
                 action={rosaryMode === 'beginner' && !atStart && !showFinish ? (
                     <button
                         type="button"
@@ -141,11 +140,11 @@ export default function Rosary() {
                     </button>
                 ) : undefined}
             />
-            <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-2xl mx-auto relative overflow-hidden">
+            <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative overflow-hidden">
             {rosaryMode === 'advanced' ? (
                 /* ── Mysteries-only mode: all five on one page, prayed at the
                    user's own pace, closed with a single complete button. ── */
-                <div className="flex-1 flex flex-col mt-4 relative z-10">
+                <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
                     {modePicker}
                     <div className="space-y-3 mb-8">
                         {mysteries[todayMysteryClass].map((m) => (
@@ -177,7 +176,7 @@ export default function Rosary() {
                     </button>
                 </div>
             ) : (
-            <div className="flex-1 flex flex-col mt-4 relative z-10">
+            <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
                 {/* Active Step Card — tapping it advances, like turning a bead */}
                 <div
                     onClick={handleNext}
