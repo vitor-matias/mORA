@@ -63,11 +63,15 @@ export function DateNav({
                     </span>
                 </button>
                 {/* Sibling overlay, not a child — an interactive element
-                    inside a <button> is invalid HTML. */}
+                    inside a <button> is invalid HTML. Not aria-hidden: the
+                    focus() fallback moves real focus here on browsers
+                    without showPicker(), and focusing an aria-hidden element
+                    is a WCAG failure — so it stays in the accessibility tree
+                    with its own label, out of the tab order. */}
                 <input
                     ref={inputRef}
                     type="date"
-                    aria-hidden="true"
+                    aria-label="Escolher data"
                     tabIndex={-1}
                     value={selectedDateStr}
                     onChange={(e) => {
