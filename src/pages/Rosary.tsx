@@ -216,14 +216,17 @@ export default function Rosary() {
                             </span>
                         </div>
 
-                        {/* 12 Beads: 1 PN (0), 10 AM (1-10), 1 Gloria (11) */}
-                        <div className="flex justify-between gap-1 items-center">
+                        {/* 12 Beads: 1 PN (0), 10 AM (1-10), 1 Gloria (11).
+                            Sized like a physical rosary: the ten contas are
+                            the small beads, Pai Nosso and Glória the large
+                            markers — clustered, not stretched to the frame. */}
+                        <div className="flex justify-center gap-2.5 items-center">
                             {[...Array(12)].map((_, i) => (
                                 <div
                                     key={i}
-                                    className={`rounded-full transition-all duration-300 ${i === 0 || i === 11
-                                        ? 'h-4 w-4 border-2 border-current' // Special beads (PN and Gloria)
-                                        : 'flex-1 h-3' // Ave Marias
+                                    className={`rounded-full transition-all duration-300 shrink-0 ${i === 0 || i === 11
+                                        ? 'h-5 w-5 border-2 border-current' // PN and Gloria
+                                        : 'h-2.5 w-2.5' // Ave Marias
                                         } ${(currentStep.beadIndex !== undefined && i < currentStep.beadIndex)
                                             ? 'bg-liturgy-500 border-liturgy-500' // Past
                                             : i === currentStep.beadIndex
