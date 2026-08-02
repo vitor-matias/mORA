@@ -176,7 +176,7 @@ export default function Rosary() {
                     </button>
                 </div>
             ) : (
-            <div className="flex-1 flex flex-col mt-4 relative z-10">
+            <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
                 {/* Active Step Card — tapping it advances, like turning a bead */}
                 <div
                     onClick={handleNext}

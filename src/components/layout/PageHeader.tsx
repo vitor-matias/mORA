@@ -90,8 +90,11 @@ export function PageHeader({
             )}
             {/* At rest the header sits directly on the page background. The
                 sub-xl bar only appears once the page scrolls, when content
-                needs separating from the title. */}
-            <header className={isXl
+                needs separating from the title. While the portal copy is up,
+                inert takes this off-screen original (back orb, action) out of
+                the tab order and accessibility tree — otherwise keyboard and
+                screen-reader users meet every control twice. */}
+            <header inert={isXl && isScrolled} className={isXl
                 ? 'pt-12 pb-5'
                 : `sticky top-0 z-30 transition-all duration-300 ${
                     collapsed ? 'app-bar app-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
