@@ -5,7 +5,7 @@ import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday } from "@/store/app";
-import { formatDisplayDate, formatISODate } from "@/lib/format";
+import { formatDisplayDate, formatShortDisplayDate, formatISODate } from "@/lib/format";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -175,9 +175,28 @@ function enrichReadingTypography(doc: Document): void {
         const hasBr = Array.from(p.childNodes).some((n) => n.nodeName === 'BR');
         if (hasBr && firstChild?.nodeType === Node.TEXT_NODE
             && SOURCE_RE.test(firstChild.textContent?.trim() ?? '')) {
+            // Long attributions arrive split by <br> ("Leitura da Primeira
+            // Epístola do apóstolo São Paulo<br>aos Coríntios"). Absorb
+            // continuation lines — they start lowercase, unlike the body
+            // ("Irmãos:", "Naqueles dias", …) — so the dashed rule doesn't
+            // cut the attribution mid-sentence.
+            const parts = [firstChild.textContent ?? ''];
+            let n = firstChild.nextSibling;
+            while (
+                n?.nodeName === 'BR' &&
+                n.nextSibling?.nodeType === Node.TEXT_NODE &&
+                /^[a-záàâãéêíóôõúç]/.test(n.nextSibling.textContent?.trim() ?? '')
+            ) {
+                const textNode = n.nextSibling;
+                parts.push((textNode.textContent ?? '').trim());
+                const after = textNode.nextSibling;
+                p.removeChild(n);
+                p.removeChild(textNode);
+                n = after;
+            }
             const span = doc.createElement('span');
             span.className = 'reading-source';
-            span.textContent = firstChild.textContent;
+            span.textContent = parts.join(' ').replace(/\s+/g, ' ').trim();
             firstChild.replaceWith(span);
         }
     });
@@ -517,7 +536,10 @@ export default function Liturgy() {
                 return;
             }
 
-            const line = 170; // px below viewport top (clears the sticky header + chips row)
+            // px below viewport top (clears the sticky chrome: collapsed
+            // header + chips row below xl, the 56px global top bar at xl —
+            // both fit under one constant)
+            const line = 170;
             let current = sections[0].id;
             for (const { id } of sections) {
                 const el = document.getElementById(id);
@@ -537,7 +559,9 @@ export default function Liturgy() {
         stopScroll();
         const el = document.getElementById(id);
         if (el) {
-            const offset = 130; // clear the sticky header (incl. mobile chips row)
+            // Clear the sticky chrome (collapsed header incl. mobile chips
+            // row below xl; the shorter global top bar at xl)
+            const offset = 130;
             const top = el.getBoundingClientRect().top + window.scrollY - offset;
             window.scrollTo({ top, behavior: 'smooth' });
         }
@@ -602,7 +626,15 @@ export default function Liturgy() {
                 >
                     <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
                     <span className="truncate">
-                        {isToday ? 'Hoje' : formatDisplayDate(selectedDate)}
+                        {isToday ? 'Hoje' : (
+                            // Full-width pill on mobile fits the weekday; the
+                            // lg+ sidebar pill doesn't, and the day card
+                            // below it names the weekday anyway.
+                            <>
+                                <span className="lg:hidden">{formatDisplayDate(selectedDate)}</span>
+                                <span className="hidden lg:inline">{formatShortDisplayDate(selectedDate)}</span>
+                            </>
+                        )}
                     </span>
                 </button>
                 {/* Sibling overlay, not a child — an interactive element
@@ -680,7 +712,7 @@ export default function Liturgy() {
             </PageHeader>
 
             {/* ── Page body ────────────────────────────────────────────────── */}
-            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
+            <div className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
 
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && liturgy && (

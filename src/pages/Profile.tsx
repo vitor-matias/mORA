@@ -408,8 +408,8 @@ export default function Profile() {
 
     return (
         <div className="flex-1 w-full flex flex-col">
-            <PageHeader title={t.title} subtitle={t.subtitle} width="max-w-md lg:max-w-3xl" />
-            <div className="p-6 max-w-md lg:max-w-3xl mx-auto flex-1 w-full">
+            <PageHeader title={t.title} subtitle={t.subtitle} />
+            <div className="p-6 max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto flex-1 w-full">
             {/* Desktop: settings and identity side by side */}
             <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 

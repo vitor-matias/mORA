@@ -10,7 +10,7 @@ import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/component
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { getHourForTime } from "@/lib/hours";
-import { formatDisplayDate, formatISODate } from "@/lib/format";
+import { formatDisplayDate, formatShortDisplayDate, formatISODate } from "@/lib/format";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
 import { saintsForDay, hasRenderableOffice, assembleHour } from "@/lib/breviary/assemble";
 import type { ProprioEntry } from "@/lib/breviary/proprio";
@@ -465,7 +465,7 @@ export default function LiturgiaHoras() {
             />
 
             {/* ── Page body ────────────────────────────────────────────────── */}
-            <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
+            <div className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
 
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && canonicalHours.length > 0 && (
@@ -553,7 +553,15 @@ export default function LiturgiaHoras() {
                                     >
                                         <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
                                         <span className="truncate">
-                                            {isToday ? 'Hoje' : formatDisplayDate(selectedDate)}
+                                            {isToday ? 'Hoje' : (
+                                                // Full-width pill on mobile fits the
+                                                // weekday; the lg+ sidebar pill doesn't,
+                                                // and the day card names it anyway.
+                                                <>
+                                                    <span className="lg:hidden">{formatDisplayDate(selectedDate)}</span>
+                                                    <span className="hidden lg:inline">{formatShortDisplayDate(selectedDate)}</span>
+                                                </>
+                                            )}
                                         </span>
                                     </button>
                                     {/* Sibling overlay, not a child — an interactive
