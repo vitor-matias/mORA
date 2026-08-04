@@ -7,7 +7,37 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#FAF9F6" />
-  <title>mORA</title>
+  <title>mORA — Oração diária: Santo Terço, Missa e Liturgia das Horas</title>
+  <meta name="description"
+    content="A sua companhia de oração diária em português: Santo Terço guiado com os mistérios do dia, leituras da Missa de hoje e Liturgia das Horas (Laudes, Vésperas, Completas). Grátis, sem anúncios e funciona offline." />
+  <link rel="canonical" href="https://vitor-matias.github.io/mORA/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="mORA" />
+  <meta property="og:title" content="mORA — Oração diária: Santo Terço, Missa e Liturgia das Horas" />
+  <meta property="og:description"
+    content="Santo Terço guiado, leituras da Missa de hoje e Liturgia das Horas em português. Grátis, sem anúncios e funciona offline." />
+  <meta property="og:url" content="https://vitor-matias.github.io/mORA/" />
+  <meta property="og:image" content="https://vitor-matias.github.io/mORA/pwa-512x512.png" />
+  <meta property="og:locale" content="pt_PT" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="mORA — Oração diária: Santo Terço, Missa e Liturgia das Horas" />
+  <meta name="twitter:description"
+    content="Santo Terço guiado, leituras da Missa de hoje e Liturgia das Horas em português. Grátis, sem anúncios e funciona offline." />
+  <meta name="twitter:image" content="https://vitor-matias.github.io/mORA/pwa-512x512.png" />
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "mORA",
+      "url": "https://vitor-matias.github.io/mORA/",
+      "description": "Oração diária em português: Santo Terço guiado com os mistérios do dia, leituras da Missa e Liturgia das Horas.",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "pt-PT",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+    }
+  </script>
   <script>
     // Apply theme before first paint so there is no flash of the wrong
     // theme (the React effect in Layout keeps it in sync afterwards).
@@ -33,6 +63,14 @@
 
 <body>
   <div id="root"></div>
+  <noscript>
+    <h1>mORA — Oração diária</h1>
+    <p>A sua companhia de oração diária em português: Santo Terço guiado com
+      os mistérios do dia, leituras da Missa de hoje e Liturgia das Horas
+      (Ofício de Leitura, Laudes, Hora Intermédia, Vésperas e Completas).
+      Grátis, sem anúncios e funciona offline. Ative o JavaScript para usar
+      a aplicação.</p>
+  </noscript>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
