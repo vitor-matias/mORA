@@ -237,7 +237,15 @@ async function awaitSignerResponse(params: NostrConnectParams): Promise<BunkerLo
         // The relays never held, versus the user never approving in time: the
         // two arrive as different errors and need different advice.
         if (error instanceof Error && /closed/i.test(error.message)) throw new SignerRelayError();
-        throw new SignerTimeoutError();
+        // Nobody answered: either the deadline aborted the subscription, or
+        // the request loop ran out. Anything else — a signer that answered in
+        // a form this client can't read, a library fault — is not a timeout,
+        // and telling the user to paste a bunker:// address would send them
+        // after the wrong problem.
+        const timedOut = (error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError'))
+            || (error instanceof Error && /timeout/i.test(error.message));
+        if (timedOut) throw new SignerTimeoutError();
+        throw mapSignerError(error);
     }
     clearPendingConnection();
     return login;

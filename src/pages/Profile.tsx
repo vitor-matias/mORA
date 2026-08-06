@@ -159,7 +159,11 @@ export default function Profile() {
         try {
             const { startBunkerConnection } = await import('@/lib/signer');
             const { uri, connected } = startBunkerConnection({ qr: mode === 'qr' });
-            if (mode === 'qr') setConnectUri(uri);
+            // Cleared first, not just set for `qr`: a code left over from an
+            // earlier attempt carries a secret this request doesn't use, so
+            // showing it during the app flow would invite a scan that can
+            // never be answered.
+            setConnectUri(mode === 'qr' ? uri : "");
             const waiting = awaitSigner(connected);
             if (mode === 'app') window.location.href = uri;
             await waiting;
