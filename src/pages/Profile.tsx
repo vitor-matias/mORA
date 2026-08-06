@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore } from "@/store/auth";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, Lock, LockOpen } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
+import { QRCodeSVG } from "qrcode.react";
 import { hexToBytes } from "@noble/hashes/utils";
 import { fileToAvatarDataUrl } from "@/lib/image";
 import { passkeysAvailable } from "@/lib/keyVault";
@@ -80,6 +81,9 @@ export default function Profile() {
     const [signerHint, setSignerHint] = useState("");
     const [waitToken, setWaitToken] = useState(0);
     const [bunkerUri, setBunkerUri] = useState("");
+    /** The pending `nostrconnect://` request, when it is being shown as a QR
+        code — i.e. only for the signer-on-another-device path. */
+    const [connectUri, setConnectUri] = useState("");
 
     // Waiting in silence is the worst version of this: the signer may be
     // asking for approval through a notification the user never sees. Say so
@@ -120,6 +124,10 @@ export default function Profile() {
         } catch (error) {
             if (!isCurrent()) return;
             setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
+            // The secret in it is single-use, so a failed request can never be
+            // answered — leaving its QR on screen would only invite a scan
+            // that goes nowhere.
+            setConnectUri("");
             const { clearPendingConnection } = await import('@/lib/signer');
             clearPendingConnection();
         } finally {
@@ -127,22 +135,30 @@ export default function Profile() {
         }
     };
 
-    // Hands the connection request to the signer app. The reply comes back as
-    // an ephemeral event on a live subscription, so it only lands while this
-    // page is listening — hence the resume below.
-    const handleSignerConnect = async () => {
+    /**
+     * Both signer paths make the same request; they differ only in how it
+     * reaches the signer. `app` hands it to a signer on this device as a deep
+     * link, `qr` puts it on screen for one running somewhere else.
+     *
+     * Either way the reply comes back as an ephemeral event on a live
+     * subscription, so it only lands while this page is listening — hence the
+     * resume below.
+     */
+    const handleSignerConnect = async (mode: 'app' | 'qr') => {
         setSignerError("");
         try {
             const { startBunkerConnection } = await import('@/lib/signer');
-            const { uri, connected } = startBunkerConnection();
+            const { uri, connected } = startBunkerConnection({ qr: mode === 'qr' });
+            if (mode === 'qr') setConnectUri(uri);
             const waiting = awaitSigner(connected);
-            window.location.href = uri;
+            if (mode === 'app') window.location.href = uri;
             await waiting;
         } catch (error) {
             // A failed chunk load or a throw before the wait even starts would
             // otherwise be an unhandled rejection with nothing on screen.
             signerAttempt.current++;
             setSignerPending(false);
+            setConnectUri("");
             setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
             const { clearPendingConnection } = await import('@/lib/signer').catch(() => ({ clearPendingConnection: () => {} }));
             clearPendingConnection();
@@ -154,6 +170,7 @@ export default function Profile() {
         // able to complete a login behind the user's back.
         signerAttempt.current++;
         setSignerPending(false);
+        setConnectUri("");
         setSignerError("");
         const { clearPendingConnection } = await import('@/lib/signer').catch(() => ({ clearPendingConnection: () => {} }));
         clearPendingConnection();
@@ -170,11 +187,17 @@ export default function Profile() {
             try {
                 const { readPendingConnection, resumeBunkerConnection } = await import('@/lib/signer');
                 if (cancelled || !readPendingConnection()) return;
-                const connected = resumeBunkerConnection();
+                const resumed = resumeBunkerConnection();
                 // Re-arming supersedes whatever was waiting: awaitSigner bumps
                 // the attempt id, so the old wait's result is ignored rather
                 // than racing this one.
-                if (connected) awaitSigner(connected);
+                if (resumed) {
+                    // Same request as before the reload: if it was on screen as
+                    // a QR, it still is — the code is only stale once the
+                    // attempt itself is.
+                    if (resumed.qr) setConnectUri(resumed.uri);
+                    awaitSigner(resumed.connected);
+                }
             } catch {
                 // Nothing is awaiting this; a failure here just means no resume.
             }
@@ -899,10 +922,10 @@ export default function Profile() {
                         </p>
 
                         {/* Signer apps are the phone's answer — they are not
-                            extensions and never inject window.nostr. Opening
-                            the app is one tap, so it leads; the paste is the
-                            fallback for when it doesn't land, and opens itself
-                            after a failure. */}
+                            extensions and never inject window.nostr. Three
+                            ways in, in order of how little the user has to do:
+                            open the app on this device, scan a code with a
+                            signer on another one, or paste an address. */}
                         <div className="space-y-2">
                             <p className="text-sm font-medium flex items-center gap-1.5">
                                 <Smartphone size={15} aria-hidden="true" />
@@ -913,12 +936,24 @@ export default function Profile() {
                             </p>
                             <button
                                 type="button"
-                                onClick={handleSignerConnect}
+                                onClick={() => handleSignerConnect('app')}
                                 disabled={signerPending}
                                 className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                             >
                                 {signerPending && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                 Abrir aplicação de assinatura
+                            </button>
+
+                            {/* For a signer that isn't on this device: the same
+                                request, in a form another device can read. */}
+                            <button
+                                type="button"
+                                onClick={() => handleSignerConnect('qr')}
+                                disabled={signerPending}
+                                className="w-full py-2 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                            >
+                                <QrCode size={15} aria-hidden="true" />
+                                O assinador está noutro dispositivo
                             </button>
 
                             {/* Opens on failure: after a lost approval this is
@@ -969,6 +1004,27 @@ export default function Profile() {
                                             Cancelar
                                         </button>
                                     </div>
+
+                                    {/* The same request as the deep link, in a
+                                        form a signer on another device can
+                                        take. White surround whatever the
+                                        theme: a QR inverted by dark mode is
+                                        one many scanners refuse. */}
+                                    {connectUri && (
+                                        <div className="mt-3 space-y-2">
+                                            <p className="text-xs text-zinc-500 px-1">
+                                                Leia este código com a aplicação de assinatura do outro dispositivo:
+                                            </p>
+                                            <div className="bg-white p-3 rounded-xl w-fit mx-auto">
+                                                <QRCodeSVG
+                                                    value={connectUri}
+                                                    size={176}
+                                                    marginSize={0}
+                                                    title="Código de ligação ao assinador"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                     {signerHint && (
                                         <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 px-1 mt-1">
                                             <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />

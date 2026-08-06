@@ -75,7 +75,11 @@ export const useAuthStore = create<AuthState>()(
                     if (!window.nostr) {
                         throw new Error('Nostr extension not found');
                     }
-                    const pubkey = await window.nostr.getPublicKey();
+                    // Through Nostrify's proxy rather than window.nostr
+                    // directly: it waits out the injection race and rejects a
+                    // malformed answer instead of storing it as the identity.
+                    const { NBrowserSigner } = await import('@nostrify/nostrify');
+                    const pubkey = await new NBrowserSigner().getPublicKey();
                     set({ pubkey, privkey: null, protectedKey: null, isLocked: false, isNip07: true, bunker: null });
                     enableSyncForNewIdentity();
                 } catch (error) {
