@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { House, BookOpen, Clock, Cross, User } from "lucide-react";
+import { House, BookOpen, Clock, User } from "lucide-react";
+import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 
 const tabs = [
     { to: "/", label: "Início", icon: House, end: true },
     { to: "/liturgia", label: "Missa", icon: BookOpen, end: false },
     { to: "/liturgia-horas", label: "Horas", icon: Clock, end: false },
-    { to: "/terco", label: "Terço", icon: Cross, end: false },
+    { to: "/terco", label: "Terço", icon: Rosary, end: false },
     { to: "/perfil", label: "Perfil", icon: User, end: false },
 ];
 

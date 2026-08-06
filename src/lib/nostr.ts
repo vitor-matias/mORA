@@ -1,13 +1,14 @@
-import { finalizeEvent, SimplePool, nip44, type Event, type EventTemplate } from 'nostr-tools';
-import { hexToBytes } from '@noble/hashes/utils';
-import { useAuthStore } from '@/store/auth';
+import type { NostrEvent, NostrSigner } from '@nostrify/nostrify';
+import { NUser } from '@nostrify/react/login';
+import { pool } from '@/lib/pool';
+import { useAuthStore, currentPubkey } from '@/store/auth';
 import {
     useAppStore, mergeStreaks, streaksEqual, emptyStreaks, sanitizeSyncedSettings, settingsEqual,
     type Streaks, type SyncedSettings,
 } from '@/store/app';
 
-const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
-const pool = new SimplePool();
+/** What a signer is handed: an event with everything but the signature. */
+type EventTemplate = Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>;
 
 export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
 
@@ -20,9 +21,15 @@ const KIND_APP_STATE = 30078;
 const D_STREAK = 'mora-app-streak';
 const D_SETTINGS = 'mora-app-settings';
 
-// querySync resolves on EOSE, which an unresponsive relay never sends — so
-// without a ceiling a single dead relay would hang the whole sync.
+// Replaceable-event queries wait for every relay to EOSE, which an
+// unresponsive one never sends — so without a ceiling a single dead relay
+// would hang the whole sync. An aborted query returns what it has rather than
+// throwing, so this is a deadline, not a failure.
 const RELAY_QUERY_TIMEOUT_MS = 5000;
+
+/** Publishing succeeds as soon as one relay accepts, but a relay that neither
+    accepts nor refuses would otherwise leave the publish pending forever. */
+const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
 
 // Devices don't agree on the clock to the second; allow a little slack before
 // calling a settings timestamp impossible.
@@ -39,28 +46,46 @@ export interface NostrProfile {
     about?: string;
 }
 
-// Signs with whichever key custody the user chose: a NIP-46 remote signer
-// (Amber and friends), a NIP-07 extension, or the locally stored key.
-async function signNostrEvent(baseEvent: EventTemplate): Promise<Event> {
-    const { privkey, isNip07, bunker } = useAuthStore.getState();
-    if (bunker) {
-        const { requestFromSigner } = await import('@/lib/signer');
-        const signed = await requestFromSigner((signer) => signer.signEvent(baseEvent));
-        if (!signed) throw new Error('Remote signer unavailable');
-        return signed;
+/**
+ * The signer for whoever is logged in, built from their login record.
+ *
+ * `NUser` turns each custody into the matching `NostrSigner` — `NSecSigner`
+ * for a local key, `NBrowserSigner` for an extension (which waits out the
+ * injection race), `NConnectSigner` for a remote signer — so nothing
+ * downstream has to know which one it got. Null when there is no way to sign:
+ * signed out, or a protected key that hasn't been unlocked this session.
+ */
+export async function getSigner(): Promise<NostrSigner | null> {
+    const { login } = useAuthStore.getState();
+    if (!login) return null;
+    switch (login.type) {
+        case 'nsec':
+            return NUser.fromNsecLogin(login).signer;
+        case 'extension':
+            return NUser.fromExtensionLogin(login).signer;
+        case 'bunker': {
+            // Lazy: the signer module talks over relays, and only this custody
+            // needs the connect handshake it manages.
+            const { getBunkerSigner } = await import('@/lib/signer');
+            return getBunkerSigner(login);
+        }
+        default:
+            return null;
     }
-    if (isNip07 && typeof window !== 'undefined' && window.nostr) {
-        return window.nostr.signEvent(baseEvent);
-    }
-    if (privkey) {
-        return finalizeEvent(baseEvent, hexToBytes(privkey));
-    }
-    throw new Error('No method available to sign the event');
+}
+
+async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
+    const signer = await getSigner();
+    if (!signer) throw new Error('No method available to sign the event');
+    return signer.signEvent(baseEvent);
 }
 
 export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | null> {
     try {
-        const events = await pool.querySync(RELAYS, { kinds: [0], authors: [pubkey], limit: 1 });
+        const events = await pool.query(
+            [{ kinds: [0], authors: [pubkey], limit: 1 }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
         if (events.length > 0) {
             return JSON.parse(events[0].content) as NostrProfile;
         }
@@ -72,7 +97,7 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 }
 
 export async function publishNostrProfile(profile: NostrProfile) {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     if (!pubkey) throw new Error("Not logged in");
 
     const baseEvent: EventTemplate = {
@@ -85,7 +110,8 @@ export async function publishNostrProfile(profile: NostrProfile) {
     try {
         const signedEvent = await signNostrEvent(baseEvent);
 
-        await Promise.any(pool.publish(RELAYS, signedEvent));
+        // Resolves as soon as any relay accepts, rejects only if all refuse.
+        await pool.event(signedEvent, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
         console.log('Successfully published profile to Nostr:', signedEvent);
         return signedEvent;
     } catch (error) {
@@ -121,15 +147,13 @@ export async function fetchTodayPrayerPulse(): Promise<PrayerPulse | null> {
         return prayerPulseCache.value;
     }
     try {
-        const events = await pool.querySync(RELAYS, {
-            kinds: [KIND_APP_STATE],
-            '#d': [D_STREAK],
-            since,
-        });
-        // Most recent first, so the names shown are whoever prayed last.
-        const pubkeys = [...new Set(
-            [...events].sort((a, b) => b.created_at - a.created_at).map((e) => e.pubkey)
-        )];
+        // One event per author (addressable events are resolved in the pool)
+        // and already newest-first, so the names shown are whoever prayed last.
+        const events = await pool.query(
+            [{ kinds: [KIND_APP_STATE], '#d': [D_STREAK], since }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
+        const pubkeys = [...new Set(events.map((e) => e.pubkey))];
         const names = await fetchDisplayNames(pubkeys.slice(0, PULSE_PROFILES_QUERIED));
         const value: PrayerPulse = { count: pubkeys.length, names: names.slice(0, PULSE_NAMES_SHOWN) };
         prayerPulseCache = { value, fetchedAt: Date.now(), since };
@@ -144,18 +168,19 @@ export async function fetchTodayPrayerPulse(): Promise<PrayerPulse | null> {
     Pubkeys with no profile (or no name in it) are simply dropped. */
 async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
     if (pubkeys.length === 0) return [];
-    let metadata: Event[];
+    let metadata: NostrEvent[];
     try {
-        metadata = await pool.querySync(RELAYS, { kinds: [0], authors: pubkeys });
+        // kind 0 is replaceable, so this is already one profile per pubkey —
+        // the newest each relay in the pool had to offer.
+        metadata = await pool.query(
+            [{ kinds: [0], authors: pubkeys }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
     } catch (error) {
         console.warn('Could not fetch profiles for the prayer pulse:', error);
         return [];
     }
-    const newest = new Map<string, Event>();
-    for (const event of metadata) {
-        const prev = newest.get(event.pubkey);
-        if (!prev || event.created_at > prev.created_at) newest.set(event.pubkey, event);
-    }
+    const newest = new Map(metadata.map((event) => [event.pubkey, event]));
     const names: string[] = [];
     for (const pubkey of pubkeys) {
         const event = newest.get(pubkey);
@@ -175,40 +200,21 @@ async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
 }
 
 // NIP-44 to self, so relays only ever store ciphertext. Returns null when
-// there is no encryption path (e.g. a NIP-07 extension without nip44) —
-// callers skip rather than fall back to plaintext.
+// there is no encryption path (e.g. a NIP-07 extension without nip44, which
+// leaves `signer.nip44` undefined) — callers skip rather than fall back to
+// plaintext.
 async function encryptToSelf(plaintext: string): Promise<string | null> {
-    const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
-    if (!pubkey) return null;
-    if (bunker) {
-        const { requestFromSigner } = await import('@/lib/signer');
-        return requestFromSigner((signer) => signer.nip44Encrypt(pubkey, plaintext));
-    }
-    if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
-        return window.nostr.nip44.encrypt(pubkey, plaintext);
-    }
-    if (privkey) {
-        const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
-        return nip44.v2.encrypt(plaintext, conversationKey);
-    }
-    return null;
+    const pubkey = currentPubkey();
+    const signer = await getSigner();
+    if (!pubkey || !signer?.nip44) return null;
+    return signer.nip44.encrypt(pubkey, plaintext);
 }
 
 async function decryptFromSelf(ciphertext: string): Promise<string | null> {
-    const { pubkey, privkey, isNip07, bunker } = useAuthStore.getState();
-    if (!pubkey) return null;
-    if (bunker) {
-        const { requestFromSigner } = await import('@/lib/signer');
-        return requestFromSigner((signer) => signer.nip44Decrypt(pubkey, ciphertext));
-    }
-    if (isNip07 && typeof window !== 'undefined' && window.nostr?.nip44) {
-        return window.nostr.nip44.decrypt(pubkey, ciphertext);
-    }
-    if (privkey) {
-        const conversationKey = nip44.v2.utils.getConversationKey(hexToBytes(privkey), pubkey);
-        return nip44.v2.decrypt(ciphertext, conversationKey);
-    }
-    return null;
+    const pubkey = currentPubkey();
+    const signer = await getSigner();
+    if (!pubkey || !signer?.nip44) return null;
+    return signer.nip44.decrypt(pubkey, ciphertext);
 }
 
 /** The newest snapshot this identity published under `dTag`, decrypted, or
@@ -217,22 +223,23 @@ async function fetchSnapshot(
     pubkey: string,
     dTag: string,
 ): Promise<{ payload: Record<string, unknown>; createdAt: number } | null> {
-    let events: Event[];
+    let events: NostrEvent[];
     try {
-        events = await pool.querySync(RELAYS, {
+        // Relays each hold their own copy of an addressable event and can lag;
+        // the pool waits for them all (up to the deadline) and hands back only
+        // the newest, so there is nothing to reconcile here.
+        events = await pool.query([{
             kinds: [KIND_APP_STATE],
             authors: [pubkey],
             '#d': [dTag],
-        }, { maxWait: RELAY_QUERY_TIMEOUT_MS });
+        }], { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) });
     } catch (error) {
         console.warn(`Could not fetch ${dTag} from Nostr relays.`, error);
         return null;
     }
-    if (events.length === 0) return null;
+    const [newest] = events;
+    if (!newest) return null;
 
-    // Relays each hold their own copy of a replaceable event and can lag —
-    // the newest across all of them is the one to trust.
-    const newest = events.reduce((a, b) => (b.created_at > a.created_at ? b : a));
     try {
         const plaintext = await decryptFromSelf(newest.content);
         if (!plaintext) return null;
@@ -271,7 +278,7 @@ async function publishSnapshot(dTag: string, payload: Record<string, unknown>, l
 
     try {
         const signedEvent = await signNostrEvent(baseEvent);
-        await Promise.any(pool.publish(RELAYS, signedEvent));
+        await pool.event(signedEvent, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
         console.log(`Successfully published ${label} to Nostr.`);
     } catch (error) {
         // Relays reject or go offline routinely — warn rather than throw.
@@ -280,7 +287,7 @@ async function publishSnapshot(dTag: string, payload: Record<string, unknown>, l
 }
 
 export async function publishStreakToNostr() {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     const { streaks, shareStreaks } = useAppStore.getState();
     if (!pubkey) return; // Not logged in
     // Prayer activity is sensitive — syncing it to relays is opt-in.
@@ -290,7 +297,7 @@ export async function publishStreakToNostr() {
 }
 
 export async function publishSettingsToNostr() {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     const state = useAppStore.getState();
     if (!pubkey || !state.shareStreaks) return;
 
@@ -318,7 +325,7 @@ export function syncStreaksWithNostr(): Promise<void> {
 }
 
 async function doSyncStreaks(): Promise<void> {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
     const snapshot = await fetchSnapshot(pubkey, D_STREAK);
@@ -351,7 +358,7 @@ export function syncSettingsWithNostr(): Promise<void> {
 }
 
 async function doSyncSettings(): Promise<void> {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
     const snapshot = await fetchSnapshot(pubkey, D_SETTINGS);

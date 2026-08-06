@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Cross, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays } from "lucide-react";
+import { BookOpen, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays } from "lucide-react";
+import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
 import { useTranslations } from "@/lib/i18n";
@@ -26,17 +27,23 @@ function prayerPulseText({ count, names }: PrayerPulse): string {
 
 export default function Home() {
     const { streaks, liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
-    const { pubkey, profile, setProfile } = useAuthStore();
+    const { profile, setProfile } = useAuthStore();
+    const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
 
     useEffect(() => {
-        if (pubkey && !profile) {
-            import("@/lib/nostr").then(({ fetchNostrProfile }) => {
-                fetchNostrProfile(pubkey).then(p => {
-                    if (p) setProfile(p);
-                });
+        if (!pubkey || profile) return;
+        let cancelled = false;
+        import("@/lib/nostr").then(({ fetchNostrProfile }) => {
+            fetchNostrProfile(pubkey).then(p => {
+                // A relay round-trip outlasts a sign-out: without this, the
+                // answer for whoever was signed in when it was asked lands on
+                // whoever is signed in when it returns, and the greeting and
+                // avatar show someone else's name.
+                if (!cancelled && p) setProfile(p);
             });
-        }
+        });
+        return () => { cancelled = true; };
     }, [pubkey, profile, setProfile]);
 
     // Community pulse — who (of those who opted into sharing) prayed today.
@@ -87,7 +94,7 @@ export default function Home() {
     const prayerAreas = [
         { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
-        { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Cross },
+        { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Rosary },
     ];
     const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },

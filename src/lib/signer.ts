@@ -1,17 +1,23 @@
-import { generateSecretKey, getPublicKey } from 'nostr-tools';
-import { BunkerSigner, createNostrConnectURI, parseBunkerInput } from 'nostr-tools/nip46';
-import type { BunkerPointer } from 'nostr-tools/nip46';
+import { BunkerURI, NIP05, type NostrSigner } from '@nostrify/nostrify';
+import {
+    NLogin, NUser, generateNostrConnectParams, generateNostrConnectURI,
+    type NLoginType, type NostrConnectParams,
+} from '@nostrify/react/login';
+import { getPublicKey } from 'nostr-tools';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { useAuthStore } from '@/store/auth';
+import { pool } from '@/lib/pool';
 
 /**
- * NIP-46 ("Nostr Connect") remote signing.
+ * NIP-46 ("Nostr Connect") remote signing, on Nostrify's login stack.
  *
  * This is how a phone signs in: Amber and other Android signer apps are not
  * browser extensions and never inject `window.nostr`, least of all into an
  * installed PWA. Instead the signer holds the key and answers signing requests
  * over relays, so the app can keep publishing in the background without
  * bouncing the user out to another app for every event.
+ *
+ * The relay side is the shared `pool`, so the signer channel reuses whatever
+ * sockets the app already has open rather than dialling its own.
  */
 
 /**
@@ -34,150 +40,27 @@ const DEFAULT_SIGNER_RELAYS = [
     'wss://relay.nsec.app',
 ];
 
-const CLIENT_METADATA = {
-    name: 'mORA',
-    url: typeof window !== 'undefined' ? window.location.origin : '',
-};
+/** Asked for up front so the signer grants them once, at approval time.
+    Without them a signer may prompt again for every background sync. */
+const PERMS = ['sign_event', 'nip44_encrypt', 'nip44_decrypt'];
 
-/** Runs a request and closes the signer if it fails. Only a signer that
-    reaches `active` is closed by setActive, so anything that dies before that
-    would keep its relay subscription for the life of the page. Kept as one
-    helper so a future call site can't forget. */
-async function runOrClose<T>(signer: BunkerSigner, work: Promise<T>): Promise<T> {
-    try {
-        return await work;
-    } catch (error) {
-        signer.close().catch(() => {});
-        throw error;
-    }
-}
+const CLIENT_NAME = 'mORA';
+const CLIENT_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
-/** A connected signer is expensive to set up (relay subscription + handshake),
-    so one is kept for the life of the page. */
-let active: BunkerSigner | null = null;
-let activeFor: string | null = null;
-/** A cold connect in progress, shared by everyone asking for the same session. */
-let connecting: Promise<BunkerSigner> | null = null;
-let connectingFor: string | null = null;
-
-/** Replaces the cached signer, closing whatever it displaces — a reconnect, a
-    switch of signer, or a logout would otherwise leave the old relay
-    subscription running until a hard reload. */
-function setActive(signer: BunkerSigner | null, key: string | null) {
-    if (active && active !== signer) active.close().catch(() => {});
-    active = signer;
-    activeFor = key;
-}
-
-export interface BunkerSession {
-    /** Hex secret key this client uses to talk to the signer — not the user's. */
-    clientSecret: string;
-    pointer: BunkerPointer;
-}
-
-export interface BunkerLogin {
-    session: BunkerSession;
-    /** Who the signer signs *as*. Not always the bunker's own pubkey — a
-        bunker can hold several identities — so this comes from asking it. */
-    pubkey: string;
-}
-
-function sessionKey(session: BunkerSession): string {
-    return `${session.pointer.pubkey}:${session.pointer.relays.join(',')}`;
-}
-
-/** The live signer for the stored session, connecting on first use. */
-export async function getBunkerSigner(): Promise<BunkerSigner | null> {
-    const session = useAuthStore.getState().bunker;
-    if (!session) {
-        setActive(null, null);
-        return null;
-    }
-    const key = sessionKey(session);
-    if (active && activeFor === key) return active;
-    // Streaks and settings sync in parallel, so a cold start calls this twice
-    // at once. Without sharing the connect, each call would build its own
-    // signer and the second setActive would close the first — while its caller
-    // was still waiting on a request through it.
-    if (connecting && connectingFor === key) return connecting;
-
-    connectingFor = key;
-    connecting = (async () => {
-        const signer = BunkerSigner.fromBunker(
-            hexToBytes(session.clientSecret),
-            session.pointer,
-        );
-        await runOrClose(signer, withSignerTimeout(signer.connect()));
-        // Logging out (or switching signer) while this was connecting clears
-        // the session; adopting the result now would resurrect a connection
-        // for an identity that no longer exists and leave it subscribed.
-        const current = useAuthStore.getState().bunker;
-        if (!current || sessionKey(current) !== key) {
-            signer.close().catch(() => {});
-            throw new Error('A sessão do assinador terminou durante a ligação.');
-        }
-        setActive(signer, key);
-        return signer;
-    })();
-    connecting.catch(() => {}).then(() => {
-        if (connectingFor === key) {
-            connecting = null;
-            connectingFor = null;
-        }
-    });
-    return connecting;
-}
-
-export function forgetBunkerSigner() {
-    connecting = null;
-    connectingFor = null;
-    setActive(null, null);
-}
-
-/** How long to wait for the signer to answer before giving up. The library
-    default is five minutes, which is indistinguishable from a hung button. */
-const CONNECT_TIMEOUT_MS = 90_000;
-
-/** An attempt survives here across a reload, because opening the signer app
-    can freeze or discard this page — and the client key exists only in
-    memory, so without it the attempt would be unrecoverable. */
-const PENDING_KEY = 'mora-pending-signer';
-
-interface PendingConnection {
-    clientSecret: string;
-    uri: string;
-    startedAt: number;
-}
+/** The remote-signer arm of Nostrify's login union. The union is exported
+    but its individual members are not, so it is narrowed here. */
+export type BunkerLogin = Extract<NLoginType, { type: 'bunker' }>;
 
 const HEX64_RE = /^[0-9a-f]{64}$/i;
 
-export function readPendingConnection(): PendingConnection | null {
-    try {
-        const raw = localStorage.getItem(PENDING_KEY);
-        if (!raw) return null;
-        const pending = JSON.parse(raw) as PendingConnection;
-        // Everything here is validated rather than assumed: this is storage a
-        // half-written attempt or another build could have left behind, and a
-        // malformed entry that never expires would have the app retrying a
-        // dead attempt on every foreground, forever.
-        const usable = pending
-            && typeof pending.clientSecret === 'string' && HEX64_RE.test(pending.clientSecret)
-            && typeof pending.uri === 'string' && pending.uri.startsWith('nostrconnect://')
-            && typeof pending.startedAt === 'number' && Number.isFinite(pending.startedAt);
-        if (!usable || Date.now() - pending.startedAt > CONNECT_TIMEOUT_MS) {
-            localStorage.removeItem(PENDING_KEY);
-            return null;
-        }
-        return pending;
-    } catch {
-        localStorage.removeItem(PENDING_KEY);
-        return null;
-    }
-}
+/** How long to wait for the signer to answer a connection request before
+    giving up: long enough to walk over to another app and approve. */
+const CONNECT_TIMEOUT_MS = 90_000;
 
-export function clearPendingConnection() {
-    localStorage.removeItem(PENDING_KEY);
-}
+/** The NIP-05 domain comes from whatever the user typed, so a host that
+    accepts the connection and then never answers is an ordinary case — and
+    without a deadline it would hold the login attempt open for good. */
+const NIP05_LOOKUP_TIMEOUT_MS = 10_000;
 
 export class SignerTimeoutError extends Error {
     constructor() {
@@ -195,10 +78,6 @@ export class SignerRelayError extends Error {
         this.name = 'SignerRelayError';
     }
 }
-
-/** Below this, a closed subscription means the relays never held, not that
-    the user was slow to approve — the two need different advice. */
-const RELAY_FAILURE_WINDOW_MS = 10_000;
 
 export class SignerUnreachableError extends Error {
     constructor(message = 'O assinador não respondeu. Verifique se a aplicação está a correr e ligada à internet.') {
@@ -223,59 +102,164 @@ export const SIGNER_APPROVAL_HINT =
     approval never sees it, early enough to still be actionable. */
 export const SIGNER_HINT_DELAY_MS = 8_000;
 
-// Every request to the signer resolves only when a reply comes back —
-// nostr-tools sets no deadline of its own. Without one of ours, a signer that
-// is closed, offline or simply never approved leaves the caller hanging for
-// good: a spinning button, or a background sync whose in-flight guard never
-// clears and never runs again.
-const CONNECT_RPC_TIMEOUT_MS = 45_000; // first contact: the user may need to approve
-const SIGNER_RPC_TIMEOUT_MS = 20_000;  // an already-approved session should be prompt
-
-export function withSignerTimeout<T>(
-    work: Promise<T>,
-    timeoutMs = SIGNER_RPC_TIMEOUT_MS,
-    message?: string,
-): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => reject(new SignerUnreachableError(message)), timeoutMs);
-        work.then(
-            (value) => { clearTimeout(timer); resolve(value); },
-            (error) => { clearTimeout(timer); reject(error); },
-        );
-    });
+/** A request that timed out and one that never reached a relay need different
+    advice, and both arrive here as library errors. */
+function mapSignerError(error: unknown, message?: string): Error {
+    if (error instanceof DOMException && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+        return new SignerUnreachableError(message);
+    }
+    // Every relay refused or failed to take the request event.
+    if (error instanceof AggregateError) return new SignerRelayError();
+    return error instanceof Error ? error : new Error(String(error));
 }
 
-/** Listens for the signer's answer to an already-created connection URI. */
-function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<BunkerLogin> {
-    const startedAt = Date.now();
-    return BunkerSigner
-        .fromURI(clientSecretKey, uri, {}, CONNECT_TIMEOUT_MS)
-        .then(async (signer: BunkerSigner) => {
-            const pubkey = await runOrClose(signer, withSignerTimeout(signer.getPublicKey()));
-            const session: BunkerSession = {
-                clientSecret: bytesToHex(clientSecretKey),
-                pointer: signer.bp,
-            };
-            setActive(signer, sessionKey(session));
-            clearPendingConnection();
-            return { session, pubkey };
-        })
-        .catch((error) => {
-            // The library reports every failure as a closed subscription,
-            // whether the relays never connected or the user simply never
-            // approved. How fast it closed tells them apart.
-            if (error instanceof Error && /subscription closed/i.test(error.message)) {
-                throw Date.now() - startedAt < RELAY_FAILURE_WINDOW_MS
-                    ? new SignerRelayError()
-                    : new SignerTimeoutError();
-            }
-            throw error;
+/** Building the signer is cheap, but the wrapper below holds the invalidation
+    state, so one is kept per login for the life of the page. */
+let active: NostrSigner | null = null;
+let activeId: string | null = null;
+
+export function forgetBunkerSigner() {
+    active = null;
+    activeId = null;
+}
+
+/**
+ * Wraps the remote signer so every call answers in app terms.
+ *
+ * A cached signer that has stopped answering — the app was asleep, a relay
+ * dropped, the signer app was killed — would otherwise be handed to every
+ * later call, and each one would time out. A timeout therefore drops the
+ * cached signer, so the next request builds a fresh one instead.
+ */
+function guarded(signer: NostrSigner, id: string): NostrSigner {
+    const run = async <T>(work: () => Promise<T>): Promise<T> => {
+        try {
+            return await work();
+        } catch (error) {
+            const mapped = mapSignerError(error);
+            if (mapped instanceof SignerUnreachableError && activeId === id) forgetBunkerSigner();
+            throw mapped;
+        }
+    };
+    const nip44 = signer.nip44;
+    return {
+        getPublicKey: () => run(() => signer.getPublicKey()),
+        signEvent: (event) => run(() => signer.signEvent(event)),
+        // Mirrored rather than always offered: callers read the absence of
+        // `nip44` as "this signer cannot encrypt" and skip publishing instead
+        // of falling back to plaintext, so advertising it unconditionally
+        // would turn that check into a lie.
+        nip44: nip44 && {
+            encrypt: (pubkey, plaintext) => run(() => nip44.encrypt(pubkey, plaintext)),
+            decrypt: (pubkey, ciphertext) => run(() => nip44.decrypt(pubkey, ciphertext)),
+        },
+    };
+}
+
+/**
+ * The signer for a stored remote-signer login.
+ *
+ * There is no handshake to redo here: NIP-46 `connect` happens once, when the
+ * login is created, and the signer remembers the grant against this client's
+ * key — which is why the login record keeps no secret to re-send.
+ */
+export function getBunkerSigner(login: BunkerLogin): NostrSigner {
+    if (active && activeId === login.id) return active;
+    active = guarded(NUser.fromBunkerLogin(login, pool).signer, login.id);
+    activeId = login.id;
+    return active;
+}
+
+// ── Client-initiated connection (nostrconnect://, deep link or QR) ───────────
+
+/** An attempt survives here across a reload, because opening the signer app
+    can freeze or discard this page — and the client key exists only in
+    memory, so without it the attempt would be unrecoverable. */
+const PENDING_KEY = 'mora-pending-signer';
+
+interface PendingConnection {
+    clientSecret: string;
+    /** Echoed back by the signer to prove the reply belongs to this attempt. */
+    secret: string;
+    relays: string[];
+    uri: string;
+    /** Whether the request went out as a QR code rather than a deep link.
+        Carried across a reload so the resumed attempt comes back looking the
+        way the user left it. */
+    qr: boolean;
+    startedAt: number;
+}
+
+export function readPendingConnection(): PendingConnection | null {
+    try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) return null;
+        const pending = JSON.parse(raw) as PendingConnection;
+        // Everything here is validated rather than assumed: this is storage a
+        // half-written attempt or another build could have left behind, and a
+        // malformed entry that never expires would have the app retrying a
+        // dead attempt on every foreground, forever.
+        const usable = pending
+            && typeof pending.clientSecret === 'string' && HEX64_RE.test(pending.clientSecret)
+            && typeof pending.secret === 'string' && pending.secret.length > 0
+            && Array.isArray(pending.relays) && pending.relays.length > 0
+            && pending.relays.every((relay) => typeof relay === 'string')
+            && typeof pending.uri === 'string' && pending.uri.startsWith('nostrconnect://')
+            && typeof pending.qr === 'boolean'
+            && typeof pending.startedAt === 'number' && Number.isFinite(pending.startedAt);
+        if (!usable || Date.now() - pending.startedAt > CONNECT_TIMEOUT_MS) {
+            localStorage.removeItem(PENDING_KEY);
+            return null;
+        }
+        return pending;
+    } catch {
+        localStorage.removeItem(PENDING_KEY);
+        return null;
+    }
+}
+
+export function clearPendingConnection() {
+    localStorage.removeItem(PENDING_KEY);
+}
+
+/** Nostrify's URI carries the relays, secret and name; the permissions and
+    the app's origin are appended so the signer can grant everything the app
+    needs in the one approval, and show who is asking. */
+function connectUri(params: NostrConnectParams): string {
+    const extra = new URLSearchParams({ perms: PERMS.join(',') });
+    if (CLIENT_URL) extra.set('url', CLIENT_URL);
+    return `${generateNostrConnectURI(params, { name: CLIENT_NAME })}&${extra}`;
+}
+
+/** Waits for the signer to answer a `nostrconnect://` request. */
+async function awaitSignerResponse(params: NostrConnectParams): Promise<BunkerLogin> {
+    let login: BunkerLogin;
+    try {
+        login = await NLogin.fromNostrConnect(params, pool, {
+            signal: AbortSignal.timeout(CONNECT_TIMEOUT_MS),
         });
+    } catch (error) {
+        // The relays never held, versus the user never approving in time: the
+        // two arrive as different errors and need different advice.
+        if (error instanceof Error && /closed/i.test(error.message)) throw new SignerRelayError();
+        // Nobody answered: either the deadline aborted the subscription, or
+        // the request loop ran out. Anything else — a signer that answered in
+        // a form this client can't read, a library fault — is not a timeout,
+        // and telling the user to paste a bunker:// address would send them
+        // after the wrong problem.
+        const timedOut = (error instanceof DOMException && (error.name === 'TimeoutError' || error.name === 'AbortError'))
+            || (error instanceof Error && /timeout/i.test(error.message));
+        if (timedOut) throw new SignerTimeoutError();
+        throw mapSignerError(error);
+    }
+    clearPendingConnection();
+    return login;
 }
 
 /**
  * Starts a connection the signer app can accept: returns the `nostrconnect://`
- * URI to open, plus a promise that settles once the signer answers.
+ * URI — to open as a deep link, or to show as a QR code for a signer on
+ * another device — plus a promise that settles once the signer answers.
  *
  * The answer arrives as an ephemeral event on a live subscription, so it is
  * only received while this page is listening. Opening the signer app can
@@ -283,36 +267,30 @@ function awaitSignerResponse(clientSecretKey: Uint8Array, uri: string): Promise<
  * persisted and can be resumed — and why the bunker:// paste exists as the
  * path that doesn't depend on catching a push at all.
  */
-export function startBunkerConnection(relays: string[] = DEFAULT_SIGNER_RELAYS): {
+export function startBunkerConnection(
+    { qr = false, relays = DEFAULT_SIGNER_RELAYS }: { qr?: boolean; relays?: string[] } = {},
+): {
     uri: string;
     connected: Promise<BunkerLogin>;
 } {
-    const clientSecretKey = generateSecretKey();
-    const clientPubkey = getPublicKey(clientSecretKey);
-    // Random per attempt: the signer echoes it back to prove the connection
-    // belongs to this request.
-    const secret = bytesToHex(generateSecretKey()).slice(0, 32);
-
-    const uri = createNostrConnectURI({
-        clientPubkey,
-        relays,
-        secret,
-        perms: ['sign_event', 'nip44_encrypt', 'nip44_decrypt'],
-        ...CLIENT_METADATA,
-    });
+    const params = generateNostrConnectParams(relays);
+    const uri = connectUri(params);
 
     localStorage.setItem(PENDING_KEY, JSON.stringify({
-        clientSecret: bytesToHex(clientSecretKey),
+        clientSecret: bytesToHex(params.clientSecretKey),
+        secret: params.secret,
+        relays,
         uri,
+        qr,
         startedAt: Date.now(),
     } satisfies PendingConnection));
 
-    return { uri, connected: awaitSignerResponse(clientSecretKey, uri) };
+    return { uri, connected: awaitSignerResponse(params) };
 }
 
 /** Re-listens for an attempt that outlived a reload, or whose socket was
     dropped while the signer app was in front. */
-export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
+export function resumeBunkerConnection(): { uri: string; qr: boolean; connected: Promise<BunkerLogin> } | null {
     const pending = readPendingConnection();
     if (!pending) return null;
     let clientSecretKey: Uint8Array;
@@ -324,60 +302,80 @@ export function resumeBunkerConnection(): Promise<BunkerLogin> | null {
         clearPendingConnection();
         return null;
     }
-    return awaitSignerResponse(clientSecretKey, pending.uri);
+    return {
+        uri: pending.uri,
+        qr: pending.qr,
+        connected: awaitSignerResponse({
+            clientSecretKey,
+            clientPubkey: getPublicKey(clientSecretKey),
+            secret: pending.secret,
+            relays: pending.relays,
+        }),
+    };
 }
 
+// ── Signer-initiated connection (bunker:// or NIP-05, pasted) ────────────────
+
 /**
- * Runs a request through the connected signer.
- *
- * A cached signer that has stopped answering — the app was asleep, a relay
- * dropped, the signer app was killed — would otherwise be handed to every
- * later call, and each one would time out. Since nothing else invalidates it,
- * the session would stay broken until a reload. A timeout therefore drops the
- * cached signer, so the next request reconnects instead.
- *
- * Returns null when there is no signer session at all.
+ * NIP-05 identifiers advertise their signer relays under `nip46`, which is not
+ * the same list as the profile's own relays — writing to the wrong ones means
+ * a request the signer never sees. Nostrify's `NIP05` reads the profile list,
+ * so only its name matching is reused here.
  */
-export async function requestFromSigner<T>(
-    run: (signer: BunkerSigner) => Promise<T>,
-    timeoutMs?: number,
-): Promise<T | null> {
-    const signer = await getBunkerSigner();
-    if (!signer) return null;
+async function lookupNip46(input: string): Promise<{ pubkey: string; relays: string[] }> {
+    const match = input.match(NIP05.regex());
+    if (!match) throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
+    const [, name = '_', domain] = match;
+
+    const url = new URL('/.well-known/nostr.json', `https://${domain}/`);
+    url.searchParams.set('name', name);
+
+    let json: { names?: Record<string, string>; nip46?: Record<string, string[]> };
     try {
-        return await withSignerTimeout(run(signer), timeoutMs);
-    } catch (error) {
-        if (error instanceof SignerUnreachableError) forgetBunkerSigner();
-        throw error;
+        const response = await fetch(url, { signal: AbortSignal.timeout(NIP05_LOOKUP_TIMEOUT_MS) });
+        // A 404 or an error page would otherwise fail further down as a JSON
+        // parse error, which says nothing about what went wrong.
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        json = await response.json();
+    } catch {
+        throw new Error(`Não foi possível contactar ${domain}. Verifique a internet e o identificador.`);
     }
+    // Shape-checked, not just present: this is a document from a host the
+    // user named, and an npub, a truncated key or a bare string where the
+    // relay list should be would otherwise reach BunkerURI and come back
+    // as a library error that says nothing about the identifier.
+    const pubkey = json.names?.[name];
+    const advertised = json.nip46?.[pubkey ?? ''];
+    const relays = Array.isArray(advertised)
+        ? advertised.filter((url) => typeof url === 'string' && url.startsWith('ws'))
+        : [];
+    if (typeof pubkey !== 'string' || !HEX64_RE.test(pubkey) || !relays.length) {
+        throw new Error('Este identificador NIP-05 não aponta para um assinador remoto.');
+    }
+    return { pubkey, relays };
 }
 
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */
 export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> {
-    const pointer = await parseBunkerInput(input.trim());
-    if (!pointer) throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
+    const trimmed = input.trim();
+    // A NIP-05 identifier resolves to the same thing a bunker:// URI spells
+    // out, so it is turned into one and both take the same path from here.
+    const uri = trimmed.startsWith('bunker://')
+        ? trimmed
+        : BunkerURI.fromJSON(await lookupNip46(trimmed)).href;
 
-    const clientSecretKey = generateSecretKey();
-    let signer: BunkerSigner;
     try {
-        signer = BunkerSigner.fromBunker(clientSecretKey, pointer);
-    } catch {
-        // A truncated or mistyped address parses but isn't a real key, and the
-        // curve maths then fails with something like "bad point: is not on
-        // curve" — true, and useless to whoever pasted it.
-        throw new Error('Endereço de ligação inválido: a chave do assinador não é válida. Copie o endereço outra vez.');
+        // fromBunker parses the URI, connects with its secret and asks the
+        // signer whose key it will sign as — a bunker can hold several.
+        return await NLogin.fromBunker(uri, pool);
+    } catch (error) {
+        if (error instanceof Error && /invalid bunker uri|no relay/i.test(error.message)) {
+            throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
+        }
+        throw mapSignerError(
+            error,
+            'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
+            + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
+        );
     }
-    // Generous: connecting for the first time can mean waiting for the user to
-    // approve the request inside the signer app.
-    await runOrClose(signer, withSignerTimeout(
-        signer.connect(),
-        CONNECT_RPC_TIMEOUT_MS,
-        'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
-        + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
-    ));
-    const pubkey = await runOrClose(signer, withSignerTimeout(signer.getPublicKey()));
-
-    const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
-    setActive(signer, sessionKey(session));
-    return { session, pubkey };
 }

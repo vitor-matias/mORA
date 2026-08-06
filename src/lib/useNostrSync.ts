@@ -18,7 +18,7 @@ let lastSyncAt = 0;
  * settings — shortly after any local change.
  */
 export function useNostrSync() {
-    const pubkey = useAuthStore((s) => s.pubkey);
+    const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const isLocked = useAuthStore((s) => s.isLocked);
     const shareStreaks = useAppStore((s) => s.shareStreaks);
 
