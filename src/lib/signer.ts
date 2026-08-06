@@ -80,6 +80,11 @@ const SIGNER_RPC_TIMEOUT_MS = 20_000;  // an already-approved session should be 
     giving up: long enough to walk over to another app and approve. */
 const CONNECT_TIMEOUT_MS = 90_000;
 
+/** The NIP-05 domain comes from whatever the user typed, so a host that
+    accepts the connection and then never answers is an ordinary case — and
+    without a deadline it would hold the login attempt open for good. */
+const NIP05_LOOKUP_TIMEOUT_MS = 10_000;
+
 export class SignerTimeoutError extends Error {
     constructor() {
         // NIP-46 secrets are single-use, so if the signer did approve while
@@ -400,7 +405,11 @@ async function lookupNip46(input: string): Promise<BunkerPointer> {
 
     let json: { names?: Record<string, string>; nip46?: Record<string, string[]> };
     try {
-        json = await (await fetch(url)).json();
+        const response = await fetch(url, { signal: AbortSignal.timeout(NIP05_LOOKUP_TIMEOUT_MS) });
+        // A 404 or an error page would otherwise fail further down as a JSON
+        // parse error, which says nothing about what went wrong.
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        json = await response.json();
     } catch {
         throw new Error(`Não foi possível contactar ${domain}. Verifique a internet e o identificador.`);
     }
