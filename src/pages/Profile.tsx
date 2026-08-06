@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { useAuthStore } from "@/store/auth";
+import { useAuthStore, localNsec, localPrivkeyHex } from "@/store/auth";
+import type { BunkerLogin } from "@/lib/signer";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import { QRCodeSVG } from "qrcode.react";
-import { hexToBytes } from "@noble/hashes/utils";
 import { fileToAvatarDataUrl } from "@/lib/image";
 import { passkeysAvailable } from "@/lib/keyVault";
-import type { BunkerSession } from "@/lib/signer";
 import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations } from "@/lib/i18n";
@@ -20,7 +19,18 @@ import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib
 const REMINDER_SYNC_DEBOUNCE_MS = 600;
 
 export default function Profile() {
-    const { pubkey, privkey, protectedKey, isLocked, setProtectedKey, unlockWithKey, isNip07, bunker, loginWithNip07, loginWithBunker, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
+    const { login, lockedPubkey, protectedKey, isLocked, setProtectedKey, unlockWithKey, signIn, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
+    // One login record replaces the old pubkey/privkey/isNip07/bunker
+    // quadruple; everything the page used to branch on is its `type`.
+    const pubkey = login?.pubkey ?? lockedPubkey;
+    const isNip07 = login?.type === 'extension';
+    const bunker = login?.type === 'bunker';
+    // Only a locally held key has an nsec to show — NIP-07 and remote
+    // signers never hand the secret to the page. The login record already
+    // stores it in the bech32 form other clients ask for.
+    const nsec = useAuthStore(localNsec) ?? "";
+    // The passkey vault predates the login record and speaks hex.
+    const privkeyHex = useAuthStore(localPrivkeyHex);
     const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const t = useTranslations().profile;
 
@@ -107,7 +117,7 @@ export default function Profile() {
     // watching any more.
     const signerAttempt = useRef(0);
 
-    const awaitSigner = async (connected: Promise<{ session: BunkerSession; pubkey: string }>) => {
+    const awaitSigner = async (connected: Promise<BunkerLogin>) => {
         const attempt = ++signerAttempt.current;
         setSignerHint("");
         // The hint timer keys on this, so a re-armed wait (a resume while one
@@ -118,9 +128,9 @@ export default function Profile() {
         const isCurrent = () => attempt === signerAttempt.current;
         setSignerPending(true);
         try {
-            const { session, pubkey: signerPubkey } = await connected;
+            const bunkerLogin = await connected;
             if (!isCurrent()) return;
-            loginWithBunker(session, signerPubkey);
+            signIn(bunkerLogin);
         } catch (error) {
             if (!isCurrent()) return;
             setSignerError(error instanceof Error ? error.message : 'Não foi possível ligar ao assinador.');
@@ -239,7 +249,7 @@ export default function Profile() {
     const [vaultError, setVaultError] = useState("");
     // A local key is the only thing worth protecting: NIP-07 and remote
     // signers never hand this device the secret in the first place.
-    const hasLocalKey = Boolean(privkey || protectedKey);
+    const hasLocalKey = Boolean(nsec || protectedKey);
     const canOfferPasskey = hasLocalKey && !isNip07 && !bunker && passkeysAvailable();
 
     const runVaultAction = async (action: () => Promise<void>) => {
@@ -259,11 +269,11 @@ export default function Profile() {
     };
 
     const handleProtectKey = () => runVaultAction(async () => {
-        if (!privkey) throw new Error('A chave tem de estar desbloqueada.');
+        if (!privkeyHex) throw new Error('A chave tem de estar desbloqueada.');
         const { protectKey } = await import('@/lib/keyVault');
-        const stored = await protectKey(privkey, profileName || 'mORA');
-        // Keep it usable for this session; persistence drops the plaintext.
-        setProtectedKey(stored, privkey);
+        const stored = await protectKey(privkeyHex, profileName || 'mORA');
+        // The login stays usable for this session; persistence drops it.
+        setProtectedKey(stored);
     });
 
     const handleUnlockKey = () => runVaultAction(async () => {
@@ -273,16 +283,13 @@ export default function Profile() {
     });
 
     const handleRemoveProtection = () => runVaultAction(async () => {
-        if (!privkey) throw new Error('Desbloqueie a chave primeiro.');
-        setProtectedKey(null, privkey);
+        if (!nsec) throw new Error('Desbloqueie a chave primeiro.');
+        setProtectedKey(null);
     });
 
     // Keys shown in their bech32 form (NIP-19) — that is what other Nostr
     // clients ask for, and what the user can carry to another device.
     const npub = pubkey ? nip19.npubEncode(pubkey) : "";
-    // Only a locally generated key can be revealed; a NIP-07 extension never
-    // hands the secret to the page.
-    const nsec = privkey && !isNip07 ? nip19.nsecEncode(hexToBytes(privkey)) : "";
     const [nsecRevealed, setNsecRevealed] = useState(false);
     const [copied, setCopied] = useState<'npub' | 'nsec' | null>(null);
 
@@ -791,7 +798,7 @@ export default function Profile() {
                                             <button
                                                 type="button"
                                                 onClick={handleProtectKey}
-                                                disabled={vaultBusy || !privkey}
+                                                disabled={vaultBusy || !nsec}
                                                 className="flex-1 py-2 px-3 rounded-lg bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-xs font-semibold transition-colors disabled:opacity-50"
                                             >
                                                 Proteger com biometria

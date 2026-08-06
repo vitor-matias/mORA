@@ -1,12 +1,14 @@
-import { BunkerURI, NConnectSigner, NIP05, NSecSigner, type NostrSigner } from '@nostrify/nostrify';
-import { NLogin, generateNostrConnectParams, generateNostrConnectURI, type NostrConnectParams } from '@nostrify/react/login';
-import { generateSecretKey, getPublicKey } from 'nostr-tools';
+import { BunkerURI, NIP05, type NostrSigner } from '@nostrify/nostrify';
+import {
+    NLogin, NUser, generateNostrConnectParams, generateNostrConnectURI,
+    type NLoginType, type NostrConnectParams,
+} from '@nostrify/react/login';
+import { getPublicKey } from 'nostr-tools';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { pool } from '@/lib/pool';
-import { useAuthStore } from '@/store/auth';
 
 /**
- * NIP-46 ("Nostr Connect") remote signing, over Nostrify's `NConnectSigner`.
+ * NIP-46 ("Nostr Connect") remote signing, on Nostrify's login stack.
  *
  * This is how a phone signs in: Amber and other Android signer apps are not
  * browser extensions and never inject `window.nostr`, least of all into an
@@ -45,36 +47,11 @@ const PERMS = ['sign_event', 'nip44_encrypt', 'nip44_decrypt'];
 const CLIENT_NAME = 'mORA';
 const CLIENT_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
-/** Where the signer's pubkey and relays live between sessions. Deliberately
-    the same shape nostr-tools used, so sessions stored by an older build of
-    the app keep working. */
-export interface BunkerPointer {
-    pubkey: string;
-    relays: string[];
-    secret?: string;
-}
-
-export interface BunkerSession {
-    /** Hex secret key this client uses to talk to the signer — not the user's. */
-    clientSecret: string;
-    pointer: BunkerPointer;
-}
-
-export interface BunkerLogin {
-    session: BunkerSession;
-    /** Who the signer signs *as*. Not always the bunker's own pubkey — a
-        bunker can hold several identities — so this comes from asking it. */
-    pubkey: string;
-}
+/** The remote-signer arm of Nostrify's login union. The union is exported
+    but its individual members are not, so it is narrowed here. */
+export type BunkerLogin = Extract<NLoginType, { type: 'bunker' }>;
 
 const HEX64_RE = /^[0-9a-f]{64}$/i;
-
-// NConnectSigner aborts each request on its own deadline, so a signer that is
-// closed, offline or simply never approved can no longer leave the caller
-// hanging for good — a spinning button, or a background sync whose in-flight
-// guard never clears and never runs again.
-const CONNECT_RPC_TIMEOUT_MS = 45_000; // first contact: the user may need to approve
-const SIGNER_RPC_TIMEOUT_MS = 20_000;  // an already-approved session should be prompt
 
 /** How long to wait for the signer to answer a connection request before
     giving up: long enough to walk over to another app and approve. */
@@ -136,36 +113,14 @@ function mapSignerError(error: unknown, message?: string): Error {
     return error instanceof Error ? error : new Error(String(error));
 }
 
-function sessionKey(session: BunkerSession): string {
-    return `${session.pointer.pubkey}:${session.pointer.relays.join(',')}`;
-}
-
-/** Connecting means a relay round-trip and possibly an approval, so the
-    connected signer is kept for the life of the page. */
+/** Building the signer is cheap, but the wrapper below holds the invalidation
+    state, so one is kept per login for the life of the page. */
 let active: NostrSigner | null = null;
-let activeKey: string | null = null;
-/** A cold connect in progress, shared by everyone asking for the same session. */
-let connecting: Promise<NostrSigner> | null = null;
-let connectingFor: string | null = null;
+let activeId: string | null = null;
 
 export function forgetBunkerSigner() {
     active = null;
-    activeKey = null;
-    connecting = null;
-    connectingFor = null;
-}
-
-function connectSigner(pointer: BunkerPointer, clientSecretKey: Uint8Array, timeout: number): NConnectSigner {
-    return new NConnectSigner({
-        // Shares the pool's sockets; the group just narrows it to these relays.
-        relay: pool.group(pointer.relays),
-        pubkey: pointer.pubkey,
-        signer: new NSecSigner(clientSecretKey),
-        timeout,
-        // Explicit, because the app stores nothing in plaintext and a signer
-        // that can only do NIP-04 is one this app cannot sync with anyway.
-        encryption: 'nip44',
-    });
+    activeId = null;
 }
 
 /**
@@ -174,15 +129,15 @@ function connectSigner(pointer: BunkerPointer, clientSecretKey: Uint8Array, time
  * A cached signer that has stopped answering — the app was asleep, a relay
  * dropped, the signer app was killed — would otherwise be handed to every
  * later call, and each one would time out. A timeout therefore drops the
- * cached signer, so the next request reconnects instead.
+ * cached signer, so the next request builds a fresh one instead.
  */
-function guarded(signer: NConnectSigner, key: string): NostrSigner {
+function guarded(signer: NostrSigner, id: string): NostrSigner {
     const run = async <T>(work: () => Promise<T>): Promise<T> => {
         try {
             return await work();
         } catch (error) {
             const mapped = mapSignerError(error);
-            if (mapped instanceof SignerUnreachableError && activeKey === key) forgetBunkerSigner();
+            if (mapped instanceof SignerUnreachableError && activeId === id) forgetBunkerSigner();
             throw mapped;
         }
     };
@@ -190,61 +145,27 @@ function guarded(signer: NConnectSigner, key: string): NostrSigner {
         getPublicKey: () => run(() => signer.getPublicKey()),
         signEvent: (event) => run(() => signer.signEvent(event)),
         nip44: {
-            encrypt: (pubkey, plaintext) => run(() => signer.nip44.encrypt(pubkey, plaintext)),
-            decrypt: (pubkey, ciphertext) => run(() => signer.nip44.decrypt(pubkey, ciphertext)),
+            encrypt: (pubkey, plaintext) => run(() => signer.nip44!.encrypt(pubkey, plaintext)),
+            decrypt: (pubkey, ciphertext) => run(() => signer.nip44!.decrypt(pubkey, ciphertext)),
         },
     };
 }
 
-/** The live signer for the stored session, connecting on first use. Null when
-    this identity doesn't sign through a remote signer at all. */
-export async function getBunkerSigner(): Promise<NostrSigner | null> {
-    const session = useAuthStore.getState().bunker;
-    if (!session) {
-        forgetBunkerSigner();
-        return null;
-    }
-    const key = sessionKey(session);
-    if (active && activeKey === key) return active;
-    // Streaks and settings sync in parallel, so a cold start calls this twice
-    // at once. Without sharing the connect, each call would run its own
-    // handshake and the second would displace the first — while its caller
-    // was still waiting on a request through it.
-    if (connecting && connectingFor === key) return connecting;
-
-    connectingFor = key;
-    connecting = (async () => {
-        const clientSecretKey = hexToBytes(session.clientSecret);
-        // Generous while connecting — the user may have to approve — then the
-        // session settles onto the shorter per-request deadline.
-        const handshake = connectSigner(session.pointer, clientSecretKey, CONNECT_RPC_TIMEOUT_MS);
-        try {
-            await handshake.connect(session.pointer.secret);
-        } catch (error) {
-            throw mapSignerError(error);
-        }
-        // Logging out (or switching signer) while this was connecting clears
-        // the session; adopting the result now would resurrect a signer for an
-        // identity that no longer exists.
-        const current = useAuthStore.getState().bunker;
-        if (!current || sessionKey(current) !== key) {
-            throw new Error('A sessão do assinador terminou durante a ligação.');
-        }
-        const signer = guarded(connectSigner(session.pointer, clientSecretKey, SIGNER_RPC_TIMEOUT_MS), key);
-        active = signer;
-        activeKey = key;
-        return signer;
-    })();
-    connecting.catch(() => {}).then(() => {
-        if (connectingFor === key) {
-            connecting = null;
-            connectingFor = null;
-        }
-    });
-    return connecting;
+/**
+ * The signer for a stored remote-signer login.
+ *
+ * There is no handshake to redo here: NIP-46 `connect` happens once, when the
+ * login is created, and the signer remembers the grant against this client's
+ * key — which is why the login record keeps no secret to re-send.
+ */
+export function getBunkerSigner(login: BunkerLogin): NostrSigner {
+    if (active && activeId === login.id) return active;
+    active = guarded(NUser.fromBunkerLogin(login, pool).signer, login.id);
+    activeId = login.id;
+    return active;
 }
 
-// ── Client-initiated connection (nostrconnect://, shown as a QR code) ────────
+// ── Client-initiated connection (nostrconnect://, deep link or QR) ───────────
 
 /** An attempt survives here across a reload, because opening the signer app
     can freeze or discard this page — and the client key exists only in
@@ -307,7 +228,7 @@ function connectUri(params: NostrConnectParams): string {
 
 /** Waits for the signer to answer a `nostrconnect://` request. */
 async function awaitSignerResponse(params: NostrConnectParams): Promise<BunkerLogin> {
-    let login;
+    let login: BunkerLogin;
     try {
         login = await NLogin.fromNostrConnect(params, pool, {
             signal: AbortSignal.timeout(CONNECT_TIMEOUT_MS),
@@ -318,16 +239,8 @@ async function awaitSignerResponse(params: NostrConnectParams): Promise<BunkerLo
         if (error instanceof Error && /closed/i.test(error.message)) throw new SignerRelayError();
         throw new SignerTimeoutError();
     }
-    const session: BunkerSession = {
-        clientSecret: bytesToHex(params.clientSecretKey),
-        pointer: {
-            pubkey: login.data.bunkerPubkey,
-            relays: login.data.relays,
-            secret: params.secret,
-        },
-    };
     clearPendingConnection();
-    return { session, pubkey: login.pubkey };
+    return login;
 }
 
 /**
@@ -393,9 +306,10 @@ export function resumeBunkerConnection(): { uri: string; qr: boolean; connected:
 /**
  * NIP-05 identifiers advertise their signer relays under `nip46`, which is not
  * the same list as the profile's own relays — writing to the wrong ones means
- * a request the signer never sees.
+ * a request the signer never sees. Nostrify's `NIP05` reads the profile list,
+ * so only its name matching is reused here.
  */
-async function lookupNip46(input: string): Promise<BunkerPointer> {
+async function lookupNip46(input: string): Promise<{ pubkey: string; relays: string[] }> {
     const match = input.match(NIP05.regex());
     if (!match) throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
     const [, name = '_', domain] = match;
@@ -421,49 +335,27 @@ async function lookupNip46(input: string): Promise<BunkerPointer> {
     return { pubkey, relays };
 }
 
-async function parseSignerInput(input: string): Promise<BunkerPointer> {
-    if (input.startsWith('bunker://')) {
-        let uri: BunkerURI;
-        try {
-            uri = new BunkerURI(input);
-        } catch {
-            throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
-        }
-        if (!uri.relays.length) throw new Error('O endereço do assinador não indica nenhum relay.');
-        return { pubkey: uri.pubkey, relays: uri.relays, secret: uri.secret };
-    }
-    return lookupNip46(input);
-}
-
 /** Connects using a `bunker://` URI (or NIP-05) copied out of the signer. */
 export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> {
-    const pointer = await parseSignerInput(input.trim());
-    // A truncated or mistyped address parses but isn't a real key, and the
-    // curve maths then fails with something like "bad point: is not on
-    // curve" — true, and useless to whoever pasted it.
-    if (!HEX64_RE.test(pointer.pubkey)) {
-        throw new Error('Endereço de ligação inválido: a chave do assinador não é válida. Copie o endereço outra vez.');
-    }
+    const trimmed = input.trim();
+    // A NIP-05 identifier resolves to the same thing a bunker:// URI spells
+    // out, so it is turned into one and both take the same path from here.
+    const uri = trimmed.startsWith('bunker://')
+        ? trimmed
+        : BunkerURI.fromJSON(await lookupNip46(trimmed)).href;
 
-    const clientSecretKey = generateSecretKey();
-    // Generous: connecting for the first time can mean waiting for the user to
-    // approve the request inside the signer app.
-    const signer = connectSigner(pointer, clientSecretKey, CONNECT_RPC_TIMEOUT_MS);
-    let pubkey: string;
     try {
-        await signer.connect(pointer.secret);
-        pubkey = await signer.getPublicKey();
+        // fromBunker parses the URI, connects with its secret and asks the
+        // signer whose key it will sign as — a bunker can hold several.
+        return await NLogin.fromBunker(uri, pool);
     } catch (error) {
+        if (error instanceof Error && /invalid bunker uri|no relay/i.test(error.message)) {
+            throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
+        }
         throw mapSignerError(
             error,
             'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
             + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
         );
     }
-
-    const session: BunkerSession = { clientSecret: bytesToHex(clientSecretKey), pointer };
-    // The session is about to be stored; let the next request connect through
-    // the cached path rather than adopting this short-deadline instance.
-    forgetBunkerSigner();
-    return { session, pubkey };
 }

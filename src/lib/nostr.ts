@@ -1,7 +1,7 @@
-import { NBrowserSigner, NSecSigner, type NostrEvent, type NostrSigner } from '@nostrify/nostrify';
-import { hexToBytes } from '@noble/hashes/utils';
+import type { NostrEvent, NostrSigner } from '@nostrify/nostrify';
+import { NUser } from '@nostrify/react/login';
 import { pool } from '@/lib/pool';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, currentPubkey } from '@/store/auth';
 import {
     useAppStore, mergeStreaks, streaksEqual, emptyStreaks, sanitizeSyncedSettings, settingsEqual,
     type Streaks, type SyncedSettings,
@@ -47,24 +47,31 @@ export interface NostrProfile {
 }
 
 /**
- * Whichever key custody the user chose, as one `NostrSigner`: a NIP-46 remote
- * signer (Amber and friends), a NIP-07 extension, or the locally stored key.
- * All three implement the same interface, so nothing downstream has to know
- * which one it got. Null when there is no way to sign at all.
+ * The signer for whoever is logged in, built from their login record.
+ *
+ * `NUser` turns each custody into the matching `NostrSigner` — `NSecSigner`
+ * for a local key, `NBrowserSigner` for an extension (which waits out the
+ * injection race), `NConnectSigner` for a remote signer — so nothing
+ * downstream has to know which one it got. Null when there is no way to sign:
+ * signed out, or a protected key that hasn't been unlocked this session.
  */
 export async function getSigner(): Promise<NostrSigner | null> {
-    const { privkey, isNip07, bunker } = useAuthStore.getState();
-    if (bunker) {
-        // Lazy: the signer module talks over relays and is only needed by the
-        // one login method that uses it.
-        const { getBunkerSigner } = await import('@/lib/signer');
-        return getBunkerSigner();
+    const { login } = useAuthStore.getState();
+    if (!login) return null;
+    switch (login.type) {
+        case 'nsec':
+            return NUser.fromNsecLogin(login).signer;
+        case 'extension':
+            return NUser.fromExtensionLogin(login).signer;
+        case 'bunker': {
+            // Lazy: the signer module talks over relays, and only this custody
+            // needs the connect handshake it manages.
+            const { getBunkerSigner } = await import('@/lib/signer');
+            return getBunkerSigner(login);
+        }
+        default:
+            return null;
     }
-    // NBrowserSigner proxies window.nostr, and waits for it: extensions inject
-    // asynchronously, so an absence right now doesn't mean there is none.
-    if (isNip07 && typeof window !== 'undefined') return new NBrowserSigner();
-    if (privkey) return new NSecSigner(hexToBytes(privkey));
-    return null;
 }
 
 async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
@@ -90,7 +97,7 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 }
 
 export async function publishNostrProfile(profile: NostrProfile) {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     if (!pubkey) throw new Error("Not logged in");
 
     const baseEvent: EventTemplate = {
@@ -197,14 +204,14 @@ async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
 // leaves `signer.nip44` undefined) — callers skip rather than fall back to
 // plaintext.
 async function encryptToSelf(plaintext: string): Promise<string | null> {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     const signer = await getSigner();
     if (!pubkey || !signer?.nip44) return null;
     return signer.nip44.encrypt(pubkey, plaintext);
 }
 
 async function decryptFromSelf(ciphertext: string): Promise<string | null> {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     const signer = await getSigner();
     if (!pubkey || !signer?.nip44) return null;
     return signer.nip44.decrypt(pubkey, ciphertext);
@@ -280,7 +287,7 @@ async function publishSnapshot(dTag: string, payload: Record<string, unknown>, l
 }
 
 export async function publishStreakToNostr() {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     const { streaks, shareStreaks } = useAppStore.getState();
     if (!pubkey) return; // Not logged in
     // Prayer activity is sensitive — syncing it to relays is opt-in.
@@ -290,7 +297,7 @@ export async function publishStreakToNostr() {
 }
 
 export async function publishSettingsToNostr() {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     const state = useAppStore.getState();
     if (!pubkey || !state.shareStreaks) return;
 
@@ -318,7 +325,7 @@ export function syncStreaksWithNostr(): Promise<void> {
 }
 
 async function doSyncStreaks(): Promise<void> {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
     const snapshot = await fetchSnapshot(pubkey, D_STREAK);
@@ -351,7 +358,7 @@ export function syncSettingsWithNostr(): Promise<void> {
 }
 
 async function doSyncSettings(): Promise<void> {
-    const { pubkey } = useAuthStore.getState();
+    const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
     const snapshot = await fetchSnapshot(pubkey, D_SETTINGS);

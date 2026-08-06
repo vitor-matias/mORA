@@ -27,7 +27,8 @@ function prayerPulseText({ count, names }: PrayerPulse): string {
 
 export default function Home() {
     const { streaks, liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
-    const { pubkey, profile, setProfile } = useAuthStore();
+    const { profile, setProfile } = useAuthStore();
+    const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
 
     useEffect(() => {

@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
-import { bytesToHex } from '@noble/hashes/utils';
+import { NLogin, type NLoginType } from '@nostrify/react/login';
+import { generateSecretKey, nip19 } from 'nostr-tools';
 import type { NostrProfile } from '@/lib/nostr';
-import type { BunkerSession } from '@/lib/signer';
 import type { ProtectedKey } from '@/lib/keyVault';
 import { useAppStore } from '@/store/app';
 
@@ -21,66 +20,89 @@ function clearSyncForIdentity() {
 }
 
 interface AuthState {
-    pubkey: string | null;
-    /** The locally generated key, hex. While `protectedKey` is set this is
-        memory-only — it is deliberately kept out of storage (see partialize)
-        and is null again after a reload until the passkey unlocks it. */
-    privkey: string | null;
+    /** Nostrify's login record — one discriminated union across all three key
+        custodies, and the only thing needed to rebuild a signer. */
+    login: NLoginType | null;
+    /** Who a protected key belongs to while it is still locked. The login
+        itself is not persisted in that case (see partialize), so without this
+        a reload would show a signed-out app rather than a locked one. */
+    lockedPubkey: string | null;
     /** Set once the key is encrypted behind a passkey. Its presence is what
-        makes `privkey` memory-only. */
+        keeps the login out of storage. */
     protectedKey: ProtectedKey | null;
     /** Encrypted at rest and not yet unlocked this session: the app works,
         but nothing that needs the key (signing, Nostr sync) can run. */
     isLocked: boolean;
-    setProtectedKey: (protectedKey: ProtectedKey | null, privkey: string | null) => void;
-    unlockWithKey: (privkey: string) => void;
-    isNip07: boolean;
-    /** NIP-46 remote signer (e.g. Amber on Android), which holds the key and
-        signs over relays. Null unless signed in that way. */
-    bunker: BunkerSession | null;
-    loginWithBunker: (session: BunkerSession, pubkey: string) => void;
     profile: NostrProfile | null;
     setProfile: (profile: NostrProfile | null) => void;
+    setProtectedKey: (protectedKey: ProtectedKey | null) => void;
+    unlockWithKey: (privkeyHex: string) => void;
+    signIn: (login: NLoginType) => void;
     loginWithNip07: () => Promise<void>;
     loginWithPrivateKey: (key: string) => void;
     generateLocalKey: () => void;
     logout: () => void;
 }
 
+/** The nsec of a locally held key, or null for the custodies that never hand
+    this device the secret (NIP-07, remote signer) or while one is locked. */
+export function localNsec(state: AuthState): `nsec1${string}` | null {
+    return state.login?.type === 'nsec' ? state.login.data.nsec : null;
+}
+
+/** Hex form of the local key, for the passkey vault — which predates the
+    login record and speaks hex. */
+function nsecToHex(nsec: `nsec1${string}`): string {
+    const decoded = nip19.decode(nsec);
+    if (decoded.type !== 'nsec') throw new Error('Invalid nsec');
+    return Array.from(decoded.data, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export function localPrivkeyHex(state: AuthState): string | null {
+    const nsec = localNsec(state);
+    return nsec ? nsecToHex(nsec) : null;
+}
+
+/** Whoever is signed in, including an identity whose key is still locked.
+    Exported as a plain function because the sync layer runs outside React. */
+export function currentPubkey(): string | null {
+    const { login, lockedPubkey } = useAuthStore.getState();
+    return login?.pubkey ?? lockedPubkey;
+}
+
 export const useAuthStore = create<AuthState>()(
     persist(
         (set) => ({
-            pubkey: null,
-            privkey: null,
+            login: null,
+            lockedPubkey: null,
             protectedKey: null,
             isLocked: false,
-            isNip07: false,
-            bunker: null,
             profile: null,
-
-            // Turning protection on keeps the key usable for this session and
-            // stops persisting it; turning it off writes it back to storage.
-            setProtectedKey: (protectedKey, privkey) => set({
-                protectedKey,
-                privkey,
-                isLocked: false,
-            }),
-
-            unlockWithKey: (privkey) => set({ privkey, isLocked: false }),
 
             setProfile: (profile) => set({ profile }),
 
+            // Turning protection on keeps the login usable for this session and
+            // stops persisting it; turning it off writes it back to storage.
+            setProtectedKey: (protectedKey) => set({ protectedKey, isLocked: false }),
+
+            unlockWithKey: (privkeyHex) => {
+                const bytes = Uint8Array.from(
+                    privkeyHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
+                );
+                set({ login: NLogin.fromNsec(nip19.nsecEncode(bytes)), isLocked: false });
+            },
+
+            signIn: (login) => {
+                set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
+                enableSyncForNewIdentity();
+            },
+
             loginWithNip07: async () => {
                 try {
-                    if (!window.nostr) {
-                        throw new Error('Nostr extension not found');
-                    }
-                    // Through Nostrify's proxy rather than window.nostr
-                    // directly: it waits out the injection race and rejects a
-                    // malformed answer instead of storing it as the identity.
-                    const { NBrowserSigner } = await import('@nostrify/nostrify');
-                    const pubkey = await new NBrowserSigner().getPublicKey();
-                    set({ pubkey, privkey: null, protectedKey: null, isLocked: false, isNip07: true, bunker: null });
+                    // fromExtension reads window.nostr and asks it for the
+                    // pubkey; it throws if no extension ever appears.
+                    const login = await NLogin.fromExtension();
+                    set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
                     enableSyncForNewIdentity();
                 } catch (error) {
                     console.error('Failed to login with NIP-07:', error);
@@ -89,24 +111,17 @@ export const useAuthStore = create<AuthState>()(
             },
 
             loginWithPrivateKey: (key: string) => {
-                let privkeyHex = '';
                 try {
-                    if (key.startsWith('nsec')) {
-                        const decoded = nip19.decode(key);
-                        if (decoded.type === 'nsec') {
-                            privkeyHex = bytesToHex(decoded.data as Uint8Array);
-                        } else {
-                            throw new Error('Invalid nsec key');
-                        }
-                    } else {
-                        // Assume it's already a hex key
-                        privkeyHex = key;
-                    }
-
-                    // Verify it works by generating the pubkey
-                    const secretKeyBytes = new Uint8Array(privkeyHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
-                    const pubkeyHex = getPublicKey(secretKeyBytes);
-                    set({ pubkey: pubkeyHex, privkey: privkeyHex, protectedKey: null, isLocked: false, isNip07: false, bunker: null });
+                    // fromNsec validates and derives the pubkey; hex is still
+                    // accepted here because that is what the field has always
+                    // taken, and it is what other clients export.
+                    const nsec = key.startsWith('nsec')
+                        ? key as `nsec1${string}`
+                        : nip19.nsecEncode(Uint8Array.from(
+                            key.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
+                        ));
+                    const login = NLogin.fromNsec(nsec);
+                    set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
                     enableSyncForNewIdentity();
                 } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
@@ -114,27 +129,18 @@ export const useAuthStore = create<AuthState>()(
             },
 
             generateLocalKey: () => {
-                const secretKey = generateSecretKey();
-                const privkeyHex = bytesToHex(secretKey);
-                const pubkeyHex = getPublicKey(secretKey);
-                set({ pubkey: pubkeyHex, privkey: privkeyHex, protectedKey: null, isLocked: false, isNip07: false, bunker: null });
-                enableSyncForNewIdentity();
-            },
-
-            loginWithBunker: (bunker, pubkey) => {
-                // The signer keeps the secret key; this device only ever holds
-                // the session it talks to the signer with.
-                set({ pubkey, privkey: null, protectedKey: null, isLocked: false, isNip07: false, bunker });
+                const login = NLogin.fromNsec(nip19.nsecEncode(generateSecretKey()));
+                set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
                 enableSyncForNewIdentity();
             },
 
             logout: () => {
-                set({ pubkey: null, privkey: null, protectedKey: null, isLocked: false, isNip07: false, bunker: null, profile: null });
+                set({ login: null, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                 clearSyncForIdentity();
-                // Clearing the stored session doesn't hang up on the signer:
-                // the connection is cached at module scope and would keep its
-                // relay subscription open until a reload. Imported lazily —
-                // signer.ts reads this store, so a static import would cycle.
+                // Clearing the login doesn't hang up on a remote signer: the
+                // connection is cached at module scope and would keep answering
+                // until a reload. Imported lazily — signer.ts reads this store,
+                // so a static import would cycle.
                 import('@/lib/signer')
                     .then(({ forgetBunkerSigner }) => forgetBunkerSigner())
                     .catch(() => {});
@@ -142,21 +148,66 @@ export const useAuthStore = create<AuthState>()(
         }),
         {
             name: 'mora-auth-storage',
+            version: 1,
             // The whole point of protection: once the key is encrypted, the
-            // plaintext must never reach storage again.
+            // nsec inside the login must never reach storage again. The pubkey
+            // is kept separately so the app still knows whose key is locked.
             partialize: (state) => (
-                // Persist the locked state too, so storage is self-consistent
-                // on its own: an encrypted key with no plaintext is locked,
-                // whatever this session had unlocked in memory.
-                state.protectedKey ? { ...state, privkey: null, isLocked: true } : state
+                state.protectedKey
+                    ? { ...state, login: null, lockedPubkey: currentPubkey(), isLocked: true }
+                    : state
             ),
-            // A protected key starts every session locked — `privkey` was
+            // A protected key starts every session locked — the login was
             // never written, so it can only come back via the passkey.
             onRehydrateStorage: () => (state) => {
                 if (state?.protectedKey) {
-                    state.privkey = null;
+                    state.login = null;
                     state.isLocked = true;
                 }
+            },
+            /** Sessions written before the login record existed stored the
+                custody as three loose fields. Rebuild the equivalent login so
+                nobody is signed out by the upgrade. */
+            migrate: (persisted, version) => {
+                if (version >= 1) return persisted as AuthState;
+                const old = persisted as {
+                    pubkey?: string | null;
+                    privkey?: string | null;
+                    isNip07?: boolean;
+                    bunker?: { clientSecret: string; pointer: { pubkey: string; relays: string[] } } | null;
+                    protectedKey?: ProtectedKey | null;
+                    isLocked?: boolean;
+                    profile?: NostrProfile | null;
+                };
+                let login: NLoginType | null = null;
+                if (old.bunker && old.pubkey) {
+                    login = {
+                        id: `bunker:${old.pubkey}`,
+                        type: 'bunker',
+                        pubkey: old.pubkey,
+                        createdAt: new Date(0).toISOString(),
+                        data: {
+                            bunkerPubkey: old.bunker.pointer.pubkey,
+                            clientNsec: nip19.nsecEncode(Uint8Array.from(
+                                old.bunker.clientSecret.match(/.{1,2}/g)!.map((b) => parseInt(b, 16)),
+                            )),
+                            relays: old.bunker.pointer.relays,
+                        },
+                    };
+                } else if (old.isNip07 && old.pubkey) {
+                    login = { id: `extension:${old.pubkey}`, type: 'extension', pubkey: old.pubkey, createdAt: new Date(0).toISOString(), data: null };
+                } else if (old.privkey) {
+                    login = NLogin.fromNsec(nip19.nsecEncode(Uint8Array.from(
+                        old.privkey.match(/.{1,2}/g)!.map((b) => parseInt(b, 16)),
+                    )));
+                }
+                return {
+                    login,
+                    lockedPubkey: old.protectedKey ? old.pubkey ?? null : null,
+                    protectedKey: old.protectedKey ?? null,
+                    isLocked: old.isLocked ?? false,
+                    profile: old.profile ?? null,
+                } as AuthState;
             },
         }
     )
