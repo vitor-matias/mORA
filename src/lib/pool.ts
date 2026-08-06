@@ -1,7 +1,12 @@
 import { NPool, NRelay1 } from '@nostrify/nostrify';
 
 /** Relays this app reads and writes its own events on. */
-export const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
+export const RELAYS = [
+    'wss://relay.damus.io',
+    'wss://nos.lol',
+    'wss://relay.primal.net',
+    'wss://nostr.mom',
+];
 
 /**
  * One pool for everything Nostr in the app: sync, profiles, and the relay
