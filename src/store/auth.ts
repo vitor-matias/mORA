@@ -109,7 +109,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             signIn: (login) => {
-                set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
+                set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                 enableSyncForNewIdentity();
             },
 
@@ -118,7 +118,7 @@ export const useAuthStore = create<AuthState>()(
                     // fromExtension reads window.nostr and asks it for the
                     // pubkey; it throws if no extension ever appears.
                     const login = await NLogin.fromExtension();
-                    set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
+                    set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                     enableSyncForNewIdentity();
                 } catch (error) {
                     console.error('Failed to login with NIP-07:', error);
@@ -135,7 +135,7 @@ export const useAuthStore = create<AuthState>()(
                         ? key as `nsec1${string}`
                         : nip19.nsecEncode(keyBytes(key));
                     const login = NLogin.fromNsec(nsec);
-                    set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
+                    set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                     enableSyncForNewIdentity();
                 } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
@@ -144,7 +144,7 @@ export const useAuthStore = create<AuthState>()(
 
             generateLocalKey: () => {
                 const login = NLogin.fromNsec(nip19.nsecEncode(generateSecretKey()));
-                set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
+                set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                 enableSyncForNewIdentity();
             },
 
@@ -168,7 +168,7 @@ export const useAuthStore = create<AuthState>()(
             // is kept separately so the app still knows whose key is locked.
             partialize: (state) => (
                 state.protectedKey
-                    ? { ...state, login: null, lockedPubkey: currentPubkey(), isLocked: true }
+                    ? { ...state, login: null, lockedPubkey: state.login?.pubkey ?? state.lockedPubkey, isLocked: true }
                     : state
             ),
             // A protected key starts every session locked — the login was

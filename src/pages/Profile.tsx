@@ -237,6 +237,10 @@ export default function Profile() {
         setSignerError("");
         try {
             const { connectWithBunkerUri } = await import('@/lib/signer');
+            // Supersedes any QR attempt: that code carries a single-use
+            // secret belonging to a request this one replaces, so it has to
+            // leave the screen rather than invite a scan nothing can answer.
+            setConnectUri("");
             // Through awaitSigner like the deep link, so Cancelar invalidates
             // this wait too — otherwise cancelling still ended in a login when
             // the signer eventually answered.

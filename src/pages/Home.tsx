@@ -32,13 +32,18 @@ export default function Home() {
     const t = useTranslations().home;
 
     useEffect(() => {
-        if (pubkey && !profile) {
-            import("@/lib/nostr").then(({ fetchNostrProfile }) => {
-                fetchNostrProfile(pubkey).then(p => {
-                    if (p) setProfile(p);
-                });
+        if (!pubkey || profile) return;
+        let cancelled = false;
+        import("@/lib/nostr").then(({ fetchNostrProfile }) => {
+            fetchNostrProfile(pubkey).then(p => {
+                // A relay round-trip outlasts a sign-out: without this, the
+                // answer for whoever was signed in when it was asked lands on
+                // whoever is signed in when it returns, and the greeting and
+                // avatar show someone else's name.
+                if (!cancelled && p) setProfile(p);
             });
-        }
+        });
+        return () => { cancelled = true; };
     }, [pubkey, profile, setProfile]);
 
     // Community pulse — who (of those who opted into sharing) prayed today.

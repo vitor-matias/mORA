@@ -340,9 +340,16 @@ async function lookupNip46(input: string): Promise<{ pubkey: string; relays: str
     } catch {
         throw new Error(`Não foi possível contactar ${domain}. Verifique a internet e o identificador.`);
     }
+    // Shape-checked, not just present: this is a document from a host the
+    // user named, and an npub, a truncated key or a bare string where the
+    // relay list should be would otherwise reach BunkerURI and come back
+    // as a library error that says nothing about the identifier.
     const pubkey = json.names?.[name];
-    const relays = json.nip46?.[pubkey ?? ''];
-    if (!pubkey || !relays?.length) {
+    const advertised = json.nip46?.[pubkey ?? ''];
+    const relays = Array.isArray(advertised)
+        ? advertised.filter((url) => typeof url === 'string' && url.startsWith('ws'))
+        : [];
+    if (typeof pubkey !== 'string' || !HEX64_RE.test(pubkey) || !relays.length) {
         throw new Error('Este identificador NIP-05 não aponta para um assinador remoto.');
     }
     return { pubkey, relays };
