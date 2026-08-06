@@ -50,6 +50,22 @@ export function localNsec(state: AuthState): `nsec1${string}` | null {
     return state.login?.type === 'nsec' ? state.login.data.nsec : null;
 }
 
+const HEX64_RE = /^[0-9a-f]{64}$/i;
+
+/**
+ * Hex to key bytes, refusing anything that isn't a whole 32-byte key.
+ *
+ * Validated rather than parsed leniently: `parseInt` turns a stray non-hex
+ * pair into NaN, which `Uint8Array.from` stores as 0. Sixty-four characters
+ * with two bad ones would therefore produce a different — but perfectly
+ * valid — key, and the user would be signed in as an identity that isn't
+ * theirs, with no error anywhere.
+ */
+function keyBytes(hex: string): Uint8Array {
+    if (!HEX64_RE.test(hex)) throw new Error('Chave privada inválida.');
+    return Uint8Array.from(hex.match(/.{2}/g)!.map((byte) => parseInt(byte, 16)));
+}
+
 /** Hex form of the local key, for the passkey vault — which predates the
     login record and speaks hex. */
 function nsecToHex(nsec: `nsec1${string}`): string {
@@ -86,10 +102,10 @@ export const useAuthStore = create<AuthState>()(
             setProtectedKey: (protectedKey) => set({ protectedKey, isLocked: false }),
 
             unlockWithKey: (privkeyHex) => {
-                const bytes = Uint8Array.from(
-                    privkeyHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
-                );
-                set({ login: NLogin.fromNsec(nip19.nsecEncode(bytes)), isLocked: false });
+                set({
+                    login: NLogin.fromNsec(nip19.nsecEncode(keyBytes(privkeyHex))),
+                    isLocked: false,
+                });
             },
 
             signIn: (login) => {
@@ -117,9 +133,7 @@ export const useAuthStore = create<AuthState>()(
                     // taken, and it is what other clients export.
                     const nsec = key.startsWith('nsec')
                         ? key as `nsec1${string}`
-                        : nip19.nsecEncode(Uint8Array.from(
-                            key.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)),
-                        ));
+                        : nip19.nsecEncode(keyBytes(key));
                     const login = NLogin.fromNsec(nsec);
                     set({ login, lockedPubkey: null, protectedKey: null, isLocked: false });
                     enableSyncForNewIdentity();
@@ -180,6 +194,7 @@ export const useAuthStore = create<AuthState>()(
                     profile?: NostrProfile | null;
                 };
                 let login: NLoginType | null = null;
+                try {
                 if (old.bunker && old.pubkey) {
                     login = {
                         id: `bunker:${old.pubkey}`,
@@ -188,18 +203,20 @@ export const useAuthStore = create<AuthState>()(
                         createdAt: new Date(0).toISOString(),
                         data: {
                             bunkerPubkey: old.bunker.pointer.pubkey,
-                            clientNsec: nip19.nsecEncode(Uint8Array.from(
-                                old.bunker.clientSecret.match(/.{1,2}/g)!.map((b) => parseInt(b, 16)),
-                            )),
+                            clientNsec: nip19.nsecEncode(keyBytes(old.bunker.clientSecret)),
                             relays: old.bunker.pointer.relays,
                         },
                     };
                 } else if (old.isNip07 && old.pubkey) {
                     login = { id: `extension:${old.pubkey}`, type: 'extension', pubkey: old.pubkey, createdAt: new Date(0).toISOString(), data: null };
                 } else if (old.privkey) {
-                    login = NLogin.fromNsec(nip19.nsecEncode(Uint8Array.from(
-                        old.privkey.match(/.{1,2}/g)!.map((b) => parseInt(b, 16)),
-                    )));
+                    login = NLogin.fromNsec(nip19.nsecEncode(keyBytes(old.privkey)));
+                }
+                } catch (error) {
+                    // Unreadable stored key: sign out rather than crash on
+                    // start, and rather than guess at what it meant.
+                    console.warn('Could not migrate the stored Nostr login.', error);
+                    login = null;
                 }
                 return {
                     login,

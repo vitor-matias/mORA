@@ -141,12 +141,17 @@ function guarded(signer: NostrSigner, id: string): NostrSigner {
             throw mapped;
         }
     };
+    const nip44 = signer.nip44;
     return {
         getPublicKey: () => run(() => signer.getPublicKey()),
         signEvent: (event) => run(() => signer.signEvent(event)),
-        nip44: {
-            encrypt: (pubkey, plaintext) => run(() => signer.nip44!.encrypt(pubkey, plaintext)),
-            decrypt: (pubkey, ciphertext) => run(() => signer.nip44!.decrypt(pubkey, ciphertext)),
+        // Mirrored rather than always offered: callers read the absence of
+        // `nip44` as "this signer cannot encrypt" and skip publishing instead
+        // of falling back to plaintext, so advertising it unconditionally
+        // would turn that check into a lie.
+        nip44: nip44 && {
+            encrypt: (pubkey, plaintext) => run(() => nip44.encrypt(pubkey, plaintext)),
+            decrypt: (pubkey, ciphertext) => run(() => nip44.decrypt(pubkey, ciphertext)),
         },
     };
 }
