@@ -92,6 +92,26 @@ WantedBy=multi-user.target
 Keeping the nsec in an `EnvironmentFile` rather than the unit keeps it out of
 `systemctl show` and process listings.
 
+### Or let GitHub Actions do it
+
+`.github/workflows/palavra.yml` runs the publisher on a schedule, so you don't
+need a machine of your own. Add the key as a repository **secret** named
+`PALAVRA_NSEC` (Settings → Secrets and variables → Actions), and it starts on
+the next hour. There is also a manual trigger that takes an optional date.
+
+Use this **or** `npm start`, not both.
+
+Two things to know about GitHub's scheduler, which is why the workflow looks
+the way it does:
+
+- **Scheduled runs are best-effort.** They are routinely delayed, sometimes by
+  most of an hour, and are dropped when the runner queue is busy. That is why
+  it runs hourly with `--backfill 3` instead of once at midnight — publishing
+  is idempotent and asks the relays what already exists, so the extra runs cost
+  one query each and a missed midnight is caught by the next hour.
+- **GitHub disables scheduled workflows after 60 days of repository
+  inactivity.** If puzzles quietly stop appearing, check that first.
+
 ### If you'd rather use cron
 
 `npm run backfill` is idempotent and safe to run as often as you like:

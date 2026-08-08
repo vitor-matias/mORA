@@ -33,6 +33,7 @@ export default function Profile() {
     // The passkey vault predates the login record and speaks hex.
     const privkeyHex = useAuthStore(localPrivkeyHex);
     const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
+    const tPalavra = useTranslations().palavra;
     const sharePalavraResults = usePalavraStore((s) => s.sharePalavraResults);
     const setSharePalavraResults = usePalavraStore((s) => s.setSharePalavraResults);
     const t = useTranslations().profile;
@@ -934,20 +935,16 @@ export default function Profile() {
                         for, and separate so turning on sync never turns on sharing. */}
                     <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
-                            <p className="text-sm font-medium">Participar nas classificações da Palavra</p>
+                            <p className="text-sm font-medium">{tPalavra.shareToggle}</p>
                             <p className="text-xs text-zinc-500 mt-0.5">
-                                Publica o resultado diário da Palavra Bíblica — quantas tentativas e
-                                em quanto tempo — de forma pública na rede Nostr, para aparecer nas
-                                classificações, nos duelos e nas ligas. A palavra e as suas tentativas
-                                nunca são publicadas. Sem isto continua a ver as classificações dos
-                                outros; apenas não aparece nelas.
+                                {tPalavra.shareToggleHelp}
                             </p>
                         </div>
                         <button
                             onClick={() => setSharePalavraResults(!sharePalavraResults)}
                             role="switch"
                             aria-checked={sharePalavraResults}
-                            aria-label="Participar nas classificações da Palavra"
+                            aria-label={tPalavra.shareToggle}
                             className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${sharePalavraResults ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span

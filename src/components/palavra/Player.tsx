@@ -1,5 +1,6 @@
 import { User } from 'lucide-react';
 import { shortPubkey } from './playerLabel';
+import { useTranslations } from '@/lib/i18n';
 
 export interface PlayerRef {
     pubkey: string;
@@ -15,6 +16,7 @@ export interface PlayerRef {
  * obligation to publish a kind-0, and a blank cell would be worse.
  */
 export function Player({ player, you = false }: { player: PlayerRef; you?: boolean }) {
+    const t = useTranslations().palavra;
     return (
         <span className="flex-1 min-w-0 flex items-center gap-2">
             <span
@@ -37,7 +39,7 @@ export function Player({ player, you = false }: { player: PlayerRef; you?: boole
             </span>
             <span className="truncate">
                 {player.name || shortPubkey(player.pubkey)}
-                {you && <span className="ml-1.5 text-xs font-normal">(você)</span>}
+                {you && <span className="ml-1.5 text-xs font-normal">{t.you}</span>}
             </span>
         </span>
     );

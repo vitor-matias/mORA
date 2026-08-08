@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { DuelRecord } from '@/lib/palavra/social';
 import { Player } from './Player';
+import { useTranslations } from '@/lib/i18n';
 
 export function Duels({ pubkey }: { pubkey: string }) {
+    const t = useTranslations().palavra;
     // Stamped with the identity it was loaded for — see Leaderboard.
     const [loaded, setLoaded] = useState<{ pubkey: string; rows: DuelRecord[] } | null>(null);
     const rows = loaded?.pubkey === pubkey ? loaded.rows : null;
@@ -24,7 +26,7 @@ export function Duels({ pubkey }: { pubkey: string }) {
         return (
             <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
                 <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-                A comparar resultados…
+                {t.loadingDuels}
             </p>
         );
     }
@@ -32,8 +34,7 @@ export function Duels({ pubkey }: { pubkey: string }) {
     if (rows.length === 0) {
         return (
             <p className="text-sm text-zinc-500 text-center py-8">
-                Nenhum duelo ainda. Os duelos comparam-no com quem segue no Nostr,
-                nos dias em que ambos jogaram.
+                {t.emptyDuels}
             </p>
         );
     }
@@ -52,14 +53,13 @@ export function Duels({ pubkey }: { pubkey: string }) {
                             <strong className="text-zinc-500">{row.losses}</strong>
                         </span>
                         <span className="shrink-0 w-16 text-right text-xs text-zinc-400">
-                            {row.played} {row.played === 1 ? 'dia' : 'dias'}
+                            {t.days(row.played)}
                         </span>
                     </li>
                 ))}
             </ul>
             <p className="text-xs text-zinc-400 mt-3">
-                Vitórias · empates · derrotas, nos últimos 30 dias. Só contam os dias
-                em que ambos terminaram o jogo.
+                {t.duelsLegend}
             </p>
         </>
     );

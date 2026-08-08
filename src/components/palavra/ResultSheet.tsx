@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { nextUTCMidnight } from '@/lib/format';
 import { MAX_GUESSES } from '@/lib/palavra/types';
+import { useTranslations } from '@/lib/i18n';
 import type { PalavraStats } from '@/store/palavra';
 
 /**
@@ -69,6 +70,7 @@ export function ResultSheet({
         Falls back to the next 00:00 UTC. */
     nextPuzzleAt?: number;
 }) {
+    const t = useTranslations().palavra;
     const [copied, setCopied] = useState(false);
     const countdown = useTimeToNextPuzzle(nextPuzzleAt);
     const winRate = stats.plays > 0 ? Math.round((stats.wins / stats.plays) * 100) : 0;
@@ -92,36 +94,34 @@ export function ResultSheet({
                 typed it and the heading alone doesn't tell them. */}
             <div className="text-center space-y-1">
                 <h2 className="text-xl font-bold page-title">
-                    {solved
-                        ? tries === 1 ? 'À primeira!' : `Acertou em ${tries} tentativas.`
-                        : 'Fica para amanhã.'}
+                    {solved ? (tries === 1 ? t.wonFirstTry : t.wonIn(tries)) : t.lost}
                 </h2>
                 {!solved && (
                     <p className="text-sm text-zinc-500">
-                        A palavra era <strong className="text-zinc-800 dark:text-zinc-100">{answer}</strong>.
+                        {t.answerWas} <strong className="text-zinc-800 dark:text-zinc-100">{answer}</strong>.
                     </p>
                 )}
             </div>
 
             <div>
                 <h3 className="text-sm font-semibold text-zinc-500 mb-2">
-                    O seu registo
+                    {t.record}
                     {archive && (
                         <span className="ml-2 font-normal text-xs text-zinc-400">
-                            (inalterado — este jogo não conta)
+                            {t.recordUnchanged}
                         </span>
                     )}
                 </h3>
                 <div className="grid grid-cols-4 divide-x divide-zinc-100 dark:divide-zinc-800">
-                    <StatFigure value={stats.plays} label="jogos" />
-                    <StatFigure value={`${winRate}%`} label="vitórias" />
-                    <StatFigure value={stats.currentStreak} label="seguidos" />
-                    <StatFigure value={stats.maxStreak} label="recorde" />
+                    <StatFigure value={stats.plays} label={t.statPlays} />
+                    <StatFigure value={`${winRate}%`} label={t.statWins} />
+                    <StatFigure value={stats.currentStreak} label={t.statStreak} />
+                    <StatFigure value={stats.maxStreak} label={t.statBest} />
                 </div>
             </div>
 
             <div>
-                <h3 className="text-sm font-semibold text-zinc-500 mb-2">Distribuição</h3>
+                <h3 className="text-sm font-semibold text-zinc-500 mb-2">{t.distribution}</h3>
                 <div className="space-y-1">
                     {Array.from({ length: MAX_GUESSES }, (_, i) => {
                         const count = stats.distribution[i] ?? 0;
@@ -155,15 +155,15 @@ export function ResultSheet({
                     className="w-full flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-4 py-3 transition-colors active:scale-[0.98]"
                 >
                     {copied
-                        ? <><Check size={16} aria-hidden="true" /> Copiado</>
-                        : <><Copy size={16} aria-hidden="true" /> Copiar resultado</>}
+                        ? <><Check size={16} aria-hidden="true" /> {t.copied}</>
+                        : <><Copy size={16} aria-hidden="true" /> {t.copyResult}</>}
                 </button>
                 {actions}
             </div>
 
             {!archive && (
                 <p className="text-center text-xs text-zinc-500">
-                    Próxima palavra em {countdown}.
+                    {t.nextWordIn(countdown)}
                 </p>
             )}
         </section>

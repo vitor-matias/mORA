@@ -1,5 +1,14 @@
 import type { Mark } from '@/lib/palavra/types';
 import { MAX_GUESSES } from '@/lib/palavra/types';
+import { useTranslations } from '@/lib/i18n';
+
+type Copy = ReturnType<typeof useTranslations>['palavra'];
+
+const MARK_LABEL = (t: Copy): Record<Mark, string> => ({
+    correct: t.markCorrect,
+    present: t.markPresent,
+    absent: t.markAbsent,
+});
 
 export interface PlayedRow {
     guess: string;
@@ -12,11 +21,7 @@ const MARK_CLASS: Record<Mark, string> = {
     absent: 'palavra-tile-absent',
 };
 
-const MARK_LABEL: Record<Mark, string> = {
-    correct: 'correta',
-    present: 'noutra posição',
-    absent: 'não existe',
-};
+
 
 /**
  * The board: six rows of `length` tiles.
@@ -39,6 +44,7 @@ export function Grid({
     /** Briefly true when a guess was refused, to nudge the active row. */
     rejected?: boolean;
 }) {
+    const t = useTranslations().palavra;
     const showDraft = played.length < MAX_GUESSES;
     const blankRows = Math.max(0, MAX_GUESSES - played.length - (showDraft ? 1 : 0));
 
@@ -61,7 +67,7 @@ export function Grid({
     };
 
     return (
-        <div className="space-y-1.5" role="group" aria-label="Tabuleiro do jogo">
+        <div className="space-y-1.5" role="group" aria-label={t.board}>
             {played.map((row, rowIndex) => (
                 <div key={`played-${rowIndex}`} className="grid gap-1.5 mx-auto" style={gridStyle}>
                     {[...row.guess].map((letter, i) => (
@@ -71,7 +77,7 @@ export function Grid({
                             // Each tile lands a beat after the one before it.
                             style={{ animationDelay: `${i * 80}ms` }}
                         >
-                            <span className="sr-only">{`${letter}, ${MARK_LABEL[row.marks[i]]}. `}</span>
+                            <span className="sr-only">{`${letter}, ${MARK_LABEL(t)[row.marks[i]]}. `}</span>
                             <span aria-hidden="true">{letter}</span>
                         </div>
                     ))}

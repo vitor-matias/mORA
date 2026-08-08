@@ -22,15 +22,13 @@ import { derivePalavraStats, isFinished, usePalavraStore } from '@/store/palavra
 import { useAuthStore } from '@/store/auth';
 import { formatUTCDate } from '@/lib/format';
 import { useDayRollover } from '@/lib/useDayRollover';
+import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
 
 type PageTab = 'game' | 'social';
 
-const PAGE_TABS: { id: PageTab; label: string; icon: typeof Gamepad2 }[] = [
-    { id: 'game', label: 'Jogo', icon: Gamepad2 },
-    { id: 'social', label: 'Comunidade', icon: Users },
-];
+const PAGE_TAB_ICON: Record<PageTab, typeof Gamepad2> = { game: Gamepad2, social: Users };
 
 export default function Palavra() {
     const [today, setToday] = useState(() => formatUTCDate(new Date()));
@@ -48,6 +46,7 @@ export default function Palavra() {
     const [draft, setDraft] = useState('');
     const [rejected, setRejected] = useState(false);
     const [notice, setNotice] = useState<string | null>(null);
+    const t = useTranslations().palavra;
     const [pageTab, setPageTab] = useState<PageTab>('game');
 
     const writeDraft = useCallback((next: string) => {
@@ -116,11 +115,11 @@ export default function Palavra() {
             .catch((error: unknown) => {
                 console.warn('Could not load the challenge.', error);
                 if (!cancelled) {
-                    setLoadError(error instanceof Error ? error.message : 'Não foi possível carregar o desafio.');
+                    setLoadError(error instanceof Error ? error.message : t.loadFailed);
                 }
             });
         return () => { cancelled = true; };
-    }, [viewDate, writeDraft]);
+    }, [viewDate, writeDraft, t]);
 
     // The answer only exists locally, recovered from the day's cipher, in two
     // forms: the real Portuguese spelling for the reveal ("SALVAÇÃO") and the
@@ -203,11 +202,11 @@ export default function Palavra() {
 
         const guess = normalizeWord(draftRef.current);
         if (guess.length < challenge.length) {
-            flashNotice(`A palavra tem ${challenge.length} letras.`);
+            flashNotice(t.wrongLength(challenge.length));
             return;
         }
         if (current.guesses.includes(guess)) {
-            flashNotice('Já tentou essa palavra.');
+            flashNotice(t.alreadyTried);
             return;
         }
         // The hash is the authority on winning; the deciphered answer is only
@@ -220,7 +219,7 @@ export default function Palavra() {
         if (solved || guesses.length >= MAX_GUESSES) {
             void reportResult();
         }
-    }, [challenge, answer, readOnly, scope, submitGuess, writeDraft, flashNotice, reportResult]);
+    }, [challenge, answer, readOnly, scope, submitGuess, writeDraft, flashNotice, reportResult, t]);
 
     const onLetter = useCallback((letter: string) => {
         if (!challenge || over || readOnly) return;
@@ -254,12 +253,12 @@ export default function Palavra() {
         if (!challenge || !over) return '';
         const score = play.solved ? `${play.guesses.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
         return [
-            `mORA — Palavra Bíblica do Dia ${challenge.date} ${score}`,
+            t.shareHeading(challenge.date, score),
             challenge.ref,
             '',
             emojiGrid(played.map((row) => row.marks)),
         ].join('\n');
-    }, [challenge, over, play.solved, play.guesses.length, played]);
+    }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
     // The verse split on every blank: n parts means n-1 gaps to render.
     const verseParts = challenge ? challenge.verse.split(BLANK_MARKER) : [''];
@@ -286,10 +285,12 @@ export default function Palavra() {
     const pageTabs = (vertical: boolean) => (
         <div
             role="tablist"
-            aria-label="Secções"
+            aria-label={t.sections}
             className={vertical ? 'flex flex-col gap-1' : 'flex gap-1'}
         >
-            {PAGE_TABS.map(({ id, label, icon: Icon }) => (
+            {([{ id: 'game', label: t.tabGame }, { id: 'social', label: t.tabCommunity }] as const).map(({ id, label }) => {
+                const Icon = PAGE_TAB_ICON[id];
+                return (
                 <button
                     key={id}
                     role="tab"
@@ -306,7 +307,8 @@ export default function Palavra() {
                     <Icon size={16} aria-hidden="true" />
                     {label}
                 </button>
-            ))}
+                );
+            })}
         </div>
     );
 
@@ -314,15 +316,15 @@ export default function Palavra() {
         <>
             {PALAVRA_IS_MOCK && (
                 <p className="text-xs text-center text-amber-700 dark:text-amber-500 bg-amber-500/10 rounded-xl px-3 py-2">
-                    Modo de demonstração — sem servidor configurado.
+                    {t.demoMode}
                 </p>
             )}
             {isArchive && (
                 <p className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
                     <History size={14} className="shrink-0" aria-hidden="true" />
                     {readOnly
-                        ? 'Já jogou este dia — este é o seu resultado.'
-                        : 'Modo de treino — não conta para o registo nem para as classificações.'}
+                        ? t.archiveRecorded
+                        : t.archivePractice}
                 </p>
             )}
         </>
@@ -344,8 +346,8 @@ export default function Palavra() {
                 key — "João 1,1" is one search away from the word — and after,
                 the verse card already carries it, as a link. */}
             <PageHeader
-                title="Palavra Bíblica do Dia"
-                subtitle="Um versículo, uma palavra escondida"
+                title={t.title}
+                subtitle={t.subtitle}
             />
 
             {/* Sidebar left, board right — the same split Missa and Horas use,
@@ -402,14 +404,14 @@ export default function Palavra() {
                 {!challenge && !loadError && (
                     <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-12">
                         <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                        A carregar o desafio…
+                        {t.loading}
                     </p>
                 )}
 
                 {challenge && !answer && (
                     <div className="surface rounded-2xl p-5 text-center">
                         <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                            Este desafio chegou danificado. Tente novamente mais tarde.
+                            {t.corrupt}
                         </p>
                     </div>
                 )}
@@ -428,7 +430,7 @@ export default function Palavra() {
                                         <span
                                             className="inline-block align-baseline border-b-2 border-liturgy-600 dark:border-liturgy-400 text-liturgy-700 dark:text-liturgy-300 font-semibold px-1 text-center"
                                             style={over ? undefined : { minWidth: `${challenge.length * 0.72}em` }}
-                                            aria-label={over ? undefined : `palavra escondida de ${challenge.length} letras`}
+                                            aria-label={over ? undefined : t.hiddenWord(challenge.length)}
                                         >
                                             {over ? answerDisplay : ' '}
                                         </span>
@@ -436,7 +438,7 @@ export default function Palavra() {
                                 </Fragment>
                             ))}
                             <cite className="block not-italic text-xs font-medium text-zinc-500 mt-2">
-                                {over && `${challenge.ref} · `}{challenge.length} letras
+                                {over && `${challenge.ref} · `}{t.letters(challenge.length)}
                             </cite>
                         </blockquote>
 

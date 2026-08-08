@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { Trophy, Swords, Users } from 'lucide-react';
+import { useTranslations } from '@/lib/i18n';
 import { Leaderboard } from './Leaderboard';
 import { Duels } from './Duels';
 import { Leagues } from './Leagues';
 
 type Tab = 'board' | 'duels' | 'leagues';
 
-const TABS: { id: Tab; label: string; icon: typeof Trophy }[] = [
-    { id: 'board', label: 'Classificação', icon: Trophy },
-    { id: 'duels', label: 'Duelos', icon: Swords },
-    { id: 'leagues', label: 'Ligas', icon: Users },
-];
+const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, duels: Swords, leagues: Users };
 
 /**
  * The social half of the page: today's ranking, head-to-head against people
@@ -40,12 +37,20 @@ export function Community({
         is — so the numbers wait, while league membership stays usable. */
     revealResults: boolean;
 }) {
+    const t = useTranslations().palavra;
     const [tab, setTab] = useState<Tab>('board');
+    const tabs: { id: Tab; label: string }[] = [
+        { id: 'board', label: t.tabBoard },
+        { id: 'duels', label: t.tabDuels },
+        { id: 'leagues', label: t.tabLeagues },
+    ];
 
     return (
         <section className="surface rounded-3xl p-5 space-y-4">
-            <div role="tablist" aria-label="Comunidade" className="flex gap-1">
-                {TABS.map(({ id, label, icon: Icon }) => (
+            <div role="tablist" aria-label={t.tabCommunity} className="flex gap-1">
+                {tabs.map(({ id, label }) => {
+                    const Icon = TAB_ICON[id];
+                    return (
                     <button
                         key={id}
                         role="tab"
@@ -60,24 +65,24 @@ export function Community({
                         <Icon size={15} aria-hidden="true" />
                         <span className="truncate">{label}</span>
                     </button>
-                ))}
+                    );
+                })}
             </div>
 
             {pubkey && !sharing && (
                 <p className="text-xs text-zinc-500 bg-zinc-500/5 rounded-xl px-3 py-2">
-                    Está a ver os resultados dos outros. Para aparecer nas
-                    classificações, ative a partilha em Perfil.
+                    {t.notSharing}
                 </p>
             )}
 
             <div role="tabpanel">
                 {tab === 'board' && (revealResults
                     ? <Leaderboard date={date} you={pubkey} />
-                    : <Spoiler />)}
+                    : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
                 {tab === 'duels' && (!pubkey
-                    ? <SignInPrompt what="Os duelos comparam-no com quem segue no Nostr." />
-                    : revealResults ? <Duels pubkey={pubkey} /> : <Spoiler />)}
+                    ? <SignInPrompt what={t.signInDuels} hint={t.signInHint} />
+                    : revealResults ? <Duels pubkey={pubkey} /> : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
                 {/* Leagues stay usable before the game is played — only the
                     standings inside them are withheld. Being locked out of
@@ -85,28 +90,28 @@ export function Community({
                     be an odd thing to enforce. */}
                 {tab === 'leagues' && (pubkey
                     ? <Leagues pubkey={pubkey} date={date} revealResults={revealResults} />
-                    : <SignInPrompt what="As ligas precisam de uma identidade Nostr para guardar de quais faz parte." />)}
+                    : <SignInPrompt what={t.signInLeagues} hint={t.signInHint} />)}
             </div>
         </section>
     );
 }
 
-function Spoiler() {
+function Spoiler({ text, why }: { text: string; why: string }) {
     return (
         <p className="text-sm text-zinc-500 text-center py-8">
-            Termine o jogo de hoje para ver os resultados.
+            {text}
             <br />
-            <span className="text-xs">Quantas tentativas os outros precisaram diz-lhe quão difícil é a palavra.</span>
+            <span className="text-xs">{why}</span>
         </p>
     );
 }
 
-function SignInPrompt({ what }: { what: string }) {
+function SignInPrompt({ what, hint }: { what: string; hint: string }) {
     return (
         <p className="text-sm text-zinc-500 text-center py-8">
             {what}
             <br />
-            <span className="text-xs">Entre com uma identidade Nostr em Perfil.</span>
+            <span className="text-xs">{hint}</span>
         </p>
     );
 }

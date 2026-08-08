@@ -3,6 +3,7 @@ import { Loader2, Medal } from 'lucide-react';
 import type { LeaderboardEntry } from '@/lib/palavra/types';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { formatDuration } from './playerLabel';
+import { useTranslations } from '@/lib/i18n';
 import { Player } from './Player';
 
 /** The three podium places get a tint; everyone else is plain. */
@@ -13,6 +14,7 @@ const PLACE_TINT = [
 ];
 
 export function Leaderboard({ date, you }: { date: string; you?: string | null }) {
+    const t = useTranslations().palavra;
     // Loaded rows are stamped with the date they belong to, rather than being
     // cleared at the top of the effect: clearing there is a synchronous
     // setState on every mount, and a stale-key check says the same thing
@@ -36,7 +38,7 @@ export function Leaderboard({ date, you }: { date: string; you?: string | null }
         return (
             <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
                 <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-                A consultar os relés…
+                {t.loadingBoard}
             </p>
         );
     }
@@ -44,7 +46,7 @@ export function Leaderboard({ date, you }: { date: string; you?: string | null }
     if (rows.length === 0) {
         return (
             <p className="text-sm text-zinc-500 text-center py-8">
-                Ainda ninguém publicou o resultado de hoje.
+                {t.emptyBoard}
             </p>
         );
     }

@@ -1,5 +1,6 @@
 import { Delete, CornerDownLeft } from 'lucide-react';
 import type { Mark } from '@/lib/palavra/types';
+import { useTranslations } from '@/lib/i18n';
 
 // No Ç and no accented vowels: answers are folded to plain A–Z (see
 // normalizeWord), so a key that produced anything else would be a key that
@@ -12,11 +13,13 @@ const MARK_CLASS: Record<Mark, string> = {
     absent: 'palavra-key-absent',
 };
 
-const MARK_LABEL: Record<Mark, string> = {
-    correct: 'na posição certa',
-    present: 'na palavra, noutra posição',
-    absent: 'não está na palavra',
-};
+type Copy = ReturnType<typeof useTranslations>['palavra'];
+
+const MARK_LABEL = (t: Copy): Record<Mark, string> => ({
+    correct: t.keyCorrect,
+    present: t.keyPresent,
+    absent: t.keyAbsent,
+});
 
 export function Keyboard({
     state,
@@ -35,6 +38,7 @@ export function Keyboard({
     // Key height yields to a short viewport for the same reason the board
     // does — three rows at a fixed 3.5rem are what tips the page into
     // scrolling on a laptop screen.
+    const t = useTranslations().palavra;
     const keyBase = 'flex items-center justify-center rounded-lg font-semibold '
         + 'h-[clamp(2.25rem,5.6vh,3.5rem)] text-sm sm:text-base select-none transition-colors '
         + 'disabled:opacity-50 active:scale-95';
@@ -42,7 +46,7 @@ export function Keyboard({
         + 'hover:bg-zinc-300 dark:hover:bg-zinc-600';
 
     return (
-        <div className="space-y-1.5 select-none" role="group" aria-label="Teclado">
+        <div className="space-y-1.5 select-none" role="group" aria-label={t.keyboard}>
             {ROWS.map((row, rowIndex) => (
                 <div key={row} className="flex gap-1 sm:gap-1.5 justify-center">
                     {/* The middle row sits half a key in, as on a real
@@ -54,7 +58,7 @@ export function Keyboard({
                             type="button"
                             onClick={onEnter}
                             disabled={disabled}
-                            aria-label="Confirmar palavra"
+                            aria-label={t.confirmWord}
                             className={`${keyBase} ${plainKey} flex-[1.5] min-w-0`}
                         >
                             <CornerDownLeft size={18} aria-hidden="true" />
@@ -69,7 +73,7 @@ export function Keyboard({
                                 type="button"
                                 onClick={() => onLetter(letter)}
                                 disabled={disabled}
-                                aria-label={mark ? `${letter}, ${MARK_LABEL[mark]}` : letter}
+                                aria-label={mark ? `${letter}, ${MARK_LABEL(t)[mark]}` : letter}
                                 className={`${keyBase} flex-1 min-w-0 ${mark ? MARK_CLASS[mark] : plainKey}`}
                             >
                                 {letter}
@@ -82,7 +86,7 @@ export function Keyboard({
                             type="button"
                             onClick={onBackspace}
                             disabled={disabled}
-                            aria-label="Apagar letra"
+                            aria-label={t.deleteLetter}
                             className={`${keyBase} ${plainKey} flex-[1.5] min-w-0`}
                         >
                             <Delete size={18} aria-hidden="true" />

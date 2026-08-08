@@ -32,6 +32,7 @@ export default function Home() {
     const { profile, setProfile } = useAuthStore();
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
+    const tPalavra = useTranslations().palavra;
 
     useEffect(() => {
         if (!pubkey || profile) return;
@@ -98,13 +99,13 @@ export default function Home() {
     const palavraContext = (() => {
         const todayPlay = palavraPlays[formatUTCDate(new Date())];
         const { currentStreak } = derivePalavraStats(palavraPlays);
-        const streakSuffix = currentStreak > 0 ? ` · ${currentStreak} seguidos` : '';
+        const streakSuffix = currentStreak > 0 ? tPalavra.homeStreak(currentStreak) : '';
         if (!todayPlay || !isFinished(todayPlay)) {
-            return `Um versículo, uma palavra escondida${streakSuffix}`;
+            return `${tPalavra.homeIdle}${streakSuffix}`;
         }
         return todayPlay.solved
-            ? `Resolvida em ${todayPlay.guesses.length}/${MAX_GUESSES}${streakSuffix}`
-            : 'Hoje não acertou — nova palavra amanhã';
+            ? `${tPalavra.homeSolved(todayPlay.guesses.length, MAX_GUESSES)}${streakSuffix}`
+            : tPalavra.homeLost;
     })();
 
     // Two-tier hub: "Rezar" is the daily practice, "Explorar" hosts every
@@ -116,7 +117,7 @@ export default function Home() {
     ];
     const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
-        { path: "/palavra", label: "Palavra Bíblica do Dia", context: palavraContext, icon: Puzzle },
+        { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];
 
     const streakItems = [

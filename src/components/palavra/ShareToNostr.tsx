@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Check, Loader2, Send } from 'lucide-react';
+import { useTranslations } from '@/lib/i18n';
 
 type State = 'idle' | 'sending' | 'sent' | 'failed';
 
@@ -19,6 +20,7 @@ export function ShareToNostr({
     /** This day's grid has been posted before. */
     alreadyShared?: boolean;
 }) {
+    const t = useTranslations().palavra;
     const [state, setState] = useState<State>('idle');
 
     const share = async () => {
@@ -51,10 +53,10 @@ export function ShareToNostr({
                        hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors
                        active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
         >
-            {state === 'sending' && <><Loader2 size={16} className="animate-spin" aria-hidden="true" /> A publicar…</>}
-            {state === 'sent' && <><Check size={16} aria-hidden="true" /> Publicado no Nostr</>}
-            {state === 'failed' && <>Não foi possível publicar</>}
-            {state === 'idle' && <><Send size={16} aria-hidden="true" /> Publicar no Nostr</>}
+            {state === 'sending' && <><Loader2 size={16} className="animate-spin" aria-hidden="true" /> {t.publishing}</>}
+            {state === 'sent' && <><Check size={16} aria-hidden="true" /> {t.published}</>}
+            {state === 'failed' && <>{t.publishFailed}</>}
+            {state === 'idle' && <><Send size={16} aria-hidden="true" /> {t.publish}</>}
         </button>
     );
 }

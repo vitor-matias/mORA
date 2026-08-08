@@ -4,6 +4,7 @@ import type { League, LeagueStanding } from '@/lib/palavra/leagues';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { formatDuration } from './playerLabel';
 import { Player } from './Player';
+import { useTranslations } from '@/lib/i18n';
 
 type Busy = null | 'creating' | 'joining' | 'leaving';
 
@@ -18,6 +19,7 @@ export function Leagues({
         controls still work, only the standings are held back. */
     revealResults: boolean;
 }) {
+    const t = useTranslations().palavra;
     const [leagues, setLeagues] = useState<League[] | null>(null);
     const [selected, setSelected] = useState<string | null>(null);
     const [loadedStandings, setLoadedStandings] = useState<{ coord: string; rows: LeagueStanding[] } | null>(null);
@@ -70,7 +72,7 @@ export function Leagues({
             setLeagues(await load());
         } catch (err) {
             console.warn(`Could not ${kind} the league.`, err);
-            setError('Não foi possível concluir. Tente novamente.');
+            setError(t.leagueActionFailed);
         } finally {
             setBusy(null);
         }
@@ -91,7 +93,7 @@ export function Leagues({
         return (
             <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
                 <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-                A carregar as suas ligas…
+                {t.loadingLeagues}
             </p>
         );
     }
@@ -105,8 +107,7 @@ export function Leagues({
         <div className="space-y-4">
             {leagues.length === 0 && (
                 <p className="text-sm text-zinc-500">
-                    Ainda não pertence a nenhuma liga. Crie uma e partilhe o convite,
-                    ou cole o convite que recebeu.
+                    {t.emptyLeagues}
                 </p>
             )}
 
@@ -126,7 +127,7 @@ export function Leagues({
                             <button
                                 type="button"
                                 onClick={() => copyInvite(league)}
-                                aria-label={`Copiar convite para ${league.name}`}
+                                aria-label={t.copyInvite(league.name)}
                                 className="shrink-0 p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 {copied === league.coord
@@ -141,7 +142,7 @@ export function Leagues({
                                     await leaveLeague(league.coord);
                                     if (selected === league.coord) setSelected(null);
                                 })}
-                                aria-label={`Sair de ${league.name}`}
+                                aria-label={t.leaveLeague(league.name)}
                                 className="shrink-0 p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 <LogOut size={15} aria-hidden="true" />
@@ -152,18 +153,18 @@ export function Leagues({
                             <div className="px-3 pb-3">
                                 {!revealResults && (
                                     <p className="text-xs text-zinc-500 py-2">
-                                        Termine o jogo de hoje para ver a classificação desta liga.
+                                        {t.standingsSpoiler}
                                     </p>
                                 )}
                                 {revealResults && standings === null && (
                                     <p className="flex items-center gap-2 text-xs text-zinc-500 py-2">
                                         <Loader2 size={13} className="animate-spin" aria-hidden="true" />
-                                        A reunir resultados…
+                                        {t.loadingStandings}
                                     </p>
                                 )}
                                 {revealResults && standings?.length === 0 && (
                                     <p className="text-xs text-zinc-500 py-2">
-                                        Ninguém desta liga publicou o resultado de hoje.
+                                        {t.emptyStandings}
                                     </p>
                                 )}
                                 {revealResults && standings && standings.length > 0 && (
@@ -197,9 +198,9 @@ export function Leagues({
                     <input
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        placeholder="Nome da nova liga"
+                        placeholder={t.newLeagueName}
                         maxLength={40}
-                        aria-label="Nome da nova liga"
+                        aria-label={t.newLeagueName}
                         className={field}
                     />
                     <button
@@ -222,8 +223,8 @@ export function Leagues({
                     <input
                         value={invite}
                         onChange={(e) => setInvite(e.target.value)}
-                        placeholder="Colar convite (naddr…)"
-                        aria-label="Convite de liga"
+                        placeholder={t.invitePlaceholder}
+                        aria-label={t.invitePlaceholder}
                         className={field}
                     />
                     <button
@@ -238,7 +239,7 @@ export function Leagues({
                         })}
                         className={action}
                     >
-                        Entrar
+                        {t.joinLeague}
                     </button>
                 </div>
 
@@ -247,9 +248,7 @@ export function Leagues({
 
             {/* Said plainly, because a user could act on believing otherwise. */}
             <p className="text-xs text-zinc-400 border-t border-zinc-100 dark:border-zinc-800 pt-3">
-                Uma liga é <strong>não listada</strong>, não privada: só entra quem tiver o
-                convite, mas os resultados são eventos públicos no Nostr e qualquer pessoa
-                os pode ler.
+                {t.unlistedBefore}<strong>{t.unlistedBold}</strong>{t.unlistedAfter}
             </p>
         </div>
     );
