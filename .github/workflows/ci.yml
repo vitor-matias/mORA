@@ -1,0 +1,53 @@
+name: CI
+
+# Runs on pull requests, which nothing did before: the deploy workflow only
+# fires on a push to main, so tests ran *after* merge — a failure blocked the
+# deploy rather than the merge, which is the wrong way round.
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc -b
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  publisher:
+    name: Verse pool
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: server/palavra/package-lock.json
+      - name: Install
+        working-directory: server/palavra
+        run: npm ci
+      # Structure, lengths, duplicate refs, the answer cap, and that no answer
+      # is left visible in its own verse. The verbatim-against-corpus check
+      # skips here — the texts are not in this repo — so it stays a local step.
+      - name: Verify
+        working-directory: server/palavra
+        run: npm run verify
