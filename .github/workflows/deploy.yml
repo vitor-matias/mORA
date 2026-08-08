@@ -36,8 +36,20 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # Vite inlines VITE_* at build time, so these have to be present here —
+      # there is no server to configure at runtime.
+      #
+      # `vars`, not `secrets`: both values end up verbatim in the shipped
+      # JavaScript, so marking them secret would hide them from the build log
+      # while publishing them to every visitor. The publisher's *nsec* is the
+      # actual secret, and it never touches this workflow — see palavra.yml.
       - name: Build project
         run: npm run build
+        env:
+          VITE_PALAVRA_PUBLISHER_PUBKEY: ${{ vars.VITE_PALAVRA_PUBLISHER_PUBKEY }}
+          VITE_NOSTR_RELAYS: ${{ vars.VITE_NOSTR_RELAYS }}
+          VITE_PUSH_SERVER_URL: ${{ vars.VITE_PUSH_SERVER_URL }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

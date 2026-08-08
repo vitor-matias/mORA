@@ -1,0 +1,69 @@
+name: Publish Palavra do Dia
+
+# An alternative to running `npm start` (watch mode) on your own machine. Use
+# one or the other, not both — they'd both publish, and while that is harmless
+# (the events are addressable and identical), it is pointless traffic.
+#
+# The puzzle day rolls over at 00:00 UTC, but GitHub's scheduled runs are
+# best-effort: they are routinely delayed, sometimes by the better part of an
+# hour, and are skipped entirely when the runner queue is busy. A single daily
+# job at midnight would mean days with no puzzle at all.
+#
+# So this runs hourly and backfills rather than publishing blind. Publishing is
+# idempotent — the puzzle is a pure function of the date, and the job asks the
+# relays what is already there — so 23 of the 24 runs do nothing but a quick
+# query. The first run after midnight publishes; a skipped one is caught by the
+# next.
+on:
+  schedule:
+    - cron: '5 * * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Publish one specific day (YYYY-MM-DD). Blank = fill any gap.'
+        required: false
+
+concurrency:
+  group: palavra-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: server/palavra/package-lock.json
+
+      - name: Install
+        working-directory: server/palavra
+        run: npm ci
+
+      # Cheap, and it fails loudly rather than publishing a malformed puzzle.
+      # Opts out of the verbatim check — the texts aren't in this repo.
+      - name: Verify the pool
+        working-directory: server/palavra
+        run: node verify.js --allow-missing-corpus
+
+      - name: Publish
+        working-directory: server/palavra
+        env:
+          # The one real secret in the system: it signs the puzzles, and
+          # clients pin the matching pubkey to tell a real puzzle from an
+          # impersonator's. Never goes near the Pages build.
+          PALAVRA_NSEC: ${{ secrets.PALAVRA_NSEC }}
+          PALAVRA_RELAYS: ${{ vars.PALAVRA_RELAYS }}
+        run: |
+          if [ -z "$PALAVRA_NSEC" ]; then
+            echo "::error::PALAVRA_NSEC is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+          if [ -n "${{ inputs.date }}" ]; then
+            node publish.js "${{ inputs.date }}"
+          else
+            node publish.js --backfill 3
+          fi

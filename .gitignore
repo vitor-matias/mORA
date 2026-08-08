@@ -23,6 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
+# Local environment — .env.example is the committed template.
+# Put dev overrides in .env.development.local: a plain .env is also read by
+# `vite build`, so a local relay left there would ship in the bundle.
+.env
+.env.*
+!.env.example
+
 # Claude Code local settings
 .claude/settings.local.json
 

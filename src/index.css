@@ -150,6 +150,82 @@
   .dark .icon-chip {
     background: rgb(var(--liturgy-500) / 0.14);
   }
+
+  /* ---------------------------------------------------------------- */
+  /* Palavra do Dia                                                    */
+  /* The board is the one place in the app that does NOT follow the    */
+  /* day's liturgical tint: here colour is the feedback itself, and a  */
+  /* green that turned purple in Advent would change what the game is  */
+  /* telling you. Fixed semantics, matching the shared emoji grid.     */
+  /* ---------------------------------------------------------------- */
+  .palavra-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: 0.5rem;
+    border: 2px solid rgb(228 228 231);
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .dark .palavra-tile { border-color: rgb(63 63 70); }
+  /* A letter typed but not yet submitted — outlined, never coloured. */
+  .palavra-tile-filled { border-color: rgb(161 161 170); transform: scale(1.03); }
+  .dark .palavra-tile-filled { border-color: rgb(113 113 122); }
+
+  /* Letter-on-tile contrast is held at WCAG AA (4.5:1), which the obvious
+     palette does not reach: white on the bright emerald and amber measured
+     2.5:1 and 2.2:1 in dark mode. Light mode keeps white and darkens the
+     fill; dark mode keeps the bright fill — it belongs against a dark page —
+     and flips the letter to ink, which reads at 9:1 and up. */
+  .palavra-tile-correct { background: rgb(4 120 87); border-color: rgb(4 120 87); color: #fff; }
+  .palavra-tile-present { background: rgb(180 83 9); border-color: rgb(180 83 9); color: #fff; }
+  .palavra-tile-absent  { background: rgb(113 113 122); border-color: rgb(113 113 122); color: #fff; }
+  .dark .palavra-tile-correct { background: rgb(52 211 153); border-color: rgb(52 211 153); color: rgb(24 24 27); }
+  .dark .palavra-tile-present { background: rgb(251 191 36); border-color: rgb(251 191 36); color: rgb(24 24 27); }
+  .dark .palavra-tile-absent  { background: rgb(82 82 91); border-color: rgb(82 82 91); color: #fff; }
+
+  /* An eliminated key reads as spent rather than filled: on the board a grey
+     tile is a result, but on the keyboard it is a letter to stop reaching
+     for. Reusing the tile grey put it *lighter* than an untouched key in dark
+     mode, which said the opposite of what it meant. */
+  .palavra-key-absent {
+    background: rgb(82 82 91);
+    color: rgb(228 228 231);
+    border-color: rgb(82 82 91);
+  }
+  .dark .palavra-key-absent {
+    background: rgb(24 24 27);
+    /* Dimmer than a live key, but still 4.65:1 against the fill — the old
+       value sat at 2.85:1, so an eliminated letter was hard to *read* rather
+       than merely visibly spent. The sunk background carries the "used up"
+       signal; the glyph does not have to be faint as well. */
+    color: rgb(130 130 139);
+    border-color: rgb(24 24 27);
+  }
+
+  /* Rows reveal left to right, so the result reads as it lands. */
+  .palavra-reveal { animation: palavra-flip 0.35s ease both; }
+  @keyframes palavra-flip {
+    0%   { transform: rotateX(-90deg); }
+    100% { transform: rotateX(0); }
+  }
+
+  /* A rejected guess nudges rather than clears — the letters stay put so
+     the player can fix them. */
+  .palavra-shake { animation: palavra-shake 0.4s ease; }
+  @keyframes palavra-shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .palavra-reveal, .palavra-shake { animation: none; }
+    .palavra-tile-filled { transform: none; }
+  }
 }
 
 /* ------------------------------------------------------------------ */

@@ -53,13 +53,15 @@ export function PageHeader({
         return () => mq.removeEventListener('change', onChange);
     }, []);
 
-    // The top bar's portal target exists from Layout's first commit on; look
-    // it up after mount because during the very first render it isn't in the
-    // DOM yet.
-    const [slot, setSlot] = useState<HTMLElement | null>(null);
-    useEffect(() => {
-        setSlot(document.getElementById('global-bar-page-slot'));
-    }, []);
+    // The top bar's portal target, looked up when it is about to be used
+    // rather than held in state. It cannot be found during the first render —
+    // Layout hasn't committed yet — but the portal only opens once the page
+    // has scrolled, by which point it has long existed. Fetching it into state
+    // from an effect meant a second render on every mount to obtain something
+    // that isn't needed until much later.
+    const slot = isXl && isScrolled
+        ? document.getElementById('global-bar-page-slot')
+        : null;
 
     // Collapse styling only applies to the sub-xl sticky variant; at xl the
     // header keeps its resting size and simply scrolls off.

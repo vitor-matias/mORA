@@ -47,6 +47,110 @@ const translations = {
         rosaryBeginnerToggle: "Ativar Modo Iniciante",
         rosaryAdvancedToggle: "Ativar Modo Avançado"
     },
+    // Palavra Bíblica do Dia. Entries that interpolate are functions rather
+    // than templates with placeholders, so the call site can't pass the
+    // arguments in the wrong order and a translator can move them freely.
+    palavra: {
+        title: "Palavra Bíblica do Dia",
+        subtitle: "Um versículo, uma palavra escondida",
+        sections: "Secções",
+        tabGame: "Jogo",
+        tabCommunity: "Comunidade",
+
+        demoMode: "Modo de demonstração — sem servidor configurado.",
+        archiveRecorded: "Já jogou este dia — este é o seu resultado.",
+        archivePractice: "Modo de treino — não conta para o registo nem para as classificações.",
+
+        loading: "A carregar o desafio…",
+        loadFailed: "Não foi possível carregar o desafio.",
+        corrupt: "Este desafio chegou danificado. Tente novamente mais tarde.",
+
+        letters: (n: number) => `${n} letras`,
+        hiddenWord: (n: number) => `palavra escondida de ${n} letras`,
+        wrongLength: (n: number) => `A palavra tem ${n} letras.`,
+        alreadyTried: "Já tentou essa palavra.",
+        shareHeading: (date: string, score: string) => `mORA — Palavra Bíblica do Dia ${date} ${score}`,
+
+        board: "Tabuleiro do jogo",
+        keyboard: "Teclado",
+        confirmWord: "Confirmar palavra",
+        deleteLetter: "Apagar letra",
+        // On a tile, read out after the letter: "A, correta."
+        markCorrect: "correta",
+        markPresent: "noutra posição",
+        markAbsent: "não existe",
+        // On a key, read out after the letter: "A, na posição certa".
+        keyCorrect: "na posição certa",
+        keyPresent: "na palavra, noutra posição",
+        keyAbsent: "não está na palavra",
+
+        wonFirstTry: "À primeira!",
+        wonIn: (tries: number) => `Acertou em ${tries} tentativas.`,
+        lost: "Fica para amanhã.",
+        answerWas: "A palavra era",
+        record: "O seu registo",
+        recordUnchanged: "(inalterado — este jogo não conta)",
+        statPlays: "jogos",
+        statWins: "vitórias",
+        statStreak: "seguidos",
+        statBest: "recorde",
+        distribution: "Distribuição",
+        copyResult: "Copiar resultado",
+        copied: "Copiado",
+        copyFailed: "Não foi possível copiar",
+        nextWordIn: (countdown: string) => `Próxima palavra em ${countdown}.`,
+
+        publish: "Publicar no Nostr",
+        publishing: "A publicar…",
+        published: "Publicado no Nostr",
+        publishFailed: "Não foi possível publicar",
+
+        tabBoard: "Classificação",
+        tabDuels: "Duelos",
+        tabLeagues: "Ligas",
+        notSharing: "Está a ver os resultados dos outros. Para aparecer nas classificações, ative a partilha em Perfil.",
+        spoiler: "Termine o jogo de hoje para ver os resultados.",
+        spoilerWhy: "Quantas tentativas os outros precisaram diz-lhe quão difícil é a palavra.",
+        signInHint: "Entre com uma identidade Nostr em Perfil.",
+        signInDuels: "Os duelos comparam-no com quem segue no Nostr.",
+        signInLeagues: "As ligas precisam de uma identidade Nostr para guardar de quais faz parte.",
+
+        loadingBoard: "A consultar os relés…",
+        emptyBoard: "Ainda ninguém publicou o resultado de hoje.",
+        you: "(você)",
+
+        loadingDuels: "A comparar resultados…",
+        emptyDuels: "Nenhum duelo ainda. Os duelos comparam-no com quem segue no Nostr, nos dias em que ambos jogaram.",
+        duelsLegend: "Vitórias · empates · derrotas, nos últimos 30 dias. Só contam os dias em que ambos terminaram o jogo.",
+        days: (n: number) => `${n} ${n === 1 ? "dia" : "dias"}`,
+
+        loadingLeagues: "A carregar as suas ligas…",
+        emptyLeagues: "Ainda não pertence a nenhuma liga. Crie uma e partilhe o convite, ou cole o convite que recebeu.",
+        loadingStandings: "A reunir resultados…",
+        emptyStandings: "Ninguém desta liga publicou o resultado de hoje.",
+        standingsSpoiler: "Termine o jogo de hoje para ver a classificação desta liga.",
+        newLeagueName: "Nome da nova liga",
+        invitePlaceholder: "Colar convite (naddr…)",
+        joinLeague: "Entrar",
+        copyInvite: (name: string) => `Copiar convite para ${name}`,
+        leaveLeague: (name: string) => `Sair de ${name}`,
+        leagueActionFailed: "Não foi possível concluir. Tente novamente.",
+        // Split so "não listada" can be emphasised — the distinction is the
+        // whole point of the sentence and a user could act on getting it wrong.
+        unlistedBefore: "Uma liga é ",
+        unlistedBold: "não listada",
+        unlistedAfter: ", não privada: só entra quem tiver o convite, mas os resultados são eventos públicos no Nostr e qualquer pessoa os pode ler.",
+
+        openInBible: "(abre a Bíblia noutro separador)",
+
+        // Home row and the Perfil opt-in.
+        homeStreak: (n: number) => ` · ${n} ${n === 1 ? 'seguido' : 'seguidos'}`,
+        homeIdle: "Um versículo, uma palavra escondida",
+        homeSolved: (tries: number, max: number) => `Resolvida em ${tries}/${max}`,
+        homeLost: "Hoje não acertou — nova palavra amanhã",
+        shareToggle: "Participar nas classificações da Palavra",
+        shareToggleHelp: "Publica o resultado diário da Palavra Bíblica — quantas tentativas e em quanto tempo — de forma pública na rede Nostr, para aparecer nas classificações, nos duelos e nas ligas. A palavra e as suas tentativas nunca são publicadas. Sem isto continua a ver as classificações dos outros; apenas não aparece nelas.",
+    },
     rosary: {
         finish: "Concluir Terço",
         nextMystery: "Próximo Mistério",
