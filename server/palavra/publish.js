@@ -16,6 +16,12 @@
 // *the* puzzle. Generate it once with `npm run keygen` and keep it.
 
 import { pathToFileURL } from 'node:url';
+// The same file the app reads, not a copy of it. A puzzle published only where
+// the app doesn't look is a day with no puzzle for everyone, and two lists kept
+// in step by a comment stay in step right up until they don't — with nothing
+// failing anywhere until the morning nobody has a game.
+import DEFAULT_RELAYS from '../../src/relays.json' with { type: 'json' };
+
 import WebSocket from 'ws';
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
@@ -24,15 +30,6 @@ import { utf8ToBytes } from '@noble/hashes/utils';
 import { answerHash, normalizeWord, obfuscateAnswer } from './palavra.js';
 import { VERSES } from './verses.js';
 
-// Must stay in step with DEFAULT_RELAYS in src/lib/pool.ts — a puzzle
-// published only where the app doesn't look is a day with no puzzle.
-const DEFAULT_RELAYS = [
-    'wss://relay.damus.io',
-    'wss://nos.lol',
-    'wss://relay.primal.net',
-    'wss://nostr.mom',
-    'wss://relay.ditto.pub',
-];
 
 const configuredRelays = (process.env.PALAVRA_RELAYS ?? '')
     .split(',').map((r) => r.trim()).filter(Boolean);

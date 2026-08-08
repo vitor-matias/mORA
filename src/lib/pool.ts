@@ -1,12 +1,11 @@
+import defaultRelays from '@/relays.json';
 import { NPool, NRelay1 } from '@nostrify/nostrify';
 
-const DEFAULT_RELAYS = [
-    'wss://relay.damus.io',
-    'wss://nos.lol',
-    'wss://relay.primal.net',
-    'wss://nostr.mom',
-    'wss://relay.ditto.pub',
-];
+// The one list. server/palavra/publish.js reads the same file, because a
+// puzzle published only where the app doesn't look is a day with no puzzle for
+// everyone — and two hand-maintained copies drift silently, with nothing
+// failing until a morning when nobody has a game.
+const DEFAULT_RELAYS = defaultRelays;
 
 /**
  * Relays this app reads and writes its own events on.

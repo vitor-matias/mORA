@@ -157,9 +157,16 @@ what makes a cron acceptable here where it normally wouldn't be. Publishing
 ahead of the current UTC day is refused: it would put tomorrow's answer on a
 public relay today.
 
-Relays default to the same five the app uses; override with `PALAVRA_RELAYS`
-(comma-separated). **Keep the two lists in step** — a puzzle published only
-where the app doesn't look is a day with no puzzle.
+Relays default to the same five the app uses — literally the same, both read
+`src/relays.json`, so there is no second list to keep in step. Add or remove a
+relay there and the app and the publisher change together. Override for one run
+with `PALAVRA_RELAYS` (comma-separated); leaving it unset **or empty** gets the
+defaults.
+
+That last part is not a detail. A puzzle published only where the app doesn't
+look is a day with no puzzle for everyone, and the failure is silent from both
+ends: the publisher reports the date as sent, and the app just says no puzzle
+has been published yet.
 
 ## Deploying the app
 
