@@ -35,6 +35,27 @@ describe('rank', () => {
     });
 });
 
+describe('rank with an unrecorded duration', () => {
+    const solvedIn = (tries: number, ms: number) => ({ tries, solved: true, ms });
+
+    it('sorts ms 0 behind a real time, not ahead of it', () => {
+        // 0 means "no duration recorded" — formatDuration already renders it
+        // as "—". Subtracting straight through put those rows at the top of
+        // the speed ranking, which is also the cheapest thing to forge.
+        expect([solvedIn(3, 0), solvedIn(3, 45_000)].sort(rank))
+            .toEqual([solvedIn(3, 45_000), solvedIn(3, 0)]);
+    });
+
+    it('still ranks fewer guesses first, whatever the duration', () => {
+        expect([solvedIn(4, 1_000), solvedIn(2, 0)].sort(rank))
+            .toEqual([solvedIn(2, 0), solvedIn(4, 1_000)]);
+    });
+
+    it('leaves two unrecorded durations in a stable order', () => {
+        expect([solvedIn(3, 0), solvedIn(3, 0)].sort(rank)).toHaveLength(2);
+    });
+});
+
 describe('recentDates', () => {
     // Explicit UTC instants: puzzle days roll over at 00:00 UTC, so a local
     // midnight here would make these assertions timezone-dependent.

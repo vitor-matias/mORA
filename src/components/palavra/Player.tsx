@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { User } from 'lucide-react';
 import { shortPubkey } from './playerLabel';
 import { useTranslations } from '@/lib/i18n';
@@ -17,23 +18,29 @@ export interface PlayerRef {
  */
 export function Player({ player, you = false }: { player: PlayerRef; you?: boolean }) {
     const t = useTranslations().palavra;
+    const [brokenPicture, setBrokenPicture] = useState(false);
     return (
         <span className="flex-1 min-w-0 flex items-center gap-2">
             <span
                 aria-hidden="true"
                 className="h-6 w-6 shrink-0 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center"
             >
-                {player.picture
+                {player.picture && !brokenPicture
                     ? <img
                         src={player.picture}
                         alt=""
                         loading="lazy"
-                        // A profile picture is a third-party URL of unknown
-                        // size; without object-cover a tall one distorts the
-                        // row. onError falls back to the placeholder rather
-                        // than leaving a broken-image glyph in the list.
+                        // The host is chosen by whoever wrote the profile, so
+                        // a Referer would tell them which page every reader of
+                        // this leaderboard is on.
+                        referrerPolicy="no-referrer"
+                        // A picture is a third-party URL of unknown size;
+                        // without object-cover a tall one distorts the row.
                         className="h-full w-full object-cover"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        // State, not style: hiding the <img> left an empty
+                        // circle, because the icon is the other branch of this
+                        // ternary and so never rendered.
+                        onError={() => setBrokenPicture(true)}
                     />
                     : <User size={13} className="text-zinc-400" />}
             </span>

@@ -118,6 +118,40 @@ describe('derivePalavraStats', () => {
     });
 });
 
+describe('a loss today', () => {
+    it('breaks the streak instead of leaving yesterday standing', () => {
+        // The walk starts from the most recent *win*, so a loss today is
+        // invisible to it: without an explicit check, daysApart(yesterday,
+        // today) === 1 kept the run alive through the game that ended it.
+        const plays: PalavraPlays = {
+            [daysAgo(3)]: won(3),
+            [daysAgo(2)]: won(4),
+            [daysAgo(1)]: won(2),
+            [daysAgo(0)]: lost(),
+        };
+        expect(derivePalavraStats(plays).currentStreak).toBe(0);
+    });
+
+    it('leaves the longest run on record intact', () => {
+        const plays: PalavraPlays = {
+            [daysAgo(3)]: won(3),
+            [daysAgo(2)]: won(4),
+            [daysAgo(1)]: won(2),
+            [daysAgo(0)]: lost(),
+        };
+        expect(derivePalavraStats(plays).maxStreak).toBe(3);
+    });
+
+    it('still counts the streak while today is unfinished', () => {
+        // Mid-game is not a loss — the run stands until the board is over.
+        const plays: PalavraPlays = {
+            [daysAgo(1)]: won(2),
+            [daysAgo(0)]: { guesses: ['REINO'], solved: false, ms: 0 },
+        };
+        expect(derivePalavraStats(plays).currentStreak).toBe(1);
+    });
+});
+
 describe('mergePalavraPlays', () => {
     it('takes days the other device knows about', () => {
         const local: PalavraPlays = { [daysAgo(1)]: won(3) };

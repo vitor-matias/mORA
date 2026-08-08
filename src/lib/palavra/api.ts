@@ -25,6 +25,7 @@ import {
     BLANK_MARKER,
     type DailyChallenge,
 } from './types';
+import { deobfuscateAnswer, matchesAnswerHash, normalizeWord } from './game';
 
 /** NIP-78 application data, addressable — one puzzle event per day. */
 const KIND_PUZZLE = 30078;
@@ -109,6 +110,20 @@ export function sanitizeChallenge(raw: unknown, expectedDate: string): DailyChal
     }
     if (typeof answerHash !== 'string' || !HEX64_RE.test(answerHash)) throw new Error('Desafio sem verificação.');
     if (!isNonEmptyString(answerCipher, 128)) throw new Error('Desafio sem resposta cifrada.');
+
+    // Everything above checks shapes. This checks that the two halves of the
+    // payload agree — that the cipher really does decode to the word the hash
+    // commits to, at the width the board will be drawn to.
+    //
+    // Without it the failure is silent and total: a publisher whose cipher and
+    // hash have drifted, or a corrupted payload that still passes the shape
+    // checks, renders a board that accepts six guesses and cannot be won, with
+    // nothing on screen to say why. Refusing the puzzle at least shows the
+    // error state. Both the doc comment above and server/palavra/README.md
+    // already claimed this happened.
+    const decoded = normalizeWord(deobfuscateAnswer(date, answerCipher as string));
+    if (decoded.length !== length) throw new Error('O desafio não bate certo com o tabuleiro.');
+    if (!matchesAnswerHash(date, decoded, answerHash)) throw new Error('O desafio não passa a verificação.');
 
     return {
         date,

@@ -20,7 +20,7 @@
 
 import type { NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
-import { pool } from '@/lib/pool';
+import { pool, RELAYS } from '@/lib/pool';
 import { currentPubkey } from '@/store/auth';
 import {
     KIND_APP_STATE,
@@ -80,6 +80,12 @@ export function leagueInvite(league: League): string {
         kind: KIND_FOLLOW_SET,
         pubkey: league.creator,
         identifier: league.dTag,
+        // The hint the doc comment above promises. Without it the coordinate
+        // alone only resolves for a recipient already querying a relay that
+        // holds the league — which every mORA client is, so the omission was
+        // invisible in testing and broke exactly the case invites are for:
+        // someone on another client.
+        relays: [...RELAYS],
     });
 }
 
@@ -99,8 +105,17 @@ export function parseInvite(invite: string): string | null {
 
 // ── Membership ───────────────────────────────────────────────────────────
 
-/** The league coordinates this identity claims to be in. */
-export async function fetchMyLeagueCoords(pubkey: string): Promise<string[]> {
+/**
+ * The league coordinates this identity claims to be in, or `null` if the read
+ * failed.
+ *
+ * The distinction matters because the membership list is a single addressable
+ * event: anything that writes it replaces the whole thing. Collapsing a failed
+ * read to `[]` — indistinguishable from "belongs to no leagues" — meant one
+ * relay timeout during a join republished the list with only the new league in
+ * it, silently dropping every other membership, with no way back.
+ */
+async function readMyLeagueCoords(pubkey: string): Promise<string[] | null> {
     try {
         const [event] = await pool.query(
             [{ kinds: [KIND_APP_STATE], authors: [pubkey], '#d': [D_MY_LEAGUES], limit: 1 }],
@@ -113,8 +128,15 @@ export async function fetchMyLeagueCoords(pubkey: string): Promise<string[]> {
             .slice(0, MAX_LEAGUES);
     } catch (error) {
         console.warn('Could not load league memberships.', error);
-        return [];
+        return null;
     }
+}
+
+/** The league coordinates this identity claims to be in. For display: a failed
+    read reads as "none", which is the right thing for a list and the wrong
+    thing for anything about to rewrite it. */
+export async function fetchMyLeagueCoords(pubkey: string): Promise<string[]> {
+    return await readMyLeagueCoords(pubkey) ?? [];
 }
 
 /** Replaces the membership list. Addressable, so this is one event per user. */
@@ -135,7 +157,11 @@ async function publishMyLeagues(coords: string[]): Promise<void> {
 export async function joinLeague(coord: string): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !parseCoord(coord)) return;
-    const current = await fetchMyLeagueCoords(pubkey);
+    const current = await readMyLeagueCoords(pubkey);
+    // Refuse rather than guess. Writing on an unreadable list is what erases
+    // the other memberships; the caller shows the failure and the player
+    // retries, which costs nothing.
+    if (current === null) throw new Error('Could not read the membership list; not rewriting it.');
     if (current.includes(coord)) return;
     await publishMyLeagues([...current, coord]);
 }
@@ -143,7 +169,8 @@ export async function joinLeague(coord: string): Promise<void> {
 export async function leaveLeague(coord: string): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey) return;
-    const current = await fetchMyLeagueCoords(pubkey);
+    const current = await readMyLeagueCoords(pubkey);
+    if (current === null) throw new Error('Could not read the membership list; not rewriting it.');
     if (!current.includes(coord)) return;
     await publishMyLeagues(current.filter((entry) => entry !== coord));
 }

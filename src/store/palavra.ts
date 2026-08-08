@@ -174,7 +174,11 @@ export function derivePalavraStats(plays: PalavraPlays): PalavraStats {
     let currentStreak = 0;
     const today = formatUTCDate(new Date());
     const newest = solvedDates[solvedDates.length - 1];
-    if (newest && daysApart(newest, today) <= 1) {
+    // Today finished and lost ends the run. Without this the walk starts from
+    // the most recent win — yesterday — and `daysApart(yesterday, today) <= 1`
+    // keeps the streak alive through a loss that should have broken it.
+    const lostToday = plays[today] !== undefined && isFinished(plays[today]) && !plays[today].solved;
+    if (newest && !lostToday && daysApart(newest, today) <= 1) {
         currentStreak = 1;
         for (let i = solvedDates.length - 1; i > 0; i--) {
             if (daysApart(solvedDates[i - 1], solvedDates[i]) !== 1) break;

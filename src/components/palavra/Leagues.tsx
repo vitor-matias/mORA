@@ -212,6 +212,10 @@ export function Leagues({
                             setNewName('');
                         })}
                         className={action}
+                        // Icon-only, and both icons are aria-hidden, so
+                        // without this the button announces as just "button".
+                        // The join button beside it is fine — it has a label.
+                        aria-label={t.createLeague}
                     >
                         {busy === 'creating'
                             ? <Loader2 size={15} className="animate-spin" aria-hidden="true" />

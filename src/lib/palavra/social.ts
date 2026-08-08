@@ -64,6 +64,10 @@ export type RankableResult = Pick<LeaderboardEntry, 'tries' | 'solved' | 'ms'>;
 export function rank(a: RankableResult, b: RankableResult): number {
     if (a.solved !== b.solved) return a.solved ? -1 : 1;
     if (a.tries !== b.tries) return a.tries - b.tries;
+    // ms 0 means no duration was recorded — formatDuration already renders it
+    // as "—". Subtracting straight through would sort those rows to the top of
+    // the speed ranking, which is both wrong and the cheapest thing to forge.
+    if ((a.ms <= 0) !== (b.ms <= 0)) return a.ms <= 0 ? 1 : -1;
     return a.ms - b.ms;
 }
 

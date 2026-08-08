@@ -20,7 +20,8 @@ const tabs = [
  * and returns on scroll-up or near the top of the page. During an active
  * rosary session it stays hidden — the step card and Continuar deserve the
  * whole screen, and it removes the accidental-exit risk right under the big
- * button.
+ * button. A page can ask for the same treatment by setting `bottomBarYielded`
+ * — Palavra does, while its keyboard is up.
  *
  * At xl and up — a slim sticky top bar: wordmark left, the five destinations
  * inline. Desktop navigation must stay off the bottom edge, where OS
@@ -37,6 +38,7 @@ const tabs = [
 export function TabBar() {
     const { pathname } = useLocation();
     const rosarySession = useAppStore((s) => s.rosarySession);
+    const bottomBarYielded = useAppStore((s) => s.bottomBarYielded);
     const [hidden, setHidden] = useState(false);
     // Drives the top bar's scrolled hairline (content slides directly under
     // it on xl — there is no second bar to provide the separation).
@@ -85,7 +87,10 @@ export function TabBar() {
     }
 
     const inRosarySession = pathname === '/terco' && rosarySession !== null;
-    const hide = hidden || inRosarySession;
+    // Palavra's on-screen keyboard is the other claimant on this strip: its
+    // bottom row sits exactly where the bar floats, so the last row was both
+    // clipped and a mistap away from leaving the game.
+    const hide = hidden || inRosarySession || bottomBarYielded;
 
     return (
         <>

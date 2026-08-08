@@ -20,6 +20,7 @@ import {
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
 import { derivePalavraStats, isFinished, usePalavraStore } from '@/store/palavra';
 import { useAuthStore } from '@/store/auth';
+import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { useDayRollover } from '@/lib/useDayRollover';
 import { useTranslations } from '@/lib/i18n';
@@ -81,7 +82,18 @@ export default function Palavra() {
     // view if it was following today — someone reading the archive stays put.
     useDayRollover(() => formatUTCDate(new Date()), () => {
         const next = formatUTCDate(new Date());
-        setViewDate((current) => (current === today ? next : current));
+        setViewDate((current) => {
+            if (current !== today) return current;
+            // Clear the board too, the way goToDate does. Leaving yesterday's
+            // challenge mounted while viewDate has already advanced makes the
+            // page key two ways at once: beginPlay and the play record use the
+            // new date, but onEnter still submits against challenge.date. A
+            // guess in that window lands in yesterday's record, and the result
+            // published from it is for the wrong day.
+            setChallenge(null);
+            setLoadError(null);
+            return next;
+        });
         setToday(next);
         writeDraft('');
     });
@@ -231,6 +243,18 @@ export default function Palavra() {
         writeDraft(draftRef.current.slice(0, -1));
     }, [writeDraft]);
 
+    // The on-screen keyboard occupies the strip the floating tab bar floats
+    // in, so ask the bar to stand down while it is up — its bottom row was
+    // clipped by roughly 20px, and a miss on ENTER or backspace hit a nav tab
+    // and left the game. Only while the keyboard actually renders: the
+    // community tab and a finished board both want the bar back.
+    const keyboardUp = pageTab === 'game' && !over;
+    const setBottomBarYielded = useAppStore((s) => s.setBottomBarYielded);
+    useEffect(() => {
+        setBottomBarYielded(keyboardUp);
+        return () => setBottomBarYielded(false);
+    }, [keyboardUp, setBottomBarYielded]);
+
     // Desktop players expect to just type.
     useEffect(() => {
         // The board stays mounted behind the community tab (so the reveal
@@ -240,6 +264,11 @@ export default function Palavra() {
         if (pageTab !== 'game') return;
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.metaKey || event.ctrlKey || event.altKey) return;
+            // DateNav renders a date input on this tab. Typing in it also
+            // reached the board, and Enter submitted a guess.
+            const target = event.target as HTMLElement | null;
+            if (target?.isContentEditable
+                || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
             if (event.key === 'Enter') { onEnter(); return; }
             if (event.key === 'Backspace') { onBackspace(); return; }
             const letter = normalizeWord(event.key);
