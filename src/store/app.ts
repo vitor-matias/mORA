@@ -145,6 +145,11 @@ export interface SyncedSettings {
 const FONT_FAMILIES: FontFamily[] = ['system', 'serif', 'sans'];
 const ROSARY_MODES: RosaryBeadMode[] = ['beginner', 'advanced'];
 
+/** The interface's keys, at runtime — a snapshot is compared and checked for
+    completeness against this, so a field added to SyncedSettings has to be
+    added here too. */
+const SYNCED_SETTING_KEYS: readonly (keyof SyncedSettings)[] = ['fontFamily', 'rosaryMode'];
+
 /** Keeps only the values this version understands: a snapshot written by a
     newer build (or a corrupted one) must not put the store in a state the UI
     can't render. Snapshots from a build that still synced theme, fontSize and
@@ -159,8 +164,18 @@ export function sanitizeSyncedSettings(raw: unknown): Partial<SyncedSettings> {
     return out;
 }
 
+/** Whether a sanitized snapshot carries every setting this version syncs.
+    A partial one must not be adopted: applySyncedSettings would take its
+    timestamp while leaving the missing field at this device's value, so the
+    relay's incomplete entry would outrank a good local edit — and the pull
+    returns without publishing, so nothing repairs it until the round trip
+    after. Treated as no snapshot at all, it gets published over instead. */
+export function isCompleteSyncedSettings(settings: Partial<SyncedSettings>): settings is SyncedSettings {
+    return SYNCED_SETTING_KEYS.every((key) => settings[key] !== undefined);
+}
+
 export function settingsEqual(a: SyncedSettings, b: Partial<SyncedSettings>): boolean {
-    return (Object.keys(a) as (keyof SyncedSettings)[]).every((key) => a[key] === b[key]);
+    return SYNCED_SETTING_KEYS.every((key) => a[key] === b[key]);
 }
 
 export type ThemeMode = 'system' | 'light' | 'dark';
