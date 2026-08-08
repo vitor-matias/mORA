@@ -71,6 +71,14 @@ export interface DailyChallenge {
  * for having no server and a social graph that belongs entirely to its users.
  */
 export interface LeaderboardEntry {
+    /** True when the relays hold a solved result for every sampled day inside
+        the claimed streak. False means unbacked *or* unchecked — the board
+        distinguishes the two in its wording, never in an accusation. */
+    verified?: boolean;
+    /** The streak its author declared when they published, if they did. Absent
+        on results from before the field existed, and on any client that omits
+        it — so it is optional, never assumed. */
+    streak?: number;
     pubkey: string;
     tries: number;
     solved: boolean;

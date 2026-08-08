@@ -1,11 +1,12 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
-import { FullVerse } from '@/components/palavra/FullVerse';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
 import { Community } from '@/components/palavra/Community';
 import { Grid, type PlayedRow } from '@/components/palavra/Grid';
+import { gapPx } from '@/lib/palavra/layout';
+import { capuchinhosUrl } from '@/lib/palavra/bookSlugs';
 import { Keyboard } from '@/components/palavra/Keyboard';
 import { ResultSheet } from '@/components/palavra/ResultSheet';
 import { fetchDailyChallenge, PALAVRA_IS_MOCK } from '@/lib/palavra/api';
@@ -26,6 +27,20 @@ import { useDayRollover } from '@/lib/useDayRollover';
 import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
+
+/** Air under the keyboard, so the last row never sits flush against a gesture
+    bar, plus a couple of pixels for rounding: each row's height comes from
+    `aspect-ratio` on a fractional tile width, so six rows round up slightly
+    past what the arithmetic predicts. */
+const BOARD_BREATHING_PX = 8;
+
+/** Below this the board can't fit whatever we do; it stops shrinking and the
+    page scrolls, which beats a board collapsed to nothing. */
+const MIN_TILE_PX = 26;
+
+/** Long enough that a burst of guesses is one write, short enough that closing
+    the app after a guess still leaves the board backed up. */
+const IN_PROGRESS_SYNC_DEBOUNCE_MS = 3_000;
 
 type PageTab = 'game' | 'social';
 
@@ -178,6 +193,32 @@ export default function Palavra() {
         window.setTimeout(() => setNotice((current) => (current === message ? null : current)), 2200);
     }, []);
 
+    // Back up an *unfinished* game too.
+    //
+    // The result publish below only fires when a game ends, so a board left
+    // half-played — one guess in, then the app closed — stayed on the device
+    // that made it. Picking it up on another device is the whole point of the
+    // encrypted log: the same puzzle continued where it was left.
+    //
+    // Debounced, because six guesses in a row would otherwise be six relay
+    // writes for a payload only the last one needs. Daily games only: practice
+    // runs are deliberately local, and the snapshot never carries them.
+    const guessCount = play.guesses.length;
+    useEffect(() => {
+        if (scope !== 'daily' || guessCount === 0 || over) return;
+        const timer = window.setTimeout(async () => {
+            try {
+                const { publishPalavraStateToNostr } = await import('@/lib/palavra/nostr');
+                await publishPalavraStateToNostr();
+            } catch (error) {
+                // The game is recorded locally either way; the next sync
+                // carries it.
+                console.warn('Could not back up the game in progress.', error);
+            }
+        }, IN_PROGRESS_SYNC_DEBOUNCE_MS);
+        return () => window.clearTimeout(timer);
+    }, [guessCount, scope, over]);
+
     // Publishing reaches the network, so it stays out of the render path, and
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
@@ -299,12 +340,102 @@ export default function Palavra() {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [onEnter, onBackspace, onLetter, pageTab]);
 
+    // How tall a tile may be, measured rather than assumed.
+    //
+    // The board used to size itself from `100vh` minus a constant standing in
+    // for everything else on the page. That constant was wrong twice, because
+    // what sits above the board changes with the verse's length, the reader's
+    // font size, and the device. Measuring the gap between the top of the
+    // board and the top of the keyboard is the same quantity, correct by
+    // construction.
+    //
+    // No feedback loop: the board's top depends only on what is above it, and
+    // the keyboard sizes itself from vh — neither moves when a tile resizes.
+    const boardRef = useRef<HTMLDivElement>(null);
+    const keyboardRef = useRef<HTMLDivElement>(null);
+    const [maxTilePx, setMaxTilePx] = useState<number | undefined>(undefined);
+
+    const measure = useCallback(() => {
+        const board = boardRef.current;
+        const keyboard = keyboardRef.current;
+        // With no keyboard on screen — a finished game, an archive day —
+        // nothing is competing for the space, so the board keeps its natural
+        // size and the CSS cap alone applies.
+        if (!board || !keyboard) { setMaxTilePx(undefined); return; }
+
+        // Everything here stays in viewport coordinates. Adding
+        // `window.scrollY` to the board's top mixed document coordinates into
+        // a subtraction from `innerHeight`, so a remeasure taken while
+        // scrolled shrank the board by the scroll offset — reproduced at
+        // 412x760: a resize at scroll 60 took tiles from 41px to 33px.
+        const boardBox = board.getBoundingClientRect();
+        // Board bottom to keyboard bottom. Measured between two elements
+        // rather than derived from the page height: `scrollHeight` stops
+        // shrinking once the page fits, so subtracting from it made this
+        // figure *grow* as the board shrank and drove the size into the floor.
+        // Between two elements it is stable — shrink the board and both edges
+        // move up together.
+        const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
+        const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
+        const perTile = (available - gapPx() * (MAX_GUESSES - 1)) / MAX_GUESSES;
+        // Floored, so a landscape phone gets a small board and a scroll rather
+        // than one collapsed to nothing.
+        setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
+    }, []);
+
+    // Subscriptions, set up once per layout-changing state. `maxTilePx` is
+    // deliberately *not* a dependency here: it changes on every settling pass,
+    // and re-running this would tear down and rebuild the resize listener and
+    // the ResizeObserver each time for no benefit.
+    useLayoutEffect(() => {
+        measure();
+        // Again after paint. The first pass runs before the browser has
+        // finished laying out — web fonts in particular land later and change
+        // every height above the board — so measuring only once converges on a
+        // stale figure and leaves the board a pixel or two too tall.
+        // Both frame ids, not just the outer one. Cancelling only the first
+        // leaves the inner frame scheduled if cleanup lands between them, and
+        // it then measures a board that has already unmounted.
+        let innerRaf = 0;
+        const raf = requestAnimationFrame(() => { innerRaf = requestAnimationFrame(measure); });
+        window.addEventListener('resize', measure);
+        const observer = new ResizeObserver(measure);
+        if (boardRef.current) observer.observe(boardRef.current.parentElement ?? boardRef.current);
+        return () => {
+            cancelAnimationFrame(raf);
+            cancelAnimationFrame(innerRaf);
+            window.removeEventListener('resize', measure);
+            observer.disconnect();
+        };
+    }, [challenge, over, pageTab, measure]);
+
+    // The settling pass, split from the subscriptions above so it costs a
+    // measurement and nothing else. Applying a size changes the layout the
+    // next reading sees, so each value triggers one more pass. It terminates
+    // because the space below the board doesn't depend on the board's own
+    // height: the second pass computes what the third would, and the setState
+    // bails on an unchanged value.
+    useLayoutEffect(() => {
+        if (maxTilePx === undefined) return;
+        measure();
+    }, [maxTilePx, measure]);
+
+    // Back to a link on the reference. The card already carries the finished
+    // verse, so the separate full-verse box under it was the same text and the
+    // same reference twice; what it didn't carry was the way out to the reader.
+    const refUrl = useMemo(
+        () => (challenge ? capuchinhosUrl(challenge.ref) : null),
+        [challenge],
+    );
+
     const shareText = useMemo(() => {
         if (!challenge || !over) return '';
         const score = play.solved ? `${play.guesses.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
+        // No reference. The grid is the whole point of a Wordle share — it says
+        // how you did without saying anything about the answer — and "João 1,1"
+        // hands the day's word to every reader who hasn't played yet.
         return [
             t.shareHeading(challenge.date, score),
-            challenge.ref,
             '',
             emojiGrid(played.map((row) => row.marks)),
         ].join('\n');
@@ -495,23 +626,26 @@ export default function Palavra() {
                                 </Fragment>
                             ))}
                             <cite className="block not-italic text-xs font-medium text-zinc-500 mt-2">
-                                {over && `${challenge.ref} · `}{t.letters(challenge.length)}
+                                {over && (
+                                    <>
+                                        {refUrl
+                                            ? (
+                                                <a
+                                                    href={refUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="underline underline-offset-2 hover:text-liturgy-700 dark:hover:text-liturgy-300"
+                                                >
+                                                    {challenge.ref}
+                                                </a>
+                                            )
+                                            : challenge.ref}
+                                        {' · '}
+                                    </>
+                                )}
+                                {t.letters(challenge.length)}
                             </cite>
                         </blockquote>
-
-                        {/* The passage in full, once it can't spoil anything.
-                            Carried in the puzzle rather than linked out to: the
-                            whole translation is available where the puzzle is
-                            built, so this reads in the app and offline — and
-                            `verse` above is often only an excerpt of it. */}
-                        {over && challenge.full && (
-                            <blockquote className="psalm-refrain text-[0.95rem]">
-                                <FullVerse text={challenge.full} highlight={answerDisplay} />
-                                <cite className="block not-italic text-xs font-medium opacity-70 mt-1">
-                                    {challenge.ref}
-                                </cite>
-                            </blockquote>
-                        )}
 
                         {/* Once the game is over the outcome leads and the
                             board drops below it: the result is what the player
@@ -555,12 +689,13 @@ export default function Palavra() {
                             vertical space on every screen to serve the rare
                             moment a guess is rejected, and that was part of
                             what pushed the keyboard off a laptop viewport. */}
-                        <div className="relative">
+                        <div className="relative" ref={boardRef}>
                             <Grid
                                 played={played}
                                 draft={over || readOnly ? '' : draft}
                                 length={challenge.length}
                                 rejected={rejected}
+                                maxTilePx={maxTilePx}
                             />
                             <p
                                 role="status"
@@ -577,6 +712,7 @@ export default function Palavra() {
                         </div>
 
                         {!over && (
+                            <div ref={keyboardRef}>
                             <Keyboard
                                 state={keys}
                                 // An archive day with a recorded but abandoned
@@ -587,6 +723,7 @@ export default function Palavra() {
                                 onBackspace={onBackspace}
                                 onEnter={onEnter}
                             />
+                            </div>
                         )}
 
                     </>

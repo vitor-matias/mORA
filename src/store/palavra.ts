@@ -275,6 +275,21 @@ interface PalavraState {
      * Only ever holds puzzles that passed validation, so a cached one is
      * always playable.
      */
+    /**
+     * Days whose public result this identity has already published, keyed
+     * `pubkey:date`.
+     *
+     * Only to avoid doing the work twice. Publishing mines a NIP-13 proof —
+     * about a million hashes — and the sync that can publish runs on every
+     * foreground, so without this the app would burn a second of CPU re-mining
+     * an event the relays already have, every time it came back on screen.
+     *
+     * Keyed by identity as well as date, because two accounts on one device
+     * have separate results for the same day.
+     */
+    publishedResults: Record<string, true>;
+    markResultPublished: (pubkey: string, date: string) => void;
+
     challenges: Record<string, DailyChallenge>;
     /** Which publisher the cached puzzles came from — a pubkey, or 'mock'.
         Puzzles are keyed by date alone, so without this a device that played
@@ -358,6 +373,11 @@ export const usePalavraStore = create<PalavraState>()(
                 sharedNotes: { ...state.sharedNotes, [date]: true },
             })),
 
+            publishedResults: {},
+            markResultPublished: (pubkey, date) => set((state) => ({
+                publishedResults: { ...state.publishedResults, [`${pubkey}:${date}`]: true },
+            })),
+
             challenges: {},
             challengeSource: '',
             cacheChallenge: (challenge, source) => set((state) => {
@@ -411,6 +431,8 @@ export const usePalavraStore = create<PalavraState>()(
                     plays: sanitizePlays(saved.plays),
                     practice: sanitizePlays(saved.practice),
                     sharing: sanitizeSharing(saved.sharing),
+                    publishedResults: saved.publishedResults && typeof saved.publishedResults === 'object'
+                        ? saved.publishedResults : {},
                 };
             },
         }

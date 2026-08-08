@@ -24,6 +24,11 @@ const KIND_CONTACTS = 3;
     filter stays inside what relays accept. */
 const MAX_FOLLOWS = 300;
 
+/** Roughly thirty years of consecutive days. High enough never to clip a real
+    player, low enough that a fabricated number is obviously refused rather
+    than printed. */
+const MAX_DECLARED_STREAK = 11_000;
+
 function tagValue(event: { tags: string[][] }, name: string): string | undefined {
     return event.tags.find((tag) => tag[0] === name)?.[1];
 }
@@ -44,11 +49,25 @@ export function entriesFromEvents(events: NostrEvent[], date: string): Leaderboa
         // this does and does not buy.
         if (!meetsPow(event.id)) return [];
         try {
-            const { tries, solved, ms } = JSON.parse(event.content) as Record<string, unknown>;
+            const { tries, solved, ms, streak } = JSON.parse(event.content) as Record<string, unknown>;
             if (!Number.isInteger(tries) || (tries as number) < 1 || (tries as number) > MAX_GUESSES) return [];
             if (typeof solved !== 'boolean') return [];
             if (!Number.isFinite(ms) || (ms as number) < 0) return [];
-            return [{ pubkey: event.pubkey, tries: tries as number, solved, ms: ms as number }];
+            // Bounded rather than trusted. It is a self-declared number from a
+            // stranger's event: anything absurd is dropped instead of being
+            // rendered, which is the cheapest defence against a board topped
+            // by someone claiming nine thousand days.
+            const declared = Number.isInteger(streak) && (streak as number) >= 0
+                && (streak as number) <= MAX_DECLARED_STREAK
+                ? streak as number
+                : undefined;
+            return [{
+                pubkey: event.pubkey,
+                tries: tries as number,
+                solved,
+                ms: ms as number,
+                ...(declared === undefined ? {} : { streak: declared }),
+            }];
         } catch {
             return [];
         }
@@ -97,6 +116,184 @@ export async function fetchDailyLeaderboard(date: string, limit = 50): Promise<L
 
     const rows = entriesFromEvents(events, date).sort(rank).slice(0, limit);
     return withNames(rows);
+}
+
+/**
+ * The standing streak board.
+ *
+ * Two days of results, not a scan of history. Each result declares its
+ * author's streak, so the length of a streak costs nothing to read — a
+ * thousand days is the same one query as three.
+ *
+ * Two days rather than one because a streak is alive until a day is missed:
+ * someone who played yesterday and hasn't opened the app yet today still has
+ * theirs. Anyone whose newest result is older than that has broken it and
+ * simply isn't here. Their own record still shows it — this board is who is
+ * currently running, not who ever ran.
+ *
+ * Newest result per author wins, so today's number replaces yesterday's.
+ */
+export async function fetchStreakLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
+    const dates = recentDates(2);
+    let events: NostrEvent[];
+    try {
+        events = await pool.query(
+            [{
+                kinds: [KIND_APP_STATE],
+                '#d': dates.map(resultDTag),
+                '#t': [PALAVRA_TOPIC],
+                limit: 400,
+            }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
+    } catch (error) {
+        console.warn('Could not load the streak board.', error);
+        return [];
+    }
+
+    // One row per author, from their latest *day*.
+    //
+    // Ordered by the `date` tag, not by `created_at`. The timestamp is chosen
+    // by the author, and mining perturbs it besides: proof-of-work searches
+    // over `created_at` as well as the nonce, so a day mined for longer can
+    // come out with a later stamp than the day after it. Observed exactly
+    // that while testing — yesterday's event stamped a second ahead of
+    // today's, which handed the row a stale streak. `dates` is newest-first,
+    // so the first entry found for an author is the right one.
+    const claimed = liveStreaks(events, dates, limit);
+
+    // Rank on what the relays back up, not on what was claimed. An unbacked
+    // claim doesn't win by being loud: it falls below every verified streak,
+    // however long it says it is.
+    const verified = await verifiedStreaks(claimed, dates[0]);
+    const rows = claimed
+        .map((entry) => ({ ...entry, verified: verified.has(entry.pubkey) }))
+        .sort((a, b) => Number(b.verified) - Number(a.verified)
+            || (b.streak ?? 0) - (a.streak ?? 0)
+            || rank(a, b));
+    return withNames(rows);
+}
+
+/**
+ * The rows a streak board should show, from a batch of recent result events.
+ *
+ * Pure, and separated from the query so the rule can be tested: whoever's
+ * latest day it is holds the slot, and only then is it asked whether that day
+ * qualifies. Doing it the other way round — skipping losses while choosing —
+ * promotes the author's previous day into the slot, and their previous day is
+ * the one before they broke the run. A dead streak would read as live.
+ */
+export function liveStreaks(
+    events: NostrEvent[],
+    dates: string[],
+    limit = 50,
+): LeaderboardEntry[] {
+    const newest = new Map<string, LeaderboardEntry>();
+    for (const date of dates) {
+        for (const entry of entriesFromEvents(events, date)) {
+            if (!newest.has(entry.pubkey)) newest.set(entry.pubkey, entry);
+        }
+    }
+
+    return [...newest.values()]
+        // A run, on the latest day that author played. A loss ends it, and a
+        // zero is a run of nothing — neither belongs on a board of streaks
+        // still going, which is what the empty state promises.
+        .filter((entry) => entry.solved && (entry.streak ?? 0) > 0)
+        .sort((a, b) => (b.streak ?? 0) - (a.streak ?? 0))
+        .slice(0, limit);
+}
+
+/** Days sampled inside a claimed streak. Four is enough that a fabricated
+    claim almost never survives, and cheap enough to check the whole board in
+    one query. */
+const STREAK_SAMPLES = 4;
+
+/**
+ * Which claimed streaks the relays actually back up.
+ *
+ * A streak is a claim about the past, and the past is already on the relays:
+ * each day is its own addressable event, so a real 400-day streak is 400
+ * signed, proof-of-work-mined events under one key. Nothing needs storing to
+ * check that — it just needs asking.
+ *
+ * Asking for all of them would be 400 events per player, so this samples:
+ * a few days spread across the claimed range, always including the oldest,
+ * which is the one a fabricated claim is least likely to have. A missing
+ * sample refutes the claim outright.
+ *
+ * What this buys, precisely: declaring a number you didn't earn stops working.
+ * Faking it now means actually publishing a result for every sampled day, and
+ * since you can't know which days get sampled, that means all of them — each
+ * one mined. A 1,000-day streak becomes 1,000 proofs of work.
+ *
+ * What it does not buy: `created_at` is chosen by the author, so someone
+ * patient can still mine and backdate a whole history today. Proving an event
+ * is genuinely old needs an external timestamp — NIP-03's OpenTimestamps
+ * attestation is the Nostr-native answer, and it is not implemented here.
+ */
+async function verifiedStreaks(
+    rows: LeaderboardEntry[],
+    endingOn: string,
+): Promise<Set<string>> {
+    const wanted = new Map<string, string[]>();
+    for (const row of rows) {
+        if (!row.streak) continue;
+        wanted.set(row.pubkey, sampleDays(endingOn, row.streak));
+    }
+    if (wanted.size === 0) return new Set();
+
+    const dTags = [...new Set([...wanted.values()].flat())].map(resultDTag);
+    let events: NostrEvent[];
+    try {
+        // One query for the whole board: every author, every sampled day. The
+        // author and the `date` tag on each event say which claim it belongs
+        // to, so they don't need separating first.
+        events = await pool.query(
+            [{ kinds: [KIND_APP_STATE], authors: [...wanted.keys()], '#d': dTags, limit: 1000 }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
+    } catch (error) {
+        // Unreachable relays are not evidence of lying. Nothing is marked
+        // verified, and the board says as much rather than accusing anyone.
+        console.warn('Could not check the streak claims.', error);
+        return new Set();
+    }
+
+    const solvedDays = new Map<string, Set<string>>();
+    for (const event of events) {
+        if (!meetsPow(event.id)) continue;
+        const date = tagValue(event, 'date');
+        if (!date) continue;
+        try {
+            const { solved } = JSON.parse(event.content) as Record<string, unknown>;
+            if (solved !== true) continue;
+        } catch { continue; }
+        const days = solvedDays.get(event.pubkey) ?? new Set<string>();
+        days.add(date);
+        solvedDays.set(event.pubkey, days);
+    }
+
+    const verified = new Set<string>();
+    for (const [pubkey, sampled] of wanted) {
+        const days = solvedDays.get(pubkey);
+        if (days && sampled.every((day) => days.has(day))) verified.add(pubkey);
+    }
+    return verified;
+}
+
+/** Days to sample from a claimed streak: the oldest, the newest, and an even
+    spread between. Fewer than that when the streak is short enough to check
+    outright. */
+function sampleDays(endingOn: string, streak: number): string[] {
+    const end = Date.parse(`${endingOn}T00:00:00Z`);
+    const span = Math.min(streak, MAX_DECLARED_STREAK);
+    const offsets = span <= STREAK_SAMPLES
+        ? Array.from({ length: span }, (_, i) => i)
+        : Array.from({ length: STREAK_SAMPLES }, (_, i) =>
+            Math.round((i * (span - 1)) / (STREAK_SAMPLES - 1)));
+    return [...new Set(offsets)].map((back) =>
+        formatUTCDate(new Date(end - back * 86_400_000)));
 }
 
 /** The pubkeys this identity follows, from their kind-3 contact list. */

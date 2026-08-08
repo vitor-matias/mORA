@@ -21,6 +21,7 @@
 // Reads — leaderboard, duels, leagues — live in ./social.ts.
 
 import { pool } from '@/lib/pool';
+import { formatUTCDate } from '@/lib/format';
 import { currentPubkey } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import {
@@ -31,6 +32,7 @@ import {
     signNostrEvent,
 } from '@/lib/nostr';
 import {
+    derivePalavraStats,
     isFinished,
     mergePalavraPlays,
     playsEqual,
@@ -112,6 +114,53 @@ async function doSync(): Promise<void> {
     if (!remote || !playsEqual(merged, mergePalavraPlays({}, remote))) {
         await publishPalavraStateToNostr();
     }
+
+    await publishTodaysResultIfMissing(pubkey);
+}
+
+/**
+ * Publish today's finished game as a public result, if it hasn't been.
+ *
+ * The per-game publish in the page fires the moment a board is completed, and
+ * only then — which misses two ordinary sequences. Someone can play the day's
+ * puzzle with no identity at all, sign in afterwards, and have nothing to show
+ * for it; or play while opted out, change their mind in Perfil, and stay
+ * invisible until tomorrow. Both are cases where the player has done the work
+ * and asked to be counted.
+ *
+ * Sync runs on sign-in and on every foreground, so hanging this here covers
+ * both without a new trigger. Publishing is an addressable event keyed on the
+ * date, so a repeat overwrites itself rather than accumulating.
+ */
+async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
+    const state = usePalavraStore.getState();
+    if (!sharesResults(state, pubkey)) return;
+
+    const today = formatUTCDate(new Date());
+    const play = state.plays[today];
+    if (!play || !isFinished(play)) return;
+
+    // The name meant this from the start and the code didn't check. Sync runs
+    // on every foreground, and publishing mines a proof of work — roughly a
+    // million hashes — so without this the app re-mined an event the relays
+    // already had every time it came back on screen.
+    if (state.publishedResults[`${pubkey}:${today}`]) return;
+
+    try {
+        // Marked on the return value, not on the absence of a throw. This
+        // function swallows its own failures and returns early on half a dozen
+        // paths — no signer, the proof of work lost, the relay unreachable —
+        // so awaiting it said nothing about whether anything was published.
+        // Marking the day done on that basis was precisely the bug the marker
+        // exists to prevent: invisible until tomorrow, and retried never.
+        if (await publishPalavraResult(today, play, pubkey)) {
+            usePalavraStore.getState().markResultPublished(pubkey, today);
+        }
+    } catch (error) {
+        // Never let this fail the sync it rides on — the play log is the part
+        // that matters, and the next foreground tries again.
+        console.warn('Could not publish today\'s result.', error);
+    }
 }
 
 // ── Public result ────────────────────────────────────────────────────────
@@ -128,11 +177,23 @@ async function doSync(): Promise<void> {
  * event claiming a one-guess win. That is the accepted cost of a stateless
  * server and a social graph nobody but its users owns.
  */
-export async function publishPalavraResult(date: string, play: PalavraPlay): Promise<void> {
+export async function publishPalavraResult(
+    date: string,
+    play: PalavraPlay,
+    /** The identity this result belongs to, when the caller decided that
+        earlier. Sync awaits the network before getting here, and an account
+        switch in that window would otherwise publish one person's game under
+        the next person's key. */
+    expectedPubkey?: string,
+): Promise<boolean> {
     const pubkey = currentPubkey();
-    if (!pubkey) return;
-    if (!sharesResults(usePalavraStore.getState(), pubkey)) return;
-    if (!isFinished(play)) return;
+    if (!pubkey) return false;
+    if (expectedPubkey && pubkey !== expectedPubkey) {
+        console.warn('The signed-in identity changed; not publishing this result.');
+        return false;
+    }
+    if (!sharesResults(usePalavraStore.getState(), pubkey)) return false;
+    if (!isFinished(play)) return false;
 
     const tags: string[][] = [
         ['d', resultDTag(date)],
@@ -143,10 +204,22 @@ export async function publishPalavraResult(date: string, play: PalavraPlay): Pro
 
     // The guesses themselves are deliberately absent: they would hand anyone
     // reading the relay a head start on a puzzle they haven't played yet.
+    // The streak travels with the result rather than being derived from it.
+    //
+    // A lifetime streak can't be recomputed by a reader: it would mean
+    // fetching one event per day per player, for as many days as the streak is
+    // long, and the answer would still stop at whatever window the query used.
+    // Declaring it costs one number and makes a 1,000-day streak as cheap to
+    // read as a 3-day one.
+    //
+    // Self-reported, like the guess count and the time beside it. Nobody
+    // countersigns any of this; the NIP-13 proof prices bulk fabrication and
+    // says nothing about one inflated number. The UI should not imply more.
     const content = JSON.stringify({
         tries: play.guesses.length,
         solved: play.solved,
         ms: play.ms,
+        streak: derivePalavraStats(usePalavraStore.getState().plays).currentStreak,
     });
 
     try {
@@ -159,6 +232,14 @@ export async function publishPalavraResult(date: string, play: PalavraPlay): Pro
             content,
         }, pubkey);
         const event = await signNostrEvent(mined);
+        // The signer is the last place the identity can change — a NIP-46
+        // bunker or an extension can sign as whoever it is currently pointed
+        // at. Checking the event we are about to publish, rather than the
+        // store we read a moment ago, is what makes this airtight.
+        if (event.pubkey !== pubkey) {
+            console.warn('The result was signed by a different identity; not publishing.');
+            return false;
+        }
         // The comment above holds only while the signer passes the template
         // through untouched. A NIP-07 extension or NIP-46 remote signer is
         // free to stamp its own created_at, and that changes the id and
@@ -176,13 +257,15 @@ export async function publishPalavraResult(date: string, play: PalavraPlay): Pro
                 'The result carries no usable proof of work, so it was not published. '
                 + 'Either mining failed or the signer altered the event.',
             );
-            return;
+            return false;
         }
         await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
+        return true;
     } catch (error) {
         // Relays reject or go offline routinely, and the game is already
         // recorded locally — warn rather than throw.
         console.warn('Could not publish the Palavra result to Nostr.', error);
+        return false;
     }
 }
 

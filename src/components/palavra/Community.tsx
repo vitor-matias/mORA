@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { Trophy, Swords, Users } from 'lucide-react';
+import { Trophy, Flame, Swords, Users } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { Leaderboard } from './Leaderboard';
+import { StreakBoard } from './StreakBoard';
 import { Duels } from './Duels';
 import { Leagues } from './Leagues';
 
-type Tab = 'board' | 'duels' | 'leagues';
+type Tab = 'board' | 'streaks' | 'duels' | 'leagues';
 
-const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, duels: Swords, leagues: Users };
+const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, streaks: Flame, duels: Swords, leagues: Users };
 
 /**
- * The social half of the page: today's ranking, head-to-head against people
- * you follow, and leagues.
+ * The social half of the page: today's ranking, the standing streak board,
+ * head-to-head against people you follow, and leagues.
  *
  * Each panel fetches only once its tab is opened. Every one of them is a
  * fan-out across relays — the leagues tab reaches every member's own write
@@ -51,6 +52,7 @@ export function Community({
     };
     const tabs: { id: Tab; label: string }[] = [
         { id: 'board', label: t.tabBoard },
+        { id: 'streaks', label: t.tabStreaks },
         { id: 'duels', label: t.tabDuels },
         { id: 'leagues', label: t.tabLeagues },
     ];
@@ -68,7 +70,7 @@ export function Community({
                         aria-selected={tab === id}
                         aria-controls={`palavra-community-panel-${id}`}
                         onClick={() => openTab(id)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-colors ${
+                        className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-colors ${
                             tab === id
                                 ? 'bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300'
                                 : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -101,6 +103,10 @@ export function Community({
                     {id === 'board' && (revealResults
                         ? <Leaderboard date={date} you={pubkey} />
                         : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
+
+                    {/* No sign-in needed and no spoiler gate: a streak count
+                        says nothing about today's word, unlike a guess count. */}
+                    {id === 'streaks' && <StreakBoard you={pubkey} />}
 
                     {id === 'duels' && (!pubkey
                         ? <SignInPrompt what={t.signInDuels} hint={t.signInHint} />
