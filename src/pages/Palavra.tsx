@@ -669,7 +669,6 @@ export default function Palavra() {
                                             const { sharePalavraNote } = await import('@/lib/palavra/nostr');
                                             await sharePalavraNote({
                                                 date: challenge.date,
-                                                ref: challenge.ref,
                                                 tries: play.guesses.length,
                                                 solved: play.solved,
                                                 grid: emojiGrid(played.map((row) => row.marks)),
