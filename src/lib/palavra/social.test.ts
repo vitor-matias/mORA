@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entriesFromEvents, rank, recentDates, type RankableResult } from './social.ts';
+import { entriesFromEvents, liveStreaks, rank, recentDates, type RankableResult } from './social.ts';
 import { POW_MINIMUM } from './pow';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { formatUTCDate } from '@/lib/format';
@@ -113,6 +113,73 @@ describe('rank', () => {
             .toEqual(['s2@20000', 's2@80000', 's4@10000', 'x6@5000']);
         // Reversing the input must not change the outcome.
         expect([...rows].reverse().sort(rank)).toEqual(sorted);
+    });
+});
+
+describe('liveStreaks', () => {
+    const YESTERDAY = '2026-08-07';
+    const dates = [DATE, YESTERDAY];
+    const result = (over: { pk: string; date: string; solved?: boolean; streak?: number }) => event({
+        pubkey: over.pk.repeat(64).slice(0, 64),
+        date: over.date,
+        content: JSON.stringify({
+            tries: 3,
+            solved: over.solved ?? true,
+            ms: 1000,
+            ...(over.streak === undefined ? {} : { streak: over.streak }),
+        }),
+    });
+
+    it('lists a running streak', () => {
+        const rows = liveStreaks([result({ pk: 'a', date: DATE, streak: 12 })], dates);
+        expect(rows.map((r) => r.streak)).toEqual([12]);
+    });
+
+    // The important one. Filtering while choosing the newest day would skip
+    // today's loss, fall through to yesterday's win, and print a streak that
+    // ended yesterday as though it were still going.
+    it('drops someone who lost today, rather than showing yesterday', () => {
+        const rows = liveStreaks([
+            result({ pk: 'a', date: YESTERDAY, streak: 40 }),
+            result({ pk: 'a', date: DATE, solved: false, streak: 0 }),
+        ], dates);
+        expect(rows).toEqual([]);
+    });
+
+    it('keeps yesterday when that is genuinely their latest day', () => {
+        const rows = liveStreaks([result({ pk: 'b', date: YESTERDAY, streak: 9 })], dates);
+        expect(rows.map((r) => r.streak)).toEqual([9]);
+    });
+
+    it('prefers today over yesterday for the same author', () => {
+        const rows = liveStreaks([
+            result({ pk: 'c', date: YESTERDAY, streak: 5 }),
+            result({ pk: 'c', date: DATE, streak: 6 }),
+        ], dates);
+        expect(rows.map((r) => r.streak)).toEqual([6]);
+    });
+
+    it('omits a streak of zero', () => {
+        expect(liveStreaks([result({ pk: 'd', date: DATE, streak: 0 })], dates)).toEqual([]);
+    });
+
+    it('omits a row that declares no streak at all', () => {
+        expect(liveStreaks([result({ pk: 'e', date: DATE })], dates)).toEqual([]);
+    });
+
+    it('omits an unsolved day even when it claims a streak', () => {
+        expect(liveStreaks([
+            result({ pk: 'f', date: DATE, solved: false, streak: 99 }),
+        ], dates)).toEqual([]);
+    });
+
+    it('ranks longest first', () => {
+        const rows = liveStreaks([
+            result({ pk: 'a', date: DATE, streak: 3 }),
+            result({ pk: 'b', date: DATE, streak: 30 }),
+            result({ pk: 'c', date: DATE, streak: 8 }),
+        ], dates);
+        expect(rows.map((r) => r.streak)).toEqual([30, 8, 3]);
     });
 });
 

@@ -151,8 +151,7 @@ export async function fetchStreakLeaderboard(limit = 50): Promise<LeaderboardEnt
         return [];
     }
 
-    // One row per author, from their latest *day* — and only authors who
-    // declared a streak at all.
+    // One row per author, from their latest *day*.
     //
     // Ordered by the `date` tag, not by `created_at`. The timestamp is chosen
     // by the author, and mining perturbs it besides: proof-of-work searches
@@ -161,17 +160,7 @@ export async function fetchStreakLeaderboard(limit = 50): Promise<LeaderboardEnt
     // that while testing — yesterday's event stamped a second ahead of
     // today's, which handed the row a stale streak. `dates` is newest-first,
     // so the first entry found for an author is the right one.
-    const newest = new Map<string, LeaderboardEntry>();
-    for (const date of dates) {
-        for (const entry of entriesFromEvents(events, date)) {
-            if (entry.streak === undefined) continue;
-            if (!newest.has(entry.pubkey)) newest.set(entry.pubkey, entry);
-        }
-    }
-
-    const claimed = [...newest.values()]
-        .sort((a, b) => (b.streak ?? 0) - (a.streak ?? 0))
-        .slice(0, limit);
+    const claimed = liveStreaks(events, dates, limit);
 
     // Rank on what the relays back up, not on what was claimed. An unbacked
     // claim doesn't win by being loud: it falls below every verified streak,
@@ -183,6 +172,36 @@ export async function fetchStreakLeaderboard(limit = 50): Promise<LeaderboardEnt
             || (b.streak ?? 0) - (a.streak ?? 0)
             || rank(a, b));
     return withNames(rows);
+}
+
+/**
+ * The rows a streak board should show, from a batch of recent result events.
+ *
+ * Pure, and separated from the query so the rule can be tested: whoever's
+ * latest day it is holds the slot, and only then is it asked whether that day
+ * qualifies. Doing it the other way round — skipping losses while choosing —
+ * promotes the author's previous day into the slot, and their previous day is
+ * the one before they broke the run. A dead streak would read as live.
+ */
+export function liveStreaks(
+    events: NostrEvent[],
+    dates: string[],
+    limit = 50,
+): LeaderboardEntry[] {
+    const newest = new Map<string, LeaderboardEntry>();
+    for (const date of dates) {
+        for (const entry of entriesFromEvents(events, date)) {
+            if (!newest.has(entry.pubkey)) newest.set(entry.pubkey, entry);
+        }
+    }
+
+    return [...newest.values()]
+        // A run, on the latest day that author played. A loss ends it, and a
+        // zero is a run of nothing — neither belongs on a board of streaks
+        // still going, which is what the empty state promises.
+        .filter((entry) => entry.solved && (entry.streak ?? 0) > 0)
+        .sort((a, b) => (b.streak ?? 0) - (a.streak ?? 0))
+        .slice(0, limit);
 }
 
 /** Days sampled inside a claimed streak. Four is enough that a fabricated
