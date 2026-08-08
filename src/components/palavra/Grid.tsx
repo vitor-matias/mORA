@@ -2,6 +2,10 @@ import type { Mark } from '@/lib/palavra/types';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { useTranslations } from '@/lib/i18n';
 
+/** Tailwind's gap-1.5, in pixels. The measurement below has to agree with what
+    the rows actually render, so both read this. */
+export const GAP_PX = 6;
+
 type Copy = ReturnType<typeof useTranslations>['palavra'];
 
 const MARK_LABEL = (t: Copy): Record<Mark, string> => ({
@@ -36,6 +40,7 @@ export function Grid({
     draft,
     length,
     rejected = false,
+    maxTilePx,
 }: {
     played: PlayedRow[];
     /** What the player is typing now — empty once the game is over. */
@@ -43,6 +48,9 @@ export function Grid({
     length: number;
     /** Briefly true when a guess was refused, to nudge the active row. */
     rejected?: boolean;
+    /** The tallest a tile may be, measured from the space actually left below
+        the board. Absent until the first measurement, and on a server render. */
+    maxTilePx?: number;
 }) {
     const t = useTranslations().palavra;
     const showDraft = played.length < MAX_GUESSES;
@@ -61,21 +69,20 @@ export function Grid({
         // tiles up to their full 3.5rem while a 720px laptop still fits
         // without scrolling, instead of shrinking every screen to suit the
         // smallest one.
-        // 34rem, measured rather than guessed: at 412x850 — a Pixel 8a with
-        // Chrome's address bar showing — 30rem left the board 19px too tall
-        // and put the keyboard's last row under the gesture area. Only short
-        // viewports feel this; anything tall enough hits the 3.5rem cap first
-        // and is unchanged.
-        // The height term goes negative below 34rem of viewport — a phone in
-        // landscape, or split-screen — and a negative term wins `min()` and
-        // collapses the board to nothing. Measured at 915x412 before the
-        // floor: max-width resolved to -132px and the row rendered 0px wide
-        // with 4px tiles. (The same cliff existed at 30rem, just 64px lower.)
+        // Three limits, smallest wins: the column, the 3.5rem tile cap, and
+        // the height actually left below the board.
         //
-        // Floored at 2rem a tile rather than 0: below this the board can't fit
-        // vertically whatever we do, so it stops shrinking, stays legible, and
-        // the page scrolls — which beats disappearing.
-        maxWidth: `min(100%, ${length * 3.5}rem, max(${length * 2}rem, calc((100vh - 34rem) / 6 * ${length})))`,
+        // That last one used to be `100vh` minus a constant standing in for
+        // everything else on the page. The constant was wrong twice — 30rem
+        // clipped a Pixel 8a, 34rem fixed that and collapsed the board in
+        // landscape — because it is a guess about a layout that changes with
+        // the verse length, the font size, and the device. `maxTilePx` is the
+        // same quantity measured instead: the caller reports the gap between
+        // the top of the board and the top of the keyboard, so the board
+        // shrinks to whatever is genuinely there.
+        maxWidth: maxTilePx
+            ? `min(100%, ${length * 3.5}rem, ${Math.round(maxTilePx * length + GAP_PX * (length - 1))}px)`
+            : `min(100%, ${length * 3.5}rem)`,
         // Letters shrink with the tiles so an eight-letter board doesn't clip.
         fontSize: `clamp(0.9rem, ${Math.floor(52 / length)}vw, 1.6rem)`,
     };

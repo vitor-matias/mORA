@@ -21,6 +21,7 @@
 // Reads — leaderboard, duels, leagues — live in ./social.ts.
 
 import { pool } from '@/lib/pool';
+import { formatUTCDate } from '@/lib/format';
 import { currentPubkey } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import {
@@ -111,6 +112,39 @@ async function doSync(): Promise<void> {
     // device is adding anything they don't already have.
     if (!remote || !playsEqual(merged, mergePalavraPlays({}, remote))) {
         await publishPalavraStateToNostr();
+    }
+
+    await publishTodaysResultIfMissing(pubkey);
+}
+
+/**
+ * Publish today's finished game as a public result, if it hasn't been.
+ *
+ * The per-game publish in the page fires the moment a board is completed, and
+ * only then — which misses two ordinary sequences. Someone can play the day's
+ * puzzle with no identity at all, sign in afterwards, and have nothing to show
+ * for it; or play while opted out, change their mind in Perfil, and stay
+ * invisible until tomorrow. Both are cases where the player has done the work
+ * and asked to be counted.
+ *
+ * Sync runs on sign-in and on every foreground, so hanging this here covers
+ * both without a new trigger. Publishing is an addressable event keyed on the
+ * date, so a repeat overwrites itself rather than accumulating.
+ */
+async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
+    const state = usePalavraStore.getState();
+    if (!sharesResults(state, pubkey)) return;
+
+    const today = formatUTCDate(new Date());
+    const play = state.plays[today];
+    if (!play || !isFinished(play)) return;
+
+    try {
+        await publishPalavraResult(today, play);
+    } catch (error) {
+        // Never let this fail the sync it rides on — the play log is the part
+        // that matters, and the next foreground tries again.
+        console.warn('Could not publish today\'s result.', error);
     }
 }
 
