@@ -8,5 +8,7 @@
  */
 export function appUrl(): string {
     const { origin, pathname } = window.location;
-    return `${origin}${pathname.replace(/index\.html$/, '')}`;
+    // The slash is part of the match on purpose: `/index\.html$/` alone also
+    // strips the tail of a path like `/my-index.html`, turning it into `/my-`.
+    return `${origin}${pathname.replace(/\/index\.html$/, '/')}`;
 }
