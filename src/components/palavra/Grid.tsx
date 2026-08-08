@@ -61,7 +61,21 @@ export function Grid({
         // tiles up to their full 3.5rem while a 720px laptop still fits
         // without scrolling, instead of shrinking every screen to suit the
         // smallest one.
-        maxWidth: `min(100%, ${length * 3.5}rem, calc((100vh - 30rem) / 6 * ${length}))`,
+        // 34rem, measured rather than guessed: at 412x850 — a Pixel 8a with
+        // Chrome's address bar showing — 30rem left the board 19px too tall
+        // and put the keyboard's last row under the gesture area. Only short
+        // viewports feel this; anything tall enough hits the 3.5rem cap first
+        // and is unchanged.
+        // The height term goes negative below 34rem of viewport — a phone in
+        // landscape, or split-screen — and a negative term wins `min()` and
+        // collapses the board to nothing. Measured at 915x412 before the
+        // floor: max-width resolved to -132px and the row rendered 0px wide
+        // with 4px tiles. (The same cliff existed at 30rem, just 64px lower.)
+        //
+        // Floored at 2rem a tile rather than 0: below this the board can't fit
+        // vertically whatever we do, so it stops shrinking, stays legible, and
+        // the page scrolls — which beats disappearing.
+        maxWidth: `min(100%, ${length * 3.5}rem, max(${length * 2}rem, calc((100vh - 34rem) / 6 * ${length})))`,
         // Letters shrink with the tiles so an eight-letter board doesn't clip.
         fontSize: `clamp(0.9rem, ${Math.floor(52 / length)}vw, 1.6rem)`,
     };

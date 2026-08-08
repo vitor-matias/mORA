@@ -32,7 +32,7 @@ function ScrollToTop() {
 }
 
 export function Layout() {
-    const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily } = useAppStore();
+    const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
 
@@ -144,8 +144,20 @@ export function Layout() {
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device
                 safe-area inset it hovers over — until xl, where navigation
-                moves to the top bar and only breathing room remains. */}
-            <main className="relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col pb-[calc(5.5rem+env(safe-area-inset-bottom))] xl:pb-8">
+                moves to the top bar and only breathing room remains.
+
+                When a page has asked the bar to stand down, the clearance goes
+                with it and only the safe-area inset stays. Holding 5.5rem for
+                a bar that isn't drawn cost Palavra 88px it needed: measured at
+                412×915 (Pixel 8a) the page overflowed by 53px, which put the
+                keyboard's bottom row under the gesture pill. */}
+            <main
+                className={`relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col xl:pb-8 ${
+                    bottomBarYielded
+                        ? 'pb-[env(safe-area-inset-bottom)]'
+                        : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+                }`}
+            >
                 <Outlet />
             </main>
         </div>
