@@ -5,17 +5,18 @@ import { useAuthStore } from '@/store/auth';
 // Relays are shared infrastructure and neither payload changes faster than a
 // prayer takes — one pull a minute per device is plenty.
 const MIN_INTERVAL_MS = 60_000;
-// A settings edit is often one of several (theme, then font, then size), so
-// let the burst settle before publishing.
+// A settings edit is often one of several (the reading face, then the rosary
+// mode), so let the burst settle before publishing.
 const SETTINGS_DEBOUNCE_MS = 2_000;
 
 let lastSyncAt = 0;
 
 /**
  * Keeps this device in step with the others signed in under the same Nostr
- * identity: streaks (merged) and display settings (last edit wins). Runs on
- * app start, on sign-in, when the app returns to the foreground, and — for
- * settings — shortly after any local change.
+ * identity: streaks (merged) and the reader-level settings (last edit wins).
+ * Runs on app start, on sign-in, when the app returns to the foreground, and —
+ * for settings — shortly after any local change. Screen-level preferences
+ * (theme, text size, scroll speed) stay on the device that set them.
  */
 export function useNostrSync() {
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);

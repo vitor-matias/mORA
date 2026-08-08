@@ -4,6 +4,7 @@ import { pool } from '@/lib/pool';
 import { useAuthStore, currentPubkey } from '@/store/auth';
 import {
     useAppStore, mergeStreaks, streaksEqual, emptyStreaks, sanitizeSyncedSettings, settingsEqual,
+    isCompleteSyncedSettings,
     type Streaks, type SyncedSettings,
 } from '@/store/app';
 
@@ -302,10 +303,7 @@ export async function publishSettingsToNostr() {
     if (!pubkey || !state.shareStreaks) return;
 
     const settings: SyncedSettings = {
-        theme: state.theme,
-        fontSize: state.fontSize,
         fontFamily: state.fontFamily,
-        autoScrollSpeed: state.autoScrollSpeed,
         rosaryMode: state.rosaryMode,
     };
     await publishSnapshot(D_SETTINGS, { settings, updatedAt: state.settingsUpdatedAt }, 'settings');
@@ -376,24 +374,26 @@ async function doSyncSettings(): Promise<void> {
         ? rawUpdatedAt
         : 0;
     const remoteSettings = sanitizeSyncedSettings(snapshot?.payload.settings);
+    // Half a snapshot is not a snapshot: adopting one would hand this device
+    // the remote's timestamp while leaving the field it failed to supply where
+    // it was, so a truncated relay entry would outrank a good local edit. It
+    // loses the comparison below and gets published over.
+    const usable = isCompleteSyncedSettings(remoteSettings);
 
     const localSettings: SyncedSettings = {
-        theme: state.theme,
-        fontSize: state.fontSize,
         fontFamily: state.fontFamily,
-        autoScrollSpeed: state.autoScrollSpeed,
         rosaryMode: state.rosaryMode,
     };
 
-    if (snapshot && remoteUpdatedAt > state.settingsUpdatedAt) {
+    if (snapshot && usable && remoteUpdatedAt > state.settingsUpdatedAt) {
         if (!settingsEqual(localSettings, remoteSettings)) {
             state.applySyncedSettings(remoteSettings, remoteUpdatedAt);
         }
         return;
     }
-    // This device edited last (or the relays have nothing) — publish, but not
-    // if the two already agree, so a plain app start doesn't write anything.
-    if (!snapshot || !settingsEqual(localSettings, remoteSettings)) {
+    // This device edited last (or the relays have nothing usable) — publish,
+    // but not if the two already agree, so a plain app start writes nothing.
+    if (!snapshot || !usable || !settingsEqual(localSettings, remoteSettings)) {
         await publishSettingsToNostr();
     }
 }
