@@ -5,18 +5,28 @@ import { generateSecretKey, nip19 } from 'nostr-tools';
 import type { NostrProfile } from '@/lib/nostr';
 import type { ProtectedKey } from '@/lib/keyVault';
 import { useAppStore } from '@/store/app';
+import { usePalavraStore } from '@/store/palavra';
 
 // Signing in is the point at which a user gets an identity to sync under, so
 // sync starts on and they can turn it off in Perfil. Both halves live here so
-// the flag can never be carried over to whoever signs in next on this device —
-// shareStreaks is device-level, and every caller of logout() must clear it, not
-// just the button in Perfil.
+// the flags can never be carried over to whoever signs in next on this device —
+// they are device-level, and every caller of logout() must clear them, not just
+// the buttons in Perfil.
+//
+// Publishing Palavra results is turned on here too rather than defaulting to
+// true in the store, and the difference matters: tied to sign-in, it can never
+// be on for a signed-out user (who has nothing to publish with anyway), and
+// signing out turns it back off so the next person on a shared device doesn't
+// inherit it. It is a public event either way, so the Perfil toggle spells out
+// what it shares.
 function enableSyncForNewIdentity() {
     useAppStore.getState().setShareStreaks(true);
+    usePalavraStore.getState().setSharePalavraResults(true);
 }
 
 function clearSyncForIdentity() {
     useAppStore.getState().setShareStreaks(false);
+    usePalavraStore.getState().setSharePalavraResults(false);
 }
 
 interface AuthState {

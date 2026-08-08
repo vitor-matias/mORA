@@ -13,7 +13,8 @@ let lastSyncAt = 0;
 
 /**
  * Keeps this device in step with the others signed in under the same Nostr
- * identity: streaks (merged) and the reader-level settings (last edit wins).
+ * identity: streaks (merged), the Palavra play log (merged), and the
+ * reader-level settings (last edit wins).
  * Runs on app start, on sign-in, when the app returns to the foreground, and —
  * for settings — shortly after any local change. Screen-level preferences
  * (theme, text size, scroll speed) stay on the device that set them.
@@ -34,8 +35,17 @@ export function useNostrSync() {
             if (!force && now - lastSyncAt < MIN_INTERVAL_MS) return;
             lastSyncAt = now;
             try {
-                const { syncStreaksWithNostr, syncSettingsWithNostr } = await import('@/lib/nostr');
-                await Promise.all([syncStreaksWithNostr(), syncSettingsWithNostr()]);
+                const [{ syncStreaksWithNostr, syncSettingsWithNostr }, { syncPalavraWithNostr }] =
+                    await Promise.all([import('@/lib/nostr'), import('@/lib/palavra/nostr')]);
+                // allSettled, not all: the three are independent, and a relay
+                // that fails one shouldn't abandon the other two — nor release
+                // the throttle below and have every foreground retry all of
+                // them because one is consistently unhappy.
+                await Promise.allSettled([
+                    syncStreaksWithNostr(),
+                    syncSettingsWithNostr(),
+                    syncPalavraWithNostr(),
+                ]);
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own
                 // state stands until the next attempt. Release the throttle so

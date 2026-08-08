@@ -1,12 +1,26 @@
 import { NPool, NRelay1 } from '@nostrify/nostrify';
 
-/** Relays this app reads and writes its own events on. */
-export const RELAYS = [
+const DEFAULT_RELAYS = [
     'wss://relay.damus.io',
     'wss://nos.lol',
     'wss://relay.primal.net',
     'wss://nostr.mom',
+    'wss://relay.ditto.pub',
 ];
+
+/**
+ * Relays this app reads and writes its own events on.
+ *
+ * `VITE_NOSTR_RELAYS` (comma-separated) overrides the defaults, which exists
+ * so the social features can be exercised against a local relay — publishing
+ * and reading back is most of what they do, and there is no way to verify that
+ * against the public network without putting test events on it.
+ */
+export const RELAYS = (import.meta.env.VITE_NOSTR_RELAYS as string | undefined)
+    ?.split(',')
+    .map((url) => url.trim())
+    .filter(Boolean)
+    ?? DEFAULT_RELAYS;
 
 /**
  * One pool for everything Nostr in the app: sync, profiles, and the relay

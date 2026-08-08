@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore, localNsec, localPrivkeyHex } from "@/store/auth";
 import type { BunkerLogin } from "@/lib/signer";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
+import { usePalavraStore } from "@/store/palavra";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
@@ -32,6 +33,8 @@ export default function Profile() {
     // The passkey vault predates the login record and speaks hex.
     const privkeyHex = useAuthStore(localPrivkeyHex);
     const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
+    const sharePalavraResults = usePalavraStore((s) => s.sharePalavraResults);
+    const setSharePalavraResults = usePalavraStore((s) => s.setSharePalavraResults);
     const t = useTranslations().profile;
 
     const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -921,6 +924,35 @@ export default function Profile() {
                             <span
                                 aria-hidden="true"
                                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${shareStreaks ? 'translate-x-5' : 'translate-x-0'}`}
+                            />
+                        </button>
+                    </div>
+
+                    {/* Publishing a public result is a different decision from the
+                        encrypted sync above: that one backs your progress up to
+                        yourself, this one tells everyone you played. Off until asked
+                        for, and separate so turning on sync never turns on sharing. */}
+                    <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+                        <div>
+                            <p className="text-sm font-medium">Participar nas classificações da Palavra</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">
+                                Publica o resultado diário da Palavra Bíblica — quantas tentativas e
+                                em quanto tempo — de forma pública na rede Nostr, para aparecer nas
+                                classificações, nos duelos e nas ligas. A palavra e as suas tentativas
+                                nunca são publicadas. Sem isto continua a ver as classificações dos
+                                outros; apenas não aparece nelas.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setSharePalavraResults(!sharePalavraResults)}
+                            role="switch"
+                            aria-checked={sharePalavraResults}
+                            aria-label="Participar nas classificações da Palavra"
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${sharePalavraResults ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${sharePalavraResults ? 'translate-x-5' : 'translate-x-0'}`}
                             />
                         </button>
                     </div>

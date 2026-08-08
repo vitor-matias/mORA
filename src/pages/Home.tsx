@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays } from "lucide-react";
+import { BookOpen, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays, Puzzle } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
+import { derivePalavraStats, isFinished, usePalavraStore } from "@/store/palavra";
+import { MAX_GUESSES } from "@/lib/palavra/types";
 import { useTranslations } from "@/lib/i18n";
-import { getGreeting, formatDisplayDate, formatISODate, joinWithE } from "@/lib/format";
+import { getGreeting, formatDisplayDate, formatISODate, formatUTCDate, joinWithE } from "@/lib/format";
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { getDefaultMassDate } from "@/lib/liturgy";
@@ -89,6 +91,22 @@ export default function Home() {
         ? stripReadingLines(liturgicalDescription)
         : null;
 
+    // The Palavra row carries its own state, the way the prayer rows carry
+    // today's mystery and the current Hour — a daily game nobody is reminded
+    // about doesn't build a streak.
+    const palavraPlays = usePalavraStore((s) => s.plays);
+    const palavraContext = (() => {
+        const todayPlay = palavraPlays[formatUTCDate(new Date())];
+        const { currentStreak } = derivePalavraStats(palavraPlays);
+        const streakSuffix = currentStreak > 0 ? ` · ${currentStreak} seguidos` : '';
+        if (!todayPlay || !isFinished(todayPlay)) {
+            return `Um versículo, uma palavra escondida${streakSuffix}`;
+        }
+        return todayPlay.solved
+            ? `Resolvida em ${todayPlay.guesses.length}/${MAX_GUESSES}${streakSuffix}`
+            : 'Hoje não acertou — nova palavra amanhã';
+    })();
+
     // Two-tier hub: "Rezar" is the daily practice, "Explorar" hosts every
     // secondary feature — new ones join this list instead of a new tab.
     const prayerAreas = [
@@ -98,6 +116,7 @@ export default function Home() {
     ];
     const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
+        { path: "/palavra", label: "Palavra Bíblica do Dia", context: palavraContext, icon: Puzzle },
     ];
 
     const streakItems = [

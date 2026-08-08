@@ -36,6 +36,40 @@ export function formatISODate(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
+/**
+ * UTC YYYY-MM-DD.
+ *
+ * Distinct from formatISODate, which is deliberately local: prayer streaks
+ * belong to the user's own day, so praying at 23:00 counts for that evening
+ * wherever they are. The Palavra puzzle is the opposite — one global daily,
+ * rolling over at 00:00 UTC, so that everyone plays the same word inside the
+ * same window and a speed ranking compares like with like. Mixing the two up
+ * would put a Lisbon player on tomorrow's puzzle an hour early in summer.
+ */
+export function formatUTCDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+}
+
+/** The moment the next puzzle unlocks: the next 00:00 UTC. */
+export function nextUTCMidnight(from: Date = new Date()): Date {
+    const next = new Date(from);
+    next.setUTCHours(24, 0, 0, 0);
+    return next;
+}
+
+/** Whole days from `a` to `b`, both YYYY-MM-DD.
+ *  Built from the date parts in UTC rather than parsed as local time: local
+ *  midnights are 23 or 25 hours apart across a DST change (and don't exist at
+ *  all in a few zones), which rounding happens to absorb — but the streak
+ *  rules turn on this being exactly 1, so they shouldn't rest on that. */
+export function daysApart(a: string, b: string): number {
+    const utc = (iso: string) => {
+        const [y, m, d] = iso.split('-').map(Number);
+        return Date.UTC(y, m - 1, d);
+    };
+    return (utc(b) - utc(a)) / 86400000;
+}
+
 /** Time-of-day greeting. */
 export function getGreeting(now: Date = new Date()): string {
     const h = now.getHours();
