@@ -68,7 +68,7 @@ const translations = {
         letters: (n: number) => `${n} letras`,
         hiddenWord: (n: number) => `palavra escondida de ${n} letras`,
         wrongLength: (n: number) => `A palavra tem ${n} letras.`,
-        alreadyTried: "Já tentou essa palavra.",
+        alreadyTried: "Já tentaste essa palavra.",
         shareHeading: (date: string, score: string) => `mORA — Palavra Bíblica do Dia ${date} ${score}`,
 
         board: "Tabuleiro de jogo",
@@ -109,7 +109,7 @@ const translations = {
         tabDuels: "Duelos",
         tabLeagues: "Ligas",
         notSharing: "Está a ver os resultados dos outros. Para aparecer nas classificações, ative a partilha em Perfil.",
-        spoiler: "Termine o jogo de hoje para ver os resultados.",
+        spoiler: "Termina o jogo de hoje para ver os resultados.",
         spoilerWhy: "Quantas tentativas os outros precisaram diz-lhe quão difícil é a palavra.",
         signInHint: "Entre com uma identidade Nostr em Perfil.",
         signInDuels: "Os duelos comparam-no com quem segue no Nostr.",
@@ -126,7 +126,7 @@ const translations = {
         days: (n: number) => `${n} ${n === 1 ? "dia" : "dias"}`,
 
         loadingLeagues: "A carregar as tuas ligas…",
-        emptyLeagues: "Ainda não pertences a nenhuma liga. Crie uma e partilhe o convite, ou cole o convite que recebeu.",
+        emptyLeagues: "Ainda não pertences a nenhuma liga. Cria uma e partilha o convite, ou cola o convite que recebeste.",
         loadingStandings: "A reunir resultados…",
         emptyStandings: "Ninguém desta liga publicou o resultado de hoje.",
         standingsSpoiler: "Termina o jogo de hoje para ver a classificação desta liga.",
@@ -152,7 +152,7 @@ const translations = {
         homeSolved: (tries: number, max: number) => `Resolvida em ${tries}/${max}`,
         homeLost: "Hoje não acertou — nova palavra amanhã",
         shareToggle: "Participar nas classificações da Palavra",
-        shareToggleHelp: "Publica o resultado diário da Palavra Bíblica — quantas tentativas e em quanto tempo — de forma pública na rede Nostr, para aparecer nas classificações, nos duelos e nas ligas. A palavra e as suas tentativas nunca são publicadas. Sem isto continua a ver as classificações dos outros; apenas não aparece nelas.",
+        shareToggleHelp: "Publica o resultado diário da Palavra Bíblica — quantas tentativas e em quanto tempo — de forma pública na rede Nostr, para aparecer nas classificações, nos duelos e nas ligas. A palavra e as tuas tentativas nunca são publicadas. Sem isto continuas a ver as classificações dos outros; apenas não apareces nelas.",
     },
     rosary: {
         finish: "Concluir Terço",
