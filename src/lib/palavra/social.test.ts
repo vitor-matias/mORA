@@ -1,10 +1,91 @@
 import { describe, expect, it } from 'vitest';
-import { rank, recentDates, type RankableResult } from './social.ts';
+import { entriesFromEvents, rank, recentDates, type RankableResult } from './social.ts';
+import { POW_MINIMUM } from './pow';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { formatUTCDate } from '@/lib/format';
 
 function result(over: Partial<RankableResult> = {}): RankableResult {
     return { tries: 3, solved: true, ms: 60_000, ...over };
 }
+
+const DATE = '2026-08-08';
+
+/** An id with enough leading zero bits to clear POW_MINIMUM. The gate reads
+    the id alone, so a hand-built one is a faithful stand-in for a mined event
+    and keeps the suite from having to mine. */
+const MINED_ID = '0'.repeat(POW_MINIMUM / 4) + 'f'.repeat(64 - POW_MINIMUM / 4);
+/** No leading zeros at all — an unmined event. */
+const BARE_ID = 'f'.repeat(64);
+
+function event(over: {
+    id?: string; date?: string; content?: string; pubkey?: string;
+} = {}): NostrEvent {
+    return {
+        id: over.id ?? MINED_ID,
+        pubkey: over.pubkey ?? 'a'.repeat(64),
+        created_at: 1_786_233_600,
+        kind: 30078,
+        tags: [['date', over.date ?? DATE]],
+        content: over.content ?? JSON.stringify({ tries: 3, solved: true, ms: 60_000 }),
+        sig: '0'.repeat(128),
+    };
+}
+
+// This is the boundary where a stranger's relay event becomes a row on the
+// player's screen, and the only place the proof-of-work gate is enforced.
+describe('entriesFromEvents', () => {
+    it('accepts a well-formed mined result', () => {
+        expect(entriesFromEvents([event()], DATE)).toEqual([
+            { pubkey: 'a'.repeat(64), tries: 3, solved: true, ms: 60_000 },
+        ]);
+    });
+
+    it('drops an event tagged for another day', () => {
+        expect(entriesFromEvents([event({ date: '2026-08-07' })], DATE)).toEqual([]);
+    });
+
+    it('drops an event that carries no proof of work', () => {
+        expect(entriesFromEvents([event({ id: BARE_ID })], DATE)).toEqual([]);
+    });
+
+    it('drops malformed JSON without throwing', () => {
+        expect(() => entriesFromEvents([event({ content: 'not json' })], DATE)).not.toThrow();
+        expect(entriesFromEvents([event({ content: 'not json' })], DATE)).toEqual([]);
+    });
+
+    it('drops a non-integer guess count', () => {
+        const content = JSON.stringify({ tries: 2.5, solved: true, ms: 1 });
+        expect(entriesFromEvents([event({ content })], DATE)).toEqual([]);
+    });
+
+    it('drops a guess count above the board height', () => {
+        const content = JSON.stringify({ tries: 99, solved: true, ms: 1 });
+        expect(entriesFromEvents([event({ content })], DATE)).toEqual([]);
+    });
+
+    it('drops a guess count below one', () => {
+        const content = JSON.stringify({ tries: 0, solved: true, ms: 1 });
+        expect(entriesFromEvents([event({ content })], DATE)).toEqual([]);
+    });
+
+    it('drops a non-boolean solved flag', () => {
+        const content = JSON.stringify({ tries: 3, solved: 'yes', ms: 1 });
+        expect(entriesFromEvents([event({ content })], DATE)).toEqual([]);
+    });
+
+    it('drops a negative duration', () => {
+        const content = JSON.stringify({ tries: 3, solved: true, ms: -1 });
+        expect(entriesFromEvents([event({ content })], DATE)).toEqual([]);
+    });
+
+    it('keeps the good rows when one event in the batch is bad', () => {
+        const rows = entriesFromEvents(
+            [event({ pubkey: 'b'.repeat(64) }), event({ content: '{' }), event()],
+            DATE,
+        );
+        expect(rows.map((row) => row.pubkey)).toEqual(['b'.repeat(64), 'a'.repeat(64)]);
+    });
+});
 
 describe('rank', () => {
     it('puts fewer guesses first', () => {

@@ -70,7 +70,7 @@ export function rank(a: RankableResult, b: RankableResult): number {
 
 /** Attach display names, keyed by pubkey. Rows whose author has no profile
     keep `name` undefined and are shown by a shortened key instead. */
-async function withNames<T extends { pubkey: string }>(
+export async function withNames<T extends { pubkey: string }>(
     rows: T[],
 ): Promise<(T & { name?: string; picture?: string })[]> {
     const cards = await fetchProfileCards(rows.map((row) => row.pubkey));

@@ -26,12 +26,11 @@ import {
     KIND_APP_STATE,
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
-    fetchProfileCards,
     signNostrEvent,
 } from '@/lib/nostr';
 import { relaysForAuthors } from '@/lib/relayList';
 import { resultDTag } from './nostr';
-import { entriesFromEvents, rank } from './social';
+import { entriesFromEvents, rank, withNames } from './social';
 import type { LeaderboardEntry } from './types';
 
 /** NIP-51 follow set. */
@@ -308,7 +307,5 @@ export async function fetchLeagueStandings(coord: string, date: string): Promise
     // Reuse the leaderboard's reader so a league ranks by exactly the same
     // rules, proof-of-work gate included.
     const rows = entriesFromEvents(events, date).sort(rank);
-
-    const cards = await fetchProfileCards(rows.map((row) => row.pubkey));
-    return rows.map((row) => ({ ...row, ...(cards.get(row.pubkey) ?? {}) }));
+    return withNames(rows);
 }
