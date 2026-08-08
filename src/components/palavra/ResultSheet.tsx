@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Copy, Share2, X } from 'lucide-react';
 import { nextUTCMidnight } from '@/lib/format';
 import { MAX_GUESSES } from '@/lib/palavra/types';
@@ -72,6 +72,11 @@ export function ResultSheet({
 }) {
     const t = useTranslations().palavra;
     const [shareState, setShareState] = useState<'idle' | 'shared' | 'copied' | 'failed'>('idle');
+    // The confirmation clears itself after a beat, and sharing is the last
+    // thing a player does before leaving the page — so the timer routinely
+    // outlives the component unless it is cancelled.
+    const resetTimer = useRef<number | undefined>(undefined);
+    useEffect(() => () => window.clearTimeout(resetTimer.current), []);
     const countdown = useTimeToNextPuzzle(nextPuzzleAt);
     // Read once: the label has to match what the button will actually do,
     // and `navigator.share` doesn't appear or vanish mid-session.
@@ -120,7 +125,8 @@ export function ResultSheet({
         } else {
             await copyToClipboard();
         }
-        window.setTimeout(() => setShareState('idle'), 2000);
+        window.clearTimeout(resetTimer.current);
+        resetTimer.current = window.setTimeout(() => setShareState('idle'), 2000);
     };
 
     // No aria-live on the section: the countdown below re-renders every
