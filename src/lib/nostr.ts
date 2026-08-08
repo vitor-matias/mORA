@@ -302,10 +302,7 @@ export async function publishSettingsToNostr() {
     if (!pubkey || !state.shareStreaks) return;
 
     const settings: SyncedSettings = {
-        theme: state.theme,
-        fontSize: state.fontSize,
         fontFamily: state.fontFamily,
-        autoScrollSpeed: state.autoScrollSpeed,
         rosaryMode: state.rosaryMode,
     };
     await publishSnapshot(D_SETTINGS, { settings, updatedAt: state.settingsUpdatedAt }, 'settings');
@@ -378,10 +375,7 @@ async function doSyncSettings(): Promise<void> {
     const remoteSettings = sanitizeSyncedSettings(snapshot?.payload.settings);
 
     const localSettings: SyncedSettings = {
-        theme: state.theme,
-        fontSize: state.fontSize,
         fontFamily: state.fontFamily,
-        autoScrollSpeed: state.autoScrollSpeed,
         rosaryMode: state.rosaryMode,
     };
 

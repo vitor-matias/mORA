@@ -125,37 +125,37 @@ export function streaksEqual(a: Streaks, b: Streaks): boolean {
 }
 
 // ── Synced settings ──────────────────────────────────────────────────────
-// How the app looks and reads — worth carrying across a user's devices.
-// Deliberately excluded: notificationTime and hourReminders (a reminder is a
-// property of the device meant to buzz, and syncing them would fire the same
-// notification on every signed-in device), pushSubscribed and shareStreaks
-// (device-level by design), and session/cache state.
+// Only what a person decides once and means everywhere: the reading face and
+// how much of the rosary they want spelled out. Both are about the reader, not
+// the hardware.
+// Deliberately excluded: theme, fontSize and autoScrollSpeed, which answer to
+// the screen rather than the person — a size that reads well on a phone is
+// cramped on a desktop, "dark" is a judgement about the room the device is in,
+// and the scroll speed is in px/s, so the same number crawls on a tall screen
+// and races on a short one. Also excluded: notificationTime and hourReminders
+// (a reminder is a property of the device meant to buzz, and syncing them
+// would fire the same notification on every signed-in device), pushSubscribed
+// and shareStreaks (device-level by design), and session/cache state.
 
 export interface SyncedSettings {
-    theme: ThemeMode;
-    fontSize: FontSize;
     fontFamily: FontFamily;
-    autoScrollSpeed: AutoScrollSpeed;
     rosaryMode: RosaryBeadMode;
 }
 
-const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark'];
-const FONT_SIZES: FontSize[] = ['small', 'medium', 'large', 'xlarge'];
 const FONT_FAMILIES: FontFamily[] = ['system', 'serif', 'sans'];
 const ROSARY_MODES: RosaryBeadMode[] = ['beginner', 'advanced'];
 
 /** Keeps only the values this version understands: a snapshot written by a
     newer build (or a corrupted one) must not put the store in a state the UI
-    can't render. */
+    can't render. Snapshots from a build that still synced theme, fontSize and
+    autoScrollSpeed are handled by the same rule — the keys are simply dropped,
+    so an old device can't reach in and restyle this one. */
 export function sanitizeSyncedSettings(raw: unknown): Partial<SyncedSettings> {
     if (!raw || typeof raw !== 'object') return {};
     const input = raw as Record<string, unknown>;
     const out: Partial<SyncedSettings> = {};
-    if (THEME_MODES.includes(input.theme as ThemeMode)) out.theme = input.theme as ThemeMode;
-    if (FONT_SIZES.includes(input.fontSize as FontSize)) out.fontSize = input.fontSize as FontSize;
     if (FONT_FAMILIES.includes(input.fontFamily as FontFamily)) out.fontFamily = input.fontFamily as FontFamily;
     if (ROSARY_MODES.includes(input.rosaryMode as RosaryBeadMode)) out.rosaryMode = input.rosaryMode as RosaryBeadMode;
-    if (typeof input.autoScrollSpeed === 'number') out.autoScrollSpeed = clampScrollLevel(input.autoScrollSpeed);
     return out;
 }
 
@@ -273,7 +273,9 @@ export const useAppStore = create<AppState>()(
 
             // Default preferences
             theme: 'system',
-            setTheme: (theme) => set({ theme, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
+            // Local-only, like fontSize and autoScrollSpeed below: no
+            // settingsUpdatedAt stamp, so the sync hook never publishes it.
+            setTheme: (theme) => set({ theme }),
             notificationTime: null,
             setNotificationTime: (notificationTime) => set({ notificationTime }),
             hourReminders: {},
@@ -292,13 +294,13 @@ export const useAppStore = create<AppState>()(
             liturgicalColorOverride: null,
             setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
-            setFontSize: (fontSize) => set({ fontSize, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
+            setFontSize: (fontSize) => set({ fontSize }),
             // Serif (Lora) by default: long-form liturgical text reads better
             // in a book face; the chrome stays in Inter regardless.
             fontFamily: 'serif',
             setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             autoScrollSpeed: 2,
-            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
+            setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
             streaks: emptyStreaks(),
             incrementStreak: (item) => set((state) => {
                 const userToday = formatISODate(new Date());
