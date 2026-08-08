@@ -44,9 +44,11 @@ export function meetsPow(id: string): boolean {
  * settled on — both must be passed to the signer unchanged, because the id is
  * a pure function of them, and changing either afterwards throws the work away.
  *
- * Falls back to the original template on any failure. A result that publishes
- * without PoW is better than one that doesn't publish: the reader-side gate
- * will skip it, but the player's own record is unaffected either way.
+ * Falls back to the original, unmined template on any failure — the caller is
+ * what decides whether to publish it. `publishPalavraResult` does not: every
+ * reader applies `meetsPow`, so an unmined event is invisible everywhere in
+ * this app and putting it on relays achieves nothing but traffic. Either way
+ * the player's own record is local and unaffected.
  */
 export async function minePalavraEvent(
     template: EventTemplate,
@@ -59,7 +61,7 @@ export async function minePalavraEvent(
     try {
         worker = new Worker(new URL('./powWorker.ts', import.meta.url), { type: 'module' });
     } catch (error) {
-        console.warn('Could not start the PoW worker; publishing unmined.', error);
+        console.warn('Could not start the PoW worker; the result will not be published.', error);
         return template;
     }
 
@@ -75,7 +77,7 @@ export async function minePalavraEvent(
                 resolve(result);
             };
             const timer = window.setTimeout(() => {
-                console.warn('PoW mining timed out; publishing unmined.');
+                console.warn('PoW mining timed out; the result will not be published.');
                 finish(template);
             }, MINE_TIMEOUT_MS);
 

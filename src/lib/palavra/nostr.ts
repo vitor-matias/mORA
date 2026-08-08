@@ -152,9 +152,14 @@ export async function publishPalavraResult(date: string, play: PalavraPlay): Pro
         // filter the result out for failing the PoW gate, so the player's
         // game would vanish with nothing anywhere saying why.
         if (!meetsPow(event.id)) {
+            // Two ways to land here: mining failed or timed out (pow.ts falls
+            // back to the unmined template), or the signer restamped
+            // created_at and threw the work away. Either way every reader
+            // applies the same gate, so publishing would put an event on the
+            // relays that nothing will ever display.
             console.warn(
-                'The signer changed the event, so the mined proof of work no longer holds. '
-                + 'Not publishing — the result would be ignored by every reader.',
+                'The result carries no usable proof of work, so it was not published. '
+                + 'Either mining failed or the signer altered the event.',
             );
             return;
         }
