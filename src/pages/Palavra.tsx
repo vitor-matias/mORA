@@ -354,40 +354,44 @@ export default function Palavra() {
     const keyboardRef = useRef<HTMLDivElement>(null);
     const [maxTilePx, setMaxTilePx] = useState<number | undefined>(undefined);
 
-    useLayoutEffect(() => {
-        const measure = () => {
-            const board = boardRef.current;
-            const keyboard = keyboardRef.current;
-            // With no keyboard on screen — a finished game, an archive day —
-            // nothing is competing for the space, so the board keeps its
-            // natural size and the CSS cap alone applies.
-            if (!board || !keyboard) { setMaxTilePx(undefined); return; }
+    const measure = useCallback(() => {
+        const board = boardRef.current;
+        const keyboard = keyboardRef.current;
+        // With no keyboard on screen — a finished game, an archive day —
+        // nothing is competing for the space, so the board keeps its natural
+        // size and the CSS cap alone applies.
+        if (!board || !keyboard) { setMaxTilePx(undefined); return; }
 
-            // Everything here stays in viewport coordinates. Adding
-            // `window.scrollY` to the board's top mixed document coordinates
-            // into a subtraction from `innerHeight`, so a remeasure taken
-            // while scrolled shrank the board by the scroll offset —
-            // reproduced at 412x760: a resize at scroll 60 took tiles from
-            // 41px to 33px.
-            const boardBox = board.getBoundingClientRect();
-            // Board bottom to keyboard bottom. Measured between two elements
-            // rather than derived from the page height: `scrollHeight` stops
-            // shrinking once the page fits, so subtracting from it made this
-            // figure *grow* as the board shrank and drove the size into the
-            // floor. Between two elements it is stable — shrink the board and
-            // both edges move up together.
-            const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
-            const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
-            const perTile = (available - GAP_PX * (MAX_GUESSES - 1)) / MAX_GUESSES;
-            // Floored, so a landscape phone gets a small board and a scroll
-            // rather than one collapsed to nothing.
-            setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
-        };
+        // Everything here stays in viewport coordinates. Adding
+        // `window.scrollY` to the board's top mixed document coordinates into
+        // a subtraction from `innerHeight`, so a remeasure taken while
+        // scrolled shrank the board by the scroll offset — reproduced at
+        // 412x760: a resize at scroll 60 took tiles from 41px to 33px.
+        const boardBox = board.getBoundingClientRect();
+        // Board bottom to keyboard bottom. Measured between two elements
+        // rather than derived from the page height: `scrollHeight` stops
+        // shrinking once the page fits, so subtracting from it made this
+        // figure *grow* as the board shrank and drove the size into the floor.
+        // Between two elements it is stable — shrink the board and both edges
+        // move up together.
+        const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
+        const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
+        const perTile = (available - GAP_PX * (MAX_GUESSES - 1)) / MAX_GUESSES;
+        // Floored, so a landscape phone gets a small board and a scroll rather
+        // than one collapsed to nothing.
+        setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
+    }, []);
+
+    // Subscriptions, set up once per layout-changing state. `maxTilePx` is
+    // deliberately *not* a dependency here: it changes on every settling pass,
+    // and re-running this would tear down and rebuild the resize listener and
+    // the ResizeObserver each time for no benefit.
+    useLayoutEffect(() => {
         measure();
         // Again after paint. The first pass runs before the browser has
         // finished laying out — web fonts in particular land later and change
-        // every height above the board — so measuring only once converges on
-        // a stale figure and leaves the board a pixel or two too tall.
+        // every height above the board — so measuring only once converges on a
+        // stale figure and leaves the board a pixel or two too tall.
         const raf = requestAnimationFrame(() => requestAnimationFrame(measure));
         window.addEventListener('resize', measure);
         const observer = new ResizeObserver(measure);
@@ -397,14 +401,18 @@ export default function Palavra() {
             window.removeEventListener('resize', measure);
             observer.disconnect();
         };
-        // `maxTilePx` is in the deps on purpose: applying a size changes the
-        // layout the next measurement reads, so each value triggers one more
-        // pass and the board settles rather than converging on whatever the
-        // first, pre-layout reading happened to be. It terminates because the
-        // space below the board doesn't depend on the board's own height, so
-        // the second pass computes the same number as the third and the
-        // setState bails.
-    }, [challenge, over, pageTab, maxTilePx]);
+    }, [challenge, over, pageTab, measure]);
+
+    // The settling pass, split from the subscriptions above so it costs a
+    // measurement and nothing else. Applying a size changes the layout the
+    // next reading sees, so each value triggers one more pass. It terminates
+    // because the space below the board doesn't depend on the board's own
+    // height: the second pass computes what the third would, and the setState
+    // bails on an unchanged value.
+    useLayoutEffect(() => {
+        if (maxTilePx === undefined) return;
+        measure();
+    }, [maxTilePx, measure]);
 
     // Back to a link on the reference. The card already carries the finished
     // verse, so the separate full-verse box under it was the same text and the

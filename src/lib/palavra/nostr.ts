@@ -139,8 +139,17 @@ async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
     const play = state.plays[today];
     if (!play || !isFinished(play)) return;
 
+    // The name meant this from the start and the code didn't check. Sync runs
+    // on every foreground, and publishing mines a proof of work — roughly a
+    // million hashes — so without this the app re-mined an event the relays
+    // already had every time it came back on screen.
+    if (state.publishedResults[`${pubkey}:${today}`]) return;
+
     try {
         await publishPalavraResult(today, play, pubkey);
+        // Only after it went out, so a failed publish is retried on the next
+        // foreground rather than being marked done.
+        usePalavraStore.getState().markResultPublished(pubkey, today);
     } catch (error) {
         // Never let this fail the sync it rides on — the play log is the part
         // that matters, and the next foreground tries again.
