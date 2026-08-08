@@ -20,6 +20,10 @@ import { MAX_GUESSES, type LeaderboardEntry } from './types';
 
 const KIND_CONTACTS = 3;
 
+/** Enough that a normal follow list is covered whole, small enough that the
+    filter stays inside what relays accept. */
+const MAX_FOLLOWS = 300;
+
 /** How far back the head-to-head record reaches. */
 const DUEL_DAYS = 30;
 
@@ -102,11 +106,15 @@ export async function fetchFollows(pubkey: string): Promise<string[]> {
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
         if (!contacts) return [];
+        // Capped: a contact list can run to thousands, and every pubkey here
+        // becomes an `authors` entry in a relay filter and a NIP-65 lookup.
+        // Past a point relays start rejecting the filter outright, which
+        // turns a big follow list into no duels at all.
         return [...new Set(
             contacts.tags
                 .filter((tag) => tag[0] === 'p' && /^[0-9a-f]{64}$/i.test(tag[1] ?? ''))
                 .map((tag) => tag[1]),
-        )];
+        )].slice(0, MAX_FOLLOWS);
     } catch (error) {
         console.warn('Could not load the contact list.', error);
         return [];
@@ -124,8 +132,8 @@ export interface DuelRecord {
     played: number;
 }
 
-/** Recent dates, newest first, as local YYYY-MM-DD — the same day-keys the
-    result events are tagged with. */
+/** Recent dates, newest first, as UTC YYYY-MM-DD — the same day-keys the
+    puzzles and result events are tagged with. */
 export function recentDates(days: number, from = new Date()): string[] {
     return Array.from({ length: days }, (_, i) => {
         const date = new Date(from);

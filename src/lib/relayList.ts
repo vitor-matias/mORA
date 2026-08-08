@@ -1,6 +1,6 @@
 // NIP-65 relay lists — where to look for somebody else's events.
 //
-// The pool in src/lib/pool.ts routes every request to the same four relays.
+// The pool in src/lib/pool.ts routes every request to the same default relays.
 // That is exactly right for this app's own writes and for reading them back:
 // mORA published them there, so mORA finds them there.
 //

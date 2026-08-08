@@ -89,6 +89,10 @@ function betterPlay(a: PalavraPlay, b: PalavraPlay): PalavraPlay {
         if (a.guesses.length !== b.guesses.length) {
             return a.guesses.length < b.guesses.length ? a : b;
         }
+        // ms 0 is "no duration recorded", not "instant" — a win merged from a
+        // device whose startedAt was lost arrives that way. Compared naively
+        // it wins every tie-break and reports as the fastest solve there is.
+        if ((a.ms === 0) !== (b.ms === 0)) return a.ms === 0 ? b : a;
         return a.ms <= b.ms ? a : b;
     }
     return a.guesses.length >= b.guesses.length ? a : b;
@@ -311,9 +315,16 @@ export const usePalavraStore = create<PalavraState>()(
                 // verses in localStorage.
                 const dates = Object.keys(next).sort();
                 if (dates.length <= MAX_CACHED_CHALLENGES) return { challenges: next };
+                // Trimming to the newest dates would drop the puzzle that was
+                // just fetched whenever it is an archive day older than the
+                // window — so paging back would re-fetch every time and offline
+                // reload would lose the day on screen. Keep it explicitly.
+                const keep = new Set(dates.slice(-MAX_CACHED_CHALLENGES));
+                keep.add(challenge.date);
                 return {
                     challenges: Object.fromEntries(
-                        dates.slice(-MAX_CACHED_CHALLENGES).map((date) => [date, next[date]]),
+                        [...keep].sort().slice(-MAX_CACHED_CHALLENGES)
+                            .map((date) => [date, next[date]]),
                     ),
                 };
             }),

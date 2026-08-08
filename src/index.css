@@ -175,12 +175,17 @@
   .palavra-tile-filled { border-color: rgb(161 161 170); transform: scale(1.03); }
   .dark .palavra-tile-filled { border-color: rgb(113 113 122); }
 
-  .palavra-tile-correct { background: rgb(5 150 105); border-color: rgb(5 150 105); color: #fff; }
-  .palavra-tile-present { background: rgb(217 119 6); border-color: rgb(217 119 6); color: #fff; }
+  /* Letter-on-tile contrast is held at WCAG AA (4.5:1), which the obvious
+     palette does not reach: white on the bright emerald and amber measured
+     2.5:1 and 2.2:1 in dark mode. Light mode keeps white and darkens the
+     fill; dark mode keeps the bright fill — it belongs against a dark page —
+     and flips the letter to ink, which reads at 9:1 and up. */
+  .palavra-tile-correct { background: rgb(4 120 87); border-color: rgb(4 120 87); color: #fff; }
+  .palavra-tile-present { background: rgb(180 83 9); border-color: rgb(180 83 9); color: #fff; }
   .palavra-tile-absent  { background: rgb(113 113 122); border-color: rgb(113 113 122); color: #fff; }
-  .dark .palavra-tile-correct { background: rgb(16 185 129); border-color: rgb(16 185 129); }
-  .dark .palavra-tile-present { background: rgb(245 158 11); border-color: rgb(245 158 11); }
-  .dark .palavra-tile-absent  { background: rgb(82 82 91); border-color: rgb(82 82 91); }
+  .dark .palavra-tile-correct { background: rgb(52 211 153); border-color: rgb(52 211 153); color: rgb(24 24 27); }
+  .dark .palavra-tile-present { background: rgb(251 191 36); border-color: rgb(251 191 36); color: rgb(24 24 27); }
+  .dark .palavra-tile-absent  { background: rgb(82 82 91); border-color: rgb(82 82 91); color: #fff; }
 
   /* An eliminated key reads as spent rather than filled: on the board a grey
      tile is a result, but on the keyboard it is a letter to stop reaching
@@ -193,7 +198,11 @@
   }
   .dark .palavra-key-absent {
     background: rgb(24 24 27);
-    color: rgb(96 96 105);
+    /* Dimmer than a live key, but still 4.65:1 against the fill — the old
+       value sat at 2.85:1, so an eliminated letter was hard to *read* rather
+       than merely visibly spent. The sunk background carries the "used up"
+       signal; the glyph does not have to be faint as well. */
+    color: rgb(130 130 139);
     border-color: rgb(24 24 27);
   }
 

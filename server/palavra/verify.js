@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { VERSES } from './verses.js';
+import { normalizeWord } from './palavra.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CORPUS = process.env.PALAVRA_CORPUS
@@ -20,7 +21,9 @@ const MIN_LEN = 35, MAX_LEN = 110;
 const MIN_FOLD = 5, MAX_FOLD = 8;
 const MAX_ANSWER_USES = 3;
 
-const fold = (s) => s.normalize('NFD').replace(/\p{Mn}/gu, '').toUpperCase().replace(/[^A-Z]/g, '');
+// The publisher's own function, not a copy: checking the pool with a
+// different fold than the one that builds it would defeat the point.
+const fold = normalizeWord;
 const norm = (s) => s.replace(/\s+([!?;:,.»])/g, '$1').replace(/«\s+/g, '«').replace(/\s+/g, ' ').trim();
 
 function loadCorpus() {
@@ -80,7 +83,9 @@ for (const [i, e] of VERSES.entries()) {
     }
     if (e.refUrl) problems.push(`${at}: refUrl is obsolete — the app carries the text, not a link`);
 
-    uses[e.answer] = (uses[e.answer] ?? 0) + 1;
+    // Keyed on the folded form: `graça` and `graca` are one word to the
+    // player, so they must share a cap.
+    uses[a] = (uses[a] ?? 0) + 1;
 
     if (corpus) {
         // Case-insensitive: `answer` is stored lowercase, but the corpus
@@ -110,7 +115,19 @@ console.log(`  books        ${new Set(VERSES.map((e) => e.ref.replace(/\s+\d+,\d
 console.log(`  lengths      ${JSON.stringify(dist)}`);
 console.log(`  excerpts     ${VERSES.filter((e) => e.verse.includes('…')).length}`);
 console.log(`  multi-blank  ${VERSES.filter((e) => e.verse.split('{{blank}}').length > 2).length}`);
+const skipCorpus = process.argv.includes('--allow-missing-corpus');
 console.log(corpus ? '  corpus       checked verbatim' : `  corpus       SKIPPED (not found at ${CORPUS})`);
+
+// Without the corpus the only check that catches a *misquoted* verse doesn't
+// run, and everything else passing says nothing about whether the text is
+// real. A green run that verified nothing is worse than a red one, so this
+// fails unless the caller opted out — which CI does, because the texts are
+// not in this repository.
+if (!corpus && !skipCorpus) {
+    console.error(`\ncorpus not found at ${CORPUS}`);
+    console.error('Set PALAVRA_CORPUS, or pass --allow-missing-corpus to skip the verbatim check.');
+    process.exit(1);
+}
 
 if (problems.length) {
     console.error(`\n${problems.length} problem(s):`);

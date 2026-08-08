@@ -5,7 +5,7 @@ A Catholic companion app (PWA) for daily prayer in European Portuguese. mORA bri
 - **Santo Terço** — a guided Rosary that follows the day's mysteries (Joyful, Luminous, Sorrowful, Glorious), with beginner and advanced modes.
 - **Missa Diária** — the day's Mass readings, with a toggle between readings-only and the full missal.
 - **Liturgia das Horas** — the Liturgy of the Hours (Office of Readings, Lauds, Daytime Prayer, Vespers, Compline), defaulting to the canonical hour for the current time of day.
-- **Palavra Bíblica do Dia** — a daily scripture word game: a verse with one word hidden, guessed Wordle-style in six tries, with a leaderboard, head-to-head duels and private leagues carried entirely on Nostr.
+- **Palavra Bíblica do Dia** — a daily scripture word game: a verse with one word hidden, guessed Wordle-style in six tries, with a leaderboard, head-to-head duels and unlisted leagues carried entirely on Nostr.
 
 It tracks prayer **streaks** and can optionally sync them and your profile to the [Nostr](https://nostr.com/) network, so your identity and progress are portable and self-owned (NIP-07 extension, an `nsec`/hex key, or a locally-generated anonymous key).
 

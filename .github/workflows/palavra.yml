@@ -44,10 +44,10 @@ jobs:
         run: npm ci
 
       # Cheap, and it fails loudly rather than publishing a malformed puzzle.
-      # Skips the corpus check automatically — the texts aren't in this repo.
+      # Opts out of the verbatim check — the texts aren't in this repo.
       - name: Verify the pool
         working-directory: server/palavra
-        run: npm run verify
+        run: node verify.js --allow-missing-corpus
 
       - name: Publish
         working-directory: server/palavra

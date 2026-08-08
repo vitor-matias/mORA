@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, X } from 'lucide-react';
 import { nextUTCMidnight } from '@/lib/format';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { useTranslations } from '@/lib/i18n';
@@ -71,7 +71,7 @@ export function ResultSheet({
     nextPuzzleAt?: number;
 }) {
     const t = useTranslations().palavra;
-    const [copied, setCopied] = useState(false);
+    const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
     const countdown = useTimeToNextPuzzle(nextPuzzleAt);
     const winRate = stats.plays > 0 ? Math.round((stats.wins / stats.plays) * 100) : 0;
     const best = Math.max(1, ...stats.distribution);
@@ -79,20 +79,29 @@ export function ResultSheet({
     const copy = async () => {
         try {
             await navigator.clipboard.writeText(shareText);
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 2000);
+            setCopyState('copied');
         } catch (error) {
+            // Denied permission, an insecure origin, or no Clipboard API at
+            // all. Failing silently leaves the button looking like it did
+            // nothing, so say so rather than let the player paste stale
+            // clipboard contents into a post.
             console.warn('Could not copy the result.', error);
+            setCopyState('failed');
         }
+        window.setTimeout(() => setCopyState('idle'), 2000);
     };
 
+    // No aria-live on the section: the countdown below re-renders every
+    // minute, and a live region here would read the entire sheet — heading,
+    // stats, distribution — out again each time. Only the outcome, which
+    // settles once, is announced.
     return (
-        <section className="surface rounded-3xl p-5 space-y-5" aria-live="polite">
+        <section className="surface rounded-3xl p-5 space-y-5">
             {/* No verse and no reference here: the card above already shows
                 the completed verse, the revealed word and the link out. The
                 answer is restated only on a loss, where the player never
                 typed it and the heading alone doesn't tell them. */}
-            <div className="text-center space-y-1">
+            <div className="text-center space-y-1" role="status">
                 <h2 className="text-xl font-bold page-title">
                     {solved ? (tries === 1 ? t.wonFirstTry : t.wonIn(tries)) : t.lost}
                 </h2>
@@ -154,9 +163,11 @@ export function ResultSheet({
                     onClick={copy}
                     className="w-full flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-4 py-3 transition-colors active:scale-[0.98]"
                 >
-                    {copied
+                    {copyState === 'copied'
                         ? <><Check size={16} aria-hidden="true" /> {t.copied}</>
-                        : <><Copy size={16} aria-hidden="true" /> {t.copyResult}</>}
+                        : copyState === 'failed'
+                            ? <><X size={16} aria-hidden="true" /> {t.copyFailed}</>
+                            : <><Copy size={16} aria-hidden="true" /> {t.copyResult}</>}
                 </button>
                 {actions}
             </div>

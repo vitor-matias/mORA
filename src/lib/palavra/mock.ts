@@ -1,7 +1,7 @@
-// A stand-in for the challenge server, used when VITE_PALAVRA_SERVER_URL is
-// unset. It exists so the game is playable and testable before the real server
-// lands — everything it returns follows the contract in
-// server/palavra/README.md exactly, so swapping in the real server is a
+// A stand-in for the real puzzles, used when VITE_PALAVRA_PUBLISHER_PUBKEY is
+// unset. It exists so the game is playable and testable before a publisher
+// key is configured — everything it returns follows the contract in
+// server/palavra/README.md exactly, so switching to real puzzles is a
 // matter of setting the env var.
 //
 import { sha256 } from '@noble/hashes/sha2';

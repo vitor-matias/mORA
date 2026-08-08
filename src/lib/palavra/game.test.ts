@@ -62,8 +62,10 @@ describe('scoreGuess', () => {
     });
 
     it('gives greens priority over yellows for a repeated letter', () => {
-        // Answer holds two O's. Guess has three: the one that lines up is
-        // green, one more may be yellow, the third is spent.
+        // MOODO holds three O's, at indices 1, 2 and 4. The guess's O's at 1
+        // and 2 line up and go green; the leading one takes the third O as a
+        // yellow. Greens are claimed before any yellow is handed out — score
+        // left to right in one pass and the leading O steals a green's letter.
         expect(scoreGuess('OOOSS', 'MOODO')).toEqual(marks('pccaa'));
     });
 

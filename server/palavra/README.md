@@ -117,14 +117,23 @@ the way it does:
 `npm run backfill` is idempotent and safe to run as often as you like:
 
 ```cron
-5 0 * * *  cd /srv/mora/server/palavra && . /etc/palavra.env && /usr/bin/node publish.js --backfill 7 >> /var/log/palavra.log 2>&1
+CRON_TZ=UTC
+5 0 * * *  cd /srv/mora/server/palavra && set -a && . /etc/palavra.env && set +a && /usr/bin/node publish.js --backfill 7 >> /var/log/palavra.log 2>&1
 ```
 
-Two things bite here that `--watch` avoids: **cron runs in the machine's local
-timezone** unless you set `CRON_TZ=UTC`, and if the box is ahead of UTC the job
-will ask for a date `publish.js` considers to be in the future and publish
-nothing. And **`node` needs an absolute path**, because cron's `PATH` is
-minimal and a version manager's shim won't be on it.
+Three things bite here that `--watch` avoids:
+
+- **`. file` does not export.** `PALAVRA_NSEC=nsec1…` sourced into a shell is a
+  shell variable, and a child process never sees it — the job would exit 1 on
+  every run with "PALAVRA_NSEC is not set". `set -a` around the source marks
+  the assignments for export, and it leaves the file in the plain `KEY=value`
+  form that systemd's `EnvironmentFile=` requires (that directive rejects
+  `export`), so one file serves both.
+- **Cron runs in the machine's local timezone** unless `CRON_TZ=UTC` is set. If
+  the box is ahead of UTC the job asks for a date `publish.js` considers to be
+  in the future and publishes nothing.
+- **`node` needs an absolute path**, because cron's `PATH` is minimal and a
+  version manager's shim won't be on it.
 
 ### Backfilling
 
@@ -201,7 +210,7 @@ Kind `30078`, addressable, one per day:
 {
   "date": "2026-08-08",                 // UTC day
   "ref": "João 1,1",
-  "refUrl": "https://biblia.capuchinhos.org/jo/1?verseStart=1",
+  "full": "No princípio havia o Verbo; o Verbo estava em Deus; e o Verbo era Deus.",
   "verse": "No princípio havia o {{blank}}; o {{blank}} estava em Deus; e o {{blank}} era Deus.",
   "length": 5,
   "answerHash": "…",                    // sha256(`${date}:${FOLDED_ANSWER}`), hex
@@ -216,12 +225,10 @@ Kind `30078`, addressable, one per day:
   its own gap. That is what makes João 1,1 playable at all. Keep the accents.
   Max 220 characters, though the pool aims at 35–110 — the card sits directly
   above the board, and a long verse pushes the keyboard off a laptop screen.
-- `refUrl` — optional, must be `https:`. The app links the reference to the
-  Bíblia dos Capuchinhos reader, whose routes are
-  `/<abreviatura>/<capítulo>?verseStart=<versículo>`. The client will not derive
-  this from `ref`: a book-name-to-abbreviation table is silently wrong for
-  whichever book it gets wrong, and that site answers an unknown slug with its
-  app shell instead of a 404.
+- `full` — optional. The same passage unblanked, shown alongside the reference
+  once the game is over. Carried in the payload rather than linked out: the
+  translation already lives in the pool, so a few hundred extra bytes mean the
+  verse reads in place and still reads offline. Same 220-character cap.
 - `length` — letters in the **folded** answer, 5 to 8 inclusive. The board is
   drawn from it.
 - `answerHash` — `sha256(date + ":" + FOLDED_ANSWER)`. Lets the client
@@ -281,10 +288,10 @@ ever truly lost — it can always be republished.
 ## The verse pool
 
 `verses.js`, text taken verbatim from the **Bíblia dos Capuchinhos** corpus at
-`../portuguese-capuchine-translation`. It has to be that translation: `refUrl`
-sends the reader to biblia.capuchinhos.org, and quoting one wording while
-linking to another means the passage they click through to doesn't match what
-they just played.
+`../portuguese-capuchine-translation`, checked verbatim against it by
+`npm run verify`. One translation throughout: `verse` and `full` are the same
+passage, and the `length` the board is drawn from comes from that wording, so
+mixing sources would show a player a gap that doesn't match the answer.
 
 Licensing is the operator's call. These are not public-domain texts; the corpus
 ships a CrossWire permission document, and reprinting verses in a game is a use
@@ -298,10 +305,10 @@ repeated a verse on **140 days of a 365-day year** while never showing about
 150 of them at all.
 
 Instead, days are counted from a fixed epoch and the pool is walked in a
-permuted order. Each complete pass through all 379 verses is **reshuffled with
+permuted order. Each complete pass through all 1115 verses is **reshuffled with
 a new seed**, so every verse appears exactly once per cycle and the next cycle
-deals a different order. With 379 entries that's a fresh verse every day for
-just over a year before anything recurs.
+deals a different order. With 1115 entries that's a fresh verse every day for
+about 3.1 years before anything recurs.
 
 It stays a pure function of the date, which is what makes backfilling safe: any
 republish of the same day produces byte-identical output.

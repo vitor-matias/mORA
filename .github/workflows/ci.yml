@@ -46,8 +46,10 @@ jobs:
         working-directory: server/palavra
         run: npm ci
       # Structure, lengths, duplicate refs, the answer cap, and that no answer
-      # is left visible in its own verse. The verbatim-against-corpus check
-      # skips here — the texts are not in this repo — so it stays a local step.
+      # is left visible in its own verse. The verbatim-against-corpus check is
+      # explicitly opted out of — the texts are not in this repo — so it stays
+      # a local step. The flag is required: verify now fails rather than
+      # quietly reporting "all clean" for a run that skipped its main check.
       - name: Verify
         working-directory: server/palavra
-        run: npm run verify
+        run: node verify.js --allow-missing-corpus

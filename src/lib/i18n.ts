@@ -97,6 +97,7 @@ const translations = {
         distribution: "Distribuição",
         copyResult: "Copiar resultado",
         copied: "Copiado",
+        copyFailed: "Não foi possível copiar",
         nextWordIn: (countdown: string) => `Próxima palavra em ${countdown}.`,
 
         publish: "Publicar no Nostr",
@@ -143,7 +144,7 @@ const translations = {
         openInBible: "(abre a Bíblia noutro separador)",
 
         // Home row and the Perfil opt-in.
-        homeStreak: (n: number) => ` · ${n} seguidos`,
+        homeStreak: (n: number) => ` · ${n} ${n === 1 ? 'seguido' : 'seguidos'}`,
         homeIdle: "Um versículo, uma palavra escondida",
         homeSolved: (tries: number, max: number) => `Resolvida em ${tries}/${max}`,
         homeLost: "Hoje não acertou — nova palavra amanhã",

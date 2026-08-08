@@ -15,6 +15,7 @@
 // and ignore puzzles signed by anyone else, so this key is what makes a puzzle
 // *the* puzzle. Generate it once with `npm run keygen` and keep it.
 
+import { pathToFileURL } from 'node:url';
 import WebSocket from 'ws';
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
@@ -46,8 +47,22 @@ const puzzleDTag = (date) => `mora-palavra-p:${date}`;
 const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
 const utcToday = () => isoDate(Date.now());
 
-/** Epoch ms of the next 00:00 UTC — what the app counts down to. */
-function nextPuzzleAtMs() {
+/**
+ * Epoch seconds of the midnight that ends `date` — when the puzzle after this
+ * one unlocks.
+ *
+ * Derived from the puzzle day rather than from the clock. Reading `Date.now()`
+ * here would make `buildPuzzle` return different bytes for the same date
+ * depending on when it ran, which breaks the determinism the backfill relies
+ * on, and would give a backfilled archive day the rollover of the day it was
+ * published on instead of its own.
+ */
+function nextPuzzleAtFor(date) {
+    return Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000) + 86400;
+}
+
+/** Epoch ms of the next 00:00 UTC — when the watch loop should wake. */
+function nextWakeMs() {
     const next = new Date();
     next.setUTCHours(24, 0, 0, 0);
     return next.getTime();
@@ -62,14 +77,14 @@ const EPOCH_MS = Date.UTC(2026, 0, 1);
  * date produces byte-identical output — that is what makes backfilling safe.
  *
  * A shuffled cycle rather than `hash(date) % pool`. Hashing straight to an
- * index looks fine and isn't: it's the birthday problem, and with 379 verses
- * it repeated a verse on 140 days of a 365-day year while never showing about
- * 150 of them at all.
+ * index looks fine and isn't: it's the birthday problem — measured against
+ * this pool it repeated a verse on 140 days of a 365-day year while never
+ * showing a large share of them at all.
  *
  * The cycle is counted from a fixed epoch, not per calendar year, and **each
  * complete pass through the pool is reshuffled** — the seed is the cycle
  * number. Tying it to the year instead would leave the tail of every
- * permutation unreached (379 verses don't fit in 365 days) and would restart
+ * permutation unreached (the pool doesn't divide into 365 days) and would restart
  * the same walk each January. This way every verse is used exactly once per
  * cycle, and the next cycle deals a different order.
  */
@@ -122,7 +137,7 @@ export function buildPuzzle(date) {
         length: normalizeWord(answer).length,
         answerHash: answerHash(date, answer),
         answerCipher: obfuscateAnswer(date, answer),
-        nextPuzzleAt: Math.floor(nextPuzzleAtMs() / 1000),
+        nextPuzzleAt: nextPuzzleAtFor(date),
     };
 }
 
@@ -132,7 +147,15 @@ function loadSecretKey() {
         console.error('PALAVRA_NSEC is not set. Run `npm run keygen` and set it.');
         process.exit(1);
     }
-    const decoded = nip19.decode(nsec);
+    let decoded;
+    try {
+        decoded = nip19.decode(nsec);
+    } catch {
+        // nip19.decode throws on anything that isn't valid bech32, and a typo
+        // in an env file is the likeliest way to get here.
+        console.error('PALAVRA_NSEC is not a valid nsec. Run `npm run keygen`.');
+        process.exit(1);
+    }
     if (decoded.type !== 'nsec') {
         console.error('PALAVRA_NSEC is not an nsec.');
         process.exit(1);
@@ -250,50 +273,74 @@ async function fillGap(secretKey, pubkey, days = MAX_GAP_DAYS) {
 
 // ── Entry point ──────────────────────────────────────────────────────────
 
-const args = process.argv.slice(2);
-const secretKey = loadSecretKey();
-const pubkey = getPublicKey(secretKey);
-console.log(`publisher ${pubkey}`);
-console.log(`relays    ${RELAYS.join(', ')}\n`);
+async function main() {
+    const args = process.argv.slice(2);
+    const secretKey = loadSecretKey();
+    const pubkey = getPublicKey(secretKey);
+    console.log(`publisher ${pubkey}`);
+    console.log(`relays    ${RELAYS.join(', ')}\n`);
 
-if (args.includes('--watch')) {
-    // Self-scheduling: no cron, no timezone confusion in a crontab, and the
-    // gap check on every wake means a missed or slept-through cycle heals
-    // itself rather than leaving a day with no puzzle.
-    console.log('watch mode — publishing on each 00:00 UTC rollover\n');
-    for (;;) {
-        try {
-            await fillGap(secretKey, pubkey);
-        } catch (error) {
-            // Never let a bad night kill the process: the next wake retries,
-            // and the gap check will still see the day as missing.
-            console.error('publish cycle failed:', error?.message ?? error);
+    if (args.includes('--watch')) {
+        // Self-scheduling: no cron, no timezone confusion in a crontab, and the
+        // gap check on every wake means a missed or slept-through cycle heals
+        // itself rather than leaving a day with no puzzle.
+        console.log('watch mode — publishing on each 00:00 UTC rollover\n');
+        for (;;) {
+            try {
+                await fillGap(secretKey, pubkey);
+            } catch (error) {
+                // Never let a bad night kill the process: the next wake retries,
+                // and the gap check will still see the day as missing.
+                console.error('publish cycle failed:', error?.message ?? error);
+            }
+            // Recomputed from the clock every time rather than accumulated, so
+            // drift and suspend-resume can't walk the schedule off midnight.
+            const wakeAt = nextWakeMs() + AFTER_MIDNIGHT_MS;
+            console.log(`next run ${new Date(wakeAt).toISOString()}\n`);
+            await new Promise((resolve) => setTimeout(resolve, Math.max(1000, wakeAt - Date.now())));
         }
-        // Recomputed from the clock every time rather than accumulated, so
-        // drift and suspend-resume can't walk the schedule off midnight.
-        const wakeAt = nextPuzzleAtMs() + AFTER_MIDNIGHT_MS;
-        console.log(`next run ${new Date(wakeAt).toISOString()}\n`);
-        await new Promise((resolve) => setTimeout(resolve, Math.max(1000, wakeAt - Date.now())));
     }
+
+    const backfillAt = args.indexOf('--backfill');
+    let failed = false;
+
+    if (backfillAt !== -1) {
+        const days = Number(args[backfillAt + 1] ?? 7);
+        if (!Number.isInteger(days) || days < 1 || days > MAX_GAP_DAYS) {
+            console.error(`--backfill needs a whole number of days, 1 to ${MAX_GAP_DAYS}.`);
+            process.exit(1);
+        }
+        failed = !await fillGap(secretKey, pubkey, days);
+    } else {
+        const date = args.find((a) => !a.startsWith('--')) ?? utcToday();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            console.error(`"${date}" is not YYYY-MM-DD`);
+            process.exit(1);
+        }
+        // The shape check passes 2026-02-30, and Date.parse does *not* reject
+        // it — V8 rolls it forward to March 2. Left alone the publisher
+        // signs a puzzle under a date that does not exist and that no client
+        // will ever ask for. Round-tripping through the formatter is the only
+        // check that catches it.
+        const parsed = Date.parse(`${date}T00:00:00Z`);
+        if (Number.isNaN(parsed) || isoDate(parsed) !== date) {
+            console.error(`"${date}" is not a real date`);
+            process.exit(1);
+        }
+        if (date > utcToday()) {
+            // Publishing ahead would put tomorrow's answer on a public relay today.
+            console.error(`${date} is in the future`);
+            process.exit(1);
+        }
+        failed = !await publish(date, secretKey);
+    }
+
+    process.exit(failed ? 1 : 0);
 }
 
-const backfillAt = args.indexOf('--backfill');
-let failed = false;
-
-if (backfillAt !== -1) {
-    failed = !await fillGap(secretKey, pubkey, Number(args[backfillAt + 1] ?? 7));
-} else {
-    const date = args.find((a) => !a.startsWith('--')) ?? utcToday();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        console.error(`"${date}" is not YYYY-MM-DD`);
-        process.exit(1);
-    }
-    if (date > utcToday()) {
-        // Publishing ahead would put tomorrow's answer on a public relay today.
-        console.error(`${date} is in the future`);
-        process.exit(1);
-    }
-    failed = !await publish(date, secretKey);
-}
-
-process.exit(failed ? 1 : 0);
+// Guarded, so importing this module doesn't run the CLI. `buildPuzzle` is
+// exported to be checked from elsewhere, and unguarded top-level code meant
+// merely importing it demanded PALAVRA_NSEC and then exited the process —
+// which made the determinism the backfill depends on impossible to assert.
+// process.argv[1] is undefined under `node -e`, where pathToFileURL throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

@@ -29,7 +29,24 @@ import {
 /** NIP-78 application data, addressable — one puzzle event per day. */
 const KIND_PUZZLE = 30078;
 
-const PUBLISHER = (import.meta.env.VITE_PALAVRA_PUBLISHER_PUBKEY as string | undefined)?.trim() ?? '';
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HEX64_RE = /^[0-9a-f]{64}$/i;
+
+const CONFIGURED_PUBLISHER = (import.meta.env.VITE_PALAVRA_PUBLISHER_PUBKEY as string | undefined)?.trim() ?? '';
+
+// An npub or a truncated key is the easy mistake here, and left unchecked it
+// fails in the worst way: the pin never matches, so every single day looks
+// like "no puzzle published" with nothing to point at. Falling back to the
+// mock at least keeps the game playable and says on screen that it's a demo.
+const PUBLISHER = !CONFIGURED_PUBLISHER || HEX64_RE.test(CONFIGURED_PUBLISHER)
+    ? CONFIGURED_PUBLISHER.toLowerCase()
+    : '';
+
+if (CONFIGURED_PUBLISHER && !PUBLISHER) {
+    console.warn(
+        'VITE_PALAVRA_PUBLISHER_PUBKEY must be 64 hex characters, not an npub. Falling back to the demo puzzles.',
+    );
+}
 
 /** True while the game is running against the built-in mock. The UI says so
     rather than passing a demo puzzle off as the real one. */
@@ -38,9 +55,6 @@ export const PALAVRA_IS_MOCK = !PUBLISHER;
 export function puzzleDTag(date: string): string {
     return `mora-palavra-p:${date}`;
 }
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const HEX64_RE = /^[0-9a-f]{64}$/i;
 
 // A verse is rendered as text, never as markup, so the cap here is about
 // layout rather than safety: a bad payload shouldn't be able to push a

@@ -16,11 +16,16 @@ const DEFAULT_RELAYS = [
  * and reading back is most of what they do, and there is no way to verify that
  * against the public network without putting test events on it.
  */
-export const RELAYS = (import.meta.env.VITE_NOSTR_RELAYS as string | undefined)
+const configured = (import.meta.env.VITE_NOSTR_RELAYS as string | undefined)
     ?.split(',')
     .map((url) => url.trim())
-    .filter(Boolean)
-    ?? DEFAULT_RELAYS;
+    .filter(Boolean) ?? [];
+
+// `??` wouldn't do here: `VITE_NOSTR_RELAYS=` (set but blank, which is what a
+// declared-and-empty CI variable produces) parses to an empty array, not
+// undefined, and an empty relay list silently turns off every Nostr feature
+// in the app rather than falling back.
+export const RELAYS = configured.length > 0 ? configured : DEFAULT_RELAYS;
 
 /**
  * One pool for everything Nostr in the app: sync, profiles, and the relay
