@@ -32,6 +32,7 @@ import {
     signNostrEvent,
 } from '@/lib/nostr';
 import {
+    derivePalavraStats,
     isFinished,
     mergePalavraPlays,
     playsEqual,
@@ -198,10 +199,22 @@ export async function publishPalavraResult(
 
     // The guesses themselves are deliberately absent: they would hand anyone
     // reading the relay a head start on a puzzle they haven't played yet.
+    // The streak travels with the result rather than being derived from it.
+    //
+    // A lifetime streak can't be recomputed by a reader: it would mean
+    // fetching one event per day per player, for as many days as the streak is
+    // long, and the answer would still stop at whatever window the query used.
+    // Declaring it costs one number and makes a 1,000-day streak as cheap to
+    // read as a 3-day one.
+    //
+    // Self-reported, like the guess count and the time beside it. Nobody
+    // countersigns any of this; the NIP-13 proof prices bulk fabrication and
+    // says nothing about one inflated number. The UI should not imply more.
     const content = JSON.stringify({
         tries: play.guesses.length,
         solved: play.solved,
         ms: play.ms,
+        streak: derivePalavraStats(usePalavraStore.getState().plays).currentStreak,
     });
 
     try {

@@ -105,7 +105,12 @@ const translations = {
         published: "Publicado no Nostr",
         publishFailed: "Não foi possível publicar",
 
-        tabBoard: "Classificação",
+        tabBoard: "Do dia",
+        tabStreaks: "Seguidos",
+        loadingStreaks: "A carregar as sequências…",
+        emptyStreaks: "Ainda ninguém tem uma sequência a decorrer.",
+        streaksLegend: "Dias seguidos a acertar, entre quem jogou hoje ou ontem. O número é publicado por cada jogador; ✓ marca os que foram confirmados nos relays, por amostragem dos dias da sequência.",
+        streakVerified: "Sequência confirmada nos relays",
         tabDuels: "Duelos",
         tabLeagues: "Ligas",
         notSharing: "Está a ver os resultados dos outros. Para aparecer nas classificações, ative a partilha em Perfil.",

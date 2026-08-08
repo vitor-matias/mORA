@@ -116,6 +116,41 @@ describe('rank', () => {
     });
 });
 
+describe('a declared streak', () => {
+    const withStreak = (streak: unknown) => event({
+        content: JSON.stringify({ tries: 3, solved: true, ms: 1000, streak }),
+    });
+
+    it('is carried through when it is a sane number', () => {
+        expect(entriesFromEvents([withStreak(1200)], DATE)[0].streak).toBe(1200);
+    });
+
+    // Self-reported, so the only defence is a bound. A board topped by someone
+    // claiming nine thousand years should show them not at all rather than
+    // first.
+    it('is dropped when it is absurd', () => {
+        expect(entriesFromEvents([withStreak(9_999_999)], DATE)[0].streak).toBeUndefined();
+    });
+
+    it('is dropped when it is negative or fractional', () => {
+        expect(entriesFromEvents([withStreak(-5)], DATE)[0].streak).toBeUndefined();
+        expect(entriesFromEvents([withStreak(3.5)], DATE)[0].streak).toBeUndefined();
+    });
+
+    it('is absent, not zero, when the publisher never sent one', () => {
+        // Results published before the field existed must not read as a
+        // zero-day streak and crowd the board.
+        const legacy = event({ content: JSON.stringify({ tries: 3, solved: true, ms: 1000 }) });
+        expect(entriesFromEvents([legacy], DATE)[0].streak).toBeUndefined();
+    });
+
+    it('does not stop the rest of the row parsing', () => {
+        const row = entriesFromEvents([withStreak('nonsense')], DATE)[0];
+        expect(row.tries).toBe(3);
+        expect(row.solved).toBe(true);
+    });
+});
+
 describe('rank with an unrecorded duration', () => {
     const solvedIn = (tries: number, ms: number) => ({ tries, solved: true, ms });
 
