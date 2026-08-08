@@ -70,6 +70,9 @@ export function parseCoord(coord: string): { creator: string; dTag: string } | n
     if (kind !== String(KIND_FOLLOW_SET)) return null;
     if (!/^[0-9a-f]{64}$/i.test(creator ?? '')) return null;
     if (!dTag.startsWith(LEAGUE_D_PREFIX)) return null;
+    // The kind and creator are fixed-width; this was the one part an invite
+    // could make arbitrarily long, and it ends up in relay filters.
+    if (dTag.length > LEAGUE_D_PREFIX.length + 64) return null;
     return { creator, dTag };
 }
 
@@ -208,7 +211,16 @@ export async function createLeague(name: string): Promise<League | null> {
     await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
 
     const league: League = { coord: coordOf(creator, dTag), creator, dTag, name: clean };
-    await joinLeague(league.coord);
+    // The roster event is already on the relays by this point, and joining is
+    // a separate read-modify-write. If it fails, returning null would strand a
+    // published league the creator can neither see nor invite anyone to — the
+    // UI drives its list from the membership event, and `leagueInvite` needs
+    // this object. Hand it back either way and let the caller retry.
+    try {
+        await joinLeague(league.coord);
+    } catch (error) {
+        console.warn('League created, but the membership list was not updated.', error);
+    }
     return league;
 }
 

@@ -7,7 +7,7 @@
 import { sha256 } from '@noble/hashes/sha2';
 import { utf8ToBytes } from '@noble/hashes/utils';
 import { nextUTCMidnight } from '@/lib/format';
-import { answerHash, obfuscateAnswer } from './game';
+import { answerHash, normalizeWord, obfuscateAnswer } from './game';
 import { BLANK_MARKER, type DailyChallenge } from './types';
 
 /**
@@ -53,7 +53,7 @@ export function mockDailyChallenge(date: string): DailyChallenge {
     const { ref, verse, answer, full } = verseForDate(date);
     // The displayed verse keeps its accents; only the answer is folded to the
     // 26 keys, which is what makes the length below the playable length.
-    const normalized = answer.normalize('NFD').replace(/\p{Mn}/gu, '');
+    const normalized = normalizeWord(answer);
     return {
         date,
         ref,

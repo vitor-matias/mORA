@@ -551,6 +551,10 @@ export default function Palavra() {
                         {!over && (
                             <Keyboard
                                 state={keys}
+                                // An archive day with a recorded but abandoned
+                                // play is readOnly while `over` is false, so
+                                // the keys rendered live and did nothing.
+                                disabled={readOnly}
                                 onLetter={onLetter}
                                 onBackspace={onBackspace}
                                 onEnter={onEnter}

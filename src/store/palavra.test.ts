@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
     derivePalavraStats,
     mergePalavraPlays,
@@ -8,8 +8,15 @@ import {
 } from './palavra.ts';
 import { formatUTCDate } from '@/lib/format';
 
-/** Dates are relative to the real today, because the streak rules are.
-    UTC throughout: a puzzle day rolls over at 00:00 UTC. */
+// The streak rules are relative to today, so the suite reads the clock — and
+// a run that starts at 23:59:59 UTC would compute `daysAgo` against one day
+// and `derivePalavraStats` against the next. Pinned to midday UTC, far from
+// either edge.
+beforeAll(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-08-08T12:00:00Z')); });
+afterAll(() => { vi.useRealTimers(); });
+
+/** Dates are relative to today, because the streak rules are. UTC throughout:
+    a puzzle day rolls over at 00:00 UTC. */
 function daysAgo(n: number): string {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() - n);

@@ -54,7 +54,9 @@ export function Community({
                     <button
                         key={id}
                         role="tab"
+                        id={`palavra-community-tab-${id}`}
                         aria-selected={tab === id}
+                        aria-controls="palavra-community-panel"
                         onClick={() => setTab(id)}
                         className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-colors ${
                             tab === id
@@ -75,7 +77,11 @@ export function Community({
                 </p>
             )}
 
-            <div role="tabpanel">
+            <div
+                role="tabpanel"
+                id="palavra-community-panel"
+                aria-labelledby={`palavra-community-tab-${tab}`}
+            >
                 {tab === 'board' && (revealResults
                     ? <Leaderboard date={date} you={pubkey} />
                     : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}

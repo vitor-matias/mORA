@@ -64,10 +64,11 @@ export interface DailyChallenge {
 /**
  * One row of the daily ranking, assembled from Nostr result events.
  *
- * There is no proof field and no verification: the server serves puzzles and
- * nothing else, so a result is whatever its author published. Someone can
- * claim a win they didn't earn — a deliberate trade for a stateless server and
- * a social graph that belongs entirely to its users.
+ * A result is whatever its author published: there is no server to countersign
+ * one, so someone can claim a win they didn't earn. The only gate is the NIP-13
+ * proof of work the result event is mined with, which prices bulk fabrication
+ * out without pretending to stop a single inflated score. A deliberate trade
+ * for having no server and a social graph that belongs entirely to its users.
  */
 export interface LeaderboardEntry {
     pubkey: string;
@@ -78,3 +79,11 @@ export interface LeaderboardEntry {
     name?: string;
     picture?: string;
 }
+
+/** How far back a head-to-head record looks.
+
+    Here rather than in social.ts because the copy that names this window has
+    to read it, and social.ts is loaded lazily — importing the constant from
+    there would pull the pool and nostr-tools into the main bundle to get one
+    number. */
+export const DUEL_DAYS = 30;

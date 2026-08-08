@@ -121,7 +121,7 @@ const translations = {
 
         loadingDuels: "A comparar resultados…",
         emptyDuels: "Nenhum duelo ainda. Os duelos comparam-no com quem segue no Nostr, nos dias em que ambos jogaram.",
-        duelsLegend: "Vitórias · empates · derrotas, nos últimos 30 dias. Só contam os dias em que ambos terminaram o jogo.",
+        duelsLegend: (days: number) => `Vitórias · empates · derrotas, nos últimos ${days} dias. Só contam os dias em que ambos terminaram o jogo.`,
         days: (n: number) => `${n} ${n === 1 ? "dia" : "dias"}`,
 
         loadingLeagues: "A carregar as suas ligas…",

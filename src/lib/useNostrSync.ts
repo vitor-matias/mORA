@@ -41,11 +41,19 @@ export function useNostrSync() {
                 // that fails one shouldn't abandon the other two — nor release
                 // the throttle below and have every foreground retry all of
                 // them because one is consistently unhappy.
-                await Promise.allSettled([
-                    syncStreaksWithNostr(),
-                    syncSettingsWithNostr(),
-                    syncPalavraWithNostr(),
-                ]);
+                const named = [
+                    ['streaks', syncStreaksWithNostr()],
+                    ['settings', syncSettingsWithNostr()],
+                    ['palavra', syncPalavraWithNostr()],
+                ] as const;
+                const settled = await Promise.allSettled(named.map(([, task]) => task));
+                // allSettled swallows the reasons, which left a sync that
+                // failed every time with nothing to diagnose it by.
+                settled.forEach((result, i) => {
+                    if (result.status === 'rejected') {
+                        console.warn(`Nostr sync failed for ${named[i][0]}:`, result.reason);
+                    }
+                });
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own
                 // state stands until the next attempt. Release the throttle so

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { DuelRecord } from '@/lib/palavra/social';
+import { DUEL_DAYS } from '@/lib/palavra/types';
 import { Player } from './Player';
 import { useTranslations } from '@/lib/i18n';
 
@@ -59,7 +60,7 @@ export function Duels({ pubkey }: { pubkey: string }) {
                 ))}
             </ul>
             <p className="text-xs text-zinc-400 mt-3">
-                {t.duelsLegend}
+                {t.duelsLegend(DUEL_DAYS)}
             </p>
         </>
     );

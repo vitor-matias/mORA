@@ -63,7 +63,12 @@ export function Leaderboard({ date, you }: { date: string; you?: string | null }
                         }`}
                     >
                         <span className={`w-6 shrink-0 tabular-nums text-center font-bold ${PLACE_TINT[i] ?? 'text-zinc-400'}`}>
-                            {i < 3 ? <Medal size={15} className="mx-auto" aria-hidden="true" /> : i + 1}
+                            {i < 3
+                                ? <>
+                                    <Medal size={15} className="mx-auto" aria-hidden="true" />
+                                    <span className="sr-only">{i + 1}</span>
+                                </>
+                                : i + 1}
                         </span>
                         <Player player={row} you={isYou} />
                         <span className="shrink-0 tabular-nums text-zinc-500">

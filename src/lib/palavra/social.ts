@@ -16,16 +16,13 @@ import { relaysForAuthors } from '@/lib/relayList';
 import { formatUTCDate } from '@/lib/format';
 import { PALAVRA_TOPIC, resultDTag } from './nostr';
 import { meetsPow } from './pow';
-import { MAX_GUESSES, type LeaderboardEntry } from './types';
+import { DUEL_DAYS, MAX_GUESSES, type LeaderboardEntry } from './types';
 
 const KIND_CONTACTS = 3;
 
 /** Enough that a normal follow list is covered whole, small enough that the
     filter stays inside what relays accept. */
 const MAX_FOLLOWS = 300;
-
-/** How far back the head-to-head record reaches. */
-const DUEL_DAYS = 30;
 
 function tagValue(event: { tags: string[][] }, name: string): string | undefined {
     return event.tags.find((tag) => tag[0] === name)?.[1];

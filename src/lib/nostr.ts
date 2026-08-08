@@ -213,7 +213,14 @@ export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, 
         return cards;
     }
 
+    // The query spans several relays, so two copies of one pubkey's kind-0
+    // with different created_at can both come back. Without this the last one
+    // in the array won — arrival order, not recency — and a stale name or
+    // avatar could overwrite the current one.
+    const newestAt = new Map<string, number>();
+
     for (const event of metadata) {
+        if ((newestAt.get(event.pubkey) ?? -1) >= event.created_at) continue;
         try {
             const profile = JSON.parse(event.content) as NostrProfile;
             // Names are attacker-controlled: collapse whitespace and cap the
@@ -226,7 +233,10 @@ export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, 
                 && /^https:\/\//i.test(profile.picture)
                 ? profile.picture
                 : undefined;
-            if (name || picture) cards.set(event.pubkey, { name: name || undefined, picture });
+            if (name || picture) {
+                newestAt.set(event.pubkey, event.created_at);
+                cards.set(event.pubkey, { name: name || undefined, picture });
+            }
         } catch { /* malformed profile JSON — skip this one */ }
     }
     return cards;

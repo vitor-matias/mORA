@@ -120,9 +120,11 @@ export function matchesAnswerHash(date: string, guess: string, hash: string): bo
 // that the answer isn't sitting in plain text in the network tab, which is
 // where a curious player would stumble on it by accident.
 //
-// The thing that actually protects shared records is the server's signature
-// over a finished result (see server/palavra/README.md): a locally-cheated
-// game still can't earn a proof, so it never reaches the leaderboard.
+// Nothing downstream re-checks the result. There is no server to countersign
+// it — published results are self-reported, and the NIP-13 proof of work on
+// the result event only raises the price of *bulk* fake entries, not of one
+// person overstating one day. That is the accepted trade for having no server
+// at all; see server/palavra/README.md.
 const CIPHER_SALT = 'mora-palavra-v1';
 
 function keystream(date: string, length: number): Uint8Array {
