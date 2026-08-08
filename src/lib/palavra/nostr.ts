@@ -6,11 +6,17 @@
 //   mora-palavra-r:<date>    public           one result, for the social views
 //   kind 1                   public           the emoji grid, on request
 //
-// The split matters. The encrypted state is a backup of your own progress and
-// rides the same consent as the prayer-streak sync (shareStreaks). Publishing a
-// *public* result says "I played today, in N tries" to everyone, which is a
-// different decision, so it has its own flag (sharePalavraResults, off until
-// asked for). Neither is implied by the other.
+// The split matters. The encrypted state is a backup of your own progress,
+// readable only by you. Publishing a *public* result says "I played today, in
+// N tries" to everyone, and cannot be unsaid once it is on relays — so it has
+// its own flag, `sharePalavraResults`, separate from `shareStreaks`.
+//
+// That flag is turned **on** when an identity signs in (see auth.ts): the
+// leaderboard, duels and leagues are most of the point, and an empty board
+// nobody appears on is a worse first run than a disclosure the Perfil toggle
+// reverses. Worth being clear-eyed that it is a real disclosure made by
+// default, and that switching it off later doesn't retract what is already
+// published.
 //
 // Reads — leaderboard, duels, leagues — live in ./social.ts.
 

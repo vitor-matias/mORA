@@ -46,9 +46,18 @@ npm run verify
 
 **4. Run it.**
 
+Put the key in a file rather than in the command, and load it from there:
+
 ```bash
-PALAVRA_NSEC=nsec1… npm start
+install -m 600 /dev/null /etc/palavra.env   # then add: PALAVRA_NSEC=nsec1…
+set -a && . /etc/palavra.env && set +a && npm start
 ```
+
+`PALAVRA_NSEC=nsec1… npm start` works, and is worth avoiding: the key lands in
+your shell history, in `ps` output while the process starts, and in anything
+that captures the command line. It is the one value in this system whose
+disclosure lets someone else sign puzzles your users' clients will accept.
+`npm run keygen` prints it once, to stdout — treat that output the same way.
 
 That is `publish.js --watch`, and it is the whole schedule — no cron needed.
 On every wake it:
