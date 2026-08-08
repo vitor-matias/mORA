@@ -32,8 +32,7 @@ function ScrollToTop() {
 }
 
 export function Layout() {
-    const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily } = useAppStore();
-    const bottomBarYielded = useAppStore((s) => s.bottomBarYielded);
+    const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
 
