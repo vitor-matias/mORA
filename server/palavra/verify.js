@@ -115,6 +115,17 @@ console.log(`  books        ${new Set(VERSES.map((e) => e.ref.replace(/\s+\d+,\d
 console.log(`  lengths      ${JSON.stringify(dist)}`);
 console.log(`  excerpts     ${VERSES.filter((e) => e.verse.includes('…')).length}`);
 console.log(`  multi-blank  ${VERSES.filter((e) => e.verse.split('{{blank}}').length > 2).length}`);
+// Every book the pool cites must have a slug in the app's table, or that day's
+// reference renders as plain text with no way through to the reader. The table
+// is generated from the corpus, so this only fails when the pool gains a book
+// the generator hasn't seen — which is exactly when it should.
+const slugs = fs.readFileSync(new URL('../../src/lib/palavra/bookSlugs.ts', import.meta.url), 'utf8');
+const unlinkable = [...new Set(VERSES.map((v) => v.ref.replace(/\s+\d+[,.].*$/, '').trim()))]
+    .filter((book) => !slugs.includes(`'${book}':`));
+if (unlinkable.length) {
+    problems.push(`no biblia.capuchinhos.org slug for: ${unlinkable.join(', ')}`);
+}
+
 const skipCorpus = process.argv.includes('--allow-missing-corpus');
 console.log(corpus ? '  corpus       checked verbatim' : `  corpus       SKIPPED (not found at ${CORPUS})`);
 
