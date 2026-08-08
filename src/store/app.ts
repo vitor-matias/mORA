@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RosaryBeadMode } from '@/lib/rosary';
-import { formatISODate } from '@/lib/format';
+import { daysApart, formatISODate } from '@/lib/format';
 
 export interface StreakData {
     days: number;
@@ -31,19 +31,6 @@ export function isCompletedToday(streak: StreakData): boolean {
 // partial histories rather than picking a winner.
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Whole days from `a` to `b`, both YYYY-MM-DD.
-    Built from the date parts in UTC rather than parsed as local time: local
-    midnights are 23 or 25 hours apart across a DST change (and don't exist at
-    all in a few zones), which rounding happens to absorb — but the merge rule
-    turns on this being exactly 1, so it shouldn't rest on that. */
-function daysApart(a: string, b: string): number {
-    const utc = (iso: string) => {
-        const [y, m, d] = iso.split('-').map(Number);
-        return Date.UTC(y, m - 1, d);
-    };
-    return (utc(b) - utc(a)) / 86400000;
-}
 
 export function emptyStreak(): StreakData {
     return { days: 0, lastCompletedDate: null };
@@ -218,6 +205,13 @@ interface AppState {
     toggleRosaryMode: () => void;
     rosarySession: RosarySession | null;
     setRosarySession: (session: RosarySession | null) => void;
+    /** A page is using the bottom of the screen for its own controls, so the
+        floating tab bar should get out of the way — the same arrangement a
+        rosary session already gets, for the same two reasons: the bar covers
+        the content, and a tap meant for it navigates away instead.
+        Transient: never persisted, and cleared when the page unmounts. */
+    bottomBarYielded: boolean;
+    setBottomBarYielded: (yielded: boolean) => void;
     streaks: Streaks;
     incrementStreak: (item: StreakItem) => void;
     /** Replaces the whole set — used by the Nostr pull after merging. */
@@ -283,6 +277,9 @@ export const useAppStore = create<AppState>()(
             })),
             rosarySession: null,
             setRosarySession: (rosarySession) => set({ rosarySession }),
+
+            bottomBarYielded: false,
+            setBottomBarYielded: (bottomBarYielded) => set({ bottomBarYielded }),
             shareStreaks: false,
             setShareStreaks: (shareStreaks) => set({ shareStreaks }),
 
@@ -363,8 +360,11 @@ export const useAppStore = create<AppState>()(
             // a wrong theme stuck after a hard close mid-browse.
             partialize: (state) => Object.fromEntries(
                 Object.entries(state).filter(([key]) =>
-                    key !== 'liturgicalColorOverride' && key !== 'settingsFromRemote')
-            ) as Omit<AppState, 'liturgicalColorOverride' | 'settingsFromRemote'>,
+                    key !== 'liturgicalColorOverride' && key !== 'settingsFromRemote'
+                    // Transient UI state. Persisting it would restore a
+                    // hidden tab bar on a page that has no keyboard.
+                    && key !== 'bottomBarYielded')
+            ) as Omit<AppState, 'liturgicalColorOverride' | 'settingsFromRemote' | 'bottomBarYielded'>,
         }
     )
 );

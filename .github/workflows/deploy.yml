@@ -36,8 +36,37 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # Vite inlines VITE_* at build time, so these have to be present here —
+      # there is no server to configure at runtime.
+      #
+      # `vars`, not `secrets`: both values end up verbatim in the shipped
+      # JavaScript, so marking them secret would hide them from the build log
+      # while publishing them to every visitor. The publisher's *nsec* is the
+      # actual secret, and it never touches this workflow — see palavra.yml.
+      # Unset, the app falls through to the demo pool in mock.ts and badges
+      # itself as such. That is the right default for a local checkout and the
+      # wrong one to deploy: a variable that was never added, or added with a
+      # typo in the name, would ship a public site quietly serving fifteen
+      # sample verses on a loop. Fail the deploy instead.
+      - name: Require the publisher key
+        env:
+          VITE_PALAVRA_PUBLISHER_PUBKEY: ${{ vars.VITE_PALAVRA_PUBLISHER_PUBKEY }}
+        run: |
+          # -z would accept "   ", which the app trims to empty and
+          # then falls back to the demo pool — the deploy this guard
+          # exists to stop.
+          if ! printf '%s' "$VITE_PALAVRA_PUBLISHER_PUBKEY" | grep -q '[^[:space:]]'; then
+            echo "::error::VITE_PALAVRA_PUBLISHER_PUBKEY is not set. Add it under Settings → Secrets and variables → Actions → Variables (a variable, not a secret — it ships in the bundle either way)."
+            exit 1
+          fi
+
       - name: Build project
         run: npm run build
+        env:
+          VITE_PALAVRA_PUBLISHER_PUBKEY: ${{ vars.VITE_PALAVRA_PUBLISHER_PUBKEY }}
+          VITE_NOSTR_RELAYS: ${{ vars.VITE_NOSTR_RELAYS }}
+          VITE_PUSH_SERVER_URL: ${{ vars.VITE_PUSH_SERVER_URL }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

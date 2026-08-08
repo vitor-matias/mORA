@@ -9,13 +9,13 @@ import {
 } from '@/store/app';
 
 /** What a signer is handed: an event with everything but the signature. */
-type EventTemplate = Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>;
+export type EventTemplate = Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>;
 
 export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
 
 // NIP-78 "Application-specific Data": addressable event, replaced per d-tag.
 // (30000 would collide with NIP-51 follow sets.)
-const KIND_APP_STATE = 30078;
+export const KIND_APP_STATE = 30078;
 
 // Addressable events are keyed by their d-tag, so streaks and settings live
 // side by side under one identity without overwriting each other.
@@ -26,11 +26,11 @@ const D_SETTINGS = 'mora-app-settings';
 // unresponsive one never sends — so without a ceiling a single dead relay
 // would hang the whole sync. An aborted query returns what it has rather than
 // throwing, so this is a deadline, not a failure.
-const RELAY_QUERY_TIMEOUT_MS = 5000;
+export const RELAY_QUERY_TIMEOUT_MS = 5000;
 
 /** Publishing succeeds as soon as one relay accepts, but a relay that neither
     accepts nor refuses would otherwise leave the publish pending forever. */
-const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
+export const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
 
 // Devices don't agree on the clock to the second; allow a little slack before
 // calling a settings timestamp impossible.
@@ -75,7 +75,7 @@ export async function getSigner(): Promise<NostrSigner | null> {
     }
 }
 
-async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
+export async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
     const signer = await getSigner();
     if (!signer) throw new Error('No method available to sign the event');
     return signer.signEvent(baseEvent);
@@ -165,10 +165,41 @@ export async function fetchTodayPrayerPulse(): Promise<PrayerPulse | null> {
     }
 }
 
-/** Newest kind-0 name per pubkey, in the order the pubkeys were given.
-    Pubkeys with no profile (or no name in it) are simply dropped. */
-async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
-    if (pubkeys.length === 0) return [];
+/**
+ * Newest kind-0 name per pubkey, keyed by pubkey.
+ *
+ * Keyed rather than positional because most callers need to know *whose* name
+ * they got: pubkeys with no profile are absent from the result, so a plain
+ * array comes back shorter than it went in and lines names up against the
+ * wrong people.
+ */
+export async function fetchProfileNames(pubkeys: string[]): Promise<Map<string, string>> {
+    const profiles = await fetchProfileCards(pubkeys);
+    const names = new Map<string, string>();
+    for (const [pubkey, card] of profiles) {
+        if (card.name) names.set(pubkey, card.name);
+    }
+    return names;
+}
+
+/** Name plus avatar, for anywhere people are listed rather than just counted. */
+export interface ProfileCard {
+    name?: string;
+    picture?: string;
+}
+
+/**
+ * Newest kind-0 name and avatar per pubkey.
+ *
+ * `picture` is only kept when it is an https URL. It is rendered as an <img>
+ * src, so a `javascript:` or `data:` value from a hostile profile would be
+ * loading attacker-chosen content into the page; http would also break the
+ * padlock on an https deployment.
+ */
+export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, ProfileCard>> {
+    const cards = new Map<string, ProfileCard>();
+    if (pubkeys.length === 0) return cards;
+
     let metadata: NostrEvent[];
     try {
         // kind 0 is replaceable, so this is already one profile per pubkey —
@@ -178,26 +209,45 @@ async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
     } catch (error) {
-        console.warn('Could not fetch profiles for the prayer pulse:', error);
-        return [];
+        console.warn('Could not fetch profiles:', error);
+        return cards;
     }
-    const newest = new Map(metadata.map((event) => [event.pubkey, event]));
-    const names: string[] = [];
-    for (const pubkey of pubkeys) {
-        const event = newest.get(pubkey);
-        if (!event) continue;
+
+    // The query spans several relays, so two copies of one pubkey's kind-0
+    // with different created_at can both come back. Without this the last one
+    // in the array won — arrival order, not recency — and a stale name or
+    // avatar could overwrite the current one.
+    const newestAt = new Map<string, number>();
+
+    for (const event of metadata) {
+        if ((newestAt.get(event.pubkey) ?? -1) >= event.created_at) continue;
         try {
             const profile = JSON.parse(event.content) as NostrProfile;
             // Names are attacker-controlled: collapse whitespace and cap the
-            // length so a hostile profile can't wreck the Home layout.
+            // length so a hostile profile can't wreck the layout.
             const name = (profile.display_name || profile.name || '')
                 .replace(/\s+/g, ' ')
                 .trim()
                 .slice(0, 24);
-            if (name) names.push(name);
+            const picture = typeof profile.picture === 'string' && profile.picture.length <= 500
+                && /^https:\/\//i.test(profile.picture)
+                ? profile.picture
+                : undefined;
+            if (name || picture) {
+                newestAt.set(event.pubkey, event.created_at);
+                cards.set(event.pubkey, { name: name || undefined, picture });
+            }
         } catch { /* malformed profile JSON — skip this one */ }
     }
-    return names;
+    return cards;
+}
+
+/** Names only, in the order the pubkeys were given. Pubkeys with no profile
+    (or no name in it) are simply dropped — the prayer pulse wants a list of
+    names to read out, not a mapping. */
+export async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
+    const names = await fetchProfileNames(pubkeys);
+    return pubkeys.flatMap((pubkey) => names.get(pubkey) ?? []);
 }
 
 // NIP-44 to self, so relays only ever store ciphertext. Returns null when
@@ -220,7 +270,7 @@ async function decryptFromSelf(ciphertext: string): Promise<string | null> {
 
 /** The newest snapshot this identity published under `dTag`, decrypted, or
     null if there is none (or it can't be read). */
-async function fetchSnapshot(
+export async function fetchSnapshot(
     pubkey: string,
     dTag: string,
 ): Promise<{ payload: Record<string, unknown>; createdAt: number } | null> {
@@ -253,7 +303,7 @@ async function fetchSnapshot(
     }
 }
 
-async function publishSnapshot(dTag: string, payload: Record<string, unknown>, label: string) {
+export async function publishSnapshot(dTag: string, payload: Record<string, unknown>, label: string) {
     let eventContent: string;
     try {
         const encrypted = await encryptToSelf(JSON.stringify(payload));

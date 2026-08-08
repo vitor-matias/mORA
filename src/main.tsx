@@ -10,6 +10,7 @@ import Liturgy from './pages/Liturgy'
 import LiturgiaHoras from './pages/LiturgiaHoras'
 import Profile from './pages/Profile'
 import LiturgicalDirectory from './pages/LiturgicalDirectory'
+import Palavra from './pages/Palavra'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="liturgia" element={<Liturgy />} />
           <Route path="liturgia-horas" element={<LiturgiaHoras />} />
           <Route path="diretorio" element={<LiturgicalDirectory />} />
+          <Route path="palavra" element={<Palavra />} />
           <Route path="perfil" element={<Profile />} />
         </Route>
       </Routes>
