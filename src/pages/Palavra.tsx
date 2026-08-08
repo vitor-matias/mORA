@@ -131,7 +131,7 @@ export default function Palavra() {
                 }
             });
         return () => { cancelled = true; };
-    }, [viewDate, writeDraft, t]);
+    }, [viewDate, t]);
 
     // The answer only exists locally, recovered from the day's cipher, in two
     // forms: the real Portuguese spelling for the reveal ("SALVAÇÃO") and the

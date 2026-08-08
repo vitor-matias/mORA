@@ -4,6 +4,7 @@ import type { LeaderboardEntry } from '@/lib/palavra/types';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { formatDuration } from './playerLabel';
 import { useTranslations } from '@/lib/i18n';
+import { formatUTCDate } from '@/lib/format';
 import { Player } from './Player';
 
 /** The three podium places get a tint; everyone else is plain. */
@@ -46,7 +47,7 @@ export function Leaderboard({ date, you }: { date: string; you?: string | null }
     if (rows.length === 0) {
         return (
             <p className="text-sm text-zinc-500 text-center py-8">
-                {t.emptyBoard}
+                {date === formatUTCDate(new Date()) ? t.emptyBoard : t.emptyBoardArchive}
             </p>
         );
     }

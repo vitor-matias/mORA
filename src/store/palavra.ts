@@ -79,6 +79,22 @@ function isUsablePlay(value: unknown): value is PalavraPlay {
     return true;
 }
 
+/**
+ * Drop anything in a restored log that isn't a usable record.
+ *
+ * Discarding a corrupt day loses that day and nothing else, which is the right
+ * trade against refusing to start.
+ */
+export function sanitizePlays(value: unknown): PalavraPlays {
+    if (!value || typeof value !== 'object') return {};
+    const clean: PalavraPlays = {};
+    for (const [date, play] of Object.entries(value as Record<string, unknown>)) {
+        if (!isUsableDate(date) || !isUsablePlay(play)) continue;
+        clean[date] = play;
+    }
+    return trimPlays(clean);
+}
+
 /** Which of two records for the same day to keep. Two devices can play the
     same puzzle independently, so this picks the better outcome rather than
     the later write: a win beats a loss, a faster win beats a slower one, and
@@ -336,6 +352,24 @@ export const usePalavraStore = create<PalavraState>()(
             sharePalavraResults: false,
             setSharePalavraResults: (sharePalavraResults) => set({ sharePalavraResults }),
         }),
-        { name: 'mora-palavra-storage' }
+        {
+            name: 'mora-palavra-storage',
+            // localStorage is not a trusted input. The validators below already
+            // exist for entries arriving over Nostr, but nothing applied them
+            // to what came back off disk — so a truncated write, a hand-edited
+            // key, or a record from a future schema went straight into state.
+            // `isFinished` then reads `play.guesses.length` on the Home card
+            // and throws, which is a blank page on the app's front door that
+            // only clearing site data recovers from.
+            merge: (persisted, current) => {
+                const saved = (persisted ?? {}) as Partial<PalavraState>;
+                return {
+                    ...current,
+                    ...saved,
+                    plays: sanitizePlays(saved.plays),
+                    practice: sanitizePlays(saved.practice),
+                };
+            },
+        }
     )
 );

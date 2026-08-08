@@ -117,6 +117,7 @@ const translations = {
 
         loadingBoard: "A consultar os relés…",
         emptyBoard: "Ainda ninguém publicou o resultado de hoje.",
+        emptyBoardArchive: "Ninguém publicou o resultado deste dia.",
         you: "(você)",
 
         loadingDuels: "A comparar resultados…",

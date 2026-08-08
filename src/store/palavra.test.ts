@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
     derivePalavraStats,
+    sanitizePlays,
     mergePalavraPlays,
     playsEqual,
     type PalavraPlay,
@@ -122,6 +123,50 @@ describe('derivePalavraStats', () => {
         });
         expect(stats.plays).toBe(1);
         expect(stats.wins).toBe(1);
+    });
+});
+
+describe('sanitizePlays', () => {
+    // localStorage is not a trusted input: a truncated write or a record from
+    // an older schema used to go straight into state, and then isFinished read
+    // `play.guesses.length` on the Home card and threw — a blank front page
+    // that only clearing site data recovered from.
+    it('drops an entry with no guesses array', () => {
+        const restored = sanitizePlays({ [daysAgo(1)]: { solved: false, ms: 0 } });
+        expect(restored).toEqual({});
+    });
+
+    it('keeps the good days and drops only the bad one', () => {
+        const good = daysAgo(2);
+        const restored = sanitizePlays({
+            [good]: won(3),
+            [daysAgo(1)]: { guesses: 'REINO', solved: true, ms: 10 },
+        });
+        expect(Object.keys(restored)).toEqual([good]);
+    });
+
+    it('survives a log that is not an object at all', () => {
+        expect(sanitizePlays(null)).toEqual({});
+        expect(sanitizePlays('corrupted')).toEqual({});
+        expect(sanitizePlays(undefined)).toEqual({});
+    });
+
+    it('rejects a date key that is not a date', () => {
+        expect(sanitizePlays({ 'not-a-date': won(2) })).toEqual({});
+    });
+
+    it('leaves a clean log untouched', () => {
+        const clean = { [daysAgo(1)]: won(4) };
+        expect(sanitizePlays(clean)).toEqual(clean);
+    });
+
+    it('lets the Home card derive stats from a corrupted log without throwing', () => {
+        const restored = sanitizePlays({
+            [daysAgo(1)]: won(3),
+            [daysAgo(0)]: { solved: true },
+        });
+        expect(() => derivePalavraStats(restored)).not.toThrow();
+        expect(derivePalavraStats(restored).plays).toBe(1);
     });
 });
 
