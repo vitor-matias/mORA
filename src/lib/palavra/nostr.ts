@@ -147,10 +147,15 @@ async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
     if (state.publishedResults[`${pubkey}:${today}`]) return;
 
     try {
-        await publishPalavraResult(today, play, pubkey);
-        // Only after it went out, so a failed publish is retried on the next
-        // foreground rather than being marked done.
-        usePalavraStore.getState().markResultPublished(pubkey, today);
+        // Marked on the return value, not on the absence of a throw. This
+        // function swallows its own failures and returns early on half a dozen
+        // paths — no signer, the proof of work lost, the relay unreachable —
+        // so awaiting it said nothing about whether anything was published.
+        // Marking the day done on that basis was precisely the bug the marker
+        // exists to prevent: invisible until tomorrow, and retried never.
+        if (await publishPalavraResult(today, play, pubkey)) {
+            usePalavraStore.getState().markResultPublished(pubkey, today);
+        }
     } catch (error) {
         // Never let this fail the sync it rides on — the play log is the part
         // that matters, and the next foreground tries again.
@@ -180,15 +185,15 @@ export async function publishPalavraResult(
         switch in that window would otherwise publish one person's game under
         the next person's key. */
     expectedPubkey?: string,
-): Promise<void> {
+): Promise<boolean> {
     const pubkey = currentPubkey();
-    if (!pubkey) return;
+    if (!pubkey) return false;
     if (expectedPubkey && pubkey !== expectedPubkey) {
         console.warn('The signed-in identity changed; not publishing this result.');
-        return;
+        return false;
     }
-    if (!sharesResults(usePalavraStore.getState(), pubkey)) return;
-    if (!isFinished(play)) return;
+    if (!sharesResults(usePalavraStore.getState(), pubkey)) return false;
+    if (!isFinished(play)) return false;
 
     const tags: string[][] = [
         ['d', resultDTag(date)],
@@ -233,7 +238,7 @@ export async function publishPalavraResult(
         // store we read a moment ago, is what makes this airtight.
         if (event.pubkey !== pubkey) {
             console.warn('The result was signed by a different identity; not publishing.');
-            return;
+            return false;
         }
         // The comment above holds only while the signer passes the template
         // through untouched. A NIP-07 extension or NIP-46 remote signer is
@@ -252,13 +257,15 @@ export async function publishPalavraResult(
                 'The result carries no usable proof of work, so it was not published. '
                 + 'Either mining failed or the signer altered the event.',
             );
-            return;
+            return false;
         }
         await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
+        return true;
     } catch (error) {
         // Relays reject or go offline routinely, and the game is already
         // recorded locally — warn rather than throw.
         console.warn('Could not publish the Palavra result to Nostr.', error);
+        return false;
     }
 }
 

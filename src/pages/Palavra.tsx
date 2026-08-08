@@ -4,7 +4,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
 import { Community } from '@/components/palavra/Community';
-import { GAP_PX, Grid, type PlayedRow } from '@/components/palavra/Grid';
+import { Grid, type PlayedRow } from '@/components/palavra/Grid';
+import { gapPx } from '@/lib/palavra/layout';
 import { capuchinhosUrl } from '@/lib/palavra/bookSlugs';
 import { Keyboard } from '@/components/palavra/Keyboard';
 import { ResultSheet } from '@/components/palavra/ResultSheet';
@@ -376,7 +377,7 @@ export default function Palavra() {
         // move up together.
         const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
         const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
-        const perTile = (available - GAP_PX * (MAX_GUESSES - 1)) / MAX_GUESSES;
+        const perTile = (available - gapPx() * (MAX_GUESSES - 1)) / MAX_GUESSES;
         // Floored, so a landscape phone gets a small board and a scroll rather
         // than one collapsed to nothing.
         setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
@@ -392,12 +393,17 @@ export default function Palavra() {
         // finished laying out — web fonts in particular land later and change
         // every height above the board — so measuring only once converges on a
         // stale figure and leaves the board a pixel or two too tall.
-        const raf = requestAnimationFrame(() => requestAnimationFrame(measure));
+        // Both frame ids, not just the outer one. Cancelling only the first
+        // leaves the inner frame scheduled if cleanup lands between them, and
+        // it then measures a board that has already unmounted.
+        let innerRaf = 0;
+        const raf = requestAnimationFrame(() => { innerRaf = requestAnimationFrame(measure); });
         window.addEventListener('resize', measure);
         const observer = new ResizeObserver(measure);
         if (boardRef.current) observer.observe(boardRef.current.parentElement ?? boardRef.current);
         return () => {
             cancelAnimationFrame(raf);
+            cancelAnimationFrame(innerRaf);
             window.removeEventListener('resize', measure);
             observer.disconnect();
         };

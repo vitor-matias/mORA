@@ -1,10 +1,7 @@
 import type { Mark } from '@/lib/palavra/types';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { useTranslations } from '@/lib/i18n';
-
-/** Tailwind's gap-1.5, in pixels. The measurement below has to agree with what
-    the rows actually render, so both read this. */
-export const GAP_PX = 6;
+import { gapPx } from '@/lib/palavra/layout';
 
 type Copy = ReturnType<typeof useTranslations>['palavra'];
 
@@ -84,7 +81,7 @@ export function Grid({
         // and treating it as "not measured yet" would drop back to the
         // unconstrained cap and push the board straight through the keyboard.
         maxWidth: maxTilePx !== undefined
-            ? `min(100%, ${length * 3.5}rem, ${Math.round(Math.max(0, maxTilePx) * length + GAP_PX * (length - 1))}px)`
+            ? `min(100%, ${length * 3.5}rem, ${Math.round(Math.max(0, maxTilePx) * length + gapPx() * (length - 1))}px)`
             : `min(100%, ${length * 3.5}rem)`,
         // Letters shrink with the tiles so an eight-letter board doesn't clip.
         fontSize: `clamp(0.9rem, ${Math.floor(52 / length)}vw, 1.6rem)`,
