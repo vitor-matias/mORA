@@ -21,6 +21,7 @@
 // Reads — leaderboard, duels, leagues — live in ./social.ts.
 
 import { pool } from '@/lib/pool';
+import { appUrl } from '@/lib/appUrl';
 import { formatUTCDate } from '@/lib/format';
 import { currentPubkey } from '@/store/auth';
 import { useAppStore } from '@/store/app';
@@ -270,19 +271,6 @@ export async function publishPalavraResult(
 }
 
 // ── Share note ───────────────────────────────────────────────────────────
-
-/**
- * Where this app is being served from.
- *
- * Read off the current page rather than configured, so it stays right for a
- * fork, a custom domain, or a move — nothing to update and nothing to go
- * stale. The hash router keeps the route out of `pathname`, so this is the
- * app's root and not whatever page the note was posted from.
- */
-function appUrl(): string {
-    const { origin, pathname } = window.location;
-    return `${origin}${pathname.replace(/index\.html$/, '')}`;
-}
 
 /**
  * Post the emoji grid as an ordinary note, so it shows up in every Nostr

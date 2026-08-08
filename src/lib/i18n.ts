@@ -96,6 +96,8 @@ const translations = {
         statBest: "recorde",
         distribution: "Distribuição",
         copyResult: "Copiar resultado",
+        shareResult: "Partilhar resultado",
+        shared: "Partilhado",
         copied: "Copiado",
         copyFailed: "Não foi possível copiar",
         nextWordIn: (countdown: string) => `Próxima palavra em ${countdown}.`,
