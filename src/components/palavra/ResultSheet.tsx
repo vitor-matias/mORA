@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { Check, Copy, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Check, Copy, Share2, X } from 'lucide-react';
 import { nextUTCMidnight } from '@/lib/format';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { useTranslations } from '@/lib/i18n';
@@ -71,24 +71,62 @@ export function ResultSheet({
     nextPuzzleAt?: number;
 }) {
     const t = useTranslations().palavra;
-    const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+    const [shareState, setShareState] = useState<'idle' | 'shared' | 'copied' | 'failed'>('idle');
+    // The confirmation clears itself after a beat, and sharing is the last
+    // thing a player does before leaving the page — so the timer routinely
+    // outlives the component unless it is cancelled.
+    const resetTimer = useRef<number | undefined>(undefined);
+    useEffect(() => () => window.clearTimeout(resetTimer.current), []);
     const countdown = useTimeToNextPuzzle(nextPuzzleAt);
+    // Read once: the label has to match what the button will actually do,
+    // and `navigator.share` doesn't appear or vanish mid-session.
+    const canShare = typeof navigator !== 'undefined' && Boolean(navigator.share);
     const winRate = stats.plays > 0 ? Math.round((stats.wins / stats.plays) * 100) : 0;
     const best = Math.max(1, ...stats.distribution);
 
-    const copy = async () => {
+    const copyToClipboard = async () => {
         try {
             await navigator.clipboard.writeText(shareText);
-            setCopyState('copied');
+            setShareState('copied');
         } catch (error) {
             // Denied permission, an insecure origin, or no Clipboard API at
             // all. Failing silently leaves the button looking like it did
-            // nothing, so say so rather than let the player paste stale
-            // clipboard contents into a post.
+            // nothing, so say so rather than let the player paste whatever was
+            // already on their clipboard into a post.
             console.warn('Could not copy the result.', error);
-            setCopyState('failed');
+            setShareState('failed');
         }
-        window.setTimeout(() => setCopyState('idle'), 2000);
+    };
+
+    /**
+     * The system share sheet where there is one, the clipboard where there
+     * isn't.
+     *
+     * Sharing is what a player actually wants — the grid goes to whichever
+     * app they'd send it to, in one step — and on a phone the clipboard is
+     * the long way round to the same place. Desktop browsers mostly have no
+     * share sheet, so the copy path stays as the fallback rather than being
+     * replaced.
+     */
+    const share = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({ text: shareText });
+                setShareState('shared');
+            } catch (error) {
+                // Dismissing the sheet rejects with AbortError. That is a
+                // decision, not a failure: saying "couldn't share" to someone
+                // who chose not to would be wrong, and falling back to the
+                // clipboard would put it there behind their back.
+                if ((error as Error)?.name === 'AbortError') return;
+                console.warn('Could not share the result; copying instead.', error);
+                await copyToClipboard();
+            }
+        } else {
+            await copyToClipboard();
+        }
+        window.clearTimeout(resetTimer.current);
+        resetTimer.current = window.setTimeout(() => setShareState('idle'), 2000);
     };
 
     // No aria-live on the section: the countdown below re-renders every
@@ -160,14 +198,21 @@ export function ResultSheet({
             <div className="space-y-2">
                 <button
                     type="button"
-                    onClick={copy}
+                    onClick={share}
                     className="w-full flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-4 py-3 transition-colors active:scale-[0.98]"
                 >
-                    {copyState === 'copied'
-                        ? <><Check size={16} aria-hidden="true" /> {t.copied}</>
-                        : copyState === 'failed'
-                            ? <><X size={16} aria-hidden="true" /> {t.copyFailed}</>
-                            : <><Copy size={16} aria-hidden="true" /> {t.copyResult}</>}
+                    {shareState === 'shared'
+                        ? <><Check size={16} aria-hidden="true" /> {t.shared}</>
+                        : shareState === 'copied'
+                            ? <><Check size={16} aria-hidden="true" /> {t.copied}</>
+                            : shareState === 'failed'
+                                ? <><X size={16} aria-hidden="true" /> {t.copyFailed}</>
+                                /* Labelled for what the button does here: a
+                                   share sheet if the device has one, a copy
+                                   if it doesn't. */
+                                : canShare
+                                    ? <><Share2 size={16} aria-hidden="true" /> {t.shareResult}</>
+                                    : <><Copy size={16} aria-hidden="true" /> {t.copyResult}</>}
                 </button>
                 {actions}
             </div>

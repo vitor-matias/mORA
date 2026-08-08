@@ -23,6 +23,7 @@ import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '
 import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
+import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
 import { useTranslations } from '@/lib/i18n';
 
@@ -438,6 +439,11 @@ export default function Palavra() {
             t.shareHeading(challenge.date, score),
             '',
             emojiGrid(played.map((row) => row.marks)),
+            '',
+            // The same link the Nostr note carries. Wherever this lands — a
+            // chat, a timeline — a grid with no way to reach the game is a
+            // dead end for whoever reads it.
+            appUrl(),
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
@@ -669,7 +675,6 @@ export default function Palavra() {
                                             const { sharePalavraNote } = await import('@/lib/palavra/nostr');
                                             await sharePalavraNote({
                                                 date: challenge.date,
-                                                ref: challenge.ref,
                                                 tries: play.guesses.length,
                                                 solved: play.solved,
                                                 grid: emojiGrid(played.map((row) => row.marks)),

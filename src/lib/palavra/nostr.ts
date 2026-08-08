@@ -21,6 +21,7 @@
 // Reads — leaderboard, duels, leagues — live in ./social.ts.
 
 import { pool } from '@/lib/pool';
+import { appUrl } from '@/lib/appUrl';
 import { formatUTCDate } from '@/lib/format';
 import { currentPubkey } from '@/store/auth';
 import { useAppStore } from '@/store/app';
@@ -276,19 +277,19 @@ export async function publishPalavraResult(
  * client rather than only in mORA. Always an explicit action — nothing here
  * runs on its own.
  *
- * The verse reference is included only for a finished game, which is the only
- * time this is reachable; posting it mid-game would spoil the day for whoever
- * read it.
+ * No verse reference. This lands on public timelines where most readers
+ * haven't played yet, and "João 1,1" hands them the day's word — the grid says
+ * how it went without giving anything away, which is the whole point of the
+ * form. A link to the app goes where the reference was, so someone who sees
+ * the grid can go and play the same puzzle.
  */
 export async function sharePalavraNote({
     date,
-    ref,
     tries,
     solved,
     grid,
 }: {
     date: string;
-    ref: string;
     tries: number;
     solved: boolean;
     grid: string;
@@ -296,9 +297,10 @@ export async function sharePalavraNote({
     const score = solved ? `${tries}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
     const lines = [
         `Palavra Bíblica do Dia — ${date} ${score}`,
-        ref,
         '',
         grid,
+        '',
+        appUrl(),
     ];
     const event = await signNostrEvent({
         kind: 1,
