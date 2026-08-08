@@ -23,6 +23,12 @@ on:
         description: 'Publish one specific day (YYYY-MM-DD). Blank = fill any gap.'
         required: false
 
+# This job needs nothing from the repo but its own contents, and it holds the
+# signing key — so the token it runs with should be able to do as little as
+# possible if a dependency's lifecycle script ever gets at it.
+permissions:
+  contents: read
+
 concurrency:
   group: palavra-publish
   cancel-in-progress: false
@@ -32,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Don't leave the token in .git/config for later steps to find.
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -57,13 +66,18 @@ jobs:
           # impersonator's. Never goes near the Pages build.
           PALAVRA_NSEC: ${{ secrets.PALAVRA_NSEC }}
           PALAVRA_RELAYS: ${{ vars.PALAVRA_RELAYS }}
+          # Through env, never interpolated into `run`. `${{ inputs.date }}`
+          # is substituted before the shell parses the script, so a dispatch
+          # value containing a quote executes as shell — in the one step that
+          # has PALAVRA_NSEC in its environment, which is the whole ballgame.
+          PUBLISH_DATE: ${{ inputs.date }}
         run: |
           if [ -z "$PALAVRA_NSEC" ]; then
             echo "::error::PALAVRA_NSEC is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
             exit 1
           fi
-          if [ -n "${{ inputs.date }}" ]; then
-            node publish.js "${{ inputs.date }}"
+          if [ -n "$PUBLISH_DATE" ]; then
+            node publish.js "$PUBLISH_DATE"
           else
             node publish.js --backfill 3
           fi

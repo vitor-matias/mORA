@@ -18,7 +18,7 @@ import {
     scoreGuess,
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
-import { derivePalavraStats, isFinished, usePalavraStore } from '@/store/palavra';
+import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '@/store/palavra';
 import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
@@ -57,7 +57,7 @@ export default function Palavra() {
 
     const myPubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey ?? null);
     const signedIn = Boolean(myPubkey);
-    const sharing = usePalavraStore((s) => s.sharePalavraResults);
+    const sharing = usePalavraStore((s) => sharesResults(s, myPubkey));
     const plays = usePalavraStore((s) => s.plays);
     const practice = usePalavraStore((s) => s.practice);
     const beginPlay = usePalavraStore((s) => s.beginPlay);
@@ -248,7 +248,10 @@ export default function Palavra() {
     // clipped by roughly 20px, and a miss on ENTER or backspace hit a nav tab
     // and left the game. Only while the keyboard actually renders: the
     // community tab and a finished board both want the bar back.
-    const keyboardUp = pageTab === 'game' && !over;
+    // Gated on there actually being a board: loading, a load error and a
+    // rejected payload all render no Keyboard, and hiding the tab bar for
+    // them takes away navigation to make room for nothing.
+    const keyboardUp = pageTab === 'game' && !over && Boolean(challenge) && !loadError;
     const setBottomBarYielded = useAppStore((s) => s.setBottomBarYielded);
     useEffect(() => {
         setBottomBarYielded(keyboardUp);

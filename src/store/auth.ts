@@ -13,20 +13,25 @@ import { usePalavraStore } from '@/store/palavra';
 // they are device-level, and every caller of logout() must clear them, not just
 // the buttons in Perfil.
 //
-// Publishing Palavra results is turned on here too rather than defaulting to
-// true in the store, and the difference matters: tied to sign-in, it can never
-// be on for a signed-out user (who has nothing to publish with anyway), and
-// signing out turns it back off so the next person on a shared device doesn't
-// inherit it. It is a public event either way, so the Perfil toggle spells out
-// what it shares.
-function enableSyncForNewIdentity() {
+// Publishing Palavra results is turned on here rather than defaulting to true
+// in the store, so it can never be on for a signed-out user — who has nothing
+// to publish with, and nobody to attribute it to. It is a public event, so the
+// Perfil toggle spells out what it shares.
+//
+// Recorded against the pubkey. A single flag meant a second account on the
+// same browser inherited the first one's choice and started publishing without
+// being asked; the consent has to belong to whoever it discloses.
+function enableSyncForNewIdentity(pubkey: string | null | undefined) {
     useAppStore.getState().setShareStreaks(true);
-    usePalavraStore.getState().setSharePalavraResults(true);
+    usePalavraStore.getState().setSharePalavraResults(pubkey ?? null, true);
 }
 
+// Signing out no longer clears the Palavra preference: it is stored per
+// identity, so the next person to sign in has a different pubkey and cannot
+// inherit it — and signing back in restores this identity's own choice rather
+// than silently re-enabling publishing at every login.
 function clearSyncForIdentity() {
     useAppStore.getState().setShareStreaks(false);
-    usePalavraStore.getState().setSharePalavraResults(false);
 }
 
 interface AuthState {
@@ -120,7 +125,7 @@ export const useAuthStore = create<AuthState>()(
 
             signIn: (login) => {
                 set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
-                enableSyncForNewIdentity();
+                enableSyncForNewIdentity(login.pubkey);
             },
 
             loginWithNip07: async () => {
@@ -129,7 +134,7 @@ export const useAuthStore = create<AuthState>()(
                     // pubkey; it throws if no extension ever appears.
                     const login = await NLogin.fromExtension();
                     set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
-                    enableSyncForNewIdentity();
+                    enableSyncForNewIdentity(login.pubkey);
                 } catch (error) {
                     console.error('Failed to login with NIP-07:', error);
                     throw error;
@@ -146,7 +151,7 @@ export const useAuthStore = create<AuthState>()(
                         : nip19.nsecEncode(keyBytes(key));
                     const login = NLogin.fromNsec(nsec);
                     set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
-                    enableSyncForNewIdentity();
+                    enableSyncForNewIdentity(login.pubkey);
                 } catch {
                     throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
                 }
@@ -155,7 +160,7 @@ export const useAuthStore = create<AuthState>()(
             generateLocalKey: () => {
                 const login = NLogin.fromNsec(nip19.nsecEncode(generateSecretKey()));
                 set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
-                enableSyncForNewIdentity();
+                enableSyncForNewIdentity(login.pubkey);
             },
 
             logout: () => {

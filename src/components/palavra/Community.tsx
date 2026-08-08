@@ -39,6 +39,16 @@ export function Community({
 }) {
     const t = useTranslations().palavra;
     const [tab, setTab] = useState<Tab>('board');
+    // Which tabs have ever been opened. Panels mount lazily and then stay
+    // mounted: unmounting on deselect re-ran the whole relay fan-out on every
+    // switch back — including the leagues path, which reaches every member's
+    // write relays — while mounting all three up front would pay for tabs the
+    // player may never open. This pays for each one exactly once.
+    const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(['board']));
+    const openTab = (id: Tab) => {
+        setTab(id);
+        setVisited((seen) => (seen.has(id) ? seen : new Set(seen).add(id)));
+    };
     const tabs: { id: Tab; label: string }[] = [
         { id: 'board', label: t.tabBoard },
         { id: 'duels', label: t.tabDuels },
@@ -56,8 +66,8 @@ export function Community({
                         role="tab"
                         id={`palavra-community-tab-${id}`}
                         aria-selected={tab === id}
-                        aria-controls="palavra-community-panel"
-                        onClick={() => setTab(id)}
+                        aria-controls={`palavra-community-panel-${id}`}
+                        onClick={() => openTab(id)}
                         className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-colors ${
                             tab === id
                                 ? 'bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300'
@@ -77,27 +87,34 @@ export function Community({
                 </p>
             )}
 
-            <div
-                role="tabpanel"
-                id="palavra-community-panel"
-                aria-labelledby={`palavra-community-tab-${tab}`}
-            >
-                {tab === 'board' && (revealResults
-                    ? <Leaderboard date={date} you={pubkey} />
-                    : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
+            {/* One panel element per tab, `hidden` when it isn't the active
+                one — which also takes it out of the accessibility tree, so a
+                screen reader sees exactly one panel. */}
+            {tabs.map(({ id }) => visited.has(id) && (
+                <div
+                    key={id}
+                    role="tabpanel"
+                    id={`palavra-community-panel-${id}`}
+                    aria-labelledby={`palavra-community-tab-${id}`}
+                    hidden={tab !== id}
+                >
+                    {id === 'board' && (revealResults
+                        ? <Leaderboard date={date} you={pubkey} />
+                        : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
-                {tab === 'duels' && (!pubkey
-                    ? <SignInPrompt what={t.signInDuels} hint={t.signInHint} />
-                    : revealResults ? <Duels pubkey={pubkey} /> : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
+                    {id === 'duels' && (!pubkey
+                        ? <SignInPrompt what={t.signInDuels} hint={t.signInHint} />
+                        : revealResults ? <Duels pubkey={pubkey} /> : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
-                {/* Leagues stay usable before the game is played — only the
-                    standings inside them are withheld. Being locked out of
-                    your own league list because you haven't played yet would
-                    be an odd thing to enforce. */}
-                {tab === 'leagues' && (pubkey
-                    ? <Leagues pubkey={pubkey} date={date} revealResults={revealResults} />
-                    : <SignInPrompt what={t.signInLeagues} hint={t.signInHint} />)}
-            </div>
+                    {/* Leagues stay usable before the game is played — only the
+                        standings inside them are withheld. Being locked out of
+                        your own league list because you haven't played yet
+                        would be an odd thing to enforce. */}
+                    {id === 'leagues' && (pubkey
+                        ? <Leagues pubkey={pubkey} date={date} revealResults={revealResults} />
+                        : <SignInPrompt what={t.signInLeagues} hint={t.signInHint} />)}
+                </div>
+            ))}
         </section>
     );
 }

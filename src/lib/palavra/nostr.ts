@@ -34,6 +34,7 @@ import {
     isFinished,
     mergePalavraPlays,
     playsEqual,
+    sharesResults,
     usePalavraStore,
     type PalavraPlay,
 } from '@/store/palavra';
@@ -63,8 +64,14 @@ let inFlightSync: Promise<void> | null = null;
 export async function publishPalavraStateToNostr(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
-    const { plays } = usePalavraStore.getState();
-    await publishSnapshot(D_PALAVRA_STATE, { plays, updatedAt: Date.now() }, 'palavra state');
+    const state = usePalavraStore.getState();
+    await publishSnapshot(
+        D_PALAVRA_STATE,
+        // The sharing choice rides along so this identity's other devices
+        // inherit it. Encrypted to self like the rest of the snapshot.
+        { plays: state.plays, sharesResults: sharesResults(state, pubkey), updatedAt: Date.now() },
+        'palavra state',
+    );
 }
 
 /**
@@ -83,6 +90,14 @@ async function doSync(): Promise<void> {
 
     const snapshot = await fetchSnapshot(pubkey, D_PALAVRA_STATE);
     const remote = snapshot?.payload.plays;
+
+    // Adopted only when this device has no record of its own: a new phone
+    // inherits the identity's setting, and a choice made here is never
+    // silently reverted by an older remote value.
+    const store = usePalavraStore.getState();
+    if (snapshot?.payload.sharesResults === true && !(pubkey in store.sharing)) {
+        store.setSharePalavraResults(pubkey, true);
+    }
 
     // Read the store after the round-trip, not before: a game may have
     // finished while the query was in flight.
@@ -116,7 +131,7 @@ async function doSync(): Promise<void> {
 export async function publishPalavraResult(date: string, play: PalavraPlay): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey) return;
-    if (!usePalavraStore.getState().sharePalavraResults) return;
+    if (!sharesResults(usePalavraStore.getState(), pubkey)) return;
     if (!isFinished(play)) return;
 
     const tags: string[][] = [

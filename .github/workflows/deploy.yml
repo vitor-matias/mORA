@@ -52,7 +52,10 @@ jobs:
         env:
           VITE_PALAVRA_PUBLISHER_PUBKEY: ${{ vars.VITE_PALAVRA_PUBLISHER_PUBKEY }}
         run: |
-          if [ -z "$VITE_PALAVRA_PUBLISHER_PUBKEY" ]; then
+          # -z would accept "   ", which the app trims to empty and
+          # then falls back to the demo pool — the deploy this guard
+          # exists to stop.
+          if ! printf '%s' "$VITE_PALAVRA_PUBLISHER_PUBKEY" | grep -q '[^[:space:]]'; then
             echo "::error::VITE_PALAVRA_PUBLISHER_PUBKEY is not set. Add it under Settings → Secrets and variables → Actions → Variables (a variable, not a secret — it ships in the bundle either way)."
             exit 1
           fi

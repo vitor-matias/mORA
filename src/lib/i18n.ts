@@ -57,7 +57,7 @@ const translations = {
         tabGame: "Jogo",
         tabCommunity: "Comunidade",
 
-        demoMode: "Modo de demonstração — sem servidor configurado.",
+        demoMode: "Modo de demonstração — sem publicador de desafios configurado.",
         archiveRecorded: "Já jogou este dia — este é o seu resultado.",
         archivePractice: "Modo de treino — não conta para o registo nem para as classificações.",
 

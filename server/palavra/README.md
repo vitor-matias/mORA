@@ -302,9 +302,11 @@ ever truly lost — it can always be republished.
 passage, and the `length` the board is drawn from comes from that wording, so
 mixing sources would show a player a gap that doesn't match the answer.
 
-Licensing is the operator's call. These are not public-domain texts; the corpus
-ships a CrossWire permission document, and reprinting verses in a game is a use
-worth checking against it.
+**Licensing is settled.** These are not public-domain texts, but the rights are
+held by this project's owner, who also develops the Bíblia dos Capuchinhos app
+the translation comes from. Reprinting the verses here is a use they can grant
+themselves. Anyone forking this and pointing it at a different corpus does not
+inherit that, and should check their own source before publishing.
 
 ### How a day gets its verse
 

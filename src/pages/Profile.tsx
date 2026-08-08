@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuthStore, localNsec, localPrivkeyHex } from "@/store/auth";
 import type { BunkerLogin } from "@/lib/signer";
 import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
-import { usePalavraStore } from "@/store/palavra";
+import { sharesResults, usePalavraStore } from "@/store/palavra";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
@@ -34,7 +34,10 @@ export default function Profile() {
     const privkeyHex = useAuthStore(localPrivkeyHex);
     const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
     const tPalavra = useTranslations().palavra;
-    const sharePalavraResults = usePalavraStore((s) => s.sharePalavraResults);
+    // Per identity: the toggle reflects and sets this pubkey's own choice,
+    // so a second account on the same browser starts from its own answer.
+    const palavraPubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey ?? null);
+    const sharePalavraResults = usePalavraStore((s) => sharesResults(s, palavraPubkey));
     const setSharePalavraResults = usePalavraStore((s) => s.setSharePalavraResults);
     const t = useTranslations().profile;
 
@@ -941,7 +944,7 @@ export default function Profile() {
                             </p>
                         </div>
                         <button
-                            onClick={() => setSharePalavraResults(!sharePalavraResults)}
+                            onClick={() => setSharePalavraResults(palavraPubkey, !sharePalavraResults)}
                             role="switch"
                             aria-checked={sharePalavraResults}
                             aria-label={tPalavra.shareToggle}

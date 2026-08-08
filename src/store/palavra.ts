@@ -95,6 +95,17 @@ export function sanitizePlays(value: unknown): PalavraPlays {
     return trimPlays(clean);
 }
 
+/** Keep only `pubkey: true` pairs — the same reasoning as sanitizePlays, and
+    it matters more here: a junk key that reads as truthy would publish. */
+export function sanitizeSharing(value: unknown): Record<string, boolean> {
+    if (!value || typeof value !== 'object') return {};
+    const clean: Record<string, boolean> = {};
+    for (const [pubkey, on] of Object.entries(value as Record<string, unknown>)) {
+        if (on === true && /^[0-9a-f]{64}$/i.test(pubkey)) clean[pubkey] = true;
+    }
+    return clean;
+}
+
 /** Which of two records for the same day to keep. Two devices can play the
     same puzzle independently, so this picks the better outcome rather than
     the later write: a win beats a loss, a faster win beats a slower one, and
@@ -267,14 +278,27 @@ interface PalavraState {
     challenges: Record<string, DailyChallenge>;
     cacheChallenge: (challenge: DailyChallenge) => void;
 
-    /** Publishing a *public* result event is a separate decision from the
-        encrypted streak sync in the app store: one shares a number with
-        everyone, the other backs your own progress up to yourself.
-        Turned on at sign-in and cleared at sign-out (see auth.ts), so the
-        stored default here is only what a signed-out install starts from —
-        and a signed-out install publishes nothing regardless. */
-    sharePalavraResults: boolean;
-    setSharePalavraResults: (share: boolean) => void;
+    /**
+     * Who has agreed to publish *public* result events, keyed by pubkey.
+     *
+     * A separate decision from the encrypted streak sync in the app store: one
+     * shares a number with everyone, the other backs your own progress up to
+     * yourself. Turned on when an identity signs in (see auth.ts).
+     *
+     * Per identity, not one global flag. Two accounts share a browser more
+     * often than it looks — a shared device, or one person keeping a public
+     * key apart from a quiet one — and a single flag meant the first account's
+     * choice silently published for the second. The consent has to belong to
+     * whoever it discloses.
+     */
+    sharing: Record<string, boolean>;
+    setSharePalavraResults: (pubkey: string | null, share: boolean) => void;
+}
+
+/** Whether this identity publishes results. Signed out is always false: there
+    is nothing to sign with, and no one to attribute it to. */
+export function sharesResults(state: PalavraState, pubkey: string | null | undefined): boolean {
+    return pubkey ? state.sharing[pubkey] === true : false;
 }
 
 export const usePalavraStore = create<PalavraState>()(
@@ -349,8 +373,16 @@ export const usePalavraStore = create<PalavraState>()(
                 };
             }),
 
-            sharePalavraResults: false,
-            setSharePalavraResults: (sharePalavraResults) => set({ sharePalavraResults }),
+            sharing: {},
+            setSharePalavraResults: (pubkey, share) => set((state) => {
+                if (!pubkey) return {};
+                const next = { ...state.sharing };
+                // Delete rather than store false: an identity that has opted
+                // out reads the same as one that never opted in, and the map
+                // doesn't grow a row per account that ever touched the device.
+                if (share) next[pubkey] = true; else delete next[pubkey];
+                return { sharing: next };
+            }),
         }),
         {
             name: 'mora-palavra-storage',
@@ -368,6 +400,7 @@ export const usePalavraStore = create<PalavraState>()(
                     ...saved,
                     plays: sanitizePlays(saved.plays),
                     practice: sanitizePlays(saved.practice),
+                    sharing: sanitizeSharing(saved.sharing),
                 };
             },
         }

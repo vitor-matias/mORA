@@ -6,7 +6,6 @@
 //
 import { sha256 } from '@noble/hashes/sha2';
 import { utf8ToBytes } from '@noble/hashes/utils';
-import { nextUTCMidnight } from '@/lib/format';
 import { answerHash, normalizeWord, obfuscateAnswer } from './game';
 import { BLANK_MARKER, type DailyChallenge } from './types';
 
@@ -62,7 +61,11 @@ export function mockDailyChallenge(date: string): DailyChallenge {
         length: normalized.length,
         answerHash: answerHash(date, answer),
         answerCipher: obfuscateAnswer(date, answer),
-        nextPuzzleAt: Math.floor(nextUTCMidnight().getTime() / 1000),
+        // From the date, not the clock — otherwise the same call returns
+        // different payloads either side of midnight, and an archive day
+        // gets the rollover of the day it was loaded on. Matches what
+        // buildPuzzle does for published puzzles.
+        nextPuzzleAt: Math.floor(Date.parse(`${date}T00:00:00Z`) / 1000) + 86_400,
     };
 }
 
