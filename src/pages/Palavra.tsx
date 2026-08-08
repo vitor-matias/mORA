@@ -2,10 +2,10 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import { Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
-import { FullVerse } from '@/components/palavra/FullVerse';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
 import { Community } from '@/components/palavra/Community';
 import { GAP_PX, Grid, type PlayedRow } from '@/components/palavra/Grid';
+import { capuchinhosUrl } from '@/lib/palavra/bookSlugs';
 import { Keyboard } from '@/components/palavra/Keyboard';
 import { ResultSheet } from '@/components/palavra/ResultSheet';
 import { fetchDailyChallenge, PALAVRA_IS_MOCK } from '@/lib/palavra/api';
@@ -401,6 +401,14 @@ export default function Palavra() {
         // setState bails.
     }, [challenge, over, pageTab, maxTilePx]);
 
+    // Back to a link on the reference. The card already carries the finished
+    // verse, so the separate full-verse box under it was the same text and the
+    // same reference twice; what it didn't carry was the way out to the reader.
+    const refUrl = useMemo(
+        () => (challenge ? capuchinhosUrl(challenge.ref) : null),
+        [challenge],
+    );
+
     const shareText = useMemo(() => {
         if (!challenge || !over) return '';
         const score = play.solved ? `${play.guesses.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
@@ -599,23 +607,26 @@ export default function Palavra() {
                                 </Fragment>
                             ))}
                             <cite className="block not-italic text-xs font-medium text-zinc-500 mt-2">
-                                {over && `${challenge.ref} · `}{t.letters(challenge.length)}
+                                {over && (
+                                    <>
+                                        {refUrl
+                                            ? (
+                                                <a
+                                                    href={refUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="underline underline-offset-2 hover:text-liturgy-700 dark:hover:text-liturgy-300"
+                                                >
+                                                    {challenge.ref}
+                                                </a>
+                                            )
+                                            : challenge.ref}
+                                        {' · '}
+                                    </>
+                                )}
+                                {t.letters(challenge.length)}
                             </cite>
                         </blockquote>
-
-                        {/* The passage in full, once it can't spoil anything.
-                            Carried in the puzzle rather than linked out to: the
-                            whole translation is available where the puzzle is
-                            built, so this reads in the app and offline — and
-                            `verse` above is often only an excerpt of it. */}
-                        {over && challenge.full && (
-                            <blockquote className="psalm-refrain text-[0.95rem]">
-                                <FullVerse text={challenge.full} highlight={answerDisplay} />
-                                <cite className="block not-italic text-xs font-medium opacity-70 mt-1">
-                                    {challenge.ref}
-                                </cite>
-                            </blockquote>
-                        )}
 
                         {/* Once the game is over the outcome leads and the
                             board drops below it: the result is what the player
