@@ -80,8 +80,11 @@ export function Grid({
         // same quantity measured instead: the caller reports the gap between
         // the top of the board and the top of the keyboard, so the board
         // shrinks to whatever is genuinely there.
-        maxWidth: maxTilePx
-            ? `min(100%, ${length * 3.5}rem, ${Math.round(maxTilePx * length + GAP_PX * (length - 1))}px)`
+        // `!== undefined`, not truthiness: a measured 0 is "no room at all",
+        // and treating it as "not measured yet" would drop back to the
+        // unconstrained cap and push the board straight through the keyboard.
+        maxWidth: maxTilePx !== undefined
+            ? `min(100%, ${length * 3.5}rem, ${Math.round(Math.max(0, maxTilePx) * length + GAP_PX * (length - 1))}px)`
             : `min(100%, ${length * 3.5}rem)`,
         // Letters shrink with the tiles so an eight-letter board doesn't clip.
         fontSize: `clamp(0.9rem, ${Math.floor(52 / length)}vw, 1.6rem)`,

@@ -140,7 +140,7 @@ async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
     if (!play || !isFinished(play)) return;
 
     try {
-        await publishPalavraResult(today, play);
+        await publishPalavraResult(today, play, pubkey);
     } catch (error) {
         // Never let this fail the sync it rides on — the play log is the part
         // that matters, and the next foreground tries again.
@@ -162,9 +162,21 @@ async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
  * event claiming a one-guess win. That is the accepted cost of a stateless
  * server and a social graph nobody but its users owns.
  */
-export async function publishPalavraResult(date: string, play: PalavraPlay): Promise<void> {
+export async function publishPalavraResult(
+    date: string,
+    play: PalavraPlay,
+    /** The identity this result belongs to, when the caller decided that
+        earlier. Sync awaits the network before getting here, and an account
+        switch in that window would otherwise publish one person's game under
+        the next person's key. */
+    expectedPubkey?: string,
+): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey) return;
+    if (expectedPubkey && pubkey !== expectedPubkey) {
+        console.warn('The signed-in identity changed; not publishing this result.');
+        return;
+    }
     if (!sharesResults(usePalavraStore.getState(), pubkey)) return;
     if (!isFinished(play)) return;
 
@@ -193,6 +205,14 @@ export async function publishPalavraResult(date: string, play: PalavraPlay): Pro
             content,
         }, pubkey);
         const event = await signNostrEvent(mined);
+        // The signer is the last place the identity can change — a NIP-46
+        // bunker or an extension can sign as whoever it is currently pointed
+        // at. Checking the event we are about to publish, rather than the
+        // store we read a moment ago, is what makes this airtight.
+        if (event.pubkey !== pubkey) {
+            console.warn('The result was signed by a different identity; not publishing.');
+            return;
+        }
         // The comment above holds only while the signer passes the template
         // through untouched. A NIP-07 extension or NIP-46 remote signer is
         // free to stamp its own created_at, and that changes the id and

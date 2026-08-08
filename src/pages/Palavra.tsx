@@ -363,6 +363,12 @@ export default function Palavra() {
             // natural size and the CSS cap alone applies.
             if (!board || !keyboard) { setMaxTilePx(undefined); return; }
 
+            // Everything here stays in viewport coordinates. Adding
+            // `window.scrollY` to the board's top mixed document coordinates
+            // into a subtraction from `innerHeight`, so a remeasure taken
+            // while scrolled shrank the board by the scroll offset —
+            // reproduced at 412x760: a resize at scroll 60 took tiles from
+            // 41px to 33px.
             const boardBox = board.getBoundingClientRect();
             // Board bottom to keyboard bottom. Measured between two elements
             // rather than derived from the page height: `scrollHeight` stops
@@ -371,8 +377,7 @@ export default function Palavra() {
             // floor. Between two elements it is stable — shrink the board and
             // both edges move up together.
             const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
-            const available = window.innerHeight - (boardBox.top + window.scrollY)
-                - below - BOARD_BREATHING_PX;
+            const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
             const perTile = (available - GAP_PX * (MAX_GUESSES - 1)) / MAX_GUESSES;
             // Floored, so a landscape phone gets a small board and a scroll
             // rather than one collapsed to nothing.
