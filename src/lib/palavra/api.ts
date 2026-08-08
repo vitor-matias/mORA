@@ -159,11 +159,16 @@ export function sanitizeChallenge(raw: unknown, expectedDate: string): DailyChal
  * Only validated puzzles are ever cached, so a cache hit is always playable.
  */
 export async function fetchDailyChallenge(date: string): Promise<DailyChallenge> {
-    const cached = usePalavraStore.getState().challenges[date];
+    // Tagged with where it came from: a demo puzzle cached under a real date
+    // must not survive a publisher being configured, or that day would keep
+    // showing an invented verse and score against the wrong answer.
+    const source = PUBLISHER || 'mock';
+    const { challenges, challengeSource } = usePalavraStore.getState();
+    const cached = challengeSource === source ? challenges[date] : undefined;
     if (cached) return cached;
 
     const challenge = await fetchFreshChallenge(date);
-    usePalavraStore.getState().cacheChallenge(challenge);
+    usePalavraStore.getState().cacheChallenge(challenge, source);
     return challenge;
 }
 

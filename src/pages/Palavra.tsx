@@ -272,10 +272,28 @@ export default function Palavra() {
             const target = event.target as HTMLElement | null;
             if (target?.isContentEditable
                 || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '')) return;
+            const letter = normalizeWord(event.key);
+            const handled = event.key === 'Enter' || event.key === 'Backspace' || letter.length === 1;
+            if (!handled) return;
+
+            // A button clicked earlier still holds focus — a date arrow, a
+            // section tab — and Enter or Space on a focused button is a click.
+            // Reported from a real game: Enter submitted the guess *and* paged
+            // the day, because the calendar button was still focused.
+            //
+            // Blurring alone doesn't fix it. The click is the default action
+            // of this very keydown, so it is already on its way by the time
+            // the handler runs; only preventDefault cancels it. Blur as well,
+            // so the ring goes and the next keystroke starts clean.
+            const focused = document.activeElement;
+            if (focused instanceof HTMLElement && focused !== document.body) {
+                event.preventDefault();
+                focused.blur();
+            }
+
             if (event.key === 'Enter') { onEnter(); return; }
             if (event.key === 'Backspace') { onBackspace(); return; }
-            const letter = normalizeWord(event.key);
-            if (letter.length === 1) onLetter(letter);
+            onLetter(letter);
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);

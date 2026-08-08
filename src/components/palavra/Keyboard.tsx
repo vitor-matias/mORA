@@ -56,6 +56,14 @@ export function Keyboard({
                     {rowIndex === 2 && (
                         <button
                             type="button"
+                            // Tapping a key must not move focus to it.
+                            // preventDefault on mousedown stops the
+                            // button taking focus without touching the
+                            // click, so a tapped key doesn't keep the
+                            // focus ring and a later Enter doesn't
+                            // re-fire it. Tab-and-Enter still works:
+                            // mousedown never fires for that.
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={onEnter}
                             disabled={disabled}
                             aria-label={t.confirmWord}
@@ -71,6 +79,7 @@ export function Keyboard({
                             <button
                                 key={letter}
                                 type="button"
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => onLetter(letter)}
                                 disabled={disabled}
                                 aria-label={mark ? `${letter}, ${MARK_LABEL(t)[mark]}` : letter}
@@ -84,6 +93,7 @@ export function Keyboard({
                     {rowIndex === 2 && (
                         <button
                             type="button"
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={onBackspace}
                             disabled={disabled}
                             aria-label={t.deleteLetter}

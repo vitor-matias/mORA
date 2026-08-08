@@ -276,7 +276,14 @@ interface PalavraState {
      * always playable.
      */
     challenges: Record<string, DailyChallenge>;
-    cacheChallenge: (challenge: DailyChallenge) => void;
+    /** Which publisher the cached puzzles came from — a pubkey, or 'mock'.
+        Puzzles are keyed by date alone, so without this a device that played
+        in demo mode would keep serving demo verses for those dates after a
+        real publisher was configured, mixing invented and published days in
+        one archive and scoring them against different answers. Changing
+        source drops the cache rather than trying to reconcile it. */
+    challengeSource: string;
+    cacheChallenge: (challenge: DailyChallenge, source: string) => void;
 
     /**
      * Who has agreed to publish *public* result events, keyed by pubkey.
@@ -352,13 +359,15 @@ export const usePalavraStore = create<PalavraState>()(
             })),
 
             challenges: {},
-            cacheChallenge: (challenge) => set((state) => {
-                const next = { ...state.challenges, [challenge.date]: challenge };
+            challengeSource: '',
+            cacheChallenge: (challenge, source) => set((state) => {
+                const base = state.challengeSource === source ? state.challenges : {};
+                const next = { ...base, [challenge.date]: challenge };
                 // Keep a couple of weeks: enough that paging back through the
                 // recent archive works offline, without carrying a year of
                 // verses in localStorage.
                 const dates = Object.keys(next).sort();
-                if (dates.length <= MAX_CACHED_CHALLENGES) return { challenges: next };
+                if (dates.length <= MAX_CACHED_CHALLENGES) return { challenges: next, challengeSource: source };
                 // Trimming to the newest dates would drop the puzzle that was
                 // just fetched whenever it is an archive day older than the
                 // window — so paging back would re-fetch every time and offline
@@ -366,6 +375,7 @@ export const usePalavraStore = create<PalavraState>()(
                 const keep = new Set(dates.slice(-MAX_CACHED_CHALLENGES));
                 keep.add(challenge.date);
                 return {
+                    challengeSource: source,
                     challenges: Object.fromEntries(
                         [...keep].sort().slice(-MAX_CACHED_CHALLENGES)
                             .map((date) => [date, next[date]]),
