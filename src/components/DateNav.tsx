@@ -15,6 +15,7 @@ export function DateNav({
     isToday,
     onChangeDay,
     onSelectDate,
+    maxDateStr,
 }: {
     selectedDate: Date;
     /** Local YYYY-MM-DD of selectedDate (feeds the native picker). */
@@ -22,8 +23,21 @@ export function DateNav({
     isToday: boolean;
     onChangeDay: (delta: number) => void;
     onSelectDate: (date: Date) => void;
+    /**
+     * The last day that can be chosen, YYYY-MM-DD. Opt-in, because most pages
+     * here have no such limit — the readings and the Hours exist for any date
+     * you care to look up, so their pickers stay open-ended.
+     *
+     * Palavra is the exception: tomorrow's puzzle hasn't been published, and
+     * the publisher refuses to publish ahead on purpose, so offering the day
+     * is offering an error.
+     */
+    maxDateStr?: string;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
+    // String comparison is safe on YYYY-MM-DD and avoids a timezone round
+    // trip that has bitten this page before.
+    const atMax = Boolean(maxDateStr && selectedDateStr >= maxDateStr);
 
     return (
         <div className="flex items-center justify-between gap-1 surface rounded-xl px-1 py-1 shrink-0">
@@ -74,8 +88,14 @@ export function DateNav({
                     aria-label="Escolher data"
                     tabIndex={-1}
                     value={selectedDateStr}
+                    // `max` greys out later days in the native calendar, which
+                    // is the whole point — but it is advisory, so the handler
+                    // refuses them too rather than trusting the widget.
+                    max={maxDateStr}
                     onChange={(e) => {
-                        if (e.target.value) onSelectDate(new Date(e.target.value + 'T00:00:00'));
+                        if (!e.target.value) return;
+                        if (maxDateStr && e.target.value > maxDateStr) return;
+                        onSelectDate(new Date(e.target.value + 'T00:00:00'));
                     }}
                     className="absolute inset-0 opacity-0 pointer-events-none"
                 />
@@ -84,7 +104,8 @@ export function DateNav({
                 type="button"
                 onClick={() => onChangeDay(1)}
                 aria-label="Dia seguinte"
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                disabled={atMax}
+                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:pointer-events-none"
             >
                 <ChevronRight size={18} />
             </button>

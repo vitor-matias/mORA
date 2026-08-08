@@ -463,6 +463,9 @@ export default function Palavra() {
             isToday={!isArchive}
             onChangeDay={shiftDay}
             onSelectDate={(date) => goToDate(formatUTCDate(date))}
+            // No future puzzles exist: the publisher refuses to publish ahead,
+            // so tomorrow would only ever load as "no puzzle for this day".
+            maxDateStr={today}
         />
     );
 
