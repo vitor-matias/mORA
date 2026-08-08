@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { entriesFromEvents, liveStreaks, rank, recentDates, type RankableResult } from './social.ts';
+import {
+    duelRecords,
+    entriesFromEvents,
+    liveStreaks,
+    rank,
+    recentDates,
+    type RankableResult,
+} from './social.ts';
 import { POW_MINIMUM } from './pow';
 import type { NostrEvent } from '@nostrify/nostrify';
+import type { LeaderboardEntry } from './types';
 import { formatUTCDate } from '@/lib/format';
 
 function result(over: Partial<RankableResult> = {}): RankableResult {
@@ -113,6 +121,68 @@ describe('rank', () => {
             .toEqual(['s2@20000', 's2@80000', 's4@10000', 'x6@5000']);
         // Reversing the input must not change the outcome.
         expect([...rows].reverse().sort(rank)).toEqual(sorted);
+    });
+});
+
+describe('duelRecords', () => {
+    const ME = 'a'.repeat(64);
+    const RIVAL = 'b'.repeat(64);
+
+    const play = (pubkey: string, tries: number): LeaderboardEntry =>
+        ({ pubkey, tries, solved: true, ms: 30_000 });
+
+    /** Results grouped the way fetchDuels groups them: author → date → result. */
+    const grouped = (rows: [string, string, number][]) => {
+        const byAuthor = new Map<string, Map<string, LeaderboardEntry>>();
+        for (const [pubkey, date, tries] of rows) {
+            if (!byAuthor.has(pubkey)) byAuthor.set(pubkey, new Map());
+            byAuthor.get(pubkey)!.set(date, play(pubkey, tries));
+        }
+        return byAuthor;
+    };
+
+    // Most Nostr clients put your own key in your own kind-3 list, so this is
+    // the ordinary case, not an exotic one. Left in, you top your own duel
+    // list with a draw on every day you have ever played.
+    it('never makes you your own opponent', () => {
+        const byAuthor = grouped([[ME, '2026-08-08', 3], [ME, '2026-08-07', 4]]);
+        expect(duelRecords(ME, [ME], byAuthor)).toEqual([]);
+    });
+
+    it('still tallies real opponents when your key is in the list', () => {
+        const byAuthor = grouped([
+            [ME, '2026-08-08', 3], [RIVAL, '2026-08-08', 5],
+        ]);
+        const records = duelRecords(ME, [ME, RIVAL], byAuthor);
+        expect(records.map((r) => r.pubkey)).toEqual([RIVAL]);
+        expect(records[0]).toMatchObject({ wins: 1, losses: 0, draws: 0, played: 1 });
+    });
+
+    it('counts a win, a loss and a draw across days', () => {
+        const byAuthor = grouped([
+            [ME, '2026-08-08', 2], [RIVAL, '2026-08-08', 5],
+            [ME, '2026-08-07', 5], [RIVAL, '2026-08-07', 2],
+            [ME, '2026-08-06', 3], [RIVAL, '2026-08-06', 3],
+        ]);
+        expect(duelRecords(ME, [RIVAL], byAuthor)[0])
+            .toMatchObject({ wins: 1, losses: 1, draws: 1, played: 3 });
+    });
+
+    it('ignores days only one of you played', () => {
+        const byAuthor = grouped([
+            [ME, '2026-08-08', 3], [RIVAL, '2026-08-08', 4],
+            [ME, '2026-08-07', 3],
+        ]);
+        expect(duelRecords(ME, [RIVAL], byAuthor)[0].played).toBe(1);
+    });
+
+    it('omits an opponent you have never overlapped with', () => {
+        const byAuthor = grouped([[ME, '2026-08-08', 3], [RIVAL, '2026-08-01', 3]]);
+        expect(duelRecords(ME, [RIVAL], byAuthor)).toEqual([]);
+    });
+
+    it('returns nothing when you have played nothing', () => {
+        expect(duelRecords(ME, [RIVAL], grouped([[RIVAL, '2026-08-08', 3]]))).toEqual([]);
     });
 });
 
