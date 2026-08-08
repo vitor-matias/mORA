@@ -18,7 +18,14 @@ export function DateNav({
     maxDateStr,
 }: {
     selectedDate: Date;
-    /** Local YYYY-MM-DD of selectedDate (feeds the native picker). */
+    /**
+     * YYYY-MM-DD of `selectedDate`, which feeds the native picker.
+     *
+     * Which calendar it is counted in is the caller's business — Missa and the
+     * Hours key their days locally, Palavra keys them in UTC because that is
+     * when a puzzle rolls over. This component only needs the two date strings
+     * below to agree with each other.
+     */
     selectedDateStr: string;
     isToday: boolean;
     onChangeDay: (delta: number) => void;
@@ -31,12 +38,19 @@ export function DateNav({
      * Palavra is the exception: tomorrow's puzzle hasn't been published, and
      * the publisher refuses to publish ahead on purpose, so offering the day
      * is offering an error.
+     *
+     * **Must be counted the same way as `selectedDateStr`** — both local or
+     * both UTC. The comparison below is lexicographic, which is exactly right
+     * for YYYY-MM-DD and silently off by a day if the two are mixed, for the
+     * hours where the two calendars disagree and nowhere else.
      */
     maxDateStr?: string;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
-    // String comparison is safe on YYYY-MM-DD and avoids a timezone round
-    // trip that has bitten this page before.
+    // Compared as strings, which YYYY-MM-DD sorts correctly, rather than
+    // parsed back into Dates — a timezone round trip at this boundary is what
+    // made the puzzle 404 for the first hour of the day once already. It
+    // assumes both strings count days the same way; see `maxDateStr`.
     const atMax = Boolean(maxDateStr && selectedDateStr >= maxDateStr);
 
     return (
