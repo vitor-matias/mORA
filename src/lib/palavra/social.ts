@@ -351,7 +351,11 @@ export function recentDates(days: number, from = new Date()): string[] {
  * makes the record a measure of attendance rather than of the duel.
  */
 export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<DuelRecord[]> {
-    const follows = await fetchFollows(pubkey);
+    // Your own key is dropped before anyone becomes an opponent. Most Nostr
+    // clients put you in your own kind-3 contact list, so without this you
+    // appear in your own duels — drawing with yourself, every day, top of the
+    // list because you have played the most days with yourself.
+    const follows = (await fetchFollows(pubkey)).filter((who) => who !== pubkey);
     if (follows.length === 0) return [];
 
     const dates = recentDates(days);
@@ -382,11 +386,30 @@ export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<Duel
         byAuthor.get(event.pubkey)!.set(date, entry);
     }
 
+    return withNames(duelRecords(pubkey, follows, byAuthor));
+}
+
+/**
+ * Head-to-head tallies, from results already grouped by author and day.
+ *
+ * Pure, and separate from the query so the rules can be tested without a
+ * relay — including the one that matters most, that you are never your own
+ * opponent.
+ */
+export function duelRecords(
+    pubkey: string,
+    opponents: string[],
+    byAuthor: Map<string, Map<string, LeaderboardEntry>>,
+): DuelRecord[] {
     const mine = byAuthor.get(pubkey);
     if (!mine || mine.size === 0) return [];
 
     const records: DuelRecord[] = [];
-    for (const opponent of follows) {
+    for (const opponent of opponents) {
+        // Belt and braces with the filter at the call site. A duel with
+        // yourself is a draw on every day you played, which would sit at the
+        // top of the list on days-played and mean nothing.
+        if (opponent === pubkey) continue;
         const theirs = byAuthor.get(opponent);
         if (!theirs || theirs.size === 0) continue;
 
@@ -405,5 +428,5 @@ export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<Duel
     }
 
     records.sort((a, b) => b.played - a.played || b.wins - a.wins);
-    return withNames(records);
+    return records;
 }
