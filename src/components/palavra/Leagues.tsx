@@ -234,13 +234,20 @@ export function Leagues({
                     <button
                         type="button"
                         disabled={busy !== null || !invite.trim()}
-                        onClick={() => run('joining', async () => {
-                            const { parseInvite, joinLeague } = await import('@/lib/palavra/leagues');
+                        onClick={async () => {
+                            // Checked before `run`, which reports every throw
+                            // as "try again" — the wrong advice for a string
+                            // that will never parse however often it is
+                            // retried.
+                            const { parseInvite } = await import('@/lib/palavra/leagues');
                             const coord = parseInvite(invite);
-                            if (!coord) throw new Error('invalid invite');
-                            await joinLeague(coord);
-                            setInvite('');
-                        })}
+                            if (!coord) { setError(t.inviteInvalid); return; }
+                            run('joining', async () => {
+                                const { joinLeague } = await import('@/lib/palavra/leagues');
+                                await joinLeague(coord);
+                                setInvite('');
+                            });
+                        }}
                         className={action}
                     >
                         {t.joinLeague}

@@ -131,6 +131,7 @@ const translations = {
         standingsSpoiler: "Termine o jogo de hoje para ver a classificação desta liga.",
         newLeagueName: "Nome da nova liga",
         createLeague: "Criar liga",
+        inviteInvalid: "Esse convite não é válido.",
         invitePlaceholder: "Colar convite (naddr…)",
         joinLeague: "Entrar",
         copyInvite: (name: string) => `Copiar convite para ${name}`,

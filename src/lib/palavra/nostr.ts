@@ -32,7 +32,7 @@ import {
     type PalavraPlay,
 } from '@/store/palavra';
 import { MAX_GUESSES } from './types';
-import { minePalavraEvent } from './pow';
+import { meetsPow, minePalavraEvent } from './pow';
 
 /** The private cross-device log. */
 export const D_PALAVRA_STATE = 'mora-palavra-state';
@@ -138,6 +138,20 @@ export async function publishPalavraResult(date: string, play: PalavraPlay): Pro
             content,
         }, pubkey);
         const event = await signNostrEvent(mined);
+        // The comment above holds only while the signer passes the template
+        // through untouched. A NIP-07 extension or NIP-46 remote signer is
+        // free to stamp its own created_at, and that changes the id and
+        // throws the mined work away. The publish would still succeed, and
+        // then every reader — leaderboard, duels, league standings — would
+        // filter the result out for failing the PoW gate, so the player's
+        // game would vanish with nothing anywhere saying why.
+        if (!meetsPow(event.id)) {
+            console.warn(
+                'The signer changed the event, so the mined proof of work no longer holds. '
+                + 'Not publishing — the result would be ignored by every reader.',
+            );
+            return;
+        }
         await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
     } catch (error) {
         // Relays reject or go offline routinely, and the game is already

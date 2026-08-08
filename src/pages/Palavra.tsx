@@ -457,6 +457,13 @@ export default function Palavra() {
                                     {part}
                                     {i < verseParts.length - 1 && (
                                         <span
+                                            // Only while it is a blank: after
+                                            // the reveal it is ordinary text.
+                                            // A plain span is `generic`, which
+                                            // ARIA gives no accessible name,
+                                            // so the label below could be
+                                            // dropped without a role here.
+                                            role={over ? undefined : 'img'}
                                             className="inline-block align-baseline border-b-2 border-liturgy-600 dark:border-liturgy-400 text-liturgy-700 dark:text-liturgy-300 font-semibold px-1 text-center"
                                             style={over ? undefined : { minWidth: `${challenge.length * 0.72}em` }}
                                             aria-label={over ? undefined : t.hiddenWord(challenge.length)}
