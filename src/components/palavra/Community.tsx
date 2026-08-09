@@ -85,9 +85,9 @@ export function Community({
                         {/* The icon is decorative and the first thing to go:
                             four tabs and four icons don't fit a phone, and a
                             readable "Seguidos" beats an icon beside "Segui…".
-                            500px, measured — at 430 the label was still one
-                            pixel short, which `getBoundingClientRect` rounds
-                            away and `clientWidth` does not. */}
+                            500px because that is where the labels stop being
+                            clipped — at 430 "Seguidos" was still a pixel
+                            short. */}
                         <Icon size={15} aria-hidden="true" className="hidden min-[500px]:block shrink-0" />
                         <span className="truncate">{label}</span>
                     </button>
