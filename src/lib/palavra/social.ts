@@ -104,9 +104,20 @@ export async function withNames<T extends { pubkey: string }>(
     // your profile at sign-in; there is no reason to make the leaderboard ask
     // the network again for something it is already holding.
     const me = currentPubkey();
-    if (me && !cards.has(me)) {
+    if (me) {
         const own = toProfileCard(useAuthStore.getState().profile);
-        if (own) cards.set(me, own);
+        if (own) {
+            // Field by field, not all-or-nothing. The first version of this
+            // only filled in a *missing* card, which is the case that doesn't
+            // happen: the relays usually do have a kind-0, so the name arrived
+            // and the fallback was skipped — leaving exactly the symptom it
+            // was written to fix, a name with no picture beside it.
+            const found = cards.get(me);
+            cards.set(me, {
+                name: found?.name ?? own.name,
+                picture: found?.picture ?? own.picture,
+            });
+        }
     }
 
     return rows.map((row) => ({ ...row, ...(cards.get(row.pubkey) ?? {}) }));

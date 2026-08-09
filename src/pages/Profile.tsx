@@ -378,9 +378,18 @@ export default function Profile() {
     const handleSaveProfile = async () => {
         setIsSaving(true);
         try {
-            const newProfile = { name: profileName, picture: profilePicture };
-            await publishNostrProfile(newProfile);
-            setProfile(newProfile);
+            // Both name fields from the one box the form shows. Clients
+            // differ on which they read, and leaving `display_name` at its old
+            // value would rename you in some apps and not others.
+            const edits = {
+                name: profileName,
+                display_name: profileName,
+                picture: profilePicture,
+            };
+            await publishNostrProfile(edits);
+            // The merged profile, not just the edits — otherwise the avatar and
+            // greeting on this device forget every field the form doesn't show.
+            setProfile({ ...(await fetchNostrProfile(pubkey!) ?? edits) });
             setIsEditingProfile(false);
         } catch (e) {
             console.error(e);
