@@ -97,15 +97,93 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
     }
 }
 
-export async function publishNostrProfile(profile: NostrProfile) {
+/**
+ * The whole of this identity's published profile, as raw JSON.
+ *
+ * Distinct from `fetchNostrProfile`, which narrows to the four fields this app
+ * understands. Anything that *republishes* a profile has to see the rest —
+ * kind 0 is replaceable, so a field left out is a field deleted.
+ *
+ * Returns null when the relays could not be asked, which is not the same as an
+ * identity having no profile yet, and must not be treated as one.
+ */
+async function fetchRawProfile(
+    pubkey: string,
+): Promise<{ content: Record<string, unknown> } | null> {
+    let events: NostrEvent[];
+    try {
+        events = await pool.query(
+            [{ kinds: [0], authors: [pubkey], limit: 1 }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
+    } catch (error) {
+        console.warn('Could not read the current profile.', error);
+        return null;
+    }
+    const newest = events.sort((a, b) => b.created_at - a.created_at)[0];
+    if (!newest) return { content: {} };
+    try {
+        const parsed = JSON.parse(newest.content) as unknown;
+        // An array or a scalar is not a profile, and `typeof [] === 'object'`
+        // would have let one through: spreading it into the merge yields an
+        // object, so whatever was actually published would be replaced by the
+        // edits alone. Unrecognisable is unreadable — refuse, don't overwrite.
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            console.warn('The published profile is not a JSON object; refusing to replace it.');
+            return null;
+        }
+        return { content: parsed as Record<string, unknown> };
+    } catch {
+        // Unparseable is not empty. Overwriting it would still destroy
+        // whatever it holds, so treat it as unreadable and refuse.
+        console.warn('The published profile is not valid JSON; refusing to replace it.');
+        return null;
+    }
+}
+
+/**
+ * Publish changes to this identity's profile.
+ *
+ * Merged into whatever is already published, never substituted for it. Kind 0
+ * is replaceable: the event that lands *is* the profile, so publishing the
+ * handful of fields this app knows about silently deletes every field it
+ * doesn't — a Lightning address, a NIP-05 identifier, a banner. Reported by a
+ * user who edited their picture here and lost `lud16`, `nip05`, `display_name`
+ * and `banner` in the same write.
+ *
+ * If the current profile can't be read, this refuses rather than publishing
+ * the changes alone — a failed read must never become a destructive write.
+ */
+export async function publishNostrProfile(
+    changes: NostrProfile,
+    /** Set only for an identity created moments ago on this device, which
+        cannot have a published profile to merge with or destroy. Without it a
+        slow relay would fail the read and refuse to publish the new name —
+        protecting something that does not exist. */
+    options: { isNewIdentity?: boolean } = {},
+): Promise<NostrProfile> {
     const pubkey = currentPubkey();
     if (!pubkey) throw new Error("Not logged in");
+
+    const current = options.isNewIdentity ? { content: {} } : await fetchRawProfile(pubkey);
+    if (!current) {
+        throw new Error(
+            'Não foi possível ler o perfil atual, por isso não foi guardado. Tente novamente.',
+        );
+    }
+
+    // Undefined entries in `changes` must not blank a published field, so they
+    // are dropped before the merge rather than overwriting with undefined.
+    const edits = Object.fromEntries(
+        Object.entries(changes).filter(([, value]) => value !== undefined),
+    );
+    const merged = { ...current.content, ...edits };
 
     const baseEvent: EventTemplate = {
         kind: 0,
         created_at: Math.floor(Date.now() / 1000),
         tags: [],
-        content: JSON.stringify(profile)
+        content: JSON.stringify(merged)
     };
 
     try {
@@ -114,7 +192,11 @@ export async function publishNostrProfile(profile: NostrProfile) {
         // Resolves as soon as any relay accepts, rejects only if all refuse.
         await pool.event(signedEvent, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
         console.log('Successfully published profile to Nostr:', signedEvent);
-        return signedEvent;
+        // The merged profile, so the caller can update local state without a
+        // second round trip — and without falling back to just its own edits,
+        // which would drop every field it doesn't know about from the copy
+        // this device shows.
+        return merged as NostrProfile;
     } catch (error) {
         console.error('Failed to publish Nostr profile:', error);
         throw error;
@@ -189,13 +271,42 @@ export interface ProfileCard {
 }
 
 /**
+ * How long a picture URL may be.
+ *
+ * The cap exists so a hostile profile can't ship an unbounded string into the
+ * DOM, not to judge what a reasonable picture looks like. 500 was far too mean
+ * for that job on both counts: a signed CDN link passes it with a couple of
+ * query parameters, and an inline `data:` avatar — which some clients publish
+ * — is tens of kilobytes by nature.
+ */
+const MAX_PICTURE_URL = 200_000;
+
+/**
+ * Whether a profile picture can be put in an `<img src>`.
+ *
+ * `https:` is the ordinary case. Inline `data:` images are allowed too — some
+ * clients embed a small avatar directly in the profile, and refusing them
+ * showed a placeholder for a picture every other app renders.
+ *
+ * SVG is excluded from that even though it is an image type: an SVG can carry
+ * script, and this one comes from a stranger's profile. Raster formats can't.
+ * Everything else — `javascript:`, `http:` on an https page, anything unknown
+ * — stays out.
+ */
+function isShowableImage(url: string): boolean {
+    if (url.length > MAX_PICTURE_URL) return false;
+    if (/^https:\/\//i.test(url)) return true;
+    return /^data:image\/(png|jpe?g|gif|webp|avif);base64,/i.test(url);
+}
+
+/**
  * A profile as it can safely be shown in a list, or null if there is nothing
  * worth showing.
  *
- * `picture` is only kept when it is an https URL. It is rendered as an <img>
- * src, so a `javascript:` or `data:` value from a hostile profile would be
- * loading attacker-chosen content into the page; http would also break the
- * padlock on an https deployment.
+ * `picture` is kept only when `isShowableImage` accepts it — an https URL, or
+ * an inline raster `data:` image. It is rendered as an <img> src, so anything
+ * else from a hostile profile would be loading attacker-chosen content into
+ * the page.
  *
  * Shared, so a profile taken from local state goes through the same checks as
  * one pulled off a relay: your own is no more trustworthy to render than a
@@ -209,10 +320,18 @@ export function toProfileCard(profile: NostrProfile | null | undefined): Profile
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 24);
-    const picture = typeof profile.picture === 'string' && profile.picture.length <= 500
-        && /^https:\/\//i.test(profile.picture)
+    const picture = typeof profile.picture === 'string' && isShowableImage(profile.picture)
         ? profile.picture
         : undefined;
+    // Rejected silently, this looks identical to having no picture at all —
+    // and the person best placed to fix it is the one who can't see why.
+    if (profile.picture && !picture) {
+        console.warn(
+            'Ignoring a profile picture: it must be an https URL, or an inline '
+            + `png/jpeg/gif/webp/avif, under ${MAX_PICTURE_URL} characters. `
+            + `Got: ${String(profile.picture).slice(0, 120)}`,
+        );
+    }
     if (!name && !picture) return null;
     return { name: name || undefined, picture };
 }

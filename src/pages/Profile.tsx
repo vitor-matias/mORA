@@ -353,7 +353,10 @@ export default function Profile() {
             const profile = { name, display_name: name };
             setProfile(profile);
             try {
-                await publishNostrProfile(profile);
+                // Generated on this device seconds ago, so there is nothing
+                // published to merge with — and nothing to lose if the relays
+                // can't be read.
+                await publishNostrProfile(profile, { isNewIdentity: true });
             } catch (e) {
                 // The identity exists either way; the name can be re-published
                 // later from "Editar Perfil".
@@ -378,9 +381,18 @@ export default function Profile() {
     const handleSaveProfile = async () => {
         setIsSaving(true);
         try {
-            const newProfile = { name: profileName, picture: profilePicture };
-            await publishNostrProfile(newProfile);
-            setProfile(newProfile);
+            // Both name fields from the one box the form shows. Clients
+            // differ on which they read, and leaving `display_name` at its old
+            // value would rename you in some apps and not others.
+            const edits = {
+                name: profileName,
+                display_name: profileName,
+                picture: profilePicture,
+            };
+            // The merged profile comes back from the publish, so this device
+            // keeps the fields the form doesn't show instead of forgetting
+            // them until the next fetch.
+            setProfile(await publishNostrProfile(edits));
             setIsEditingProfile(false);
         } catch (e) {
             console.error(e);
