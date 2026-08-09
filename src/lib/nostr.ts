@@ -189,18 +189,15 @@ export interface ProfileCard {
 }
 
 /**
- * Newest kind-0 name and avatar per pubkey.
+ * A profile as it can safely be shown in a list, or null if there is nothing
+ * worth showing.
  *
  * `picture` is only kept when it is an https URL. It is rendered as an <img>
  * src, so a `javascript:` or `data:` value from a hostile profile would be
  * loading attacker-chosen content into the page; http would also break the
  * padlock on an https deployment.
- */
-/**
- * A profile as it can safely be shown in a list, or null if there is nothing
- * worth showing.
  *
- * Shared so a profile taken from local state goes through the same checks as
+ * Shared, so a profile taken from local state goes through the same checks as
  * one pulled off a relay: your own is no more trustworthy to render than a
  * stranger's, it just happens to be yours.
  */
@@ -220,6 +217,7 @@ export function toProfileCard(profile: NostrProfile | null | undefined): Profile
     return { name: name || undefined, picture };
 }
 
+/** Newest kind-0 name and avatar per pubkey, sanitised for display. */
 export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, ProfileCard>> {
     const cards = new Map<string, ProfileCard>();
     if (pubkeys.length === 0) return cards;

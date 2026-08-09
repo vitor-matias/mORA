@@ -224,11 +224,13 @@ export default function Palavra() {
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
     const publishedFor = useRef<string | null>(null);
-    // Bumped once a finished game has been published, so the community panels
-    // reload and the player sees themselves on the board. Bumped *after* the
-    // publish rather than on finishing: mining the proof of work takes a
-    // second or two, and a refetch before that returns a board without them
-    // on it, which looks exactly like the bug it is meant to fix.
+    // Bumped when a finished game has actually reached the relays, so the
+    // community panels reload and the player sees themselves on the board.
+    //
+    // After the publish rather than on finishing, and only on a confirmed one:
+    // mining the proof of work takes a second or two, so a refetch before that
+    // lands returns a board without them on it — which looks exactly like the
+    // bug this exists to fix.
     const [resultsVersion, setResultsVersion] = useState(0);
     const reportResult = useCallback(async () => {
         if (!challenge || scope !== 'daily') return;
@@ -242,14 +244,25 @@ export default function Palavra() {
         try {
             const { publishPalavraStateToNostr, publishPalavraResult } = await import('@/lib/palavra/nostr');
             const record = usePalavraStore.getState().plays[challenge.date];
-            await Promise.allSettled([
+            const [, published] = await Promise.allSettled([
                 publishPalavraStateToNostr(),
-                record ? publishPalavraResult(challenge.date, record) : Promise.resolve(),
+                record ? publishPalavraResult(challenge.date, record) : Promise.resolve(false),
             ]);
+            // Only when the public result genuinely reached a relay. Bumping
+            // unconditionally — which is what putting this after the try did —
+            // refreshed the board on a failed publish, an import that never
+            // loaded, or a player who hasn't opted into sharing, in every case
+            // to show them the same board without them on it.
+            //
+            // `allSettled` is why the return value has to be read rather than
+            // the absence of a throw: it swallows a rejection into a settled
+            // entry, so awaiting it says nothing about what happened.
+            if (published.status === 'fulfilled' && published.value === true) {
+                setResultsVersion((n) => n + 1);
+            }
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);
         }
-        setResultsVersion((n) => n + 1);
     }, [challenge, scope]);
 
     const onEnter = useCallback(() => {
