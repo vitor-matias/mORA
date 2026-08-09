@@ -196,6 +196,30 @@ export interface ProfileCard {
  * loading attacker-chosen content into the page; http would also break the
  * padlock on an https deployment.
  */
+/**
+ * A profile as it can safely be shown in a list, or null if there is nothing
+ * worth showing.
+ *
+ * Shared so a profile taken from local state goes through the same checks as
+ * one pulled off a relay: your own is no more trustworthy to render than a
+ * stranger's, it just happens to be yours.
+ */
+export function toProfileCard(profile: NostrProfile | null | undefined): ProfileCard | null {
+    if (!profile) return null;
+    // Names are attacker-controlled: collapse whitespace and cap the length so
+    // a hostile profile can't wreck the layout.
+    const name = (profile.display_name || profile.name || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 24);
+    const picture = typeof profile.picture === 'string' && profile.picture.length <= 500
+        && /^https:\/\//i.test(profile.picture)
+        ? profile.picture
+        : undefined;
+    if (!name && !picture) return null;
+    return { name: name || undefined, picture };
+}
+
 export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, ProfileCard>> {
     const cards = new Map<string, ProfileCard>();
     if (pubkeys.length === 0) return cards;
@@ -222,20 +246,10 @@ export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, 
     for (const event of metadata) {
         if ((newestAt.get(event.pubkey) ?? -1) >= event.created_at) continue;
         try {
-            const profile = JSON.parse(event.content) as NostrProfile;
-            // Names are attacker-controlled: collapse whitespace and cap the
-            // length so a hostile profile can't wreck the layout.
-            const name = (profile.display_name || profile.name || '')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .slice(0, 24);
-            const picture = typeof profile.picture === 'string' && profile.picture.length <= 500
-                && /^https:\/\//i.test(profile.picture)
-                ? profile.picture
-                : undefined;
-            if (name || picture) {
+            const card = toProfileCard(JSON.parse(event.content) as NostrProfile);
+            if (card) {
                 newestAt.set(event.pubkey, event.created_at);
-                cards.set(event.pubkey, { name: name || undefined, picture });
+                cards.set(event.pubkey, card);
             }
         } catch { /* malformed profile JSON — skip this one */ }
     }

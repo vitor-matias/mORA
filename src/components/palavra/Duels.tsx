@@ -5,7 +5,11 @@ import { DUEL_DAYS } from '@/lib/palavra/types';
 import { Player } from './Player';
 import { useTranslations } from '@/lib/i18n';
 
-export function Duels({ pubkey }: { pubkey: string }) {
+export function Duels({ pubkey, refreshKey }: {
+    pubkey: string;
+    /** Reload when this player's own result lands. */
+    refreshKey?: number;
+}) {
     const t = useTranslations().palavra;
     // Stamped with the identity it was loaded for — see Leaderboard.
     const [loaded, setLoaded] = useState<{ pubkey: string; rows: DuelRecord[] } | null>(null);
@@ -21,7 +25,7 @@ export function Duels({ pubkey }: { pubkey: string }) {
                 if (!cancelled) setLoaded({ pubkey, rows: [] });
             });
         return () => { cancelled = true; };
-    }, [pubkey]);
+    }, [pubkey, refreshKey]);
 
     if (rows === null) {
         return (

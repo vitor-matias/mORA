@@ -122,7 +122,7 @@ const translations = {
         signInDuels: "Os duelos comparam-no com quem segue no Nostr.",
         signInLeagues: "As ligas precisam de uma identidade Nostr para guardar de quais faz parte.",
 
-        loadingBoard: "A consultar os relés…",
+        loadingBoard: "A consultar os relays…",
         emptyBoard: "Ainda ninguém publicou o resultado de hoje.",
         emptyBoardArchive: "Ninguém publicou o resultado deste dia.",
         you: "(tu)",

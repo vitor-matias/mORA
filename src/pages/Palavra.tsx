@@ -224,6 +224,12 @@ export default function Palavra() {
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
     const publishedFor = useRef<string | null>(null);
+    // Bumped once a finished game has been published, so the community panels
+    // reload and the player sees themselves on the board. Bumped *after* the
+    // publish rather than on finishing: mining the proof of work takes a
+    // second or two, and a refetch before that returns a board without them
+    // on it, which looks exactly like the bug it is meant to fix.
+    const [resultsVersion, setResultsVersion] = useState(0);
     const reportResult = useCallback(async () => {
         if (!challenge || scope !== 'daily') return;
         if (publishedFor.current === challenge.date) return;
@@ -243,6 +249,7 @@ export default function Palavra() {
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);
         }
+        setResultsVersion((n) => n + 1);
     }, [challenge, scope]);
 
     const onEnter = useCallback(() => {
@@ -573,6 +580,7 @@ export default function Palavra() {
 
                     {pageTab === 'social' && (
                         <Community
+                            refreshKey={resultsVersion}
                             date={viewDate}
                             pubkey={myPubkey}
                             sharing={sharing}

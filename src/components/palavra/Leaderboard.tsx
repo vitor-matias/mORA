@@ -14,7 +14,12 @@ const PLACE_TINT = [
     'text-orange-700 dark:text-orange-500',
 ];
 
-export function Leaderboard({ date, you }: { date: string; you?: string | null }) {
+export function Leaderboard({ date, you, refreshKey }: {
+    date: string;
+    you?: string | null;
+    /** Reload when this player's own result lands. */
+    refreshKey?: number;
+}) {
     const t = useTranslations().palavra;
     // Loaded rows are stamped with the date they belong to, rather than being
     // cleared at the top of the effect: clearing there is a synchronous
@@ -33,7 +38,7 @@ export function Leaderboard({ date, you }: { date: string; you?: string | null }
                 if (!cancelled) setLoaded({ date, rows: [] });
             });
         return () => { cancelled = true; };
-    }, [date]);
+    }, [date, refreshKey]);
 
     if (rows === null) {
         return (

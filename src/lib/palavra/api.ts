@@ -186,7 +186,7 @@ async function fetchFreshChallenge(date: string): Promise<DailyChallenge> {
         );
     } catch (error) {
         console.warn('Could not reach the relays for the puzzle.', error);
-        throw new Error('Não foi possível contactar os relés.');
+        throw new Error('Não foi possível contactar os relays.');
     }
 
     // Filtering by `authors` asks the relay nicely; checking the pubkey and

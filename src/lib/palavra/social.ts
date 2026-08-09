@@ -11,7 +11,8 @@
 
 import type { NostrEvent } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
-import { KIND_APP_STATE, RELAY_QUERY_TIMEOUT_MS, fetchProfileCards } from '@/lib/nostr';
+import { KIND_APP_STATE, RELAY_QUERY_TIMEOUT_MS, fetchProfileCards, toProfileCard } from '@/lib/nostr';
+import { currentPubkey, useAuthStore } from '@/store/auth';
 import { relaysForAuthors } from '@/lib/relayList';
 import { formatUTCDate } from '@/lib/format';
 import { PALAVRA_TOPIC, resultDTag } from './nostr';
@@ -93,6 +94,21 @@ export async function withNames<T extends { pubkey: string }>(
     rows: T[],
 ): Promise<(T & { name?: string; picture?: string })[]> {
     const cards = await fetchProfileCards(rows.map((row) => row.pubkey));
+
+    // Your own row falls back to the profile this device already holds.
+    //
+    // Profile lookups go to the app's own relays with no outbox routing, so a
+    // kind-0 published from another client to another relay set simply isn't
+    // found — and the row it fails to find most visibly is your own, because
+    // you are the one person who knows what should be there. The app fetched
+    // your profile at sign-in; there is no reason to make the leaderboard ask
+    // the network again for something it is already holding.
+    const me = currentPubkey();
+    if (me && !cards.has(me)) {
+        const own = toProfileCard(useAuthStore.getState().profile);
+        if (own) cards.set(me, own);
+    }
+
     return rows.map((row) => ({ ...row, ...(cards.get(row.pubkey) ?? {}) }));
 }
 
