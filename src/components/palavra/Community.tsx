@@ -76,13 +76,19 @@ export function Community({
                         aria-selected={tab === id}
                         aria-controls={`palavra-community-panel-${id}`}
                         onClick={() => openTab(id)}
-                        className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-xs font-semibold transition-colors ${
+                        className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 rounded-xl px-1.5 sm:px-2 py-2 text-xs font-semibold transition-colors ${
                             tab === id
                                 ? 'bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300'
                                 : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                         }`}
                     >
-                        <Icon size={15} aria-hidden="true" />
+                        {/* The icon is decorative and the first thing to go:
+                            four tabs and four icons don't fit a phone, and a
+                            readable "Seguidos" beats an icon beside "Segui…".
+                            500px because that is where the labels stop being
+                            clipped — at 430 "Seguidos" was still a pixel
+                            short. */}
+                        <Icon size={15} aria-hidden="true" className="hidden min-[500px]:block shrink-0" />
                         <span className="truncate">{label}</span>
                     </button>
                     );
