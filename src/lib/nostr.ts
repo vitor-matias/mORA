@@ -303,10 +303,10 @@ function isShowableImage(url: string): boolean {
  * A profile as it can safely be shown in a list, or null if there is nothing
  * worth showing.
  *
- * `picture` is only kept when it is an https URL. It is rendered as an <img>
- * src, so a `javascript:` or `data:` value from a hostile profile would be
- * loading attacker-chosen content into the page; http would also break the
- * padlock on an https deployment.
+ * `picture` is kept only when `isShowableImage` accepts it — an https URL, or
+ * an inline raster `data:` image. It is rendered as an <img> src, so anything
+ * else from a hostile profile would be loading attacker-chosen content into
+ * the page.
  *
  * Shared, so a profile taken from local state goes through the same checks as
  * one pulled off a relay: your own is no more trustworthy to render than a
@@ -327,8 +327,9 @@ export function toProfileCard(profile: NostrProfile | null | undefined): Profile
     // and the person best placed to fix it is the one who can't see why.
     if (profile.picture && !picture) {
         console.warn(
-            'Ignoring a profile picture: it must be an https URL under '
-            + `${MAX_PICTURE_URL} characters. Got: ${String(profile.picture).slice(0, 120)}`,
+            'Ignoring a profile picture: it must be an https URL, or an inline '
+            + `png/jpeg/gif/webp/avif, under ${MAX_PICTURE_URL} characters. `
+            + `Got: ${String(profile.picture).slice(0, 120)}`,
         );
     }
     if (!name && !picture) return null;

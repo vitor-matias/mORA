@@ -9,9 +9,11 @@ describe('toProfileCard', () => {
             .toEqual({ name: 'Vítor', picture: 'https://cdn.test/a.jpg' });
     });
 
-    // Rendered as an <img src>, so a javascript: or data: value from a hostile
-    // profile would be loading attacker-chosen content into the page.
-    it('drops a picture that is not https', () => {
+    // Rendered as an <img src>, so a javascript: value from a hostile profile
+    // would be loading attacker-chosen content into the page, and http would
+    // break the padlock on an https deployment. Inline raster images are a
+    // separate case and are allowed — see below.
+    it('drops a picture that is neither https nor an inline raster image', () => {
         vi.spyOn(console, 'warn').mockImplementation(() => {});
         expect(toProfileCard({ name: 'Vítor', picture: 'http://cdn.test/a.jpg' })?.picture)
             .toBeUndefined();
