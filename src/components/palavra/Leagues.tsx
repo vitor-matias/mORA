@@ -12,9 +12,12 @@ export function Leagues({
     pubkey,
     date,
     revealResults,
+    refreshKey,
 }: {
     pubkey: string;
     date: string;
+    /** Reload the standings when this player's own result lands. */
+    refreshKey?: number;
     /** False until the day's puzzle is finished — the league list and its
         controls still work, only the standings are held back. */
     revealResults: boolean;
@@ -62,7 +65,7 @@ export function Leagues({
                 if (!cancelled) setLoadedStandings({ coord: selected, rows: [] });
             });
         return () => { cancelled = true; };
-    }, [selected, date, revealResults]);
+    }, [selected, date, revealResults, refreshKey]);
 
     const run = async (kind: Exclude<Busy, null>, action: () => Promise<unknown>) => {
         setBusy(kind);

@@ -21,7 +21,11 @@ const PLACE_TINT = [
  * the time on the daily board. The note at the foot says so rather than
  * letting the ranking imply otherwise.
  */
-export function StreakBoard({ you }: { you?: string | null }) {
+export function StreakBoard({ you, refreshKey }: {
+    you?: string | null;
+    /** Reload when this player's own result lands. */
+    refreshKey?: number;
+}) {
     const t = useTranslations().palavra;
     const [rows, setRows] = useState<LeaderboardEntry[] | null>(null);
 
@@ -35,7 +39,7 @@ export function StreakBoard({ you }: { you?: string | null }) {
                 if (!cancelled) setRows([]);
             });
         return () => { cancelled = true; };
-    }, []);
+    }, [refreshKey]);
 
     if (rows === null) {
         return (

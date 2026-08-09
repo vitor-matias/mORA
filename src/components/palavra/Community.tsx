@@ -20,11 +20,17 @@ const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, streaks: Flame, du
  * questions nobody asked.
  */
 export function Community({
+    refreshKey,
     date,
     pubkey,
     sharing,
     revealResults,
 }: {
+    /** Changes when this player's own result reaches the relays. The panels
+        stay mounted once opened, so nothing else would make them look again —
+        and the moment a player most wants the board is the moment they have
+        just landed on it. */
+    refreshKey: number;
     date: string;
     /** Null when signed out. Duels and leagues need an identity; the board
         doesn't, so it stays readable either way. */
@@ -101,23 +107,23 @@ export function Community({
                     hidden={tab !== id}
                 >
                     {id === 'board' && (revealResults
-                        ? <Leaderboard date={date} you={pubkey} />
+                        ? <Leaderboard date={date} you={pubkey} refreshKey={refreshKey} />
                         : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
                     {/* No sign-in needed and no spoiler gate: a streak count
                         says nothing about today's word, unlike a guess count. */}
-                    {id === 'streaks' && <StreakBoard you={pubkey} />}
+                    {id === 'streaks' && <StreakBoard you={pubkey} refreshKey={refreshKey} />}
 
                     {id === 'duels' && (!pubkey
                         ? <SignInPrompt what={t.signInDuels} hint={t.signInHint} />
-                        : revealResults ? <Duels pubkey={pubkey} /> : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
+                        : revealResults ? <Duels pubkey={pubkey} refreshKey={refreshKey} /> : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
                     {/* Leagues stay usable before the game is played — only the
                         standings inside them are withheld. Being locked out of
                         your own league list because you haven't played yet
                         would be an odd thing to enforce. */}
                     {id === 'leagues' && (pubkey
-                        ? <Leagues pubkey={pubkey} date={date} revealResults={revealResults} />
+                        ? <Leagues pubkey={pubkey} date={date} revealResults={revealResults} refreshKey={refreshKey} />
                         : <SignInPrompt what={t.signInLeagues} hint={t.signInHint} />)}
                 </div>
             ))}
