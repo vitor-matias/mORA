@@ -146,11 +146,18 @@ async function fetchRawProfile(
  * If the current profile can't be read, this refuses rather than publishing
  * the changes alone — a failed read must never become a destructive write.
  */
-export async function publishNostrProfile(changes: NostrProfile) {
+export async function publishNostrProfile(
+    changes: NostrProfile,
+    /** Set only for an identity created moments ago on this device, which
+        cannot have a published profile to merge with or destroy. Without it a
+        slow relay would fail the read and refuse to publish the new name —
+        protecting something that does not exist. */
+    options: { isNewIdentity?: boolean } = {},
+): Promise<NostrProfile> {
     const pubkey = currentPubkey();
     if (!pubkey) throw new Error("Not logged in");
 
-    const current = await fetchRawProfile(pubkey);
+    const current = options.isNewIdentity ? { content: {} } : await fetchRawProfile(pubkey);
     if (!current) {
         throw new Error(
             'Não foi possível ler o perfil atual, por isso não foi guardado. Tente novamente.',
@@ -177,7 +184,11 @@ export async function publishNostrProfile(changes: NostrProfile) {
         // Resolves as soon as any relay accepts, rejects only if all refuse.
         await pool.event(signedEvent, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
         console.log('Successfully published profile to Nostr:', signedEvent);
-        return signedEvent;
+        // The merged profile, so the caller can update local state without a
+        // second round trip — and without falling back to just its own edits,
+        // which would drop every field it doesn't know about from the copy
+        // this device shows.
+        return merged as NostrProfile;
     } catch (error) {
         console.error('Failed to publish Nostr profile:', error);
         throw error;

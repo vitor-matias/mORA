@@ -353,7 +353,10 @@ export default function Profile() {
             const profile = { name, display_name: name };
             setProfile(profile);
             try {
-                await publishNostrProfile(profile);
+                // Generated on this device seconds ago, so there is nothing
+                // published to merge with — and nothing to lose if the relays
+                // can't be read.
+                await publishNostrProfile(profile, { isNewIdentity: true });
             } catch (e) {
                 // The identity exists either way; the name can be re-published
                 // later from "Editar Perfil".
@@ -386,10 +389,10 @@ export default function Profile() {
                 display_name: profileName,
                 picture: profilePicture,
             };
-            await publishNostrProfile(edits);
-            // The merged profile, not just the edits — otherwise the avatar and
-            // greeting on this device forget every field the form doesn't show.
-            setProfile({ ...(await fetchNostrProfile(pubkey!) ?? edits) });
+            // The merged profile comes back from the publish, so this device
+            // keeps the fields the form doesn't show instead of forgetting
+            // them until the next fetch.
+            setProfile(await publishNostrProfile(edits));
             setIsEditingProfile(false);
         } catch (e) {
             console.error(e);
