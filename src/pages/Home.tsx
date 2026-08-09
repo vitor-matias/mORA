@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays, Puzzle } from "lucide-react";
 import { Rosary } from "@/components/icons";
@@ -7,25 +7,12 @@ import { useAuthStore } from "@/store/auth";
 import { derivePalavraStats, isFinished, usePalavraStore } from "@/store/palavra";
 import { MAX_GUESSES } from "@/lib/palavra/types";
 import { useTranslations } from "@/lib/i18n";
-import { getGreeting, formatDisplayDate, formatISODate, formatUTCDate, joinWithE } from "@/lib/format";
+import { getGreeting, formatDisplayDate, formatISODate, formatUTCDate } from "@/lib/format";
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 import { stripReadingLines } from "@/lib/dayInfo";
-import type { PrayerPulse } from "@/lib/nostr";
-
-/** The community-pulse line. Falls back to a bare count when nobody who
-    prayed today has a public profile name. */
-function prayerPulseText({ count, names }: PrayerPulse): string {
-    const suffix = `${count === 1 ? 'já rezou' : 'já rezaram'} hoje com o mORA`;
-    if (names.length === 0) {
-        return `${count} ${count === 1 ? 'pessoa' : 'pessoas'} ${suffix}`;
-    }
-    const others = count - names.length;
-    const subject = others > 0 ? `${joinWithE(names)} e mais ${others}` : joinWithE(names);
-    return `${subject} ${suffix}`;
-}
 
 export default function Home() {
     const { streaks, liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
@@ -48,29 +35,6 @@ export default function Home() {
         });
         return () => { cancelled = true; };
     }, [pubkey, profile, setProfile]);
-
-    // Community pulse — who (of those who opted into sharing) prayed today.
-    const [pulse, setPulse] = useState<PrayerPulse | null>(null);
-    useEffect(() => {
-        let cancelled = false;
-        let midnightTimer: number | undefined;
-        const refresh = () => {
-            import("@/lib/nostr")
-                .then(({ fetchTodayPrayerPulse }) => fetchTodayPrayerPulse())
-                .then((p) => { if (!cancelled) setPulse(p); })
-                .catch((e) => console.warn('Could not load community prayer count:', e));
-            // Re-arm for the next local midnight so a Home view left open
-            // doesn't keep showing yesterday's count.
-            const next = new Date();
-            next.setHours(24, 0, 0, 0);
-            midnightTimer = window.setTimeout(refresh, next.getTime() - Date.now() + 1000);
-        };
-        refresh();
-        return () => {
-            cancelled = true;
-            window.clearTimeout(midnightTimer);
-        };
-    }, []);
 
     const displayName = profile?.display_name || profile?.name || null;
     const greeting = displayName
@@ -199,11 +163,6 @@ export default function Home() {
                 ) : (
                     <p className="text-sm text-zinc-500">
                         Comece hoje — cada oração concluída conta um dia.
-                    </p>
-                )}
-                {pulse !== null && pulse.count > 0 && (
-                    <p className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
-                        🙏 {prayerPulseText(pulse)}
                     </p>
                 )}
             </section>

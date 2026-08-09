@@ -203,67 +203,6 @@ export async function publishNostrProfile(
     }
 }
 
-// Community pulse: who prayed today, and how many. Streak events are
-// encrypted, but their existence is public metadata — each opted-in user
-// republishes their (replaceable) streak event on completing a prayer, so
-// counting distinct pubkeys with an update since local midnight counts
-// today's praying users without reading anyone's content. Undercounts by
-// design: only users with shareStreaks on are visible.
-export interface PrayerPulse {
-    count: number;
-    /** Display names of the most recent few — only those with a public
-        Nostr profile, so this is usually shorter than `count`. */
-    names: string[];
-}
-
-let prayerPulseCache: { value: PrayerPulse; fetchedAt: number; since: number } | null = null;
-const PRAYER_COUNT_TTL_MS = 5 * 60 * 1000;
-/** How many names to show, and how many profiles to look up to find them. */
-const PULSE_NAMES_SHOWN = 3;
-const PULSE_PROFILES_QUERIED = 12;
-
-export async function fetchTodayPrayerPulse(): Promise<PrayerPulse | null> {
-    const since = Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
-    // Keyed on `since` too, so the cache dies the moment "today" rolls over.
-    if (prayerPulseCache && prayerPulseCache.since === since
-        && Date.now() - prayerPulseCache.fetchedAt < PRAYER_COUNT_TTL_MS) {
-        return prayerPulseCache.value;
-    }
-    try {
-        // One event per author (addressable events are resolved in the pool)
-        // and already newest-first, so the names shown are whoever prayed last.
-        const events = await pool.query(
-            [{ kinds: [KIND_APP_STATE], '#d': [D_STREAK], since }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
-        );
-        const pubkeys = [...new Set(events.map((e) => e.pubkey))];
-        const names = await fetchDisplayNames(pubkeys.slice(0, PULSE_PROFILES_QUERIED));
-        const value: PrayerPulse = { count: pubkeys.length, names: names.slice(0, PULSE_NAMES_SHOWN) };
-        prayerPulseCache = { value, fetchedAt: Date.now(), since };
-        return value;
-    } catch (error) {
-        console.warn('Could not fetch community prayer pulse:', error);
-        return null;
-    }
-}
-
-/**
- * Newest kind-0 name per pubkey, keyed by pubkey.
- *
- * Keyed rather than positional because most callers need to know *whose* name
- * they got: pubkeys with no profile are absent from the result, so a plain
- * array comes back shorter than it went in and lines names up against the
- * wrong people.
- */
-export async function fetchProfileNames(pubkeys: string[]): Promise<Map<string, string>> {
-    const profiles = await fetchProfileCards(pubkeys);
-    const names = new Map<string, string>();
-    for (const [pubkey, card] of profiles) {
-        if (card.name) names.set(pubkey, card.name);
-    }
-    return names;
-}
-
 /** Name plus avatar, for anywhere people are listed rather than just counted. */
 export interface ProfileCard {
     name?: string;
@@ -371,14 +310,6 @@ export async function fetchProfileCards(pubkeys: string[]): Promise<Map<string, 
         } catch { /* malformed profile JSON — skip this one */ }
     }
     return cards;
-}
-
-/** Names only, in the order the pubkeys were given. Pubkeys with no profile
-    (or no name in it) are simply dropped — the prayer pulse wants a list of
-    names to read out, not a mapping. */
-export async function fetchDisplayNames(pubkeys: string[]): Promise<string[]> {
-    const names = await fetchProfileNames(pubkeys);
-    return pubkeys.flatMap((pubkey) => names.get(pubkey) ?? []);
 }
 
 // NIP-44 to self, so relays only ever store ciphertext. Returns null when
