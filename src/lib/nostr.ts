@@ -124,7 +124,15 @@ async function fetchRawProfile(
     if (!newest) return { content: {} };
     try {
         const parsed = JSON.parse(newest.content) as unknown;
-        return { content: parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {} };
+        // An array or a scalar is not a profile, and `typeof [] === 'object'`
+        // would have let one through: spreading it into the merge yields an
+        // object, so whatever was actually published would be replaced by the
+        // edits alone. Unrecognisable is unreadable — refuse, don't overwrite.
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            console.warn('The published profile is not a JSON object; refusing to replace it.');
+            return null;
+        }
+        return { content: parsed as Record<string, unknown> };
     } catch {
         // Unparseable is not empty. Overwriting it would still destroy
         // whatever it holds, so treat it as unreadable and refuse.
