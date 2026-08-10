@@ -4,7 +4,10 @@ import { CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
-import { useAppStore, isCompletedToday } from "@/store/app";
+import { buildGuidedMassHtml } from "@/lib/massGuide";
+import { resolveMassOrdo } from "@/lib/massOrdo";
+import { useAppStore, isCompletedToday, clampMassMode } from "@/store/app";
+import type { MassMode } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
@@ -325,9 +328,11 @@ export default function Liturgy() {
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
-    const [showOnlyReadings, setShowOnlyReadings] = useState(true);
 
-    const { streaks, incrementStreak, setLiturgicalColorOverride } = useAppStore();
+    const { streaks, incrementStreak, setLiturgicalColorOverride, setMassMode } = useAppStore();
+    // Clamped on read: the persisted store rehydrates unvalidated, and an
+    // older build wrote a boolean here under a different key.
+    const massMode = clampMassMode(useAppStore((s) => s.massMode));
 
     // Date being viewed — a ?date=YYYY-MM-DD param (e.g. from the calendar
     // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
@@ -376,6 +381,7 @@ export default function Liturgy() {
 
     // Table of contents
     const articleRef = useRef<HTMLElement>(null);
+    const chipsRef = useRef<HTMLElement>(null);
     const [sections, setSections] = useState<TocEntry[]>([]);
     const [activeSection, setActiveSection] = useState('');
 
@@ -473,11 +479,23 @@ export default function Liturgy() {
         };
     }, [loading, liturgy, canMarkPrayed, readToday, markAsRead]);
 
+    // Whether this day's Mass carries the Glória and the Credo — the guided
+    // mode has to know, since it prints them in place. The calendar entry
+    // states it outright; the Mass text and the general rules back it up.
+    const massOrdo = useMemo(
+        () => resolveMassOrdo(selectedDate, dayInfo?.description, dayInfo?.dayName ?? liturgy?.saintOfDay, liturgy?.htmlContent),
+        // selectedDateStr is the stable identity of selectedDate
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [selectedDateStr, dayInfo, liturgy],
+    );
+
     const displayHtml = useMemo(() => {
         if (!liturgy?.htmlContent) return '';
 
         let result: string;
-        if (!showOnlyReadings) {
+        if (massMode === 'guiada') {
+            result = buildGuidedMassHtml(liturgy.htmlContent, massOrdo);
+        } else if (massMode === 'missal') {
             result = liturgy.htmlContent;
         } else {
             const html = liturgy.htmlContent;
@@ -499,7 +517,7 @@ export default function Liturgy() {
             }
         }
         return makeCommentariesCollapsible(result);
-    }, [liturgy, showOnlyReadings]);
+    }, [liturgy, massMode, massOrdo]);
 
     // Hands-free scrolling through the readings.
     const scroll = useAutoScroll(displayHtml);
@@ -521,8 +539,10 @@ export default function Liturgy() {
         if (!el) return;
         const id = window.setTimeout(() => {
             // Both reading sections and prayer/Mass-part headers carry
-            // data-toc-label, in document order.
-            const headers = el.querySelectorAll<HTMLElement>('[id][data-toc-label]');
+            // data-toc-label, in document order. data-toc-skip opts a section
+            // out — the guided Mass uses it for the Aleluia, which is styled
+            // as a reading but too slight to navigate to.
+            const headers = el.querySelectorAll<HTMLElement>('[id][data-toc-label]:not([data-toc-skip])');
             if (headers.length === 0) return;
             setSections(Array.from(headers).map((h) => ({
                 id: h.id,
@@ -569,6 +589,18 @@ export default function Liturgy() {
         return () => window.removeEventListener('scroll', onScroll);
     }, [sections]);
 
+    // Keep the active chip in view as the reader moves down the page. The nav's
+    // own scrollLeft is set rather than scrollIntoView, which would also move
+    // the page vertically and fight the scroll that triggered this.
+    useEffect(() => {
+        const nav = chipsRef.current;
+        if (!nav || !activeSection) return;
+        const chip = nav.querySelector<HTMLElement>(`[data-section="${CSS.escape(activeSection)}"]`);
+        if (!chip) return;
+        const left = chip.offsetLeft - (nav.clientWidth - chip.offsetWidth) / 2;
+        nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    }, [activeSection]);
+
     const scrollToSection = useCallback((id: string) => {
         stopScroll();
         const el = document.getElementById(id);
@@ -593,17 +625,23 @@ export default function Liturgy() {
 
     // ── Shared UI pieces rendered in both sidebar (desktop) and toolbar (mobile) ──
 
-    // Segmented control: both options always visible, so the label never
+    // Segmented control: every option always visible, so the label never
     // reads as "the action a click would take" vs "the current state".
+    // "Guiada" walks a newcomer through the whole celebration in order.
     const filterButton = (
         <div role="group" aria-label="Conteúdo a mostrar" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
-            {([[true, 'Leituras'], [false, 'Missal']] as [boolean, string][]).map(([value, label]) => (
+            {([
+                ['leituras', 'Leituras', 'Só as leituras do dia'],
+                ['missal', 'Missal', 'Todos os textos próprios do dia'],
+                ['guiada', 'Guiada', 'A Missa passo a passo, para quem está a começar'],
+            ] as [MassMode, string, string][]).map(([value, label, hint]) => (
                 <button
-                    key={label}
-                    onClick={() => { stopScroll(); setShowOnlyReadings(value); }}
-                    aria-pressed={showOnlyReadings === value}
-                    className={`flex-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        showOnlyReadings === value
+                    key={value}
+                    onClick={() => { stopScroll(); setMassMode(value); }}
+                    aria-pressed={massMode === value}
+                    title={hint}
+                    className={`flex-1 px-1.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        massMode === value
                             ? 'surface text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
@@ -656,12 +694,14 @@ export default function Liturgy() {
                 {/* Mobile section chips — quick jumps without the desktop sidebar */}
                 {!loading && sections.length > 0 && (
                     <nav
+                        ref={chipsRef}
                         aria-label="Secções das leituras"
                         className="lg:hidden max-w-5xl mx-auto px-6 mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
                         {sections.map(({ id, label }) => (
                             <button
                                 key={id}
+                                data-section={id}
                                 onClick={() => scrollToSection(id)}
                                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                                     activeSection === id
@@ -736,13 +776,11 @@ export default function Liturgy() {
                                 {saintCard}
                             </div>
 
-                            {/* Filter + autoscroll row — mobile / tablet only.
-                                Speed controls live in the floating pill while
-                                scrolling, so they aren't duplicated here. */}
-                            <div className="lg:hidden flex items-center gap-2 mb-6">
-                                <div className="flex-1">{filterButton}</div>
-                                <div className="shrink-0"><AutoScrollButton scroll={scroll} /></div>
-                            </div>
+                            {/* Mode picker — mobile / tablet only. Autoscroll
+                                isn't duplicated here: the floating pill is
+                                always on screen below lg and does the same job,
+                                and three modes need the full width. */}
+                            <div className="lg:hidden mb-6">{filterButton}</div>
 
                             {/* Reading article */}
                             <article

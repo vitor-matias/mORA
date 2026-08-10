@@ -644,3 +644,228 @@ html[data-theme="rosa"] {
   line-height: 1.65;
   margin-bottom: 0.75em;
 }
+
+/* ------------------------------------------------------------------ */
+/* Guided Mass ("Missa guiada")                                        */
+/* ------------------------------------------------------------------ */
+/* A walkthrough for someone who doesn't know the structure yet, so the
+   type does more work than elsewhere: the five great divisions read as
+   chapters, each part is titled and carries a posture cue, and what the
+   assembly says is set apart from what it only listens to. */
+
+.content-text .mass-division {
+  margin-top: 2.75rem;
+}
+
+.content-text .mass-division:first-child {
+  margin-top: 0;
+}
+
+.content-text .mass-division-header {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.78em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgb(var(--liturgy-700));
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgb(var(--liturgy-300) / 0.6);
+  margin-bottom: 0.6rem;
+}
+
+.dark .content-text .mass-division-header {
+  color: rgb(var(--liturgy-300));
+  border-bottom-color: rgb(var(--liturgy-700) / 0.5);
+}
+
+.content-text .mass-division-intro {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.72em;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 1.25rem;
+}
+
+/* ── One step of the celebration ── */
+.content-text .mass-part {
+  display: block;
+  margin-bottom: 1.75rem;
+}
+
+.content-text .mass-part-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+
+.content-text .mass-part-name {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: rgb(var(--liturgy-800));
+}
+
+.dark .content-text .mass-part-name {
+  color: rgb(var(--liturgy-200));
+}
+
+/* Posture cue — "De pé", "Sentado", "De joelhos" */
+.content-text .mass-posture {
+  flex-shrink: 0;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.58em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  white-space: nowrap;
+  color: rgb(var(--liturgy-700));
+  background: rgb(var(--liturgy-50));
+  border: 1px solid rgb(var(--liturgy-200));
+  border-radius: 999px;
+  padding: 0.2em 0.7em;
+}
+
+.dark .content-text .mass-posture {
+  color: rgb(var(--liturgy-300));
+  background: rgb(var(--liturgy-950) / 0.5);
+  border-color: rgb(var(--liturgy-800));
+}
+
+/* ── Plain-language explanation of the part ── */
+.content-text .mass-note,
+.content-text .mass-summary {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.7em;
+  line-height: 1.65;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.75em;
+}
+
+.content-text .mass-summary {
+  border-left: 2px solid rgb(var(--liturgy-200));
+  padding-left: 0.75rem;
+}
+
+.dark .content-text .mass-summary {
+  border-left-color: rgb(var(--liturgy-800));
+}
+
+/* ── Spoken lines ── */
+.content-text .mass-line {
+  margin-bottom: 0.55em;
+}
+
+.content-text .mass-who {
+  display: block;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.55em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.15em;
+}
+
+.content-text .mass-said {
+  display: block;
+}
+
+/* What the assembly says — the reason a newcomer opened this page. */
+.content-text .mass-line-response {
+  border-left: 3px solid rgb(var(--liturgy-400));
+  background: rgb(var(--liturgy-50) / 0.7);
+  border-radius: 0 0.5rem 0.5rem 0;
+  padding: 0.5em 0.85em;
+  margin-bottom: 0.7em;
+}
+
+.dark .content-text .mass-line-response {
+  border-left-color: rgb(var(--liturgy-500));
+  background: rgb(var(--liturgy-950) / 0.35);
+}
+
+.content-text .mass-line-response .mass-who {
+  color: rgb(var(--liturgy-700));
+}
+
+.dark .content-text .mass-line-response .mass-who {
+  color: rgb(var(--liturgy-400));
+}
+
+.content-text .mass-line-response .mass-said {
+  font-weight: 500;
+}
+
+/* Alternative forms. Marked by the "Ou" tag alone, never dimmed: which one
+   you hear is the celebrant's choice, so both have to read equally clearly. */
+.content-text .mass-variant-tag {
+  display: inline-block;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.55em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 0.15em;
+}
+
+.content-text .mass-variant-tag::after {
+  content: " ·";
+}
+
+/* ── The day's proper text, threaded in from the missal ── */
+.content-text .mass-proper {
+  margin-bottom: 0.6em;
+}
+
+/* Inside the guided flow the readings already sit under a part heading, so
+   they don't need the rule that separates them in the other two modes. */
+.content-text .mass-proper .reading-section-header:first-child {
+  margin-top: 0 !important;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* ── Text kept out of the way: presidential prayers and the antiphons ── */
+/* Both are printed in full but folded away — the priest's prayers because the
+   assembly only listens, the antiphons because a sung Mass replaces them with
+   a hymn. Reuses the commentary toggle, so it has to opt out of the italic,
+   muted treatment that suits a commentary and not a prayer. */
+.content-text .mass-collapse {
+  margin: 0.35rem 0 0.85rem;
+}
+
+.content-text .mass-collapse .commentary-toggle {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.62em;
+}
+
+.content-text .mass-collapse:not(.collapsed) .commentary-body p {
+  font-style: normal;
+  font-size: 0.92em;
+  color: inherit;
+  opacity: 0.85;
+  border-left: 2px solid rgb(var(--liturgy-200));
+  padding-left: 0.85rem;
+  margin-bottom: 0.7em;
+}
+
+.dark .content-text .mass-collapse:not(.collapsed) .commentary-body p {
+  border-left-color: rgb(var(--liturgy-800));
+}
+
+/* ── A posture cue standing on its own, above a reading ── */
+.content-text .mass-cue {
+  margin-bottom: 0.4em;
+}
+
+/* Each reading is its own step, and its API header already carries the rule
+   that separates it — so the section adds spacing, not another divider. */
+.content-text .mass-reading {
+  margin-bottom: 2rem;
+}
