@@ -154,6 +154,28 @@ describe('extractMassTexts', () => {
         expect(readings.map((r) => r.header + r.body).join('')).not.toContain('do dia');
     });
 
+    it('reads past a heading that does not name a Mass', () => {
+        // A division heading inside one celebration must not end extraction:
+        // everything after it still belongs to the same Mass.
+        const inner = [
+            '<p><strong>Antífona de entrada</strong> Sl 1<br />Antífona.</p>',
+            '<h2>Liturgia da Palavra</h2>',
+            '<p><strong>LEITURA I</strong> Is 1, 1<br />«Tema»</p>',
+            '<p>Leitura do Livro de Isaías<br />Texto da leitura.</p>',
+            '<h2>Liturgia Eucarística</h2>',
+            '<p><strong>Oração sobre as oblatas</strong><br />Sobre as oblatas.</p>',
+            '<p><strong>Oração depois da comunhão</strong><br />Depois da comunhão.</p>',
+        ].join('\n');
+
+        const { slots, readings } = extractMassTexts(inner);
+        expect(readings).toHaveLength(1);
+        expect(readings[0].body).toContain('Texto da leitura');
+        expect(slots.oblatas).toContain('Sobre as oblatas');
+        expect(slots.poscomunhao).toContain('Depois da comunhão');
+        // The heading still closes the open run, so it never joins a slot.
+        expect(Object.values(slots).join('')).not.toContain('Liturgia da Palavra');
+    });
+
     it('stops at a repeated label when no heading separates the Masses', () => {
         const noHeading = [
             '<p><strong>Antífona de entrada</strong> Sl 1<br />Primeira antífona.</p>',

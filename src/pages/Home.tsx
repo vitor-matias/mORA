@@ -203,6 +203,9 @@ export default function Home() {
                             return "href" in area ? (
                                 <a key={area.href} href={area.href} target="_blank" rel="noopener noreferrer" className={cardClass}>
                                     {card}
+                                    {/* The ExternalLink icon is decorative, so
+                                        say it in words too: this one leaves the app. */}
+                                    <span className="sr-only">(abre noutro separador)</span>
                                 </a>
                             ) : (
                                 <Link key={area.path} to={area.path} className={cardClass}>

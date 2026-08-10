@@ -124,11 +124,13 @@ const DIVISIONS: Division[] = [
     {
         id: 'ritos-iniciais',
         title: 'Ritos Iniciais',
-        intro: 'Talvez tenhamos vindo por hábito, ou porque alguém nos trouxe. Não faz mal: na '
-            + 'última Ceia ninguém tinha ganho o seu lugar, e foi lá que Jesus disse «desejei '
-            + 'ardentemente comer esta Páscoa convosco». O Papa Francisco lembra que todos foram '
-            + 'atraídos pelo desejo que Ele tem de os ter à mesa. Connosco é igual: Ele quis-nos '
-            + 'aqui antes de nós querermos vir. «A fé cristã ou é encontro com Ele vivo, ou não é.»',
+        intro: 'Talvez tenhamos vindo por hábito, ou porque alguém nos trouxe, ou sem saber bem '
+            + 'porquê. Santo Agostinho deu um nome a esse porquê: «Fizestes-nos para Vós, e o '
+            + 'nosso coração está inquieto enquanto não repousar em Vós.» Na última Ceia ninguém '
+            + 'tinha ganho o seu lugar, e foi lá que Jesus disse «desejei ardentemente comer esta '
+            + 'Páscoa convosco»: Ele quis-nos aqui antes de nós querermos vir. E o Papa Francisco '
+            + 'garante que quem dá um pequeno passo em direcção a Jesus descobre que Ele já '
+            + 'esperava a sua chegada de braços abertos.',
         parts: [
             {
                 id: 'entrada',
@@ -146,7 +148,9 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 note: 'Dois segundos, e a maior afirmação que um ser humano pode fazer sobre si próprio: '
                     + 'pertencemos ao Pai, ao Filho e ao Espírito Santo. Foram estas as palavras ditas '
-                    + 'sobre nós no baptismo, e é com elas que tudo recomeça. Fazemo-lo sem pressa.',
+                    + 'sobre nós no baptismo, e é com elas que tudo recomeça. Romano Guardini pedia que '
+                    + 'se fizesse devagar e amplo, da testa ao peito, de um ombro ao outro: um gesto que '
+                    + 'nos envolve inteiros — o que pensamos, o que queremos, o que somos.',
                 lines: [
                     { who: 'sacerdote', text: 'Em nome do Pai e do Filho e do Espírito Santo.' },
                     { who: 'todos', text: 'Amen.' },
@@ -179,9 +183,11 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 toc: true,
                 note: 'Antes de tudo o resto, a verdade sobre nós. Não é para nos sentirmos mal: é para '
-                    + 'chegarmos a Deus sem máscara, que é a única maneira de lá chegar. Guarda-se um '
-                    + 'silêncio, e vale a pena usá-lo a sério. Ao dizermos «por minha culpa», batemos '
-                    + 'levemente no peito. Há três fórmulas; esta é a mais usada.',
+                    + 'chegarmos a Deus sem máscara, que é a única maneira de lá chegar. E não há aqui '
+                    + 'caso perdido: «Deus nunca se cansa de perdoar», insiste o Papa Francisco, «somos '
+                    + 'nós que nos cansamos de pedir a sua misericórdia». Guarda-se um silêncio, e vale '
+                    + 'a pena usá-lo a sério. Ao dizermos «por minha culpa», batemos levemente no '
+                    + 'peito. Há três fórmulas; esta é a mais usada.',
                 celebrant: {
                     label: 'Convite do sacerdote',
                     text: 'Irmãos:\nPara celebrarmos dignamente os santos mistérios,\n'
@@ -214,9 +220,10 @@ const DIVISIONS: Division[] = [
                 title: 'Senhor, tende piedade',
                 posture: 'pe',
                 note: '«Kyrie eleison»: o grito dos cegos e dos leprosos que no Evangelho param Jesus no '
-                    + 'meio do caminho. A Igreja nunca traduziu estas palavras do grego, porque algumas '
-                    + 'coisas se dizem melhor na língua em que foram ditas primeiro. Repetimos o que o '
-                    + 'sacerdote ou o cantor disser.',
+                    + 'meio do caminho. O cego Bartimeu gritou-o à saída de Jericó; a multidão mandou-o '
+                    + 'calar, ele gritou mais alto — e Jesus parou. A Igreja nunca traduziu estas '
+                    + 'palavras do grego, porque algumas coisas se dizem melhor na língua em que foram '
+                    + 'gritadas primeiro. Repetimos o que o sacerdote ou o cantor disser.',
                 lines: [
                     { who: 'sacerdote', text: 'Senhor, tende piedade de nós.' },
                     { who: 'todos', text: 'Senhor, tende piedade de nós.' },
@@ -232,9 +239,10 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 onlyIf: 'gloria',
                 note: 'Começa com o que os anjos cantaram sobre Belém e depois não pede nada: é louvor '
-                    + 'puro, a coisa mais livre que uma pessoa pode fazer. Não se diz todos os dias, e é '
-                    + 'por isso que sabe a festa. Reserva-se para os domingos (fora do Advento e da '
-                    + 'Quaresma), solenidades e festas.',
+                    + 'puro, a coisa mais livre que uma pessoa pode fazer. Há mais de mil e quinhentos '
+                    + 'anos que a Igreja canta este hino, e ainda não se cansou. Não se diz todos os '
+                    + 'dias, e é por isso que sabe a festa. Reserva-se para os domingos (fora do '
+                    + 'Advento e da Quaresma), solenidades e festas.',
                 lines: [
                     {
                         who: 'todos',
@@ -257,8 +265,9 @@ const DIVISIONS: Division[] = [
                 title: 'Oração Coleta',
                 posture: 'pe',
                 note: '«Oremos», e depois um silêncio que parece um lapso e não é: é o espaço para cada '
-                    + 'um pôr ali o que traz. A oração do sacerdote recolhe todos esses pedidos num só, '
-                    + 'e daí o nome. O «Amen» final é a nossa assinatura por baixo.',
+                    + 'um pôr ali o que traz — o que pesa, o que espera, quem ama. A oração do '
+                    + 'sacerdote recolhe todos esses pedidos num só, e daí o nome. O «Amen» final é a '
+                    + 'nossa assinatura por baixo.',
                 proper: 'coleta',
                 properCollapsed: 'Ver a oração',
                 after: [{ who: 'todos', text: 'Amen.' }],
@@ -269,11 +278,11 @@ const DIVISIONS: Division[] = [
         id: 'liturgia-da-palavra',
         title: 'Liturgia da Palavra',
         intro: 'Os dois discípulos de Emaús iam-se embora: desiludidos, de costas para Jerusalém, '
-            + 'a conversa era sobre o que tinha falhado. Foi a esses que Jesus se juntou no '
-            + 'caminho, e o coração ardia-lhes antes de O reconhecerem. O Concílio Vaticano II é '
-            + 'literal: quando a Escritura é proclamada, é Cristo que fala a esta assembleia, '
-            + 'hoje. Palavra e Eucaristia formam «um só e mesmo acto de culto»: duas mesas, uma '
-            + 'refeição.',
+            + 'a conversa era sobre o que tinha falhado. Jesus não os repreendeu: pôs-se a '
+            + 'caminhar ao lado deles, e o coração ardia-lhes antes de O reconhecerem. O Concílio '
+            + 'Vaticano II é literal: quando a Escritura é proclamada, é Cristo que fala a esta '
+            + 'assembleia, hoje. Palavra e Eucaristia formam «um só e mesmo acto de culto»: duas '
+            + 'mesas, uma refeição.',
         parts: [
             // Each reading is rendered with its own response attached, rather
             // than one block of Scripture followed by the acclamations — at
@@ -295,10 +304,12 @@ const DIVISIONS: Division[] = [
                 toc: true,
                 onlyIf: 'credo',
                 note: 'Dizemos em voz alta aquilo por que valeria a pena dar a vida, e muita gente deu. '
-                    + 'É «creio», no singular, dito por toda a sala ao mesmo tempo: pessoal, mas não '
-                    + 'privado, e recebido, não inventado. Diz-se aos domingos e nas solenidades. Às '
-                    + 'palavras «E encarnou… e Se fez homem» inclinamo-nos, porque é aí que Deus entra '
-                    + 'na nossa carne.',
+                    + 'O Catecismo lembra que um «símbolo» era um objecto partido em dois: juntavam-se '
+                    + 'as metades para provar quem se era. O Credo é a nossa metade — recebido, não '
+                    + 'inventado, e «creio» no singular, dito por toda a sala ao mesmo tempo: pessoal, '
+                    + 'mas não privado. Diz-se aos domingos e nas solenidades. Às palavras «E '
+                    + 'encarnou… e Se fez homem» inclinamo-nos, porque é aí que Deus entra na nossa '
+                    + 'carne.',
                 lines: [
                     {
                         who: 'todos',
@@ -348,10 +359,12 @@ const DIVISIONS: Division[] = [
                 id: 'apresentacao-dons',
                 title: 'Apresentação dos Dons',
                 posture: 'sentado',
-                note: 'Pão e vinho: trigo e uvas, mas também trabalho humano. Nada disto existe sem '
-                    + 'alguém o ter feito. Levamos ao altar aquilo que sabemos fazer, e com isso a '
-                    + 'semana que tivemos, incluindo o que correu mal. O peditório é parte do mesmo '
-                    + 'gesto. No fim, levantamo-nos para responder ao convite «Orai, irmãos».',
+                note: 'Pão e vinho: trigo e uvas, mas também trabalho humano. A multiplicação dos pães '
+                    + 'começou com o farnel de um rapaz — cinco pães e dois peixes, «que é isso para '
+                    + 'tantos?» — e foi quanto Jesus precisou. Levamos ao altar aquilo que sabemos '
+                    + 'fazer, e com isso a semana que tivemos, incluindo o que correu mal. O peditório '
+                    + 'é parte do mesmo gesto. No fim, levantamo-nos para responder ao convite «Orai, '
+                    + 'irmãos».',
                 celebrant: {
                     label: 'Bênção do pão e do vinho',
                     text: 'Bendito sejais, Senhor, Deus do universo,\n'
@@ -398,7 +411,9 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 note: 'A palavra Eucaristia quer dizer acção de graças, e é aqui que ela começa. '
                     + '«Corações ao alto» não é enfeite: é o pedido para largarmos, por uns minutos, '
-                    + 'tudo o que trazemos na cabeça. O texto muda conforme o dia ou o tempo litúrgico.',
+                    + 'tudo o que trazemos na cabeça. São Pier Giorgio Frassati, canonizado em 2025, '
+                    + 'escreveu o mesmo numa fotografia da sua última escalada, aos 24 anos: «verso '
+                    + 'l\'alto», para o alto. O texto muda conforme o dia ou o tempo litúrgico.',
                 lines: [
                     { who: 'sacerdote', text: 'O Senhor esteja convosco.' },
                     { who: 'todos', text: 'Ele está no meio de nós.' },
@@ -518,7 +533,8 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 note: 'O sacerdote termina e eleva a hóstia e o cálice. A este «Amen» chama-se o Grande '
                     + 'Amen: é a única palavra que a assembleia diz em toda a Oração Eucarística, e com '
-                    + 'ela assinamos tudo o que foi rezado em nosso nome. Vale a pena dizê-lo alto.',
+                    + 'ela assinamos tudo o que foi rezado em nosso nome. São Jerónimo conta que nas '
+                    + 'basílicas de Roma ecoava como um trovão. Vale a pena dizê-lo alto.',
                 lines: [
                     {
                         who: 'sacerdote',
@@ -535,10 +551,12 @@ const DIVISIONS: Division[] = [
         id: 'ritos-da-comunhao',
         title: 'Ritos da Comunhão',
         intro: 'Já fizemos isto tantas vezes que talvez já nem pensemos no que é. Mas o que se '
-            + 'recebe nesta fila é o Deus que fez tudo o que existe: alimento para quem '
-            + 'precisa, não prémio para quem se portou bem. A liturgia chama-lhe «penhor da '
-            + 'futura glória»: o que começa aqui não acaba nesta vida. E «a Eucaristia faz a '
-            + 'Igreja»: é aqui que deixamos de ser um ajuntamento de estranhos.',
+            + 'recebe nesta fila é o Deus que fez tudo o que existe — e não é «um prémio para os '
+            + 'perfeitos», escreve o Papa Francisco, «mas um remédio e um alimento para os '
+            + 'fracos». João Paulo II disse-o aos jovens: é Jesus que procuramos quando sonhamos '
+            + 'com a felicidade, é Ele que nos espera quando nada do que encontramos nos '
+            + 'satisfaz. E «a Eucaristia faz a Igreja»: é aqui que deixamos de ser um '
+            + 'ajuntamento de estranhos.',
         parts: [
             {
                 id: 'pai-nosso',
@@ -578,8 +596,9 @@ const DIVISIONS: Division[] = [
                 id: 'rito-da-paz',
                 title: 'Rito da Paz',
                 posture: 'pe',
-                note: 'A paz que damos não é a nossa boa disposição: é a de Cristo, e passa de mão em '
-                    + 'mão. Saudamos quem está mais perto, com um aperto de mão ou uma inclinação de '
+                note: 'A paz que damos não é a nossa boa disposição: é a de Cristo — «não vo-la dou '
+                    + 'como a dá o mundo», porque a do mundo depende de correr tudo bem, e a d\'Ele '
+                    + 'não. Saudamos quem está mais perto, com um aperto de mão ou uma inclinação de '
                     + 'cabeça. O Sínodo dos Bispos pediu sobriedade neste gesto: é um sinal, não um '
                     + 'intervalo.',
                 celebrant: {
@@ -621,7 +640,9 @@ const DIVISIONS: Division[] = [
                     + 'o Papa Francisco lembra que o mundo ainda não o sabe, mas todos estão convidados. '
                     + 'A resposta que damos também não é de um santo: é de um centurião romano, '
                     + 'estrangeiro e pagão, que se achou indigno de receber Jesus em casa. Foi dele que '
-                    + 'Jesus disse não ter encontrado fé igual em Israel.',
+                    + 'Jesus disse não ter encontrado fé igual em Israel. E Bento XVI prometia: quem '
+                    + 'deixa entrar Cristo não perde nada, «absolutamente nada do que torna a vida '
+                    + 'livre, bela e grande».',
                 lines: [
                     {
                         who: 'sacerdote',
@@ -640,11 +661,12 @@ const DIVISIONS: Division[] = [
                 title: 'Comunhão',
                 posture: 'fila',
                 note: 'Vamos em fila até ao altar, como cristãos fazem desde o ano 155, que é a data do '
-                    + 'primeiro relato escrito de uma Missa. Quando nos apresentarem a hóstia, '
-                    + 'respondemos «Amen», e esse «Amen» quer dizer «creio que é Ele». Recebemo-la na '
-                    + 'mão ou na boca. Quem não vai comungar pode ficar no lugar ou aproximar-se com os '
-                    + 'braços cruzados sobre o peito para receber uma bênção. Quem tem consciência de '
-                    + 'pecado grave confessa-se antes.',
+                    + 'primeiro relato escrito de uma Missa. São Carlo Acutis — um adolescente de '
+                    + 'ténis e jeans, canonizado em 2025 — chamava a isto «a minha auto-estrada para o '
+                    + 'Céu». Quando nos apresentarem a hóstia, respondemos «Amen», e esse «Amen» quer '
+                    + 'dizer «creio que é Ele». Recebemo-la na mão ou na boca. Quem não vai comungar '
+                    + 'pode ficar no lugar ou aproximar-se com os braços cruzados sobre o peito para '
+                    + 'receber uma bênção. Quem tem consciência de pecado grave confessa-se antes.',
                 lines: [
                     { who: 'ministro', text: 'O Corpo de Cristo.' },
                     { who: 'comungante', text: 'Amen.' },
@@ -659,8 +681,10 @@ const DIVISIONS: Division[] = [
                 title: 'Oração depois da Comunhão',
                 posture: 'pe',
                 note: 'Guarda-se um silêncio, e para muita gente é a melhor parte da Missa: Deus acabou '
-                    + 'de entrar em nós e não há nada a dizer. O silêncio litúrgico não é vazio, é sinal '
-                    + 'do Espírito a trabalhar. Depois o sacerdote reza a oração que fecha a comunhão.',
+                    + 'de entrar em nós e não há nada a dizer. Santa Teresinha escreveu que Jesus não '
+                    + 'desce do céu para ficar num cibório de ouro, mas para encontrar outro céu: a '
+                    + 'nossa alma. O silêncio não é vazio, é o Espírito a trabalhar. Depois o sacerdote '
+                    + 'reza a oração que fecha a comunhão.',
                 proper: 'poscomunhao',
                 properCollapsed: 'Ver a oração',
                 after: [{ who: 'todos', text: 'Amen.' }],
@@ -672,8 +696,9 @@ const DIVISIONS: Division[] = [
         title: 'Ritos de Conclusão',
         intro: '«Ide» é uma ordem, não uma despedida educada. A palavra Missa vem daí, do envio: '
             + 'a celebração não acaba, muda de sítio. Bento XVI dizia que estas poucas sílabas '
-            + 'exprimem a natureza missionária da Igreja inteira. O que recebemos aqui é para '
-            + 'gastar lá fora, esta semana, com quem nos calhar ao lado.',
+            + 'exprimem a natureza missionária da Igreja inteira; o Papa Francisco escreveu-o '
+            + 'aos jovens de outra maneira: «Ele vive e quer-te vivo!» O que recebemos aqui é '
+            + 'para gastar lá fora, esta semana, com quem nos calhar ao lado.',
         parts: [
             {
                 id: 'bencao',
@@ -760,10 +785,13 @@ const SLOT_LABELS: Array<[ProperSlot, RegExp]> = [
 ];
 
 /** Labelled blocks we recognise but never render — they only end a run. */
-const IGNORED_LABEL_RE = /^(Prefácio|Diz-se\b|Pode utilizar-se\b|Ou:\s*Prefácio)/i;
+const IGNORED_LABEL_RE = /^(Prefácio|Diz-se\b|Pode utilizar-se\b|Ou:\s*Prefácio|Missa\b)/i;
 
-/** A heading that opens a Mass section ("Missa do dia", "Missa da noite") —
-    usually an <h1>, but matched on its text so a bare paragraph works too. */
+/** The text of a heading that opens a Mass ("Missa do dia", "Missa da noite").
+    Only ever tested against heading blocks: a paragraph starting "Missa" is a
+    rubric, and closes the run through IGNORED_LABEL_RE without ending the
+    extraction. A second Mass introduced without a heading is caught instead by
+    its repeated proper labels. */
 const MASS_HEADING_RE = /^Missa\b/i;
 
 /**
@@ -840,8 +868,12 @@ export function extractMassTexts(html: string): MassTexts {
         const lead = leadingText(block);
         if (!lead) continue;
 
-        if (/^<h[1-6]/i.test(block) || MASS_HEADING_RE.test(lead)) {
-            if (took) break;
+        if (/^<h[1-6]/i.test(block)) {
+            // Only a heading that names a Mass opens a new celebration. Any
+            // other heading is a division inside this one, and merely closes
+            // the open run — stopping there would drop the readings and
+            // propers that follow it.
+            if (MASS_HEADING_RE.test(lead) && took) break;
             current = null;
             continue;
         }
@@ -983,17 +1015,19 @@ const READING_FRAMES: Record<ReadingKind, {
     leitura: {
         posture: 'sentado',
         note: 'Sentamo-nos para escutar. Estas mesmas leituras são ouvidas hoje em todas as '
-            + 'igrejas do mundo, na mesma ordem: não escolhemos o que nos calha, e é isso que '
-            + 'impede a Palavra de ser só aquilo que já pensávamos. No fim, o leitor aclama e '
-            + 'respondemos.',
+            + 'igrejas do mundo, na mesma ordem: nenhum algoritmo as escolheu a pensar em nós, '
+            + 'e é isso que impede a Palavra de ser só aquilo que já pensávamos. No fim, o '
+            + 'leitor aclama e respondemos.',
         ending: { has: /Palavra do Senhor/i, line: { who: 'leitor', text: 'Palavra do Senhor.' } },
         response: { who: 'todos', text: 'Graças a Deus.' },
     },
     salmo: {
         posture: 'sentado',
-        note: 'Deus dá-nos as palavras com que responder a Deus. São os salmos que Jesus rezou '
-            + 'a vida inteira, incluindo na cruz. O salmista canta ou reza os versículos; '
-            + 'repetimos o refrão (℟) no início e entre as estrofes.',
+        note: 'Deus dá-nos as palavras com que responder a Deus. Os salmos têm de tudo — alegria, '
+            + 'raiva, medo, saudade: Santo Atanásio dizia que quem os reza se encontra neles '
+            + 'como num espelho. São os que Jesus rezou a vida inteira, incluindo na cruz. O '
+            + 'salmista canta ou reza os versículos; repetimos o refrão (℟) no início e entre as '
+            + 'estrofes.',
     },
     sequencia: {
         posture: 'sentado',
