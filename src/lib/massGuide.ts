@@ -124,10 +124,11 @@ const DIVISIONS: Division[] = [
     {
         id: 'ritos-iniciais',
         title: 'Ritos Iniciais',
-        intro: '«Desejei ardentemente comer esta Páscoa convosco»: é Jesus quem o diz, na última '
-            + 'Ceia. O Papa Francisco lembra que ninguém tinha ganho um lugar àquela mesa: todos '
-            + 'foram atraídos pelo desejo que Ele tem de estar com eles. É esse desejo que nos '
-            + 'senta aqui hoje. «A fé cristã ou é encontro com Ele vivo, ou não é.»',
+        intro: 'Talvez tenhamos vindo por hábito, ou porque alguém nos trouxe. Não faz mal: na '
+            + 'última Ceia ninguém tinha ganho o seu lugar, e foi lá que Jesus disse «desejei '
+            + 'ardentemente comer esta Páscoa convosco». O Papa Francisco lembra que todos foram '
+            + 'atraídos pelo desejo que Ele tem de os ter à mesa. Connosco é igual: Ele quis-nos '
+            + 'aqui antes de nós querermos vir. «A fé cristã ou é encontro com Ele vivo, ou não é.»',
         parts: [
             {
                 id: 'entrada',
@@ -267,11 +268,12 @@ const DIVISIONS: Division[] = [
     {
         id: 'liturgia-da-palavra',
         title: 'Liturgia da Palavra',
-        intro: 'O Concílio Vaticano II é literal: quando a Escritura é proclamada na liturgia, '
-            + 'é Cristo que fala a esta assembleia, hoje. Foi assim no caminho de Emaús: dois '
-            + 'discípulos de costas para Jerusalém, um caminhante que lhes abre as Escrituras, '
-            + 'o coração a arder sem saberem porquê. Palavra e Eucaristia formam «um só e mesmo '
-            + 'acto de culto»: duas mesas, uma refeição.',
+        intro: 'Os dois discípulos de Emaús iam-se embora: desiludidos, de costas para Jerusalém, '
+            + 'a conversa era sobre o que tinha falhado. Foi a esses que Jesus se juntou no '
+            + 'caminho, e o coração ardia-lhes antes de O reconhecerem. O Concílio Vaticano II é '
+            + 'literal: quando a Escritura é proclamada, é Cristo que fala a esta assembleia, '
+            + 'hoje. Palavra e Eucaristia formam «um só e mesmo acto de culto»: duas mesas, uma '
+            + 'refeição.',
         parts: [
             // Each reading is rendered with its own response attached, rather
             // than one block of Scripture followed by the acclamations — at
@@ -336,11 +338,11 @@ const DIVISIONS: Division[] = [
     {
         id: 'liturgia-eucaristica',
         title: 'Liturgia Eucarística',
-        intro: 'João Paulo II chamou à Eucaristia «um pedaço de céu que se abre sobre a terra». '
-            + 'Levamos pão e vinho, saídos das nossas mãos, e recebemos o Corpo e o Sangue do '
-            + 'Filho de Deus: a única oferta da cruz, tornada presente aqui, a unir o céu e a '
-            + 'terra. Por isso o Concílio Vaticano II lhe chama «fonte e cume» de toda a vida '
-            + 'cristã: tudo o resto nasce daqui e volta para aqui.',
+        intro: 'A afirmação mais ousada da fé acontece aqui: este pão e este vinho tornam-se '
+            + 'realmente o Corpo e o Sangue de Cristo, a única oferta da cruz, presente aqui. '
+            + 'Se não for verdade, nada disto interessa; se for verdade, não há nesta semana '
+            + 'nada mais importante. Padre Pio dizia que seria mais fácil o mundo existir sem '
+            + 'o sol do que sem a Santa Missa.',
         parts: [
             {
                 id: 'apresentacao-dons',
@@ -411,8 +413,9 @@ const DIVISIONS: Division[] = [
                 title: 'Santo',
                 posture: 'pe',
                 note: 'As palavras não são nossas: metade é de Isaías, que as ouviu aos anjos, metade da '
-                    + 'multidão que recebeu Jesus à entrada de Jerusalém. Cantamo-las porque nesta altura '
-                    + 'a assembleia junta a voz a um louvor que no céu nunca parou.',
+                    + 'multidão que recebeu Jesus à entrada de Jerusalém. Nesta altura a assembleia junta '
+                    + 'a voz a um louvor que no céu nunca parou. João Paulo II chamou à Eucaristia «um '
+                    + 'pedaço de céu que se abre sobre a terra»: abre-se agora.',
                 lines: [
                     {
                         who: 'todos',
@@ -531,11 +534,11 @@ const DIVISIONS: Division[] = [
     {
         id: 'ritos-da-comunhao',
         title: 'Ritos da Comunhão',
-        intro: 'Vamos receber nas mãos o Deus que fez tudo o que existe. Comungar não é prémio '
-            + 'para quem se portou bem: é alimento para quem precisa. A liturgia chama-lhe '
-            + '«penhor da futura glória»: o que começa nesta fila não acaba nesta vida. E não '
-            + 'nos deixa como estávamos, porque «a Eucaristia faz a Igreja»: é aqui que '
-            + 'deixamos de ser um ajuntamento de estranhos.',
+        intro: 'Já fizemos isto tantas vezes que talvez já nem pensemos no que é. Mas o que se '
+            + 'recebe nesta fila é o Deus que fez tudo o que existe: alimento para quem '
+            + 'precisa, não prémio para quem se portou bem. A liturgia chama-lhe «penhor da '
+            + 'futura glória»: o que começa aqui não acaba nesta vida. E «a Eucaristia faz a '
+            + 'Igreja»: é aqui que deixamos de ser um ajuntamento de estranhos.',
         parts: [
             {
                 id: 'pai-nosso',
@@ -757,7 +760,11 @@ const SLOT_LABELS: Array<[ProperSlot, RegExp]> = [
 ];
 
 /** Labelled blocks we recognise but never render — they only end a run. */
-const IGNORED_LABEL_RE = /^(Prefácio|Diz-se\b|Pode utilizar-se\b|Ou:\s*Prefácio|Missa\b)/i;
+const IGNORED_LABEL_RE = /^(Prefácio|Diz-se\b|Pode utilizar-se\b|Ou:\s*Prefácio)/i;
+
+/** A heading that opens a Mass section ("Missa do dia", "Missa da noite") —
+    usually an <h1>, but matched on its text so a bare paragraph works too. */
+const MASS_HEADING_RE = /^Missa\b/i;
 
 /**
  * Removes the label from the first block of a proper, since the guided layout
@@ -821,13 +828,27 @@ export function extractMassTexts(html: string): MassTexts {
     // What unlabelled continuation blocks currently attach to. Null once a
     // block we don't render (a rubric, the preface) has closed the last run.
     let current: ProperSlot | 'reading' | null = null;
+    // One text can hold several Masses of the same day — a solemnity carries
+    // a vigil and a day Mass, each under its own <h1>. The guided layout
+    // renders one celebration, so extraction ends where the second Mass
+    // begins: at a Mass heading once anything has been taken (a heading
+    // *before* any content is the first Mass's own title), or at a repeated
+    // proper label when no heading separates them.
+    let took = false;
 
     for (const block of splitBlocks(html)) {
         const lead = leadingText(block);
         if (!lead) continue;
 
+        if (/^<h[1-6]/i.test(block) || MASS_HEADING_RE.test(lead)) {
+            if (took) break;
+            current = null;
+            continue;
+        }
+
         const kind = READING_KINDS.find(([, re]) => re.test(lead));
         if (kind) {
+            took = true;
             current = 'reading';
             readings.push({ kind: kind[0], header: block, body: '' });
             continue;
@@ -836,21 +857,16 @@ export function extractMassTexts(html: string): MassTexts {
         const slot = SLOT_LABELS.find(([, re]) => re.test(lead));
         if (slot) {
             const [name, re] = slot;
-            // One text can hold several Masses of the same day — a solemnity
-            // carries a vigil and a day Mass, separated by an <h1>. Only the
-            // first is rendered, and the rest of the extraction is aligned
-            // with it, so a repeated label closes the run rather than
-            // appending a second Mass's text to the first one's part.
-            if (slots[name] !== undefined) {
-                current = null;
-                continue;
-            }
+            // The second Mass starting over (its entrance antiphon after the
+            // first one's post-communion) in a payload without headings.
+            if (slots[name] !== undefined) break;
+            took = true;
             current = name;
             slots[name] = stripLabel(block, re);
             continue;
         }
 
-        if (IGNORED_LABEL_RE.test(lead) || /^<h[1-6]/i.test(block)) {
+        if (IGNORED_LABEL_RE.test(lead)) {
             current = null;
             continue;
         }

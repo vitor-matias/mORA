@@ -123,25 +123,52 @@ describe('extractMassTexts', () => {
     });
 
     it('keeps only the first Mass when a day carries two', () => {
-        // A solemnity's text can hold a vigil Mass and a day Mass, separated
-        // by an <h1>. The guided layout renders one celebration, so the second
-        // Mass's propers must not be appended to the first one's parts.
+        // A solemnity's text can hold a vigil Mass and a day Mass, each under
+        // its own <h1>. The guided layout renders one celebration, so the
+        // second Mass contributes nothing: not its propers, not its readings,
+        // and not slots the first Mass happens to lack.
         const twoMasses = [
             '<h1><b>Missa da vigília</b></h1>',
             '<p><strong>Antífona de entrada</strong> Sl 1<br />Antífona da vigília.</p>',
             '<p><strong>Oração coleta</strong><br />Coleta da vigília.</p>',
+            '<p><strong>LEITURA I</strong> Gn 1, 1<br />«Da vigília»</p>',
+            '<p>Leitura do Livro do Génesis<br />Texto da vigília.</p>',
             '<h1><b>Missa do dia</b></h1>',
             '<p><strong>Antífona de entrada</strong> Sl 2<br />Antífona do dia.</p>',
             '<p>Continuação que pertence à segunda Missa.</p>',
-            '<p><strong>Oração coleta</strong><br />Coleta do dia.</p>',
+            '<p><strong>LEITURA I</strong> Is 1, 1<br />«Do dia»</p>',
+            '<p>Leitura do Livro de Isaías<br />Texto do dia.</p>',
+            '<p><strong>Antífona da comunhão</strong> Sl 3<br />Comunhão só do dia.</p>',
         ].join('\n');
 
-        const { slots } = extractMassTexts(twoMasses);
+        const { slots, readings } = extractMassTexts(twoMasses);
         expect(slots.entrada).toContain('Antífona da vigília');
         expect(slots.entrada).not.toContain('Antífona do dia');
         expect(slots.entrada).not.toContain('Continuação que pertence');
         expect(slots.coleta).toContain('Coleta da vigília');
-        expect(slots.coleta).not.toContain('Coleta do dia');
+        // A slot only the second Mass carries stays empty…
+        expect(slots.comunhao).toBeUndefined();
+        // …and its readings never join the first Mass's.
+        expect(readings).toHaveLength(1);
+        expect(readings[0].body).toContain('Texto da vigília');
+        expect(readings.map((r) => r.header + r.body).join('')).not.toContain('do dia');
+    });
+
+    it('stops at a repeated label when no heading separates the Masses', () => {
+        const noHeading = [
+            '<p><strong>Antífona de entrada</strong> Sl 1<br />Primeira antífona.</p>',
+            '<p><strong>Oração coleta</strong><br />Primeira coleta.</p>',
+            '<p><strong>Antífona de entrada</strong> Sl 2<br />Segunda antífona.</p>',
+            '<p><strong>Oração coleta</strong><br />Segunda coleta.</p>',
+            '<p><strong>LEITURA I</strong> Is 1, 1<br />«Da segunda Missa»</p>',
+        ].join('\n');
+
+        const { slots, readings } = extractMassTexts(noHeading);
+        expect(slots.entrada).toContain('Primeira antífona');
+        expect(slots.entrada).not.toContain('Segunda antífona');
+        expect(slots.coleta).toContain('Primeira coleta');
+        expect(slots.coleta).not.toContain('Segunda coleta');
+        expect(readings).toHaveLength(0);
     });
 });
 
