@@ -231,6 +231,16 @@ function enrichReadingTypography(doc: Document): void {
             return refrainP;
         };
 
+        // The guided Mass slips a posture cue and an explanatory note between
+        // a reading's header and its text. The refrain belongs with the
+        // stanzas it is sung between, so it goes after that framing — placed
+        // directly after the header it would be cut off from its own psalm.
+        let anchor: Element = header;
+        while (anchor.nextElementSibling?.classList.contains('mass-cue')
+            || anchor.nextElementSibling?.classList.contains('mass-note')) {
+            anchor = anchor.nextElementSibling;
+        }
+
         const title = header.querySelector('.reading-title');
         const titleText = title?.textContent ?? '';
         const m = titleText.match(/Refrão:\s*(.*)$/i);
@@ -238,11 +248,11 @@ function enrichReadingTypography(doc: Document): void {
             // Keep only the psalm-number reference in the small title
             const before = titleText.slice(0, m.index ?? 0).trim();
             if (before) title.textContent = before; else title.remove();
-            header.after(buildRefrainP(m[1]));
+            anchor.after(buildRefrainP(m[1]));
         } else {
             // Standalone refrain paragraph: unclassed, single-line (no <br> —
             // stanzas are multi-line), starting with "Refrão:".
-            const next = header.nextElementSibling;
+            const next = anchor.nextElementSibling;
             if (next?.tagName === 'P' && next.classList.length === 0 && !next.querySelector('br')) {
                 const nm = (next.textContent ?? '').replace(/\s+/g, ' ').trim().match(/^Refrão:\s*(.*)$/i);
                 if (nm) next.replaceWith(buildRefrainP(nm[1]));

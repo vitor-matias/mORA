@@ -124,9 +124,10 @@ const DIVISIONS: Division[] = [
     {
         id: 'ritos-iniciais',
         title: 'Ritos Iniciais',
-        intro: '«A fé cristã ou é encontro com Ele vivo, ou não é», escreveu o Papa Francisco. '
-            + 'Não viemos assistir: viemos ao encontro. E Cristo já está presente na assembleia '
-            + 'reunida, antes de alguém dizer a primeira palavra.',
+        intro: '«Desejei ardentemente comer esta Páscoa convosco»: é Jesus quem o diz, na última '
+            + 'Ceia. O Papa Francisco lembra que ninguém tinha ganho um lugar àquela mesa: todos '
+            + 'foram atraídos pelo desejo que Ele tem de estar com eles. É esse desejo que nos '
+            + 'senta aqui hoje. «A fé cristã ou é encontro com Ele vivo, ou não é.»',
         parts: [
             {
                 id: 'entrada',
@@ -267,8 +268,10 @@ const DIVISIONS: Division[] = [
         id: 'liturgia-da-palavra',
         title: 'Liturgia da Palavra',
         intro: 'O Concílio é literal: quando a Escritura é proclamada na liturgia, é Cristo que '
-            + 'fala. Não é um texto antigo sobre Deus, é Deus a dirigir a palavra a esta sala, '
-            + 'hoje. Palavra e Eucaristia formam «um único ato de culto»: duas mesas, uma refeição.',
+            + 'fala a esta assembleia, hoje. Foi assim no caminho de Emaús: dois discípulos de '
+            + 'costas para Jerusalém, um caminhante que lhes abre as Escrituras, o coração a '
+            + 'arder sem saberem ainda porquê. Palavra e Eucaristia formam «um só e mesmo acto '
+            + 'de culto»: duas mesas, uma refeição.',
         parts: [
             // Each reading is rendered with its own response attached, rather
             // than one block of Scripture followed by the acclamations — at
@@ -333,10 +336,11 @@ const DIVISIONS: Division[] = [
     {
         id: 'liturgia-eucaristica',
         title: 'Liturgia Eucarística',
-        intro: 'Levamos pão e vinho, saídos das nossas mãos, e Deus devolve-nos o Corpo e o Sangue '
-            + 'do seu Filho. Não é a recordação de algo distante: é a mesma e única oferta da '
-            + 'cruz, tornada presente aqui. Por isso o Concílio chama à Eucaristia «fonte e cume» '
-            + 'de toda a vida cristã: tudo o resto nasce daqui e volta para aqui.',
+        intro: 'João Paulo II chamou à Eucaristia «um pedaço de céu que se abre sobre a terra». '
+            + 'Levamos pão e vinho, saídos das nossas mãos, e recebemos o Corpo e o Sangue do '
+            + 'Filho de Deus: a única oferta da cruz, tornada presente aqui, a unir o céu e a '
+            + 'terra. Por isso o Concílio lhe chama «fonte e cume» de toda a vida cristã: tudo '
+            + 'o resto nasce daqui e volta para aqui.',
         parts: [
             {
                 id: 'apresentacao-dons',
@@ -528,19 +532,21 @@ const DIVISIONS: Division[] = [
         id: 'ritos-da-comunhao',
         title: 'Ritos da Comunhão',
         intro: 'Vamos receber nas mãos o Deus que fez tudo o que existe. Comungar não é prémio '
-            + 'para quem se portou bem: é alimento para quem precisa. E não nos deixa como '
-            + 'estávamos, porque «a Eucaristia faz a Igreja»: é aqui que deixamos de ser um '
-            + 'ajuntamento de estranhos.',
+            + 'para quem se portou bem: é alimento para quem precisa. A liturgia chama-lhe '
+            + '«penhor da futura glória»: o que começa nesta fila não acaba nesta vida. E não '
+            + 'nos deixa como estávamos, porque «a Eucaristia faz a Igreja»: é aqui que '
+            + 'deixamos de ser um ajuntamento de estranhos.',
         parts: [
             {
                 id: 'pai-nosso',
                 title: 'Pai Nosso',
                 posture: 'pe',
-                note: 'A única oração que Jesus ensinou quando lhe perguntaram como se reza, e o único '
-                    + 'momento da Missa em que ninguém tem parte diferente: sacerdote e assembleia dizem '
-                    + 'exactamente as mesmas palavras. A seguir, o sacerdote prolonga o último pedido '
-                    + 'numa oração chamada embolismo, e concluímos com a aclamação. Em Portugal costuma '
-                    + 'rezar-se de mãos juntas; nalgumas comunidades, de mãos dadas.',
+                note: 'A única oração que Jesus ensinou, e o único momento da Missa em que ninguém tem '
+                    + 'parte diferente: todos dizem exactamente as mesmas palavras. O convite di-lo à '
+                    + 'letra: «ousamos dizer», porque tratar por Pai o Deus do universo é um atrevimento '
+                    + 'que só temos porque Ele no-lo deu. A seguir, o sacerdote prolonga o último pedido '
+                    + 'numa oração chamada embolismo, e concluímos com a aclamação. Costuma rezar-se de '
+                    + 'mãos juntas; nalgumas comunidades, de mãos dadas.',
                 lines: [
                     { who: 'sacerdote', text: 'Fiéis aos ensinamentos do Salvador, ousamos dizer:' },
                     {
@@ -591,8 +597,10 @@ const DIVISIONS: Division[] = [
                 id: 'cordeiro-de-deus',
                 title: 'Cordeiro de Deus',
                 posture: 'pe',
-                note: 'Canta-se enquanto o sacerdote parte o pão. Partir para repartir: um só pão que '
-                    + 'chega a toda a gente e não diminui.',
+                note: 'Canta-se enquanto o sacerdote parte o pão. «Cordeiro de Deus» é o grito de João '
+                    + 'Baptista ao ver Jesus aproximar-se: é Ele que tira o pecado do mundo, não somos '
+                    + 'nós que o merecemos. Partir para repartir: um só pão que chega a toda a gente e '
+                    + 'não diminui.',
                 lines: [
                     {
                         who: 'todos',
@@ -606,9 +614,11 @@ const DIVISIONS: Division[] = [
                 id: 'convite-a-comunhao',
                 title: 'Convite à Comunhão',
                 posture: 'joelhos-ou-pe',
-                note: 'As palavras que respondemos não são de um santo: são de um centurião romano, '
-                    + 'estrangeiro e pagão, que se achou indigno de receber Jesus em casa. Foi dele '
-                    + 'que Jesus disse não ter encontrado fé igual em Israel.',
+                note: '«Felizes os convidados»: o convite vem do Apocalipse, das núpcias do Cordeiro, e '
+                    + 'o Papa Francisco lembra que o mundo ainda não o sabe, mas todos estão convidados. '
+                    + 'A resposta que damos também não é de um santo: é de um centurião romano, '
+                    + 'estrangeiro e pagão, que se achou indigno de receber Jesus em casa. Foi dele que '
+                    + 'Jesus disse não ter encontrado fé igual em Israel.',
                 lines: [
                     {
                         who: 'sacerdote',
@@ -680,8 +690,10 @@ const DIVISIONS: Division[] = [
                 id: 'despedida',
                 title: 'Despedida',
                 posture: 'pe',
-                note: 'A Missa acaba e o resto começa. Estas poucas palavras dizem para que serve a '
-                    + 'Igreja. Há cinco fórmulas e a resposta é sempre a mesma.',
+                note: 'A Missa acaba e o resto começa. Quando o império romano proibiu as assembleias '
+                    + 'cristãs, os mártires de Abitina preferiram morrer a deixar isto, e disseram aos '
+                    + 'juízes porquê: «não podemos viver sem a ceia do Senhor». Há cinco fórmulas e a '
+                    + 'resposta é sempre a mesma.',
                 // The response is the same whichever form is used, so it comes
                 // once at the end rather than after the first and nowhere else.
                 lines: [
@@ -1042,7 +1054,10 @@ function renderReading(segment: ReadingSegment, ordinal: number): string {
         ? segment.header.replace(/^<p\b/i, '<p data-toc-skip="1"')
         : segment.header;
     if (frame.posture) html += `<p class="mass-cue">${renderPosture(frame.posture)}</p>`;
-    if (frame.note) html += `<p class="mass-note">${escapeHtml(frame.note)}</p>`;
+    // Only the first reading of a kind is explained. On a Sunday the second
+    // reading works exactly like the first, and repeating the note word for
+    // word reads as padding — the posture badge still marks the part.
+    if (frame.note && ordinal === 1) html += `<p class="mass-note">${escapeHtml(frame.note)}</p>`;
     if (before) html += renderLines(before);
     html += body;
     // The acclamation closes the reading, after its text. The API usually

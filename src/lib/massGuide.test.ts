@@ -236,6 +236,27 @@ describe('buildGuidedMassHtml', () => {
         expect(buildGuidedMassHtml(odd, NEITHER)).toContain('segundo são N.');
     });
 
+    it('explains a reading once, not again on the second of the same kind', () => {
+        // A Sunday has two readings before the Gospel; they work identically.
+        const twoReadings = SUNDAY.replace(
+            '<p><strong>EVANGELHO</strong>',
+            '<p><strong>LEITURA II</strong> Rm 11, 13-15<br />«Os dons de Deus»</p>\n'
+            + '<p>Leitura da Epístola aos Romanos<br />Irmãos.<br />Palavra do Senhor.</p>\n'
+            + '<p><strong>EVANGELHO</strong>',
+        );
+        const html = buildGuidedMassHtml(twoReadings, BOTH);
+        const part = (id: string) => {
+            const start = html.indexOf(`id="${id}"`);
+            return html.slice(start, html.indexOf('</section>', start));
+        };
+        expect(part('mass-leitura-1')).toContain('mass-note');
+        expect(part('mass-leitura-2')).not.toContain('mass-note');
+        // The posture badge still marks the second reading.
+        expect(part('mass-leitura-2')).toContain('mass-posture-sentado');
+        // …and its response is still there.
+        expect(part('mass-leitura-2')).toContain('Graças a Deus.');
+    });
+
     it('does not repeat an acclamation the API text already carries', () => {
         const html = buildGuidedMassHtml(SUNDAY, BOTH);
         const seg = html.slice(html.indexOf('id="mass-leitura-1"'));
