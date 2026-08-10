@@ -78,6 +78,21 @@ describe('resolveMassOrdo — falling back to the Mass text', () => {
             .toEqual({ gloria: true, credo: true });
     });
 
+    it('does not let a lone rubric drop the other part', () => {
+        // A text that prints one rubric says nothing about the other, so the
+        // general rules still supply it: a Sunday keeps its Credo.
+        const html = '<p><em>Diz-se o Glória.</em></p><p>Oração coleta…</p>';
+        expect(resolveMassOrdo(new Date('2026-08-16T00:00:00'), null, 'DOMINGO XX DO TEMPO COMUM', html))
+            .toEqual({ gloria: true, credo: true });
+    });
+
+    it('still trusts a rubric the rules alone would miss', () => {
+        // A weekday solemnity the day name does not identify as one.
+        const html = '<p><em>Diz-se o Glória.</em></p><p><em>Diz-se o Credo.</em></p>';
+        expect(resolveMassOrdo(new Date('2026-08-15T00:00:00'), null, 'Sábado da semana XIX', html))
+            .toEqual({ gloria: true, credo: true });
+    });
+
     it('is used when the calendar has no Mass line at all', () => {
         // Good Friday: no Mass, so no Mass line — and nothing in the HTML.
         expect(resolveMassOrdo(new Date('2026-04-03T00:00:00'), ICS.goodFriday, 'Sexta-feira Santa'))

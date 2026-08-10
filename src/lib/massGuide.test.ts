@@ -121,6 +121,28 @@ describe('extractMassTexts', () => {
     it('survives an empty document', () => {
         expect(extractMassTexts('')).toEqual({ slots: {}, readings: [] });
     });
+
+    it('keeps only the first Mass when a day carries two', () => {
+        // A solemnity's text can hold a vigil Mass and a day Mass, separated
+        // by an <h1>. The guided layout renders one celebration, so the second
+        // Mass's propers must not be appended to the first one's parts.
+        const twoMasses = [
+            '<h1><b>Missa da vigília</b></h1>',
+            '<p><strong>Antífona de entrada</strong> Sl 1<br />Antífona da vigília.</p>',
+            '<p><strong>Oração coleta</strong><br />Coleta da vigília.</p>',
+            '<h1><b>Missa do dia</b></h1>',
+            '<p><strong>Antífona de entrada</strong> Sl 2<br />Antífona do dia.</p>',
+            '<p>Continuação que pertence à segunda Missa.</p>',
+            '<p><strong>Oração coleta</strong><br />Coleta do dia.</p>',
+        ].join('\n');
+
+        const { slots } = extractMassTexts(twoMasses);
+        expect(slots.entrada).toContain('Antífona da vigília');
+        expect(slots.entrada).not.toContain('Antífona do dia');
+        expect(slots.entrada).not.toContain('Continuação que pertence');
+        expect(slots.coleta).toContain('Coleta da vigília');
+        expect(slots.coleta).not.toContain('Coleta do dia');
+    });
 });
 
 describe('buildGuidedMassHtml', () => {
@@ -229,6 +251,39 @@ describe('buildGuidedMassHtml', () => {
         const part = seg.slice(0, seg.indexOf('</section>'));
         expect(part.match(/Jesus Cristo,? segundo/gi)).toHaveLength(1);
         expect(part).toContain('Naquele tempo');
+    });
+
+    it('strips the attribution when it stands alone in its own paragraph', () => {
+        const alone = '<p><strong>EVANGELHO</strong> Lc 1, 1</p>'
+            + '<p>Evangelho de Nosso Senhor Jesus Cristo segundo São Lucas</p>'
+            + '<p>Naqueles dias, Maria pôs-se a caminho.</p>';
+        const html = buildGuidedMassHtml(alone, NEITHER);
+        const seg = html.slice(html.indexOf('id="mass-evangelho-1"'));
+        const part = seg.slice(0, seg.indexOf('</section>'));
+        expect(part).toContain('segundo são Lucas');
+        expect(part.match(/Jesus Cristo,? segundo/gi)).toHaveLength(1);
+        expect(part).toContain('Maria pôs-se a caminho');
+    });
+
+    it('frames a reading from above, leaving header and text unbroken', () => {
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const start = html.indexOf('id="mass-leitura-1"');
+        const part = html.slice(start, html.indexOf('</section>', start));
+        // Cue and note come before the header, not between it and the text.
+        // (The header is styled into .reading-section-header at render time;
+        // in the built HTML it is still the API's <strong> block.)
+        const header = part.indexOf('<strong>LEITURA I</strong>');
+        expect(part.indexOf('mass-cue')).toBeLessThan(header);
+        expect(part.indexOf('mass-note')).toBeLessThan(header);
+        expect(header).toBeLessThan(part.indexOf('Eis o que diz o Senhor'));
+    });
+
+    it('escapes quotes, since labels are interpolated into attributes', () => {
+        // No title carries a quote today; this pins the escaping so one could.
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const attrs = html.match(/data-toc-label="[^"]*"/g) ?? [];
+        expect(attrs.length).toBeGreaterThan(0);
+        for (const attr of attrs) expect(attr.slice(16, -1)).not.toContain('"');
     });
 
     it('falls back to the placeholder when the attribution is missing', () => {

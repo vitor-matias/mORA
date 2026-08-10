@@ -864,8 +864,24 @@ html[data-theme="rosa"] {
   margin-bottom: 0.4em;
 }
 
-/* Each reading is its own step, and its API header already carries the rule
-   that separates it — so the section adds spacing, not another divider. */
+/* Each reading is its own step, opened by a posture cue and an explanation
+   and then running unbroken from its header to its last line. The rule that
+   separates readings therefore sits on the section rather than on the header:
+   left on the header it would fall between the explanation and the reading it
+   explains, cutting one off from the other. */
 .content-text .mass-reading {
+  margin-top: 1.75rem;
   margin-bottom: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(var(--liturgy-300) / 0.5);
+}
+
+.dark .content-text .mass-reading {
+  border-top-color: rgb(var(--liturgy-700) / 0.4);
+}
+
+.content-text .mass-reading .reading-section-header {
+  margin-top: 0 !important;
+  padding-top: 0;
+  border-top: none;
 }

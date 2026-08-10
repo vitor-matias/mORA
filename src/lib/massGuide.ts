@@ -156,8 +156,8 @@ const DIVISIONS: Division[] = [
                 title: 'Saudação',
                 posture: 'pe',
                 note: 'Ele saúda, nós respondemos. Este vaivém é a forma da Missa inteira: não há aqui '
-                    + 'espectadores. O Concílio pede uma participação «plena, consciente e activa», e '
-                    + 'diz que ela é um direito que nos vem do baptismo. Há várias fórmulas e a resposta '
+                    + 'espectadores. O Concílio Vaticano II pede uma participação «plena, consciente e '
+                    + 'activa», e diz que ela nos vem do baptismo. Há várias fórmulas e a resposta '
                     + 'muda conforme a que ele usar.',
                 // In the missal's own order: the trinitarian greeting is the
                 // first form given, with "O Senhor esteja convosco" among the
@@ -267,11 +267,11 @@ const DIVISIONS: Division[] = [
     {
         id: 'liturgia-da-palavra',
         title: 'Liturgia da Palavra',
-        intro: 'O Concílio é literal: quando a Escritura é proclamada na liturgia, é Cristo que '
-            + 'fala a esta assembleia, hoje. Foi assim no caminho de Emaús: dois discípulos de '
-            + 'costas para Jerusalém, um caminhante que lhes abre as Escrituras, o coração a '
-            + 'arder sem saberem ainda porquê. Palavra e Eucaristia formam «um só e mesmo acto '
-            + 'de culto»: duas mesas, uma refeição.',
+        intro: 'O Concílio Vaticano II é literal: quando a Escritura é proclamada na liturgia, '
+            + 'é Cristo que fala a esta assembleia, hoje. Foi assim no caminho de Emaús: dois '
+            + 'discípulos de costas para Jerusalém, um caminhante que lhes abre as Escrituras, '
+            + 'o coração a arder sem saberem porquê. Palavra e Eucaristia formam «um só e mesmo '
+            + 'acto de culto»: duas mesas, uma refeição.',
         parts: [
             // Each reading is rendered with its own response attached, rather
             // than one block of Scripture followed by the acclamations — at
@@ -339,8 +339,8 @@ const DIVISIONS: Division[] = [
         intro: 'João Paulo II chamou à Eucaristia «um pedaço de céu que se abre sobre a terra». '
             + 'Levamos pão e vinho, saídos das nossas mãos, e recebemos o Corpo e o Sangue do '
             + 'Filho de Deus: a única oferta da cruz, tornada presente aqui, a unir o céu e a '
-            + 'terra. Por isso o Concílio lhe chama «fonte e cume» de toda a vida cristã: tudo '
-            + 'o resto nasce daqui e volta para aqui.',
+            + 'terra. Por isso o Concílio Vaticano II lhe chama «fonte e cume» de toda a vida '
+            + 'cristã: tudo o resto nasce daqui e volta para aqui.',
         parts: [
             {
                 id: 'apresentacao-dons',
@@ -836,11 +836,17 @@ export function extractMassTexts(html: string): MassTexts {
         const slot = SLOT_LABELS.find(([, re]) => re.test(lead));
         if (slot) {
             const [name, re] = slot;
+            // One text can hold several Masses of the same day — a solemnity
+            // carries a vigil and a day Mass, separated by an <h1>. Only the
+            // first is rendered, and the rest of the extraction is aligned
+            // with it, so a repeated label closes the run rather than
+            // appending a second Mass's text to the first one's part.
+            if (slots[name] !== undefined) {
+                current = null;
+                continue;
+            }
             current = name;
-            // A repeated label (the vigil and day Masses of a solemnity both
-            // carry one) must not overwrite the first, which is the one the
-            // rest of the extraction is aligned with.
-            slots[name] = (slots[name] ?? '') + stripLabel(block, re);
+            slots[name] = stripLabel(block, re);
             continue;
         }
 
@@ -859,11 +865,15 @@ export function extractMassTexts(html: string): MassTexts {
 
 // ------------------------------------------------------------- HTML output
 
+// Quotes are escaped too: this output is interpolated into attribute values
+// (data-toc-label), where an unescaped quote would end the attribute early.
 function escapeHtml(text: string): string {
     return text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 /** Verse lines survive as <br>; the text itself is escaped. */
@@ -1011,14 +1021,17 @@ function announceGospel(body: string): { line: Line | null; body: string } {
     if (!match) return { line: null, body };
 
     const evangelist = match[1].trim();
-    // Strip only where it heads a paragraph and is followed by a break — that
-    // is the attribution, not a mention inside the text. Not anchored to the
-    // start of the body: a commentary paragraph often comes first. The regex
-    // is non-global, so only that first occurrence goes.
-    const stripped = body.replace(
-        /(<p\b[^>]*>\s*)Evangelho de\s+(?:nosso|Nosso)\s+Senhor\s+Jesus\s+Cristo,?\s*segundo[^<]*<br\s*\/?>\s*/i,
-        '$1',
-    );
+    // Strip only where it heads a paragraph — that is the attribution, not a
+    // mention inside the text. Not anchored to the start of the body: a
+    // commentary paragraph often comes first. Both regexes are non-global, so
+    // only the first occurrence goes.
+    //
+    // Two shapes: the attribution can open the paragraph that also holds the
+    // text, or stand alone in its own paragraph, in which case the whole
+    // paragraph goes with it.
+    const ALONE = /<p\b[^>]*>\s*Evangelho de\s+(?:nosso|Nosso)\s+Senhor\s+Jesus\s+Cristo,?\s*segundo[^<]*<\/p>\s*/i;
+    const LEADING = /(<p\b[^>]*>\s*)Evangelho de\s+(?:nosso|Nosso)\s+Senhor\s+Jesus\s+Cristo,?\s*segundo[^<]*<br\s*\/?>\s*/i;
+    const stripped = ALONE.test(body) ? body.replace(ALONE, '') : body.replace(LEADING, '$1');
 
     return {
         line: { who: 'sacerdote', text: `Evangelho de nosso Senhor Jesus Cristo, segundo são ${evangelist}.` },
@@ -1047,17 +1060,23 @@ function renderReading(segment: ReadingSegment, ordinal: number): string {
     }
 
     let html = `<section class="mass-part mass-reading" id="mass-${segment.kind}-${ordinal}">`;
+
+    // The framing goes above the header, not between it and the text. A
+    // reading's header carries its reference and its theme in «», and the
+    // psalm's refrain is lifted to just under it — anything inserted after it
+    // cuts the reading off from its own opening.
+    if (frame.posture) html += `<p class="mass-cue">${renderPosture(frame.posture)}</p>`;
+    // Only the first reading of a kind is explained. On a Sunday the second
+    // reading works exactly like the first, and repeating the note word for
+    // word reads as padding — the posture badge still marks the part.
+    if (frame.note && ordinal === 1) html += `<p class="mass-note">${escapeHtml(frame.note)}</p>`;
+
     // The Aleluia is a one-line acclamation, not somewhere anyone navigates to
     // — it only crowds the table of contents. Marked so the page skips it while
     // still giving it the reading typography.
     html += segment.kind === 'aleluia'
         ? segment.header.replace(/^<p\b/i, '<p data-toc-skip="1"')
         : segment.header;
-    if (frame.posture) html += `<p class="mass-cue">${renderPosture(frame.posture)}</p>`;
-    // Only the first reading of a kind is explained. On a Sunday the second
-    // reading works exactly like the first, and repeating the note word for
-    // word reads as padding — the posture badge still marks the part.
-    if (frame.note && ordinal === 1) html += `<p class="mass-note">${escapeHtml(frame.note)}</p>`;
     if (before) html += renderLines(before);
     html += body;
     // The acclamation closes the reading, after its text. The API usually

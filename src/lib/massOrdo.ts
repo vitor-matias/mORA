@@ -101,11 +101,17 @@ export function resolveMassOrdo(
         }
     }
 
-    // 2. Rubrics embedded in the Mass text ("Diz-se o Glória.").
+    // 2. Rubrics embedded in the Mass text ("Diz-se o Glória."). Read as
+    //    positive evidence only, and unioned with the rules below: a text that
+    //    prints one rubric and not the other is saying nothing about the other,
+    //    so a lone "Diz-se o Glória." must not silently drop a Sunday's Credo.
     if (massHtml) {
         const gloria = /Diz-se\s+o\s+Glória/i.test(massHtml);
         const credo = /Diz-se\s+o\s+Credo/i.test(massHtml);
-        if (gloria || credo) return { gloria, credo };
+        if (gloria || credo) {
+            const inferred = inferMassOrdo(date, `${dayName ?? ''}\n${description ?? ''}`);
+            return { gloria: gloria || inferred.gloria, credo: credo || inferred.credo };
+        }
     }
 
     // 3. General rules. The ICS description, when we have it, names the rank
