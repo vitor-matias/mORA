@@ -329,7 +329,14 @@ export default function Liturgy() {
     const [loadFailed, setLoadFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
 
-    const { streaks, incrementStreak, setLiturgicalColorOverride, setMassMode } = useAppStore();
+    // Selected field by field: a bare useAppStore() subscribes this page to
+    // every setting in the store, so changing the theme or the font size
+    // would re-render the whole reading. The setters are stable references,
+    // so they never trigger one.
+    const streaks = useAppStore((s) => s.streaks);
+    const incrementStreak = useAppStore((s) => s.incrementStreak);
+    const setLiturgicalColorOverride = useAppStore((s) => s.setLiturgicalColorOverride);
+    const setMassMode = useAppStore((s) => s.setMassMode);
     // Clamped on read: the persisted store rehydrates unvalidated, and an
     // older build wrote a boolean here under a different key.
     const massMode = clampMassMode(useAppStore((s) => s.massMode));
@@ -479,22 +486,23 @@ export default function Liturgy() {
         };
     }, [loading, liturgy, canMarkPrayed, readToday, markAsRead]);
 
-    // Whether this day's Mass carries the Glória and the Credo — the guided
-    // mode has to know, since it prints them in place. The calendar entry
-    // states it outright; the Mass text and the general rules back it up.
-    const massOrdo = useMemo(
-        () => resolveMassOrdo(selectedDate, dayInfo?.description, dayInfo?.dayName ?? liturgy?.saintOfDay, liturgy?.htmlContent),
-        // selectedDateStr is the stable identity of selectedDate
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [selectedDateStr, dayInfo, liturgy],
-    );
-
     const displayHtml = useMemo(() => {
         if (!liturgy?.htmlContent) return '';
 
         let result: string;
         if (massMode === 'guiada') {
-            result = buildGuidedMassHtml(liturgy.htmlContent, massOrdo);
+            // Whether this day's Mass carries the Glória and the Credo. Only
+            // the guided mode prints them, so the resolution lives inside this
+            // branch rather than in a memo of its own — the other two modes
+            // never pay for the scan. The calendar entry states it outright;
+            // the Mass text and the general rules back it up.
+            const ordo = resolveMassOrdo(
+                selectedDate,
+                dayInfo?.description,
+                dayInfo?.dayName ?? liturgy.saintOfDay,
+                liturgy.htmlContent,
+            );
+            result = buildGuidedMassHtml(liturgy.htmlContent, ordo);
         } else if (massMode === 'missal') {
             result = liturgy.htmlContent;
         } else {
@@ -517,7 +525,9 @@ export default function Liturgy() {
             }
         }
         return makeCommentariesCollapsible(result);
-    }, [liturgy, massMode, massOrdo]);
+        // selectedDateStr is the stable identity of selectedDate
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [liturgy, massMode, dayInfo, selectedDateStr]);
 
     // Hands-free scrolling through the readings.
     const scroll = useAutoScroll(displayHtml);
