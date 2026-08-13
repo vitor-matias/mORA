@@ -1,5 +1,5 @@
 // Which of the two big optional Mass parts — the Glória and the Credo — belong
-// to a given day. The guided Mass ("Missa guiada") walks a newcomer through the
+// to a given day. The guided Mass ("Missa explicada") walks a newcomer through the
 // celebration in order, so it has to get this right: printing the Credo on a
 // Tuesday feria, or dropping the Glória on Easter Sunday, teaches the wrong
 // shape of the Mass.
@@ -27,12 +27,38 @@ export interface MassOrdo {
 const MASS_LINE_RE = /^\s*[†*]?\s*Missa\b/;
 
 /**
+ * The heading that introduces a Mass anticipated on the evening before a
+ * solemnity: "Sábado à tarde", "Sexta-feira à tarde", "Terça-feira à tarde".
+ * Everything under it describes the *next* day's celebration.
+ *
+ * The space before "à" is matched explicitly rather than with `\b`, which in
+ * JavaScript is defined over ASCII `\w` and so never fires before "à".
+ */
+const EVENING_MASS_RE = /^[^\n]{0,40}\sà\s+tarde\s*$/i;
+
+/**
  * Reads the day's Mass line(s) out of an ICS description. Christmas lists
  * several ("Missa da noite", "Missa da aurora", "† Missa do dia"), so every
  * matching line is considered — they agree on Glória/Credo.
+ *
+ * Collection stops at an anticipated evening Mass, because that one belongs to
+ * tomorrow: on 14 August the day is a memorial ("Missa da memória.") and the
+ * Assumption's "Missa da Vigília, Glória, Credo" sits further down the same
+ * entry, which would otherwise print both on a memorial. Six days of the year
+ * carry such a vigil.
+ *
+ * The cut only applies once the day's own Mass has been found. On Holy
+ * Thursday the heading is "QUINTA-FEIRA DA SEMANA SANTA à tarde" and what
+ * follows *is* the day's only Mass, so cutting first would leave nothing and
+ * silently drop the Glória that the Ceia do Senhor does have.
  */
 function massLines(description: string): string[] {
-    return description.split('\n').filter((line) => MASS_LINE_RE.test(line));
+    const lines: string[] = [];
+    for (const line of description.split('\n')) {
+        if (lines.length > 0 && EVENING_MASS_RE.test(line)) break;
+        if (MASS_LINE_RE.test(line)) lines.push(line);
+    }
+    return lines;
 }
 
 /**

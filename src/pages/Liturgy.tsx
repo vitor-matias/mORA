@@ -490,7 +490,7 @@ export default function Liturgy() {
         if (!liturgy?.htmlContent) return '';
 
         let result: string;
-        if (massMode === 'guiada') {
+        if (massMode === 'explicada') {
             // Whether this day's Mass carries the Glória and the Credo. Only
             // the guided mode prints them, so the resolution lives inside this
             // branch rather than in a memo of its own — the other two modes
@@ -623,8 +623,19 @@ export default function Liturgy() {
         }
     }, [stopScroll]);
 
-    // Commentary expand/collapse (event delegation on article).
-    const handleToggleCommentary = (e: React.MouseEvent<HTMLElement>) => {
+    // Two disclosures, both by event delegation on the article: the guided
+    // Mass's explanations, behind the info button beside each part's title,
+    // and the readings' commentaries. Each opens in place and stays open —
+    // nothing overlaps, so nothing has to be dismissed to read on.
+    const handleArticleClick = (e: React.MouseEvent<HTMLElement>) => {
+        const info = (e.target as HTMLElement).closest('.mass-info');
+        if (info) {
+            const part = info.closest('.mass-explain');
+            if (!part) return;
+            info.setAttribute('aria-expanded', String(part.classList.toggle('open')));
+            return;
+        }
+
         const toggle = (e.target as HTMLElement).closest('.commentary-toggle');
         if (!toggle) return;
         const container = toggle.closest('.reading-commentary');
@@ -637,13 +648,13 @@ export default function Liturgy() {
 
     // Segmented control: every option always visible, so the label never
     // reads as "the action a click would take" vs "the current state".
-    // "Guiada" walks a newcomer through the whole celebration in order.
+    // "Explicada" walks a newcomer through the whole celebration in order.
     const filterButton = (
         <div role="group" aria-label="Conteúdo a mostrar" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
             {([
                 ['leituras', 'Leituras', 'Só as leituras do dia'],
                 ['missal', 'Missal', 'Todos os textos próprios do dia'],
-                ['guiada', 'Guiada', 'A Missa passo a passo, para quem está a começar'],
+                ['explicada', 'Explicada', 'A Missa passo a passo, para quem está a começar'],
             ] as [MassMode, string, string][]).map(([value, label, hint]) => (
                 <button
                     key={value}
@@ -805,7 +816,7 @@ export default function Liturgy() {
                                     [&_i]:italic [&_i]:text-zinc-700 dark:[&_i]:text-zinc-300
                                     [&_br]:my-0
                                 "
-                                onClick={handleToggleCommentary}
+                                onClick={handleArticleClick}
                             >
                                 <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
                             </article>

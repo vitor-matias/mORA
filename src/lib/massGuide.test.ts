@@ -219,6 +219,33 @@ describe('buildGuidedMassHtml', () => {
         expect(html).not.toContain('id="santo" data-toc-label');
     });
 
+    it('puts a part\'s explanation behind the button beside its title', () => {
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const start = html.indexOf('id="sinal-da-cruz"');
+        const part = html.slice(start, html.indexOf('</section>', start));
+
+        expect(part).toContain('aria-controls="sinal-da-cruz-nota"');
+        expect(part).toContain('<div class="mass-note" id="sinal-da-cruz-nota"');
+        expect(part).toContain('Foram estas as palavras do nosso baptismo');
+        // The heading names the part and nothing else: it is what a screen
+        // reader announces, and what the table of contents is built from.
+        const heading = part.slice(part.indexOf('<h3'), part.indexOf('</h3>'));
+        expect(heading).not.toContain('mass-note');
+        expect(heading).toContain('mass-info');
+    });
+
+    it('pairs every button with the panel it opens', () => {
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const targets = [...html.matchAll(/aria-controls="([^"]+)"/g)].map((m) => m[1]);
+        expect(targets.length).toBeGreaterThan(10);
+        for (const id of targets) {
+            expect(html).toContain(`<div class="mass-note" id="${id}"`);
+        }
+        // One panel per button, and no orphan panels.
+        expect(html.match(/class="mass-note"/g)).toHaveLength(targets.length);
+        expect(new Set(targets).size).toBe(targets.length);
+    });
+
     it('drops the Credo anchor on a day that has no Credo', () => {
         expect(buildGuidedMassHtml(SUNDAY, NEITHER)).not.toContain('data-toc-label="Profissão de Fé"');
     });
@@ -353,8 +380,8 @@ describe('buildGuidedMassHtml', () => {
             const start = html.indexOf(`id="${id}"`);
             return html.slice(start, html.indexOf('</section>', start));
         };
-        expect(part('mass-leitura-1')).toContain('mass-note');
-        expect(part('mass-leitura-2')).not.toContain('mass-note');
+        expect(part('mass-leitura-1')).toContain('mass-info');
+        expect(part('mass-leitura-2')).not.toContain('mass-info');
         // The posture badge still marks the second reading.
         expect(part('mass-leitura-2')).toContain('mass-posture-sentado');
         // …and its response is still there.
@@ -454,6 +481,44 @@ describe('buildGuidedMassHtml', () => {
         const greeting = html.slice(html.indexOf('id="saudacao"'), html.indexOf('id="ato-penitencial"'));
         expect(greeting.match(/mass-variant-tag/g)).toHaveLength(1);
         expect(greeting.match(/mass-line-variant/g)).toHaveLength(2);
+    });
+
+    it('offers the Greek Kyrie as one alternative, not three', () => {
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const start = html.indexOf('id="kyrie"');
+        const part = html.slice(start, html.indexOf('</section>', start));
+        expect(part).toContain('Kýrie, eléison.');
+        expect(part).toContain('Christe, eléison.');
+        // One exchange, so a single "Ou" tag covers the whole Greek form.
+        expect(part.match(/mass-line-variant/g)).toHaveLength(1);
+        expect(part.match(/mass-variant-tag/g)).toHaveLength(1);
+    });
+
+    it('prints a repeated invocation once, not as call and answer', () => {
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const start = html.indexOf('id="kyrie"');
+        const part = html.slice(start, html.indexOf('</section>', start));
+
+        // Two litanies, the Portuguese and the Greek, each one block of three
+        // invocations rather than six labelled pairs.
+        expect(part.match(/mass-line-echo/g)).toHaveLength(2);
+        expect(part.match(/mass-said/g)).toHaveLength(6);
+        expect(part).toContain('Sacerdote, e todos repetem');
+        // Counted from the first line, since the explanation above them
+        // quotes «Kýrie, eléison» too.
+        const said = part.slice(part.indexOf('mass-line'));
+        expect(said.match(/Senhor, tende piedade de nós/g)).toHaveLength(2);
+        expect(said.match(/Kýrie, eléison/g)).toHaveLength(2);
+        // Nothing is left saying only the priest speaks these words.
+        expect(part).not.toContain('>Todos<');
+    });
+
+    it('leaves an exchange alone when the answer is not the call', () => {
+        const html = buildGuidedMassHtml(SUNDAY, BOTH);
+        const greeting = html.slice(html.indexOf('id="saudacao"'), html.indexOf('id="ato-penitencial"'));
+        expect(greeting).not.toContain('mass-line-echo');
+        expect(greeting).toContain('Bendito seja Deus, que nos reuniu no amor de Cristo.');
+        expect(greeting.match(/mass-line-response/g)).toHaveLength(2);
     });
 
     it('keeps "Orai, irmãos" inside the presentation of the gifts', () => {

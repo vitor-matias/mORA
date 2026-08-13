@@ -172,10 +172,10 @@ export type FontFamily = 'system' | 'serif' | 'sans';
 /** How much of the day's Mass the Missa page shows.
       leituras — the readings alone
       missal   — everything the API sends (the propers)
-      guiada   — the Ordinary walked through step by step, propers threaded in */
-export type MassMode = 'leituras' | 'missal' | 'guiada';
+      explicada   — the Ordinary walked through step by step, propers threaded in */
+export type MassMode = 'leituras' | 'missal' | 'explicada';
 
-const MASS_MODES: MassMode[] = ['leituras', 'missal', 'guiada'];
+const MASS_MODES: MassMode[] = ['leituras', 'missal', 'explicada'];
 
 /** Persisted values rehydrate unvalidated, and this one indexes into the
     renderer — fall back to the default rather than render nothing. */

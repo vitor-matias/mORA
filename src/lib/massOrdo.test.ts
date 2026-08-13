@@ -24,6 +24,29 @@ const ICS = {
         'Vermelho – Ofício da solenidade. Te Deum.\n'
         + '† Missa própria do dia, Glória, sequência, Credo, pf. próprio.',
     goodFriday: 'Vermelho.',
+    // 14 August: a memorial whose entry also carries the Assumption's vigil,
+    // celebrated that evening but belonging to the 15th.
+    memorialWithVigilOfTomorrow:
+        'S. Maximiliano Maria Kolbe, presbítero e mártir – MO\nVermelho – Ofício da memória.\n'
+        + 'Missa da memória.\n\nL 1: Ez 16, 1-15. 60. 63\nEv: Mt 19, 3-12\n\n'
+        + '* Na Ordem Franciscana – S. Maximiliano Maria Kolbe, da I Ordem – MO\n\n\n'
+        + 'ASSUNÇÃO DA VIRGEM SANTA MARIA\nSOLENIDADE\n\nSexta-feira à tarde\nBranco.\n'
+        + 'Missa da Vigília, Glória, Credo, pf. próprio.\n\nEv: Lc 11, 27-28',
+    // Holy Thursday: here the evening heading introduces the day's *own* Mass,
+    // and the Chrism Mass above it is described in prose ("A Missa do Crisma…"),
+    // so no Mass line precedes the heading.
+    holyThursday:
+        'Roxo.\nOfício próprio.\n\n'
+        + 'A Missa do Crisma celebra-se com paramentos brancos e diz-se Glória e pf. próprio.\n'
+        + 'L 1: Is 61, 1-3a. 6a. 8b-9\nEv: Lc 4, 16-21\n\n\nTRÍDUO PASCAL\n\n'
+        + 'QUINTA-FEIRA DA SEMANA SANTA à tarde\nMISSA VESPERTINA DA CEIA DO SENHOR\nBranco.\n'
+        + 'Missa própria, Glória, pf. da Eucaristia.\n\nL 1: Ex 12, 1-8. 11-14',
+    // Christmas lists several Masses of the same day, and they agree.
+    christmas:
+        'Branco – Ofício da solenidade. Te Deum.\n'
+        + 'Missa própria do dia, Glória, Credo, pf. próprio.\n\n'
+        + 'Missa da noite\nEv: Lc 2, 1-14\n\nMissa da aurora\nEv: Lc 2, 15-20\n\n'
+        + '† Missa do dia\nEv: Jo 1, 1-18',
 };
 
 describe('resolveMassOrdo — from the calendar description', () => {
@@ -59,6 +82,21 @@ describe('resolveMassOrdo — from the calendar description', () => {
 
     it('is not confused by the sequence listed alongside them', () => {
         expect(resolveMassOrdo(new Date('2026-05-24T00:00:00'), ICS.pentecost))
+            .toEqual({ gloria: true, credo: true });
+    });
+
+    it('ignores the vigil Mass that belongs to tomorrow\'s solemnity', () => {
+        expect(resolveMassOrdo(new Date('2026-08-14T00:00:00'), ICS.memorialWithVigilOfTomorrow))
+            .toEqual({ gloria: false, credo: false });
+    });
+
+    it('keeps the day\'s own Mass when the evening heading introduces it', () => {
+        expect(resolveMassOrdo(new Date('2026-04-02T00:00:00'), ICS.holyThursday))
+            .toEqual({ gloria: true, credo: false });
+    });
+
+    it('reads every Mass of a day that has several', () => {
+        expect(resolveMassOrdo(new Date('2026-12-25T00:00:00'), ICS.christmas))
             .toEqual({ gloria: true, credo: true });
     });
 
