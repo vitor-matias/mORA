@@ -2,9 +2,11 @@ const translations = {
     home: {
         greeting: "Bom dia.",
         whatToPray: "O que vamos rezar hoje?",
-        progress: "O seu Progresso",
-        streakDays: "dias",
-        consecutively: "seguidos",
+        intentions: "Intenções",
+        intentionToday: "Hoje",
+        intentionThisMonth: "Este mês",
+        intentionPope: "Intenção do Papa",
+        intentionPopeLoading: "A carregar intenção do Papa…",
         rosaryTitle: "Santo Terço",
         rosaryDesc: "Reze e medite os mistérios diários",
         liturgyTitle: "Missa Diária",
@@ -160,6 +162,21 @@ const translations = {
         homeLost: "Hoje não acertou — nova palavra amanhã",
         shareToggle: "Participar nas classificações da Palavra",
         shareToggleHelp: "Publica o resultado diário da Palavra Bíblica — quantas tentativas e em quanto tempo — de forma pública na rede Nostr, para aparecer nas classificações, nos duelos e nas ligas. A palavra e as tuas tentativas nunca são publicadas. Sem isto continuas a ver as classificações dos outros; apenas não apareces nelas.",
+
+        // The "Como jogar" explainer, shown once on first entry and
+        // reachable afterwards from the header.
+        howToPlayTitle: "Como jogar",
+        howToPlayClose: "Fechar",
+        howToPlayIntro: "Descobre a palavra que o versículo de hoje esconde. Tens 6 tentativas.",
+        howToPlaySubmit: "Cada tentativa é uma palavra com o mesmo número de letras da palavra escondida, entre 5 e 8, consoante o versículo do dia. Escreve e confirma com o Enter ⏎.",
+        howToPlayColors: "Depois de cada tentativa, a cor das letras muda para mostrar o quão perto estás da solução.",
+        howToPlayExamples: "Exemplos",
+        howToPlayExampleCorrect: "A letra T está na palavra e na posição certa.",
+        howToPlayExamplePresent: "A letra E está na palavra, mas fora desta posição.",
+        howToPlayExampleAbsent: "A letra O não está na palavra.",
+        howToPlayDaily: "Há um novo versículo todos os dias.",
+        howToPlayReveal: "No final, o versículo completo revela-se e podes ver como te saíste face aos outros jogadores.",
+        howToPlayCta: "Entendido",
     },
     rosary: {
         finish: "Concluir Terço",

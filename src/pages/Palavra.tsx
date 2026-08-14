@@ -1,10 +1,11 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
+import { CircleHelp, ExternalLink, Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
 import { Community } from '@/components/palavra/Community';
 import { Grid, type PlayedRow } from '@/components/palavra/Grid';
+import { HowToPlay } from '@/components/palavra/HowToPlay';
 import { gapPx } from '@/lib/palavra/layout';
 import { capuchinhosUrl } from '@/lib/palavra/bookSlugs';
 import { Keyboard } from '@/components/palavra/Keyboard';
@@ -20,7 +21,7 @@ import {
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
 import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '@/store/palavra';
-import { useAuthStore } from '@/store/auth';
+import { currentPubkey, useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
@@ -80,6 +81,16 @@ export default function Palavra() {
     const submitGuess = usePalavraStore((s) => s.submitGuess);
     const sharedNotes = usePalavraStore((s) => s.sharedNotes);
     const markNoteShared = usePalavraStore((s) => s.markNoteShared);
+    const markTutorialSeen = usePalavraStore((s) => s.markTutorialSeen);
+    // Lazy initial value, not an effect: the persisted flag is already
+    // hydrated by the time this component first renders (synchronous
+    // localStorage), so reading it once here is the whole check — an effect
+    // would only add a render where the explainer flashes in a beat late.
+    const [showHowToPlay, setShowHowToPlay] = useState(() => !usePalavraStore.getState().seenTutorial);
+    const closeHowToPlay = useCallback(() => {
+        setShowHowToPlay(false);
+        markTutorialSeen();
+    }, [markTutorialSeen]);
 
     const isArchive = viewDate !== today;
 
@@ -170,10 +181,15 @@ export default function Palavra() {
         return matchesAnswerHash(challenge.date, folded, challenge.answerHash) ? folded : '';
     }, [challenge, answerDisplay]);
 
-    // Start the clock the first time the board is actually playable.
+    // Start the clock the first time the board is actually playable — but not
+    // while the how-to-play explainer covers it: submitGuess measures `ms`
+    // from this moment, and a first-time player reading the rules before
+    // their first guess isn't part of their solve time. Harmless once the
+    // clock is already running (beginPlay itself no-ops on a startedAt that
+    // exists), so reopening the explainer mid-game doesn't pause anything.
     useEffect(() => {
-        if (challenge && answer && !over && !readOnly) beginPlay(viewDate, scope);
-    }, [challenge, answer, over, readOnly, viewDate, scope, beginPlay]);
+        if (challenge && answer && !over && !readOnly && !showHowToPlay) beginPlay(viewDate, scope);
+    }, [challenge, answer, over, readOnly, showHowToPlay, viewDate, scope, beginPlay]);
 
     const played: PlayedRow[] = useMemo(
         () => (answer ? play.guesses.map((guess) => ({ guess, marks: scoreGuess(guess, answer) })) : []),
@@ -224,14 +240,14 @@ export default function Palavra() {
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
     const publishedFor = useRef<string | null>(null);
-    // Bumped when a finished game has actually reached the relays, so the
-    // community panels reload and the player sees themselves on the board.
-    //
-    // After the publish rather than on finishing, and only on a confirmed one:
-    // mining the proof of work takes a second or two, so a refetch before that
-    // lands returns a board without them on it — which looks exactly like the
-    // bug this exists to fix.
-    const [resultsVersion, setResultsVersion] = useState(0);
+    // Whether today's result has become published — however that happened,
+    // see the comment inside reportResult below — so the community panels
+    // reload and the player sees themselves on the board. Read straight from
+    // the store rather than a local counter bumped from one call site: that
+    // was what left players invisible until a reload when this page's own
+    // publish attempt was the one that stalled.
+    const resultsVersion = usePalavraStore((s) =>
+        myPubkey && challenge ? Number(Boolean(s.publishedResults[`${myPubkey}:${challenge.date}`])) : 0);
     const reportResult = useCallback(async () => {
         if (!challenge || scope !== 'daily') return;
         if (publishedFor.current === challenge.date) return;
@@ -248,17 +264,26 @@ export default function Palavra() {
                 publishPalavraStateToNostr(),
                 record ? publishPalavraResult(challenge.date, record) : Promise.resolve(false),
             ]);
-            // Only when the public result genuinely reached a relay. Bumping
+            // Only when the public result genuinely reached a relay. Marking
             // unconditionally — which is what putting this after the try did —
-            // refreshed the board on a failed publish, an import that never
-            // loaded, or a player who hasn't opted into sharing, in every case
-            // to show them the same board without them on it.
+            // would tell the next foreground the result is already out there
+            // on a failed publish, an import that never loaded, or a player
+            // who hasn't opted into sharing — and it would never retry.
             //
             // `allSettled` is why the return value has to be read rather than
             // the absence of a throw: it swallows a rejection into a settled
             // entry, so awaiting it says nothing about what happened.
+            //
+            // Marked here rather than tracked in a local ref: the background
+            // sync (see publishTodaysResultIfMissing, which runs on every
+            // foreground) marks the same flag when *it* is the one that lands
+            // the publish — e.g. this attempt stalled on a slow relay and a
+            // later foreground succeeded instead. resultsVersion above reads
+            // this flag, so the board catches up either way, instead of only
+            // when this exact call succeeds.
             if (published.status === 'fulfilled' && published.value === true) {
-                setResultsVersion((n) => n + 1);
+                const pubkey = currentPubkey();
+                if (pubkey) usePalavraStore.getState().markResultPublished(pubkey, challenge.date);
             }
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);
@@ -441,6 +466,18 @@ export default function Palavra() {
         measure();
     }, [maxTilePx, measure]);
 
+    // Installed to the home screen (Android WebAPK / iOS standalone). There,
+    // an external link opened with target="_blank" doesn't reach the system
+    // browser — it lands in a boxed-in in-app view with no way back except
+    // closing it. A same-window navigation instead makes the OS hand the page
+    // off to the real browser, leaving mORA behind the way switching apps
+    // does. Only worth it inside the installed app: in an ordinary browser
+    // tab, target="_blank" is what keeps mORA open behind the new one.
+    const isInstalledApp = typeof window !== 'undefined' && (
+        window.matchMedia?.('(display-mode: standalone)').matches
+        || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
+
     // Back to a link on the reference. The card already carries the finished
     // verse, so the separate full-verse box under it was the same text and the
     // same reference twice; what it didn't carry was the way out to the reader.
@@ -562,7 +599,19 @@ export default function Palavra() {
             <PageHeader
                 title={t.title}
                 subtitle={t.subtitle}
+                action={
+                    <button
+                        type="button"
+                        onClick={() => setShowHowToPlay(true)}
+                        aria-label={t.howToPlayTitle}
+                        className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-2"
+                    >
+                        <CircleHelp size={20} />
+                    </button>
+                }
             />
+
+            {showHowToPlay && <HowToPlay onClose={closeHowToPlay} />}
 
             {/* Sidebar left, board right — the same split Missa and Horas use,
                 so the date nav sits in one predictable place on desktop. */}
@@ -666,11 +715,13 @@ export default function Palavra() {
                                             ? (
                                                 <a
                                                     href={refUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="underline underline-offset-2 hover:text-liturgy-700 dark:hover:text-liturgy-300"
+                                                    {...(isInstalledApp
+                                                        ? { rel: 'noreferrer' }
+                                                        : { target: '_blank', rel: 'noopener noreferrer' })}
+                                                    className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-liturgy-700 dark:hover:text-liturgy-300"
                                                 >
                                                     {challenge.ref}
+                                                    <ExternalLink size={11} aria-hidden="true" />
                                                 </a>
                                             )
                                             : challenge.ref}
