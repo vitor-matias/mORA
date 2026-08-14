@@ -20,7 +20,7 @@ import {
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
 import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '@/store/palavra';
-import { useAuthStore } from '@/store/auth';
+import { currentPubkey, useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
@@ -224,14 +224,14 @@ export default function Palavra() {
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
     const publishedFor = useRef<string | null>(null);
-    // Bumped when a finished game has actually reached the relays, so the
-    // community panels reload and the player sees themselves on the board.
-    //
-    // After the publish rather than on finishing, and only on a confirmed one:
-    // mining the proof of work takes a second or two, so a refetch before that
-    // lands returns a board without them on it — which looks exactly like the
-    // bug this exists to fix.
-    const [resultsVersion, setResultsVersion] = useState(0);
+    // Whether today's result has become published — however that happened,
+    // see the comment inside reportResult below — so the community panels
+    // reload and the player sees themselves on the board. Read straight from
+    // the store rather than a local counter bumped from one call site: that
+    // was what left players invisible until a reload when this page's own
+    // publish attempt was the one that stalled.
+    const resultsVersion = usePalavraStore((s) =>
+        myPubkey && challenge ? Number(Boolean(s.publishedResults[`${myPubkey}:${challenge.date}`])) : 0);
     const reportResult = useCallback(async () => {
         if (!challenge || scope !== 'daily') return;
         if (publishedFor.current === challenge.date) return;
@@ -248,17 +248,26 @@ export default function Palavra() {
                 publishPalavraStateToNostr(),
                 record ? publishPalavraResult(challenge.date, record) : Promise.resolve(false),
             ]);
-            // Only when the public result genuinely reached a relay. Bumping
+            // Only when the public result genuinely reached a relay. Marking
             // unconditionally — which is what putting this after the try did —
-            // refreshed the board on a failed publish, an import that never
-            // loaded, or a player who hasn't opted into sharing, in every case
-            // to show them the same board without them on it.
+            // would tell the next foreground the result is already out there
+            // on a failed publish, an import that never loaded, or a player
+            // who hasn't opted into sharing — and it would never retry.
             //
             // `allSettled` is why the return value has to be read rather than
             // the absence of a throw: it swallows a rejection into a settled
             // entry, so awaiting it says nothing about what happened.
+            //
+            // Marked here rather than tracked in a local ref: the background
+            // sync (see publishTodaysResultIfMissing, which runs on every
+            // foreground) marks the same flag when *it* is the one that lands
+            // the publish — e.g. this attempt stalled on a slow relay and a
+            // later foreground succeeded instead. resultsVersion above reads
+            // this flag, so the board catches up either way, instead of only
+            // when this exact call succeeds.
             if (published.status === 'fulfilled' && published.value === true) {
-                setResultsVersion((n) => n + 1);
+                const pubkey = currentPubkey();
+                if (pubkey) usePalavraStore.getState().markResultPublished(pubkey, challenge.date);
             }
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);

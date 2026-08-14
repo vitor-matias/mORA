@@ -22,6 +22,10 @@ export default function Home() {
     const tPalavra = useTranslations().palavra;
 
     useEffect(() => {
+        // Only a cold cache — a device that has never seen this identity's
+        // profile — needs this. Once there's a cached copy, useNostrSync
+        // keeps it fresh on the app's usual schedule (start, sign-in,
+        // foreground), so this effect doesn't need to re-ask on every visit.
         if (!pubkey || profile) return;
         let cancelled = false;
         import("@/lib/nostr").then(({ fetchNostrProfile }) => {
