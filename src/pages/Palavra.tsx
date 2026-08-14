@@ -1,10 +1,11 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
+import { CircleHelp, ExternalLink, Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
 import { Community } from '@/components/palavra/Community';
 import { Grid, type PlayedRow } from '@/components/palavra/Grid';
+import { HowToPlay } from '@/components/palavra/HowToPlay';
 import { gapPx } from '@/lib/palavra/layout';
 import { capuchinhosUrl } from '@/lib/palavra/bookSlugs';
 import { Keyboard } from '@/components/palavra/Keyboard';
@@ -80,6 +81,16 @@ export default function Palavra() {
     const submitGuess = usePalavraStore((s) => s.submitGuess);
     const sharedNotes = usePalavraStore((s) => s.sharedNotes);
     const markNoteShared = usePalavraStore((s) => s.markNoteShared);
+    const markTutorialSeen = usePalavraStore((s) => s.markTutorialSeen);
+    // Lazy initial value, not an effect: the persisted flag is already
+    // hydrated by the time this component first renders (synchronous
+    // localStorage), so reading it once here is the whole check — an effect
+    // would only add a render where the explainer flashes in a beat late.
+    const [showHowToPlay, setShowHowToPlay] = useState(() => !usePalavraStore.getState().seenTutorial);
+    const closeHowToPlay = useCallback(() => {
+        setShowHowToPlay(false);
+        markTutorialSeen();
+    }, [markTutorialSeen]);
 
     const isArchive = viewDate !== today;
 
@@ -441,6 +452,18 @@ export default function Palavra() {
         measure();
     }, [maxTilePx, measure]);
 
+    // Installed to the home screen (Android WebAPK / iOS standalone). There,
+    // an external link opened with target="_blank" doesn't reach the system
+    // browser — it lands in a boxed-in in-app view with no way back except
+    // closing it. A same-window navigation instead makes the OS hand the page
+    // off to the real browser, leaving mORA behind the way switching apps
+    // does. Only worth it inside the installed app: in an ordinary browser
+    // tab, target="_blank" is what keeps mORA open behind the new one.
+    const isInstalledApp = typeof window !== 'undefined' && (
+        window.matchMedia?.('(display-mode: standalone)').matches
+        || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
+
     // Back to a link on the reference. The card already carries the finished
     // verse, so the separate full-verse box under it was the same text and the
     // same reference twice; what it didn't carry was the way out to the reader.
@@ -558,7 +581,19 @@ export default function Palavra() {
             <PageHeader
                 title={t.title}
                 subtitle={t.subtitle}
+                action={
+                    <button
+                        type="button"
+                        onClick={() => setShowHowToPlay(true)}
+                        aria-label={t.howToPlayTitle}
+                        className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-2"
+                    >
+                        <CircleHelp size={20} />
+                    </button>
+                }
             />
+
+            {showHowToPlay && <HowToPlay onClose={closeHowToPlay} />}
 
             {/* Sidebar left, board right — the same split Missa and Horas use,
                 so the date nav sits in one predictable place on desktop. */}
@@ -662,11 +697,13 @@ export default function Palavra() {
                                             ? (
                                                 <a
                                                     href={refUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="underline underline-offset-2 hover:text-liturgy-700 dark:hover:text-liturgy-300"
+                                                    {...(isInstalledApp
+                                                        ? { rel: 'noreferrer' }
+                                                        : { target: '_blank', rel: 'noopener noreferrer' })}
+                                                    className="inline-flex items-center gap-0.5 underline underline-offset-2 hover:text-liturgy-700 dark:hover:text-liturgy-300"
                                                 >
                                                     {challenge.ref}
+                                                    <ExternalLink size={11} aria-hidden="true" />
                                                 </a>
                                             )
                                             : challenge.ref}

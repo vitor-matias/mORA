@@ -315,6 +315,12 @@ interface PalavraState {
      */
     sharing: Record<string, boolean>;
     setSharePalavraResults: (pubkey: string | null, share: boolean) => void;
+
+    /** Whether this device has already dismissed the "how to play" explainer.
+        Device-local and not synced: a new device is exactly when it's worth
+        showing again, so it isn't part of the record a sync would carry. */
+    seenTutorial: boolean;
+    markTutorialSeen: () => void;
 }
 
 /** Whether this identity publishes results. Signed out is always false: there
@@ -413,6 +419,9 @@ export const usePalavraStore = create<PalavraState>()(
                 if (share) next[pubkey] = true; else delete next[pubkey];
                 return { sharing: next };
             }),
+
+            seenTutorial: false,
+            markTutorialSeen: () => set({ seenTutorial: true }),
         }),
         {
             name: 'mora-palavra-storage',
