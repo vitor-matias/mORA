@@ -76,8 +76,34 @@ function readCache(key: string): Intention | null {
 function writeCache(key: string, value: Intention): void {
     try {
         localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(value));
+        pruneCache();
     } catch {
         // ignore storage errors (private browsing, quota)
+    }
+}
+
+// A week's cache key is that week's Sunday — usually a past date even while
+// the entry is still current — so pruning has to compare each key against
+// the still-valid key for its own kind, not just against today's date.
+function pruneCache(): void {
+    try {
+        const now = new Date();
+        const validDatePart: Record<string, string> = {
+            day: formatISODate(now),
+            week: formatISODate(getCurrentWeekSunday(now)),
+            month: formatISODate(now).slice(0, 7),
+        };
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(CACHE_PREFIX)) continue;
+            const rest = key.slice(CACHE_PREFIX.length);
+            const separatorIndex = rest.indexOf('_');
+            const kind = rest.slice(0, separatorIndex);
+            const datePart = rest.slice(separatorIndex + 1);
+            if (datePart !== validDatePart[kind]) localStorage.removeItem(key);
+        }
+    } catch {
+        // ignore storage access errors
     }
 }
 
@@ -87,7 +113,7 @@ const PROXY_TIMEOUT_MS = 8000;
 
 async function fetchTextViaProxy(url: string): Promise<string | null> {
     const candidateUrls = [
-        `https://api.codetabs.com/v1/proxy/?quest=${url}`,
+        `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
         `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     ];
@@ -145,15 +171,15 @@ async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: 
     return { title: theme, url: docUrl };
 }
 
-async function fetchLatestPost(postType: string): Promise<{ title: string; url: string } | null> {
+async function fetchLatestPost(postType: string): Promise<{ title: string; url: string; monthKey: string } | null> {
     const res = await fetch(`${WPJSON_BASE}/${postType}?per_page=1&orderby=date&order=desc`);
     if (!res.ok) return null;
     const items = await res.json();
     const item = items?.[0];
     if (!item) return null;
     const title = stripHtml(item.title?.rendered ?? '');
-    if (!title) return null;
-    return { title, url: item.link || 'https://redemundialdeoracaodopapa.pt/' };
+    if (!title || typeof item.date !== 'string') return null;
+    return { title, url: item.link || 'https://redemundialdeoracaodopapa.pt/', monthKey: item.date.slice(0, 7) };
 }
 
 /** The Pope's Prayer Network publishes a new short reflection every calendar day. */
@@ -226,7 +252,11 @@ export async function fetchMonthlyIntention(now: Date = new Date()): Promise<Int
 
     try {
         const post = await fetchLatestPost('intencoes_mensais');
-        if (!post) return null;
+        // "Latest" isn't necessarily *this* month — the Network sometimes
+        // publishes early, or a fetch right after rollover can still see last
+        // month's post. Caching a mismatched title under this month's key
+        // would keep showing the wrong intention for the rest of the month.
+        if (!post || post.monthKey !== monthKey) return null;
         const intention: Intention = {
             title: post.title,
             sourceLabel: NETWORK_LABEL,
