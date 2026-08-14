@@ -22,7 +22,10 @@ export default function Home() {
     const tPalavra = useTranslations().palavra;
 
     useEffect(() => {
-        if (!pubkey || profile) return;
+        // Always re-asks the relays, rather than trusting a cached profile:
+        // this is where the app first shows the avatar and name, and the
+        // only way it notices an edit made from another Nostr client.
+        if (!pubkey) return;
         let cancelled = false;
         import("@/lib/nostr").then(({ fetchNostrProfile }) => {
             fetchNostrProfile(pubkey).then(p => {
@@ -34,7 +37,7 @@ export default function Home() {
             });
         });
         return () => { cancelled = true; };
-    }, [pubkey, profile, setProfile]);
+    }, [pubkey, setProfile]);
 
     const displayName = profile?.display_name || profile?.name || null;
     const greeting = displayName
