@@ -442,6 +442,11 @@ export const usePalavraStore = create<PalavraState>()(
                     sharing: sanitizeSharing(saved.sharing),
                     publishedResults: saved.publishedResults && typeof saved.publishedResults === 'object'
                         ? saved.publishedResults : {},
+                    // Anything but a literal `true` (a stray string, a
+                    // corrupted write) must read as "not seen yet" — the
+                    // failure mode of the loose default is a tutorial that
+                    // can never show, which nothing after this would catch.
+                    seenTutorial: saved.seenTutorial === true,
                 };
             },
         }

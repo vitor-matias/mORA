@@ -181,10 +181,15 @@ export default function Palavra() {
         return matchesAnswerHash(challenge.date, folded, challenge.answerHash) ? folded : '';
     }, [challenge, answerDisplay]);
 
-    // Start the clock the first time the board is actually playable.
+    // Start the clock the first time the board is actually playable — but not
+    // while the how-to-play explainer covers it: submitGuess measures `ms`
+    // from this moment, and a first-time player reading the rules before
+    // their first guess isn't part of their solve time. Harmless once the
+    // clock is already running (beginPlay itself no-ops on a startedAt that
+    // exists), so reopening the explainer mid-game doesn't pause anything.
     useEffect(() => {
-        if (challenge && answer && !over && !readOnly) beginPlay(viewDate, scope);
-    }, [challenge, answer, over, readOnly, viewDate, scope, beginPlay]);
+        if (challenge && answer && !over && !readOnly && !showHowToPlay) beginPlay(viewDate, scope);
+    }, [challenge, answer, over, readOnly, showHowToPlay, viewDate, scope, beginPlay]);
 
     const played: PlayedRow[] = useMemo(
         () => (answer ? play.guesses.map((guess) => ({ guess, marks: scoreGuess(guess, answer) })) : []),

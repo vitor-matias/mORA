@@ -66,6 +66,10 @@ function ExampleRow({
     );
 }
 
+// Anything a11y-focusable inside the dialog — currently just the two
+// buttons, but written generically rather than hardcoded to them.
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 /**
  * The "Como jogar" explainer. Shown once, the first time the game loads on a
  * device (see `seenTutorial` in the palavra store), and reachable afterwards
@@ -73,16 +77,39 @@ function ExampleRow({
  */
 export function HowToPlay({ onClose }: { onClose: () => void }) {
     const t = useTranslations().palavra;
+    const dialogRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
 
+    // Focus goes into the dialog on mount and back to whatever opened it
+    // (the help button, on a manual reopen) once it's gone — a plain
+    // component-local ref, since HowToPlay never needs to know who that was.
     useEffect(() => {
+        const previouslyFocused = document.activeElement as HTMLElement | null;
         closeRef.current?.focus();
-        const onKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onClose();
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onClose]);
+        return () => previouslyFocused?.focus();
+    }, []);
+
+    // Keeps the keyboard inside the dialog while it's open: Tab/Shift+Tab
+    // cycle between its two buttons instead of escaping to whatever sits
+    // behind the backdrop, and stopPropagation keeps every keystroke made
+    // here — including a bare letter or Enter — from ever reaching Palavra's
+    // page-level listener, which would otherwise read it as a guess.
+    const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        event.stopPropagation();
+        if (event.key === 'Escape') { onClose(); return; }
+        if (event.key !== 'Tab') return;
+        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+        if (!focusable || focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
 
     return (
         <div
@@ -90,10 +117,12 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             onClick={onClose}
         >
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="how-to-play-title"
                 onClick={(event) => event.stopPropagation()}
+                onKeyDown={onDialogKeyDown}
                 className="surface rounded-3xl p-6 max-w-sm w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5 animate-in zoom-in-95"
             >
                 <div className="flex items-start justify-between gap-4">
