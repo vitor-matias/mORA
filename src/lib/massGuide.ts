@@ -336,7 +336,7 @@ const DIVISIONS: Division[] = [
                     + 'Chamou-se-lhe «símbolo», que era um objecto partido em dois: juntavam-se as '
                     + 'metades para provar quem se era. Esta é a nossa metade, recebida e não '
                     + 'inventada, e «creio» está no singular porque a pergunta é feita a cada um. '
-                    + 'Diz-se aos domingos e nas solenidades. Às palavras «E encarnou… e Se fez homem» '
+                    + 'Diz-se aos domingos e nas solenidades. Às palavras «E encarnou... e Se fez homem» '
                     + 'inclinamo-nos, porque é aí que Deus entra na nossa carne: fez-Se o que nós '
                     + 'somos, escreveu santo Ireneu já no século II, para que pudéssemos ser o que '
                     + 'Ele é.',
