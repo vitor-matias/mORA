@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, Flame, ChevronRight, ArrowRight, CalendarDays, Puzzle } from "lucide-react";
+import { BookOpen, Clock, User, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -11,11 +11,12 @@ import { getGreeting, formatDisplayDate, formatISODate, formatUTCDate } from "@/
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { getDefaultMassDate } from "@/lib/liturgy";
+import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 import { stripReadingLines } from "@/lib/dayInfo";
 
 export default function Home() {
-    const { streaks, liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
+    const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
     const { profile, setProfile } = useAuthStore();
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
@@ -88,12 +89,20 @@ export default function Home() {
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];
 
-    const streakItems = [
-        { label: 'Terço', days: streaks.rosary.days },
-        { label: 'Missa', days: streaks.liturgy.days },
-        { label: 'Horas', days: streaks.liturgy_hours.days },
-    ];
-    const hasAnyStreak = streakItems.some(s => s.days > 0);
+    // The weekday/monthly devotions are fixed Church tradition — same every
+    // year, so no fetch needed. Only the Pope's own monthly intention is live.
+    const weekdayDevotion = getWeekdayDevotion();
+    const monthlyDevotion = getMonthlyDevotion();
+    const [monthIntention, setMonthIntention] = useState<Intention | null>(null);
+    const [intentionLoading, setIntentionLoading] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetchMonthlyIntention()
+            .then((month) => { if (!cancelled) setMonthIntention(month); })
+            .finally(() => { if (!cancelled) setIntentionLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     return (
         <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
@@ -147,28 +156,49 @@ export default function Home() {
                 </Link>
             </section>
 
-            {/* Streaks */}
-            <section className="relative z-10 surface rounded-2xl px-5 py-4 lg:col-span-2 lg:rounded-3xl">
+            {/* Intentions */}
+            <section className="relative z-10 surface rounded-2xl px-5 py-4 lg:col-span-2 lg:rounded-3xl flex flex-col">
                 <div className="flex items-center justify-between mb-2.5">
-                    <h2 className="text-sm font-semibold text-zinc-500">{t.progress}</h2>
-                    <Flame size={16} className="text-orange-500" aria-hidden="true" />
+                    <h2 className="text-sm font-semibold text-zinc-500">Intenções</h2>
+                    <HandHeart size={16} className="text-liturgy-500" aria-hidden="true" />
                 </div>
-                {hasAnyStreak ? (
-                    <div className="grid grid-cols-3 divide-x divide-zinc-100 dark:divide-zinc-800">
-                        {streakItems.map(({ label, days }) => (
-                            <div key={label} className="text-center first:text-left last:text-right px-1">
-                                <p className="text-xl font-bold leading-tight">
-                                    {days}<span className="text-xs font-medium text-zinc-400 ml-1">{days === 1 ? 'dia' : 'dias'}</span>
+                <ul className="flex-1 space-y-3">
+                    <li>
+                        <p className="text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 mb-0.5">Hoje</p>
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{weekdayDevotion}</p>
+                    </li>
+                    <li>
+                        <p className="text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 mb-0.5">Este mês</p>
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{monthlyDevotion}</p>
+                    </li>
+                    {intentionLoading ? (
+                        <li className="text-sm text-zinc-400">A carregar intenção do Papa…</li>
+                    ) : monthIntention ? (
+                        <li>
+                            <a
+                                href={monthIntention.sourceUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => {
+                                    // A plain target="_blank" opens a tab in every modern
+                                    // browser — passing window features is what actually
+                                    // forces a separate window. href/target/rel stay so
+                                    // middle-click, ctrl-click and "open in new tab" still
+                                    // work normally; only a plain left-click is intercepted.
+                                    e.preventDefault();
+                                    window.open(monthIntention.sourceUrl, '_blank', 'noopener,noreferrer,width=480,height=800');
+                                }}
+                                className="group block"
+                            >
+                                <p className="text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 mb-0.5">Intenção do Papa</p>
+                                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug flex items-start gap-1.5">
+                                    <span>{monthIntention.title}</span>
+                                    <ExternalLink size={12} className="shrink-0 mt-1 text-zinc-400 group-hover:text-liturgy-500 transition-colors" aria-hidden="true" />
                                 </p>
-                                <p className="text-xs text-zinc-500">{label}</p>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-sm text-zinc-500">
-                        Comece hoje — cada oração concluída conta um dia.
-                    </p>
-                )}
+                            </a>
+                        </li>
+                    ) : null}
+                </ul>
             </section>
             </div>
 
