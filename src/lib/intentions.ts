@@ -13,9 +13,13 @@ const NETWORK_LABEL = 'Rede Mundial de Oração do Papa';
 
 // The Church's traditional monthly devotions — fixed, the same every year, so
 // (unlike the Pope's own intention) there's no live source to fetch this from.
+// These vary by country; August/September deliberately follow the
+// commonly-cited Brazilian convention (Vocações/Bíblia) rather than the
+// Imaculado Coração de Maria/Dores de Maria pairing some Portugal-focused
+// sources use for those two months.
 const MONTHLY_DEVOTIONS = [
     'Santíssimo Nome de Jesus', 'Sagrada Família', 'São José',
-    'Eucaristia e Espírito Santo', 'Virgem Maria', 'Sagrado Coração de Jesus',
+    'Eucaristia e Espírito Santo', 'Imaculado Coração de Maria', 'Sagrado Coração de Jesus',
     'Preciosíssimo Sangue de Cristo', 'Vocações', 'Bíblia',
     'Rosário', 'Almas do Purgatório', 'Advento e Natal',
 ];
