@@ -13,8 +13,9 @@ let lastSyncAt = 0;
 
 /**
  * Keeps this device in step with the others signed in under the same Nostr
- * identity: streaks (merged), the Palavra play log (merged), and the
- * reader-level settings (last edit wins).
+ * identity: streaks (merged), the Palavra play log (merged), the
+ * reader-level settings (last edit wins), and the cached profile (name,
+ * avatar — always overwritten with whatever the relays currently have).
  * Runs on app start, on sign-in, when the app returns to the foreground, and —
  * for settings — shortly after any local change. Screen-level preferences
  * (theme, text size, scroll speed) stay on the device that set them.
@@ -35,16 +36,22 @@ export function useNostrSync() {
             if (!force && now - lastSyncAt < MIN_INTERVAL_MS) return;
             lastSyncAt = now;
             try {
-                const [{ syncStreaksWithNostr, syncSettingsWithNostr }, { syncPalavraWithNostr }] =
+                const [{ syncStreaksWithNostr, syncSettingsWithNostr, fetchNostrProfile }, { syncPalavraWithNostr }] =
                     await Promise.all([import('@/lib/nostr'), import('@/lib/palavra/nostr')]);
-                // allSettled, not all: the three are independent, and a relay
-                // that fails one shouldn't abandon the other two — nor release
+                // allSettled, not all: the four are independent, and a relay
+                // that fails one shouldn't abandon the others — nor release
                 // the throttle below and have every foreground retry all of
                 // them because one is consistently unhappy.
                 const named = [
                     ['streaks', syncStreaksWithNostr()],
                     ['settings', syncSettingsWithNostr()],
                     ['palavra', syncPalavraWithNostr()],
+                    // Keeps the cached profile (name, avatar) from going stale
+                    // when it's edited from another client — the cache itself
+                    // is what lets Home show it instantly on every visit.
+                    ['profile', fetchNostrProfile(pubkey).then(p => {
+                        if (p) useAuthStore.getState().setProfile(p);
+                    })],
                 ] as const;
                 const settled = await Promise.allSettled(named.map(([, task]) => task));
                 // allSettled swallows the reasons, which left a sync that

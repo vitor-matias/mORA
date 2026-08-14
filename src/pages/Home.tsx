@@ -22,10 +22,11 @@ export default function Home() {
     const tPalavra = useTranslations().palavra;
 
     useEffect(() => {
-        // Always re-asks the relays, rather than trusting a cached profile:
-        // this is where the app first shows the avatar and name, and the
-        // only way it notices an edit made from another Nostr client.
-        if (!pubkey) return;
+        // Only a cold cache — a device that has never seen this identity's
+        // profile — needs this. Once there's a cached copy, useNostrSync
+        // keeps it fresh on the app's usual schedule (start, sign-in,
+        // foreground), so this effect doesn't need to re-ask on every visit.
+        if (!pubkey || profile) return;
         let cancelled = false;
         import("@/lib/nostr").then(({ fetchNostrProfile }) => {
             fetchNostrProfile(pubkey).then(p => {
@@ -37,7 +38,7 @@ export default function Home() {
             });
         });
         return () => { cancelled = true; };
-    }, [pubkey, setProfile]);
+    }, [pubkey, profile, setProfile]);
 
     const displayName = profile?.display_name || profile?.name || null;
     const greeting = displayName
