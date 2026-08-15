@@ -31,9 +31,7 @@ const tabs = [
  * Sticky, not fixed, so it reserves its own height in the page flow.
  * It shows on every route, Home included — persistent chrome that appears
  * and disappears between pages reads as broken (Home instead drops its own
- * duplicate profile shortcut on xl). Its centre carries an empty
- * #global-bar-page-slot: once a page scrolls, PageHeader portals its compact
- * title row in there, so desktop never stacks two sticky bars.
+ * duplicate profile shortcut on xl).
  */
 export function TabBar() {
     const { pathname } = useLocation();
@@ -146,9 +144,11 @@ export function TabBar() {
                         </svg>
                         <span className="text-lg font-bold tracking-tight page-title">mORA</span>
                     </NavLink>
-                    {/* PageHeader portals its compact title row here once the
-                        page scrolls (see PageHeader). */}
-                    <div id="global-bar-page-slot" className="flex-1 min-w-0 flex items-center" />
+                    {/* Spacer: holds the wordmark left and the nav right. It
+                        was PageHeader's portal target back when the page title
+                        merged in here on scroll; the header is sticky at every
+                        width now, so nothing fills it. */}
+                    <div className="flex-1 min-w-0" />
                     <div className="flex items-center gap-1 shrink-0">
                         {tabs.map(({ to, label, icon: Icon, end }) => (
                             <NavLink

@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
@@ -9,11 +8,13 @@ import { ChevronRight } from "lucide-react";
  * pages share the same max-w-5xl frame; content narrower than the frame
  * centers within it, it does not shrink the header.
  *
- * Below xl it is sticky, collapsing into a frosted bar as the page scrolls.
- * At xl the global top bar already provides sticky chrome, so instead of
- * stacking two bars the header stays in flow and scrolls away; once the page
- * scrolls, its compact title row merges into the top bar via the
- * #global-bar-page-slot portal target that TabBar renders.
+ * Sticky at every width, collapsing into a frosted bar as the page scrolls.
+ * At xl it used to stay in flow and scroll away instead, on the grounds that
+ * the global top bar already supplies sticky chrome and two bars should not
+ * stack; the page title was dropped and only the subtitle merged into the top
+ * bar. But desktop is where the vertical room is least scarce, and losing the
+ * title there is what nobody expects — so it now behaves as it does everywhere
+ * else, and the top-bar slot is left to whatever else wants it.
  */
 export function PageHeader({
     title,
@@ -43,65 +44,19 @@ export function PageHeader({
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    const [isXl, setIsXl] = useState(
-        () => window.matchMedia('(min-width: 1280px)').matches
-    );
-    useEffect(() => {
-        const mq = window.matchMedia('(min-width: 1280px)');
-        const onChange = () => setIsXl(mq.matches);
-        mq.addEventListener('change', onChange);
-        return () => mq.removeEventListener('change', onChange);
-    }, []);
-
-    // The top bar's portal target, looked up when it is about to be used
-    // rather than held in state. It cannot be found during the first render —
-    // Layout hasn't committed yet — but the portal only opens once the page
-    // has scrolled, by which point it has long existed. Fetching it into state
-    // from an effect meant a second render on every mount to obtain something
-    // that isn't needed until much later.
-    const slot = isXl && isScrolled
-        ? document.getElementById('global-bar-page-slot')
-        : null;
-
-    // Collapse styling only applies to the sub-xl sticky variant; at xl the
-    // header keeps its resting size and simply scrolls off.
-    const collapsed = isScrolled && !isXl;
+    const collapsed = isScrolled;
 
     return (
         <>
-            {isXl && isScrolled && slot && createPortal(
-                <div className="flex items-center gap-3 min-w-0 animate-in fade-in slide-in-from-bottom-1 duration-200">
-                    <button
-                        type="button"
-                        aria-label="Voltar ao início"
-                        onClick={() => navigate(backTo)}
-                        className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-1"
-                    >
-                        <ChevronRight className="rotate-180" size={16} />
-                    </button>
-                    {/* Subtitle only — the nav's active pill already names the
-                        page, and the subtitle (the liturgical day) is the
-                        information worth keeping while reading. Title is the
-                        fallback for pages without one. */}
-                    <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 truncate">
-                        {subtitle ?? title}
-                    </span>
-                    {action && <div className="shrink-0">{action}</div>}
-                </div>,
-                slot
-            )}
-            {/* At rest the header sits directly on the page background. The
-                sub-xl bar only appears once the page scrolls, when content
-                needs separating from the title. While the portal copy is up,
-                inert takes this off-screen original (back orb, action) out of
-                the tab order and accessibility tree — otherwise keyboard and
-                screen-reader users meet every control twice. */}
-            <header inert={isXl && isScrolled} className={isXl
-                ? 'pt-12 pb-5'
-                : `sticky top-0 z-30 transition-all duration-300 ${
-                    collapsed ? 'app-bar app-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
-                }`
-            }>
+            {/* At rest the header sits directly on the page background; the bar
+                appears once the page scrolls, when the content needs separating
+                from the title. */}
+            {/* xl:top-14 clears the global top bar, which is h-14 and sticky at
+                top-0 there; below xl that bar is absent (the tab bar sits at the
+                foot instead) and the header takes the top itself. */}
+            <header className={`sticky top-0 xl:top-14 z-30 transition-all duration-300 ${
+                collapsed ? 'app-bar app-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
+            }`}>
                 {/* One frame for every page (matches the desktop top bar), so
                     the back orb and title never shift between routes. */}
                 <div className="max-w-5xl 2xl:max-w-6xl mx-auto px-6 flex items-center gap-4">
