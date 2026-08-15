@@ -553,16 +553,25 @@ export default function Liturgy() {
     // We depend on both displayHtml (content) and loading (mount gate).
     // Fall back to document.querySelector in case the ref isn't captured yet.
     useEffect(() => {
-        if (loading || !liturgy) return;
+        // Every path that cannot produce a table of contents clears it rather
+        // than leaving the last one standing: a day still loading, a day the
+        // API has none for, or text whose mode yields no headers. Left alone,
+        // yesterday's chips stay on screen and each one scrolls to an anchor
+        // that is no longer in the document.
+        const clear = () => {
+            setSections([]);
+            setActiveSection('');
+        };
+        if (loading || !liturgy) return clear();
         const el = articleRef.current ?? document.querySelector<HTMLElement>('article');
-        if (!el) return;
+        if (!el) return clear();
         const id = window.setTimeout(() => {
             // Both reading sections and prayer/Mass-part headers carry
             // data-toc-label, in document order. data-toc-skip opts a section
             // out — the guided Mass uses it for the Aleluia, which is styled
             // as a reading but too slight to navigate to.
             const headers = el.querySelectorAll<HTMLElement>('[id][data-toc-label]:not([data-toc-skip])');
-            if (headers.length === 0) return;
+            if (headers.length === 0) return clear();
             setSections(Array.from(headers).map((h) => ({
                 id: h.id,
                 label: h.getAttribute('data-toc-label') ?? h.id,
@@ -722,7 +731,10 @@ export default function Liturgy() {
                 it is pinned and always in view, so a second bar at the top of
                 the page would be a shrinking duplicate of something already on
                 screen, and it would cost the reading column its height. */}
-            {!hasSidebar && (
+            {/* The sidebar only exists once the day has loaded, so while it is
+                loading or after it failed there is nothing to carry the title
+                or the way back — the header stands in for it. */}
+            {(!hasSidebar || loading || !liturgy) && (
             <PageHeader
                 title="Missa Diária"
                 subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}

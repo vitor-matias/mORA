@@ -552,7 +552,10 @@ export default function LiturgiaHoras() {
 
             {/* ── Header ───────────────────────────────────────────────────
                 Below lg only — from lg the sidebar carries the title. */}
-            {!hasSidebar && (
+            {/* The sidebar only exists once the hours have loaded, so while it
+                is loading or after it failed there is nothing to carry the
+                title or the way back — the header stands in for it. */}
+            {(!hasSidebar || loading || canonicalHours.length === 0) && (
                 <PageHeader
                     title="Liturgia das Horas"
                     subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay}
