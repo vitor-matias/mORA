@@ -593,6 +593,39 @@ export default function Liturgy() {
         return () => window.removeEventListener('scroll', onScroll);
     }, [sections]);
 
+    // The desktop sidebar is sticky, but it starts lower than it pins, so it
+    // used to slide up and then stop dead a moment into every scroll. Under
+    // autoscroll that reads as a glitch: the reader let go of the page, and
+    // the one panel that should be a fixed point drifts. Pinning it where it
+    // already starts holds it still for the whole page.
+    //
+    // Measured, not hard-coded: the offset is the page header's height, which
+    // moves with the length of the day's title. The container is read rather
+    // than the sidebar itself, because a sticky element's own offsetTop
+    // follows it once it pins.
+    const bodyRef = useRef<HTMLDivElement>(null);
+    const [pinTop, setPinTop] = useState<number | null>(null);
+    useEffect(() => {
+        const el = bodyRef.current;
+        if (!el) return;
+        const measure = () => {
+            const rect = el.getBoundingClientRect();
+            const padTop = parseFloat(getComputedStyle(el).paddingTop) || 0;
+            setPinTop(Math.round(rect.top + window.scrollY + padTop));
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        ro.observe(el);
+        // The header sits above the container, so its own growth moves the
+        // container without resizing it.
+        if (el.parentElement) ro.observe(el.parentElement);
+        window.addEventListener('resize', measure);
+        return () => {
+            ro.disconnect();
+            window.removeEventListener('resize', measure);
+        };
+    }, [loading, liturgy]);
+
     // Keep the active chip in view as the reader moves down the page. The nav's
     // own scrollLeft is set rather than scrollIntoView, which would also move
     // the page vertically and fight the scroll that triggered this.
@@ -734,11 +767,19 @@ export default function Liturgy() {
             </PageHeader>
 
             {/* ── Page body ────────────────────────────────────────────────── */}
-            <div className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
+            <div ref={bodyRef} className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
 
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && liturgy && (
-                    <aside className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                    <aside
+                        // Pinned where it starts, so it never moves — see pinTop.
+                        // Falls back to the old offset until the measurement lands.
+                        style={pinTop === null ? undefined : {
+                            top: `${pinTop}px`,
+                            maxHeight: `calc(100vh - ${pinTop + 16}px)`,
+                        }}
+                        className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4"
+                    >
                         {dateNav}
                         {dateCard}
                         {saintCard}

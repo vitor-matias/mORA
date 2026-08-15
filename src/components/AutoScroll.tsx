@@ -24,12 +24,22 @@ export function AutoScrollButton({ scroll }: { scroll: AutoScroll }) {
 
 /**
  * Speed row for the desktop sidebar. Nothing to adjust while stopped, so it
- * renders only during a scroll (on mobile the speed lives in the FAB pill).
+ * shows only during a scroll (on mobile the speed lives in the FAB pill).
+ *
+ * Hidden rather than unmounted: unmounting made the sidebar grow by the row's
+ * height the instant the scroll started, which shoved the button the reader
+ * had just clicked out from under the cursor. `invisible` keeps the row out of
+ * sight and out of the tab order while holding its space, so pressing play
+ * changes nothing about the layout.
  */
 export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
-    if (!scroll.isScrolling) return null;
     return (
-        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+        <div
+            inert={!scroll.isScrolling}
+            className={`flex items-center justify-between px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800${
+                scroll.isScrolling ? '' : ' invisible'
+            }`}
+        >
             <span className="text-xs text-zinc-500 dark:text-zinc-400">Velocidade</span>
             <div className="flex items-center gap-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg px-1 py-0.5">
                 <button
