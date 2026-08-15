@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { CheckCircle2, RotateCcw } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { CheckCircle2, ChevronLeft, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
@@ -324,6 +324,21 @@ function makeCommentariesCollapsible(html: string): string {
 interface TocEntry { id: string; label: string; }
 
 export default function Liturgy() {
+    const navigate = useNavigate();
+    // From lg the sidebar carries the title, so the header is not rendered at
+    // all rather than hidden with CSS: hidden, it would still portal its back
+    // orb and the day into the global top bar, leaving two back buttons and
+    // the day named twice.
+    const [hasSidebar, setHasSidebar] = useState(
+        () => window.matchMedia('(min-width: 1024px)').matches
+    );
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const onChange = () => setHasSidebar(mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
@@ -735,7 +750,12 @@ export default function Liturgy() {
     return (
         <div className="flex-1 w-full flex flex-col">
 
-            {/* ── Sticky header ────────────────────────────────────────────── */}
+            {/* ── Header ───────────────────────────────────────────────────
+                Below lg only. From lg the sidebar carries the title instead:
+                it is pinned and always in view, so a second bar at the top of
+                the page would be a shrinking duplicate of something already on
+                screen, and it would cost the reading column its height. */}
+            {!hasSidebar && (
             <PageHeader
                 title="Missa Diária"
                 subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
@@ -765,6 +785,7 @@ export default function Liturgy() {
                     </nav>
                 )}
             </PageHeader>
+            )}
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div ref={bodyRef} className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
@@ -778,8 +799,24 @@ export default function Liturgy() {
                             top: `${pinTop}px`,
                             maxHeight: `calc(100vh - ${pinTop + 16}px)`,
                         }}
-                        className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4"
+                        className="hidden lg:flex flex-col gap-4 w-72 xl:w-80 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4"
                     >
+                        {/* The page's title, which from lg lives here rather
+                            than in a header bar above the reading. */}
+                        <div className="flex items-center gap-3 min-w-0">
+                            <button
+                                type="button"
+                                aria-label="Voltar ao início"
+                                onClick={() => navigate('/')}
+                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-1.5"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <h1 className="text-xl font-bold tracking-tight page-title truncate">
+                                Missa Diária
+                            </h1>
+                        </div>
+
                         {dateNav}
                         {dateCard}
                         {saintCard}
