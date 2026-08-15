@@ -4,7 +4,7 @@ import { CheckCircle2, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
-import { buildGuidedMassHtml } from "@/lib/massGuide";
+import { buildGuidedMassHtml, extractMassTexts } from "@/lib/massGuide";
 import { resolveMassOrdo } from "@/lib/massOrdo";
 import { useAppStore, isCompletedToday, clampMassMode } from "@/store/app";
 import type { MassMode } from "@/store/app";
@@ -506,23 +506,17 @@ export default function Liturgy() {
         } else if (massMode === 'missal') {
             result = liturgy.htmlContent;
         } else {
-            const html = liturgy.htmlContent;
-            const startIdx = html.indexOf('<p><strong>LEITURA I');
-            if (startIdx === -1) {
-                result = html;
-            } else {
-                const postStart = html.slice(startIdx);
-                const endMatch = postStart.search(
-                    /<p>(?:<b>(?:Oração sobre as oblatas|Prefácio)|Diz-se o Credo|<strong>(?:Credo|Oração sobre as oblatas))/i
-                );
-                const endIdx = endMatch !== -1 ? startIdx + endMatch : html.length;
-                let extracted = html.substring(startIdx, endIdx);
-                extracted = extracted.replace(
-                    /<p><strong>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i,
-                    ''
-                );
-                result = extracted;
-            }
+            // Taken block by block rather than sliced between a start and an
+            // end marker. The API marks its labels inconsistently — on the
+            // Assumption the offertory prayer carries no <strong> at all and
+            // "Diz-se o Credo" sits inside an <em> — so a marker-based slice
+            // found no end and ran on through the orations and the preface.
+            // The Aleluia is dropped: it belongs to the Mass, not the readings.
+            const { readings } = extractMassTexts(liturgy.htmlContent);
+            const wanted = readings.filter((r) => r.kind !== 'aleluia');
+            result = wanted.length > 0
+                ? wanted.map((r) => r.header + r.body).join('')
+                : liturgy.htmlContent;
         }
         return makeCommentariesCollapsible(result);
         // selectedDateStr is the stable identity of selectedDate

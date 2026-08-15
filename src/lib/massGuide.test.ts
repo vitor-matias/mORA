@@ -122,6 +122,20 @@ describe('extractMassTexts', () => {
         expect(extractMassTexts('')).toEqual({ slots: {}, readings: [] });
     });
 
+    it('separates readings from the orations even on irregular markup', () => {
+        // What the readings-only view is built from. The Assumption marks its
+        // offertory prayer with no <strong> and wraps "Diz-se o Credo" in an
+        // <em>, which is exactly what defeated the old marker-based slice and
+        // let the orations and the preface leak into the readings.
+        const { readings } = extractMassTexts(ASSUMPTION);
+        const readingsHtml = readings.map((r) => r.header + r.body).join('');
+        expect(readingsHtml).toContain('O templo de Deus abriu-se no Céu');
+        expect(readingsHtml).not.toContain('Suba até Vós');            // oblatas
+        expect(readingsHtml).not.toContain('A glória da Assunção');    // prefácio
+        expect(readingsHtml).not.toContain('Todas as gerações');       // comunhão
+        expect(readingsHtml).not.toContain('Diz-se o');                // rubric
+    });
+
     it('keeps only the first Mass when a day carries two', () => {
         // A solemnity's text can hold a vigil Mass and a day Mass, each under
         // its own <h1>. The guided layout renders one celebration, so the
