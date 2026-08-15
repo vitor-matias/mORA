@@ -28,9 +28,14 @@ export function AutoScrollButton({ scroll }: { scroll: AutoScroll }) {
  *
  * Hidden rather than unmounted: unmounting made the sidebar grow by the row's
  * height the instant the scroll started, which shoved the button the reader
- * had just clicked out from under the cursor. `invisible` keeps the row out of
- * sight and out of the tab order while holding its space, so pressing play
- * changes nothing about the layout.
+ * had just clicked out from under the cursor. Hiding it holds that space, so
+ * pressing play changes nothing about the layout.
+ *
+ * `invisible` is visibility:hidden, which already takes the two buttons out of
+ * the tab order and the accessibility tree — measured, not assumed. It has to
+ * stay that: swapping it for `opacity-0` or `sr-only` would leave them
+ * focusable behind an invisible row. `inert` is the belt to that braces, and
+ * also blocks pointer events and find-in-page.
  */
 export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
     return (
