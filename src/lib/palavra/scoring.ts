@@ -24,6 +24,18 @@ import { MAX_GUESSES } from './types';
  */
 export function pointsFor(result: { tries: number; solved: boolean }): number {
     if (!result.solved) return 0;
+    // A guess count outside the board is worth nothing, rather than worth
+    // something absurd: the arithmetic below hands `tries: 0` seven points and
+    // `tries: 99` a negative score, either of which would wreck a total.
+    //
+    // Everything read off a relay is already bounded by entriesFromEvents, so
+    // this is unreachable through the app today. It is here because this file
+    // is the canonical rule rather than the board's private helper — the badge
+    // job on the server scores from it too, and a caller that reaches for the
+    // rule without also reaching for the reader's checks should not be able to
+    // mint a seven-point day by declaring a guess count of zero.
+    if (!Number.isInteger(result.tries)) return 0;
+    if (result.tries < 1 || result.tries > MAX_GUESSES) return 0;
     // One guess is worth MAX_GUESSES; using all MAX_GUESSES is worth 1.
     return MAX_GUESSES + 1 - result.tries;
 }

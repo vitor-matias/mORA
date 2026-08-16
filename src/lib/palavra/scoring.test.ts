@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    MAX_DAILY_POINTS,
     liveThrough,
     monthDays,
     monthOf,
@@ -29,6 +30,28 @@ describe('pointsFor', () => {
     it('pays nothing for a loss, however few guesses it took', () => {
         expect(pointsFor({ tries: 1, solved: false })).toBe(0);
         expect(pointsFor({ tries: 6, solved: false })).toBe(0);
+    });
+
+    // Unreachable through the app — entriesFromEvents bounds `tries` before
+    // anything gets here. Guarded because this file is the canonical rule and
+    // the server's badge job scores from it without going through that reader.
+    it('pays nothing for a guess count off the board', () => {
+        expect(pointsFor({ tries: 0, solved: true })).toBe(0);
+        expect(pointsFor({ tries: -1, solved: true })).toBe(0);
+        expect(pointsFor({ tries: 7, solved: true })).toBe(0);
+        expect(pointsFor({ tries: 99, solved: true })).toBe(0);
+        expect(pointsFor({ tries: 2.5, solved: true })).toBe(0);
+        expect(pointsFor({ tries: NaN, solved: true })).toBe(0);
+    });
+
+    // The property the monthly total rests on: no single day can be worth more
+    // than the ceiling a badge claim is checked against.
+    it('never pays more than a day is worth, nor less than nothing', () => {
+        for (const tries of [-5, 0, 1, 3, 6, 7, 50]) {
+            const points = pointsFor({ tries, solved: true });
+            expect(points).toBeGreaterThanOrEqual(0);
+            expect(points).toBeLessThanOrEqual(MAX_DAILY_POINTS);
+        }
     });
 });
 

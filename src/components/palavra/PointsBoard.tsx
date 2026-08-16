@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Flame, Loader2, Medal } from 'lucide-react';
 import type { MonthlyEntry } from '@/lib/palavra/scoring';
 import { MAX_ARCHIVE_MONTHS, monthOf, shiftMonth } from '@/lib/palavra/scoring';
@@ -219,7 +219,7 @@ function MonthStep({ label, onClick, disabled, children }: {
     label: string;
     onClick: () => void;
     disabled: boolean;
-    children: React.ReactNode;
+    children: ReactNode;
 }) {
     return (
         <button
