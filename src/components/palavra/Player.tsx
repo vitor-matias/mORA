@@ -1,7 +1,14 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { User } from 'lucide-react';
 import { shortPubkey } from './playerLabel';
 import { useTranslations } from '@/lib/i18n';
+import { useAuthStore } from '@/store/auth';
+
+// Lazy, and loaded only once someone taps a name. The sheet pulls in the badge
+// reader and the contact-list writer, neither of which any board needs to
+// render — and this component is on every row of every board.
+const PlayerSheet = lazy(() =>
+    import('./PlayerSheet').then((m) => ({ default: m.PlayerSheet })));
 
 export interface PlayerRef {
     pubkey: string;
@@ -19,8 +26,22 @@ export interface PlayerRef {
 export function Player({ player, you = false }: { player: PlayerRef; you?: boolean }) {
     const t = useTranslations().palavra;
     const [brokenPicture, setBrokenPicture] = useState(false);
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const me = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey ?? null);
+
     return (
-        <span className="flex-1 min-w-0 flex items-center gap-2">
+        <>
+        {/* A button, not a row-level handler: every board renders this inside a
+            list item, and making the name itself the control is what gets it
+            keyboard focus and a role a screen reader can announce. The sheet
+            lives here rather than in each board so all four — daily, monthly,
+            duels, leagues — get it without any wiring. */}
+        <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-label={t.playerOpen(player.name || shortPubkey(player.pubkey))}
+            className="flex-1 min-w-0 flex items-center gap-2 text-left rounded-lg -mx-1 px-1 py-0.5 hover:bg-zinc-500/10 transition-colors"
+        >
             <span
                 aria-hidden="true"
                 className="h-6 w-6 shrink-0 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center"
@@ -66,6 +87,15 @@ export function Player({ player, you = false }: { player: PlayerRef; you?: boole
                 {player.name || shortPubkey(player.pubkey)}
                 {you && <span className="ml-1.5 text-xs font-normal">{t.you}</span>}
             </span>
-        </span>
+        </button>
+        {sheetOpen && (
+            // No fallback: the sheet is a modal over the page, and a spinner
+            // in its place would be a second thing flashing on screen for the
+            // moment the chunk takes to arrive.
+            <Suspense fallback={null}>
+                <PlayerSheet player={player} you={me} onClose={() => setSheetOpen(false)} />
+            </Suspense>
+        )}
+        </>
     );
 }

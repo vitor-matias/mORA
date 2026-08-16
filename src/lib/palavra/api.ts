@@ -53,6 +53,18 @@ if (CONFIGURED_PUBLISHER && !PUBLISHER) {
     rather than passing a demo puzzle off as the real one. */
 export const PALAVRA_IS_MOCK = !PUBLISHER;
 
+/**
+ * The key whose puzzles are *the* puzzles, and whose badges are the real ones.
+ *
+ * Exported for badges.ts, which has the same reason to pin it that this file
+ * does: a NIP-58 award is only worth anything because a known issuer signed
+ * it, and an award is just an event — anyone can publish one naming
+ * themselves. Filtering on this key is the whole difference between a badge
+ * and a self-assigned label. Empty in demo mode, where there is nothing to
+ * trust and nothing is shown.
+ */
+export const PALAVRA_PUBLISHER = PUBLISHER;
+
 export function puzzleDTag(date: string): string {
     return `mora-palavra-p:${date}`;
 }
