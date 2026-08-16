@@ -129,8 +129,17 @@ describe('liveThrough', () => {
     // whose last game was the day before that, i.e. someone who has already
     // missed a day. It has to be measured against the real day.
     it('does not follow the query when today is withheld', () => {
-        // Query stopped at the 15th; a run last seen on the 14th is over.
-        expect(liveThrough('2026-08', '2026-08-16')).not.toBe('2026-08-15');
+        // The query stopped on the 15th, so the newest row is the 14th. Judged
+        // against the real day — the 16th — that run is over. Asserted through
+        // tallyMonth because that is where the bug showed: a negative
+        // assertion on liveThrough alone restates the case above and cannot
+        // fail on its own.
+        const through = liveThrough('2026-08', '2026-08-16');
+        const rows = tallyMonth(
+            [{ pubkey: 'a'.repeat(64), date: '2026-08-14', tries: 3, solved: true, streak: 7 }],
+            through,
+        );
+        expect(rows[0].streak).toBeUndefined();
     });
 });
 

@@ -171,10 +171,6 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                                         beside it would sit at a different x on
                                         every row that has no run, and most
                                         rows have no run. */}
-                                    {/* Blank rather than a zero when the run is
-                                        over or was never declared — the column
-                                        still holds, so the days beside it stay
-                                        in line. */}
                                     <span className="shrink-0 w-7 text-right tabular-nums text-xs text-zinc-500">
                                         {row.streak !== undefined && (
                                             <>

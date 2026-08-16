@@ -203,8 +203,16 @@ describe('the d/date agreement guard', () => {
         expect(entriesFromEvents([event({ dTag: resultDTag('2026-08-01') })], DATE)).toEqual([]);
     });
 
-    it('drops a result with no d tag at all', () => {
+    it('drops a result whose day key carries no date', () => {
         expect(entriesFromEvents([event({ dTag: 'mora-palavra-r:' })], DATE)).toEqual([]);
+    });
+
+    // The other half: a `d` tag that isn't there at all, where tagValue
+    // returns undefined rather than a string that fails to match. The fixture
+    // always emits one, so this is the only way to reach that branch.
+    it('drops a result with no d tag at all', () => {
+        const bare: NostrEvent = { ...event(), tags: [['date', DATE]] };
+        expect(entriesFromEvents([bare], DATE)).toEqual([]);
     });
 
     // The attack the guard exists for: one game, published beneath a week of

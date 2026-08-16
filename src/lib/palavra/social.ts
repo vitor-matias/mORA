@@ -165,20 +165,99 @@ export async function fetchDailyLeaderboard(date: string, limit = 50): Promise<L
 const MONTH_CHUNK_DAYS = 7;
 const MONTH_CHUNK_LIMIT = 500;
 
-/** One filter per week of the month. NIP-01 applies `limit` per filter, so
-    this is a single round trip with five smaller budgets rather than one big
-    one. */
-function monthFilters(days: string[]): NostrFilter[] {
-    const filters: NostrFilter[] = [];
-    for (let from = 0; from < days.length; from += MONTH_CHUNK_DAYS) {
-        filters.push({
-            kinds: [KIND_APP_STATE],
-            '#d': days.slice(from, from + MONTH_CHUNK_DAYS).map(resultDTag),
-            '#t': [PALAVRA_TOPIC],
-            limit: MONTH_CHUNK_LIMIT,
-        });
+/** The budget a single day gets when its week came back full and has to be
+    read again. Deliberately the daily board's own limit, so a day goes short
+    here exactly when it would go short there — no failure mode the rest of
+    the app doesn't already have. */
+const MONTH_DAY_LIMIT = 200;
+
+function inGroupsOf<T>(items: T[], size: number): T[][] {
+    const groups: T[][] = [];
+    for (let from = 0; from < items.length; from += size) {
+        groups.push(items.slice(from, from + size));
     }
-    return filters;
+    return groups;
+}
+
+/** One filter per group of days. NIP-01 applies `limit` per filter, so a
+    month is a single round trip with several smaller budgets rather than one
+    big one. */
+function filtersFor(groups: string[][], limit: number): NostrFilter[] {
+    return groups.map((group) => ({
+        kinds: [KIND_APP_STATE],
+        '#d': group.map(resultDTag),
+        '#t': [PALAVRA_TOPIC],
+        limit,
+    }));
+}
+
+/** How many of `events` belong to each group, by the `d` tag the relay
+    matched on. */
+function countPerGroup(events: NostrEvent[], groups: string[][]): number[] {
+    const groupOf = new Map<string, number>();
+    groups.forEach((group, index) => {
+        for (const day of group) groupOf.set(resultDTag(day), index);
+    });
+
+    const counts = new Array<number>(groups.length).fill(0);
+    for (const event of events) {
+        const dTag = tagValue(event, 'd');
+        const index = dTag === undefined ? undefined : groupOf.get(dTag);
+        if (index !== undefined) counts[index]++;
+    }
+    return counts;
+}
+
+function queryDays(groups: string[][], limit: number): Promise<NostrEvent[]> {
+    return pool.query(filtersFor(groups, limit), {
+        signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS),
+    });
+}
+
+/**
+ * Every result event for a month, re-reading any week that came back full.
+ *
+ * A filter that returns its whole limit is a filter that may have been cut
+ * short, and truncation keeps the *newest* events — so a busy week silently
+ * loses its earliest days, the board still renders, and the total is quietly
+ * wrong. That is the worst shape a bug can take on a ranking, and worst of all
+ * at month end, which is when a podium is read off it.
+ *
+ * So a full week is not trusted: it is asked for again a day at a time, where
+ * each day gets the daily board's own budget. Costs one extra round trip, only
+ * for the weeks that need it, and only once the game is busy enough to have
+ * the problem at all.
+ *
+ * A day that *still* comes back full is past what this can fix by narrowing —
+ * there is nothing smaller than a day to split into — so it is reported rather
+ * than passed off as complete.
+ */
+async function fetchMonthEvents(days: string[]): Promise<NostrEvent[]> {
+    const weeks = inGroupsOf(days, MONTH_CHUNK_DAYS);
+    const events = await queryDays(weeks, MONTH_CHUNK_LIMIT);
+
+    const perWeek = countPerGroup(events, weeks);
+    const full = weeks.filter((_, index) => perWeek[index] >= MONTH_CHUNK_LIMIT);
+    if (full.length === 0) return events;
+
+    const singles = full.flat().map((day) => [day]);
+    const rest = await queryDays(singles, MONTH_DAY_LIMIT);
+
+    const perDay = countPerGroup(rest, singles);
+    const stillFull = singles
+        .filter((_, index) => perDay[index] >= MONTH_DAY_LIMIT)
+        .flat();
+    if (stillFull.length > 0) {
+        console.warn(
+            'The monthly ranking may be missing results for '
+            + `${stillFull.join(', ')}: more were published on those days than a `
+            + 'single relay query returns. Totals for them are a floor, not a count.',
+        );
+    }
+
+    // Both reads together. Overlap is fine — the tally counts one result per
+    // author per day however many times it arrives.
+    return [...events, ...rest];
 }
 
 /**
@@ -221,9 +300,7 @@ export async function fetchMonthlyPoints(
 
     let events: NostrEvent[];
     try {
-        events = await pool.query(monthFilters(days), {
-            signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS),
-        });
+        events = await fetchMonthEvents(days);
     } catch (error) {
         console.warn('Could not load the monthly ranking.', error);
         return [];

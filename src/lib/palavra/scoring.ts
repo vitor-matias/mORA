@@ -166,12 +166,15 @@ function liveStreak(newest: DatedResult, through: string): number | undefined {
  * paid for the same game thirty-one times. The daily board can't be attacked
  * that way because it only ever asks for one `d` tag. This one can.
  *
- * `liveThrough` is the last day of the window — today for the current month,
- * the last of the month for an archived one.
+ * `through` is the last day of the window — today for the current month, the
+ * last of the month for an archived one. Named so rather than `liveThrough`,
+ * which is the exported function that computes it: as a parameter it shadowed
+ * that function inside this body, so a later edit calling `liveThrough(month,
+ * today)` here would have been calling a string.
  */
 export function tallyMonth(
     results: DatedResult[],
-    liveThrough: string,
+    through: string,
     limit = 50,
 ): MonthlyEntry[] {
     const counted = new Set<string>();
@@ -198,7 +201,7 @@ export function tallyMonth(
 
     return [...totals]
         .map(([pubkey, running]) => {
-            const streak = liveStreak(running.newest, liveThrough);
+            const streak = liveStreak(running.newest, through);
             return {
                 pubkey,
                 points: running.points,
