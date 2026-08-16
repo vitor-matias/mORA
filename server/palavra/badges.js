@@ -60,6 +60,10 @@ const PODIUM = 3;
 const CHUNK_DAYS = 7;
 const CHUNK_LIMIT = 500;
 
+/** The budget a single day gets when its week came back full — the daily
+    board's own limit, as in social.ts. */
+const DAY_LIMIT = 200;
+
 const MONTH_NAMES = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -191,21 +195,77 @@ async function broadcast(event) {
  */
 export async function podiumFor(month) {
     const days = monthDays(month);
-    const filters = [];
-    for (let from = 0; from < days.length; from += CHUNK_DAYS) {
-        filters.push({
-            kinds: [KIND_RESULT],
-            '#d': days.slice(from, from + CHUNK_DAYS).map(resultDTag),
-            '#t': [PALAVRA_TOPIC],
-            limit: CHUNK_LIMIT,
-        });
-    }
-
-    const events = await query(filters);
+    const { events, incomplete } = await resultEventsFor(days);
     const results = days.flatMap((date) =>
         entriesFromEvents(events, date).map((entry) => ({ ...entry, date })));
 
-    return tallyMonth(results, liveThrough(month, utcToday()), PODIUM);
+    return {
+        podium: tallyMonth(results, liveThrough(month, utcToday()), PODIUM),
+        incomplete,
+    };
+}
+
+function inGroupsOf(items, size) {
+    const groups = [];
+    for (let from = 0; from < items.length; from += size) groups.push(items.slice(from, from + size));
+    return groups;
+}
+
+function filtersFor(groups, limit) {
+    return groups.map((group) => ({
+        kinds: [KIND_RESULT],
+        '#d': group.map(resultDTag),
+        '#t': [PALAVRA_TOPIC],
+        limit,
+    }));
+}
+
+/** How many of `events` belong to each group, by the `d` tag matched on. */
+function countPerGroup(events, groups) {
+    const groupOf = new Map();
+    groups.forEach((group, index) => {
+        for (const day of group) groupOf.set(resultDTag(day), index);
+    });
+    const counts = new Array(groups.length).fill(0);
+    for (const event of events) {
+        const dTag = event.tags?.find((t) => t[0] === 'd')?.[1];
+        const index = dTag === undefined ? undefined : groupOf.get(dTag);
+        if (index !== undefined) counts[index]++;
+    }
+    return counts;
+}
+
+/**
+ * Every result event for a month, re-reading any week that came back full,
+ * and naming the days it still could not read whole.
+ *
+ * The same self-healing read the board does — see fetchMonthEvents in
+ * social.ts — and here it matters more. A filter returning its whole limit may
+ * have been cut short, and truncation keeps the *newest* events, so a busy
+ * week silently loses its earliest days. On the board that is a total slightly
+ * wrong for an afternoon. Here it is a permanent public badge on the wrong
+ * person's profile, decided in a job nobody watches run.
+ *
+ * So `incomplete` is not a warning to log and move past: the caller refuses to
+ * award on it. A month that cannot be read whole has no podium worth minting.
+ */
+async function resultEventsFor(days) {
+    const weeks = inGroupsOf(days, CHUNK_DAYS);
+    const events = await query(filtersFor(weeks, CHUNK_LIMIT));
+
+    const perWeek = countPerGroup(events, weeks);
+    const full = weeks.filter((_, index) => perWeek[index] >= CHUNK_LIMIT);
+    if (full.length === 0) return { events, incomplete: [] };
+
+    const singles = full.flat().map((day) => [day]);
+    const rest = await query(filtersFor(singles, DAY_LIMIT));
+
+    const perDay = countPerGroup(rest, singles);
+    const incomplete = singles.filter((_, index) => perDay[index] >= DAY_LIMIT).flat();
+
+    // Overlap between the two reads is fine: query() dedupes by event id, and
+    // the tally counts one result per author per day regardless.
+    return { events: [...events, ...rest], incomplete };
 }
 
 /** Which places this publisher has already awarded for a month. */
@@ -272,7 +332,7 @@ async function main() {
 
     // Read before signing: a dry run of an unfinished month shouldn't need the
     // publisher's key at all, since it never publishes.
-    const podium = await podiumFor(month);
+    const { podium, incomplete } = await podiumFor(month);
     if (podium.length === 0) {
         console.log(`No results found for ${month}; nothing to award.`);
         return;
@@ -283,9 +343,25 @@ async function main() {
         console.log(`  ${i + 1}. ${row.pubkey.slice(0, 12)}…  ${row.points} pts over ${row.played} days`);
     });
 
+    if (incomplete.length > 0) {
+        console.error(
+            `\nCould not read ${incomplete.join(', ')} in full: more results were `
+            + 'published on those days than a relay query returns, so the totals '
+            + 'above are a floor and the order may be wrong.',
+        );
+    }
+
     if (dryRun) {
         console.log(`\n--dry-run: nothing published.${unfinished ? ' This month is still running.' : ''}`);
         return;
+    }
+
+    // Refused, not warned. The board can render a total that is slightly off
+    // for an afternoon; a badge is permanent, public, and names a person. If
+    // the month cannot be read whole there is no podium worth minting from it.
+    if (incomplete.length > 0) {
+        console.error('Not awarding a podium computed from an incomplete month.');
+        process.exit(1);
     }
 
     const secretKey = loadSecretKey();
