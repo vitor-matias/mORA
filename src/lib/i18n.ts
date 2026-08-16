@@ -1,3 +1,12 @@
+/** Month names, for the monthly ranking's header. Written out rather than
+    formatted through Intl: the whole UI is Portuguese, so a runtime locale
+    lookup would only add a way for the header to come back in the browser's
+    language instead of the app's. */
+const MONTH_NAMES = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
 const translations = {
     home: {
         greeting: "Bom dia.",
@@ -110,11 +119,18 @@ const translations = {
         publishFailed: "Não foi possível publicar",
 
         tabBoard: "Do dia",
-        tabStreaks: "Seguidos",
-        loadingStreaks: "A carregar as sequências…",
-        emptyStreaks: "Ainda ninguém tem uma sequência a decorrer.",
-        streaksLegend: "Dias seguidos a acertar, entre quem jogou hoje ou ontem. O número é publicado por cada jogador; ✓ marca os que foram confirmados nos relays, por amostragem dos dias da sequência.",
-        streakVerified: "Sequência confirmada nos relays",
+        tabMonth: "Do mês",
+        loadingMonth: "A somar os pontos do mês…",
+        emptyMonth: "Ainda ninguém pontuou este mês.",
+        emptyMonthArchive: "Ninguém pontuou neste mês.",
+        emptyMonthFirstDay: "O mês começa hoje. Termina o jogo para ver a classificação.",
+        monthLegend: "Cada jogo vale 6 pontos se acertar à primeira, 5 à segunda, e assim por diante até 1 à sexta. Um jogo perdido não vale pontos, e a classificação é a soma do mês — quem joga mais dias soma mais. 🔥 é a sequência de dias seguidos a acertar: é publicada por cada jogador e não conta para a classificação.",
+        monthLabel: (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`,
+        points: (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`,
+        pointsAbbr: "pts",
+        streakLabel: (n: number) => `Sequência de ${n} ${n === 1 ? "dia" : "dias"}`,
+        prevMonth: "Mês anterior",
+        nextMonth: "Mês seguinte",
         tabDuels: "Duelos",
         tabLeagues: "Ligas",
         notSharing: "Está a ver os resultados dos outros. Para aparecer nas classificações, ative a partilha em Perfil.",
