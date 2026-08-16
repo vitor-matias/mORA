@@ -10,7 +10,9 @@
 // both halves, the way publish.js already imports relays.json rather than
 // restating it.
 
-import { MAX_GUESSES } from './types';
+// Extension spelled out: Node's ESM resolver does not guess it, and the badge
+// job imports this file directly. See the note in results.ts.
+import { MAX_GUESSES } from './types.ts';
 
 /**
  * What one finished game is worth.

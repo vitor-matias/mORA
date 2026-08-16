@@ -301,6 +301,50 @@ schedule so recent days are re-pushed; add a relay that keeps history; or pin
 the events with a paid relay. The puzzle being deterministic means nothing is
 ever truly lost — it can always be republished.
 
+## Monthly podium badges
+
+`badges.js` awards NIP-58 badges to the top three of a finished month.
+
+```bash
+npm run badges-dry-run          # standings, publishes nothing
+npm run badges                  # award last month
+node --experimental-strip-types badges.js 2026-07
+```
+
+It signs with the same `PALAVRA_NSEC` that signs the puzzles, and that is the
+point: a badge means something only because a *known* key issued it, and
+clients already pin this one. A badge anyone could mint for themselves would be
+worth nothing, so there is no client-side version of this.
+
+Per place, per month, two events:
+
+| Kind | What | `d` / `a` |
+| --- | --- | --- |
+| 30009 | badge definition | `mora-palavra-2026-07-1` |
+| 8 | the award, naming one winner | `30009:<publisher>:mora-palavra-2026-07-1` |
+
+A third, kind 30008, is deliberately absent. NIP-58 has the **recipient**
+publish that to show a badge on their profile, so it belongs to the app and to
+the winner's choice. Nothing here writes to anyone else's profile.
+
+Definitions carry no `image` yet. NIP-58 allows that, and because a definition
+is addressable, art can be added later without reissuing a single award — the
+awards point at the coordinate, not at a picture. Most clients will render a
+plain tile until then.
+
+**Why it imports from `src/`.** The podium is computed with the app's own
+reader and the app's own scoring rule — `results.ts` and `scoring.ts` — not
+with copies of them. A second implementation of "who won" is a badge on the
+wrong profile the first time the two disagree, handed out silently, once a
+month, to someone who then has it forever. That is why those two modules import
+nothing that needs a browser, and why this runs under
+`--experimental-strip-types`.
+
+**Two things it refuses to do**, both because an award is a permanent public
+event naming a person and there is no unsaying it: it will not award a month
+that has not finished (`--dry-run` still shows the standings), and it will not
+award a place twice — it checks the relays for an existing award first.
+
 ## The verse pool
 
 `verses.js`, text taken verbatim from the **Bíblia dos Capuchinhos** corpus at

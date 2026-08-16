@@ -15,10 +15,9 @@ import { KIND_APP_STATE, RELAY_QUERY_TIMEOUT_MS, fetchProfileCards, toProfileCar
 import { currentPubkey, useAuthStore } from '@/store/auth';
 import { relaysForAuthors } from '@/lib/relayList';
 import { formatUTCDate } from '@/lib/format';
-import { PALAVRA_TOPIC, resultDTag } from './nostr';
-import { meetsPow } from './pow';
+import { PALAVRA_TOPIC, entriesFromEvents, resultDTag, tagValue } from './results';
 import { liveThrough, monthDays, tallyMonth, type DatedResult, type MonthlyEntry } from './scoring';
-import { DUEL_DAYS, MAX_GUESSES, type LeaderboardEntry } from './types';
+import { DUEL_DAYS, type LeaderboardEntry } from './types';
 
 const KIND_CONTACTS = 3;
 
@@ -26,66 +25,11 @@ const KIND_CONTACTS = 3;
     filter stays inside what relays accept. */
 const MAX_FOLLOWS = 300;
 
-/** Roughly thirty years of consecutive days. High enough never to clip a real
-    player, low enough that a fabricated number is obviously refused rather
-    than printed. */
-const MAX_DECLARED_STREAK = 11_000;
-
-function tagValue(event: { tags: string[][] }, name: string): string | undefined {
-    return event.tags.find((tag) => tag[0] === name)?.[1];
-}
-
-/**
- * Read one published result.
- *
- * Every number here is self-reported. The server issues puzzles and nothing
- * else, so nobody countersigns a result and there is no way to tell a real
- * one from a fabricated one. What is enforced is the NIP-13 proof of work on
- * the event id: that makes minting a thousand fake entries expensive, without
- * pretending to say anything about whether any single one is honest.
- */
-export function entriesFromEvents(events: NostrEvent[], date: string): LeaderboardEntry[] {
-    return events.flatMap((event) => {
-        if (tagValue(event, 'date') !== date) return [];
-        // The `d` tag has to agree with the `date` tag.
-        //
-        // They are two different fields and only the first is addressable, so
-        // one author gets one event per `d` — and, without this, as many
-        // events *claiming* a given date as they care to publish under other
-        // day keys. Any reader that asks for more than one `d` at a time can
-        // then be paid repeatedly for the same game: the monthly tally asks
-        // for thirty-one, and duels for thirty. The daily board and league
-        // standings ask for exactly one, which is why this was invisible until
-        // there was a board that summed days.
-        if (tagValue(event, 'd') !== resultDTag(date)) return [];
-        // The spam gate. An unmined event is not listed — see pow.ts for what
-        // this does and does not buy.
-        if (!meetsPow(event.id)) return [];
-        try {
-            const { tries, solved, ms, streak } = JSON.parse(event.content) as Record<string, unknown>;
-            if (!Number.isInteger(tries) || (tries as number) < 1 || (tries as number) > MAX_GUESSES) return [];
-            if (typeof solved !== 'boolean') return [];
-            if (!Number.isFinite(ms) || (ms as number) < 0) return [];
-            // Bounded rather than trusted. It is a self-declared number from a
-            // stranger's event: anything absurd is dropped instead of being
-            // rendered, which is the cheapest defence against a board topped
-            // by someone claiming nine thousand days.
-            const declared = Number.isInteger(streak) && (streak as number) >= 0
-                && (streak as number) <= MAX_DECLARED_STREAK
-                ? streak as number
-                : undefined;
-            return [{
-                pubkey: event.pubkey,
-                tries: tries as number,
-                solved,
-                ms: ms as number,
-                ...(declared === undefined ? {} : { streak: declared }),
-            }];
-        } catch {
-            return [];
-        }
-    });
-}
+// Re-exported so the boards, the leagues module and the tests keep importing
+// the reader from here. It lives in results.ts because the badge job in
+// server/palavra needs the same gate and cannot import this file — see the
+// note at the top of results.ts.
+export { entriesFromEvents };
 
 export type RankableResult = Pick<LeaderboardEntry, 'tries' | 'solved' | 'ms'>;
 

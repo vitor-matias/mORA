@@ -47,15 +47,12 @@ import { meetsPow, minePalavraEvent } from './pow';
 /** The private cross-device log. */
 export const D_PALAVRA_STATE = 'mora-palavra-state';
 
-/** One public result per day. Addressable, so republishing replaces rather
-    than duplicating, and a relay only ever holds one per author per date. */
-export function resultDTag(date: string): string {
-    return `mora-palavra-r:${date}`;
-}
-
-/** The hashtag every public Palavra event carries, so they can be found
-    without knowing who wrote them. */
-export const PALAVRA_TOPIC = 'morapalavra';
+// The day key and the hashtag now live in results.ts, with the reader that
+// depends on them, so Node can import all three without dragging the signer
+// and the stores in. Imported for use below and re-exported, because this is
+// where the writer half looks for them.
+import { PALAVRA_TOPIC, resultDTag } from './results';
+export { PALAVRA_TOPIC, resultDTag };
 
 // One sync at a time; overlapping callers await the same run — the same
 // arrangement the prayer-streak sync uses, and for the same reason: sign-in
