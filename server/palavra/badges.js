@@ -103,16 +103,57 @@ const PLACE_NAMES = ['1.º lugar', '2.º lugar', '3.º lugar'];
 const configuredAppUrl = (process.env.PALAVRA_APP_URL || process.env.BASE_URL || '').trim();
 const APP_URL = configuredAppUrl ? configuredAppUrl.replace(/\/*$/, '/') : '';
 
-/** The art tags for a place, or none when no app URL is configured.
-    NIP-58 allows a definition without an image, and a definition with a
-    *broken* image URL is worse than one with none — a client that caches the
-    404 shows a broken tile for as long as it keeps the entry. */
-function artTags(place) {
-    if (!APP_URL) return [];
-    return [
-        ['image', `${APP_URL}badges/palavra-${place}.png`, '512x512'],
-        ['thumb', `${APP_URL}badges/palavra-${place}-thumb.png`, '128x128'],
-    ];
+const artUrls = (place) => ({
+    image: `${APP_URL}badges/palavra-${place}.png`,
+    thumb: `${APP_URL}badges/palavra-${place}-thumb.png`,
+});
+
+/**
+ * The art tags for each place, dropped for any whose files aren't actually
+ * being served yet.
+ *
+ * NIP-58 allows a definition with no image, and a definition carrying a
+ * *broken* one is worse than that: clients cache what they fetch, 404s
+ * included, so a badge published a few minutes before its art went live can
+ * show an empty tile in someone's client long after the file appears. Checking
+ * first costs one HEAD per URL, once a month.
+ *
+ * This is not a hypothetical ordering worry. The art is served by the app's own
+ * deployment, so the very first run after a release is exactly the moment the
+ * two can disagree.
+ */
+async function artTagsByPlace(places) {
+    if (!APP_URL) return new Map(places.map((place) => [place, []]));
+
+    const reachable = async (url) => {
+        try {
+            const response = await fetch(url, {
+                method: 'HEAD',
+                signal: AbortSignal.timeout(RELAY_TIMEOUT_MS),
+            });
+            return response.ok;
+        } catch {
+            // Unreachable is not "missing", but it is not "confirmed serving"
+            // either, and only the latter justifies baking the URL into a
+            // permanent event.
+            return false;
+        }
+    };
+
+    const checked = await Promise.all(places.map(async (place) => {
+        const { image, thumb } = artUrls(place);
+        const [imageOk, thumbOk] = await Promise.all([reachable(image), reachable(thumb)]);
+        if (!imageOk || !thumbOk) {
+            console.warn(
+                `The art for place ${place} is not being served yet (${image}), `
+                + 'so its badge is published without an image. Because a definition is '
+                + 'addressable, republishing later adds the art without reissuing the award.',
+            );
+            return [place, []];
+        }
+        return [place, [['image', image, '512x512'], ['thumb', thumb, '128x128']]];
+    }));
+    return new Map(checked);
 }
 
 const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
@@ -313,7 +354,7 @@ async function alreadyAwarded(pubkey, month) {
     return awarded;
 }
 
-function definitionEvent(month, place, secretKey) {
+function definitionEvent(month, place, art, secretKey) {
     return finalizeEvent({
         kind: KIND_BADGE_DEFINITION,
         created_at: Math.floor(Date.now() / 1000),
@@ -323,7 +364,7 @@ function definitionEvent(month, place, secretKey) {
             ['d', badgeDTag(month, place)],
             ['name', badgeName(month)],
             ['description', `${PLACE_NAMES[place - 1]} da classificação mensal da Palavra Bíblica do Dia`],
-            ...artTags(place),
+            ...art,
             ['t', PALAVRA_TOPIC],
         ],
         content: '',
@@ -392,6 +433,13 @@ async function main() {
         );
     }
 
+    const art = await artTagsByPlace(podium.map((_, index) => index + 1));
+    const withArt = [...art.values()].filter((tags) => tags.length > 0).length;
+    console.log(
+        `\n${withArt} of ${podium.length} badges would carry art`
+        + `${APP_URL ? '' : ' (no app URL configured)'}.`,
+    );
+
     if (dryRun) {
         console.log(
             `\n--dry-run: nothing published.${unfinished ? ' This month is still running.' : ''}`
@@ -423,7 +471,7 @@ async function main() {
         // Definition first. An award pointing at a coordinate no relay holds
         // renders as a nameless badge in every client, so the thing it names
         // has to exist before anything points at it.
-        if (!await broadcast(definitionEvent(month, place, secretKey))) {
+        if (!await broadcast(definitionEvent(month, place, art.get(place) ?? [], secretKey))) {
             console.error(`Could not publish the definition for place ${place}; not awarding it.`);
             failed = true;
             continue;
