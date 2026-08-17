@@ -134,3 +134,110 @@ export async function follow(me: string, pubkey: string): Promise<void> {
     }
     await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
 }
+
+// ── Following in the background ──────────────────────────────────────────
+//
+// `follow` above is the honest, slow version: it reads the whole contact list,
+// waits for enough relays to answer, and refuses rather than guess. On a good
+// day that is a second; with one relay in the set never answering it is the
+// full read timeout. Nobody should watch a button for twelve seconds to find
+// out whether they followed someone.
+//
+// So the button stops waiting for it. The tap queues the work and returns, and
+// the UI says "following" straight away — a promise the queue then keeps,
+// retrying a failed publish rather than dropping it. If it runs out of
+// attempts the UI is told, and only then does anyone see a failure.
+//
+// Serial, not parallel. Following is a read-modify-write over one event holding
+// the whole list, so two running at once each read the list without the other's
+// name and whichever publishes last erases the other. A queue of one at a time
+// is what makes "follow three people quickly" mean three people.
+
+/** Attempts before a queued follow is given up on, and how long to wait
+    between them. Generous rather than quick: nothing is blocked on this, and a
+    relay that is briefly unreachable usually isn't for long. */
+const FOLLOW_ATTEMPTS = 5;
+const FOLLOW_BACKOFF_MS = [2_000, 5_000, 15_000, 45_000];
+
+const key = (me: string, pubkey: string) => `${me}:${pubkey}`;
+
+const queued: { me: string; pubkey: string }[] = [];
+const inFlight = new Set<string>();
+const failedFollows = new Set<string>();
+const listeners = new Set<() => void>();
+let draining = false;
+
+function announce() {
+    for (const listener of listeners) listener();
+}
+
+/** Told whenever a queued follow starts, lands or gives up, so a sheet that is
+    open when the answer arrives can stop claiming success. */
+export function onFollowsChanged(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+}
+
+/**
+ * What the UI should show for a follow it may have queued, without asking the
+ * network. Survives the sheet being closed and reopened, because the queue
+ * outlives the component.
+ */
+export function queuedFollowState(me: string, pubkey: string): 'pending' | 'failed' | null {
+    const id = key(me, pubkey);
+    if (inFlight.has(id)) return 'pending';
+    if (failedFollows.has(id)) return 'failed';
+    return null;
+}
+
+/** Queue a follow and return at once. Never throws: the outcome arrives
+    through onFollowsChanged, not from here. */
+export function queueFollow(me: string, pubkey: string): void {
+    const id = key(me, pubkey);
+    if (inFlight.has(id)) return;
+    failedFollows.delete(id);
+    inFlight.add(id);
+    queued.push({ me, pubkey });
+    announce();
+    void drain();
+}
+
+const wait = (ms: number) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+async function drain(): Promise<void> {
+    if (draining) return;
+    draining = true;
+    try {
+        while (queued.length > 0) {
+            const job = queued[0];
+            const id = key(job.me, job.pubkey);
+            let landed = false;
+
+            for (let attempt = 0; attempt < FOLLOW_ATTEMPTS && !landed; attempt++) {
+                try {
+                    // A fresh read every time. The list may have moved since
+                    // the last attempt — including by an earlier job in this
+                    // very queue — and retrying with a stale copy is how a
+                    // retry undoes the thing before it.
+                    await follow(job.me, job.pubkey);
+                    landed = true;
+                } catch (error) {
+                    const last = attempt === FOLLOW_ATTEMPTS - 1;
+                    console.warn(
+                        `Could not follow (attempt ${attempt + 1} of ${FOLLOW_ATTEMPTS})`
+                        + `${last ? ', giving up' : ', will retry'}.`,
+                        error,
+                    );
+                    if (!last) await wait(FOLLOW_BACKOFF_MS[attempt] ?? 45_000);
+                }
+            }
+
+            queued.shift();
+            inFlight.delete(id);
+            if (!landed) failedFollows.add(id);
+            announce();
+        }
+    } finally {
+        draining = false;
+    }
+}

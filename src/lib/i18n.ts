@@ -154,7 +154,6 @@ const translations = {
         badgesPublishFailed: "Não foi possível publicar. Tenta outra vez.",
         followToDuel: "Seguir",
         followingAlready: "Já segues",
-        followSaving: "A guardar…",
         followFailed: "Não foi possível seguir. Tenta outra vez.",
         followWhy: "Os duelos comparam-te com quem segues, nos dias em que ambos jogam.",
         signInFollow: "Entra com uma identidade Nostr em Perfil para seguires e duelares.",
