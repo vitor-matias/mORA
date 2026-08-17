@@ -9,13 +9,21 @@
 // write relays. For the open daily board it cannot — nobody knows who to look
 // for until the events come back.
 
-import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
 import { KIND_APP_STATE, RELAY_QUERY_TIMEOUT_MS, fetchProfileCards, toProfileCard } from '@/lib/nostr';
 import { currentPubkey, useAuthStore } from '@/store/auth';
 import { relaysForAuthors } from '@/lib/relayList';
 import { formatUTCDate } from '@/lib/format';
-import { PALAVRA_TOPIC, entriesFromEvents, resultDTag, tagValue } from './results';
+import {
+    PALAVRA_TOPIC,
+    countPerGroup,
+    entriesFromEvents,
+    filtersFor,
+    inGroupsOf,
+    resultDTag,
+    tagValue,
+} from './results';
 import { liveThrough, monthDays, tallyMonth, type DatedResult, type MonthlyEntry } from './scoring';
 import { DUEL_DAYS, type LeaderboardEntry } from './types';
 
@@ -114,43 +122,6 @@ const MONTH_CHUNK_LIMIT = 500;
     here exactly when it would go short there — no failure mode the rest of
     the app doesn't already have. */
 const MONTH_DAY_LIMIT = 200;
-
-function inGroupsOf<T>(items: T[], size: number): T[][] {
-    const groups: T[][] = [];
-    for (let from = 0; from < items.length; from += size) {
-        groups.push(items.slice(from, from + size));
-    }
-    return groups;
-}
-
-/** One filter per group of days. NIP-01 applies `limit` per filter, so a
-    month is a single round trip with several smaller budgets rather than one
-    big one. */
-function filtersFor(groups: string[][], limit: number): NostrFilter[] {
-    return groups.map((group) => ({
-        kinds: [KIND_APP_STATE],
-        '#d': group.map(resultDTag),
-        '#t': [PALAVRA_TOPIC],
-        limit,
-    }));
-}
-
-/** How many of `events` belong to each group, by the `d` tag the relay
-    matched on. */
-function countPerGroup(events: NostrEvent[], groups: string[][]): number[] {
-    const groupOf = new Map<string, number>();
-    groups.forEach((group, index) => {
-        for (const day of group) groupOf.set(resultDTag(day), index);
-    });
-
-    const counts = new Array<number>(groups.length).fill(0);
-    for (const event of events) {
-        const dTag = tagValue(event, 'd');
-        const index = dTag === undefined ? undefined : groupOf.get(dTag);
-        if (index !== undefined) counts[index]++;
-    }
-    return counts;
-}
 
 function queryDays(groups: string[][], limit: number): Promise<NostrEvent[]> {
     return pool.query(filtersFor(groups, limit), {

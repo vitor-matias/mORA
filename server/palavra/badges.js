@@ -37,15 +37,18 @@ import { nip19 } from 'nostr-tools';
 // the wrong person the first time the two disagree, and it would be handed out
 // silently, once a month, to someone who would then have it forever. Node
 // reads these with --experimental-strip-types; see package.json.
-import { PALAVRA_TOPIC, entriesFromEvents, resultDTag } from '../../src/lib/palavra/results.ts';
+import {
+    countPerGroup,
+    entriesFromEvents,
+    filtersFor,
+    inGroupsOf,
+} from '../../src/lib/palavra/results.ts';
 import { liveThrough, monthDays, tallyMonth } from '../../src/lib/palavra/scoring.ts';
 
 const configuredRelays = (process.env.PALAVRA_RELAYS ?? '')
     .split(',').map((r) => r.trim()).filter(Boolean);
 const RELAYS = configuredRelays.length > 0 ? configuredRelays : DEFAULT_RELAYS;
 
-/** NIP-78 application data — the kind results are published under. */
-const KIND_RESULT = 30078;
 /** NIP-58. */
 const KIND_BADGE_DEFINITION = 30009;
 const KIND_BADGE_AWARD = 8;
@@ -82,7 +85,14 @@ const PLACE_NAMES = ['1.º lugar', '2.º lugar', '3.º lugar'];
  * they are addressable, and is why the awards point at a coordinate rather
  * than at a picture.
  */
-const APP_URL = (process.env.PALAVRA_APP_URL ?? '').trim().replace(/\/*$/, '/');
+// Normalised only when there is something to normalise: `''.replace(/\/*$/,
+// '/')` is `'/'`, because the pattern happily matches zero slashes at the end
+// of an empty string. That slipped through as a truthy APP_URL, which put a
+// *relative* image URL into a signed event — and a relative URL in an event on
+// a relay resolves against nothing, which is the broken-image case this is
+// meant to avoid.
+const configuredAppUrl = (process.env.PALAVRA_APP_URL ?? '').trim();
+const APP_URL = configuredAppUrl ? configuredAppUrl.replace(/\/*$/, '/') : '';
 
 /** The art tags for a place, or none when no app URL is configured.
     NIP-58 allows a definition without an image, and a definition with a
@@ -140,42 +150,63 @@ function loadSecretKey() {
 
 // ── Relay I/O ────────────────────────────────────────────────────────────
 
-/** Every event matching `filters` on one relay. */
+/**
+ * Every event matching `filters` on one relay, and whether the relay finished.
+ *
+ * `complete` is only true on EOSE — the relay's own statement that it has sent
+ * everything it holds. A timeout, a socket error, a close before EOSE, or a
+ * CLOSED (which is how a relay refuses a filter) all yield whatever arrived so
+ * far, and that is *not* the same as an answer. Conflating the two is how a
+ * badge ends up on the wrong profile: if the one relay holding a month's
+ * results times out, an incomplete read looks exactly like a quiet month.
+ */
 function queryOn(url, filters) {
     return new Promise((resolve) => {
         const found = [];
         let settled = false;
-        const finish = () => {
+        const finish = (complete) => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             try { socket.close(); } catch { /* already closing */ }
-            resolve(found);
+            resolve({ url, events: found, complete });
         };
         const socket = new WebSocket(url);
-        const timer = setTimeout(finish, RELAY_TIMEOUT_MS);
+        const timer = setTimeout(() => finish(false), RELAY_TIMEOUT_MS);
         socket.on('open', () => socket.send(JSON.stringify(['REQ', 'badges', ...filters])));
         socket.on('message', (raw) => {
             try {
                 const msg = JSON.parse(raw.toString());
                 if (msg[0] === 'EVENT' && msg[2]) found.push(msg[2]);
-                if (msg[0] === 'EOSE') finish();
+                if (msg[0] === 'EOSE') finish(true);
+                // The relay declined the subscription. Whatever it sent first
+                // is a fragment, not a result set.
+                if (msg[0] === 'CLOSED') finish(false);
             } catch { /* not for us */ }
         });
-        socket.on('error', finish);
-        socket.on('close', finish);
+        socket.on('error', () => finish(false));
+        socket.on('close', () => finish(false));
     });
 }
 
-/** Union across relays, deduplicated by event id. An event held anywhere
-    counts: a result the board can see is a result the podium must count. */
+/**
+ * Union across relays, deduplicated by event id, plus the relays that failed.
+ *
+ * An event held anywhere counts: a result the board can see is a result the
+ * podium must count. But a relay that could not be read might have been holding
+ * the very result that decides the order, so the caller is told which ones went
+ * unread rather than being handed a total that looks authoritative.
+ */
 async function query(filters) {
     const perRelay = await Promise.all(RELAYS.map((url) => queryOn(url, filters)));
     const byId = new Map();
-    for (const events of perRelay) {
+    for (const { events } of perRelay) {
         for (const event of events) if (!byId.has(event.id)) byId.set(event.id, event);
     }
-    return [...byId.values()];
+    return {
+        events: [...byId.values()],
+        unread: perRelay.filter((relay) => !relay.complete).map((relay) => relay.url),
+    };
 }
 
 function sendTo(url, event) {
@@ -220,44 +251,15 @@ async function broadcast(event) {
  */
 export async function podiumFor(month) {
     const days = monthDays(month);
-    const { events, incomplete } = await resultEventsFor(days);
+    const { events, unreadRelays, saturatedDays } = await resultEventsFor(days);
     const results = days.flatMap((date) =>
         entriesFromEvents(events, date).map((entry) => ({ ...entry, date })));
 
     return {
         podium: tallyMonth(results, liveThrough(month, utcToday()), PODIUM),
-        incomplete,
+        unreadRelays,
+        saturatedDays,
     };
-}
-
-function inGroupsOf(items, size) {
-    const groups = [];
-    for (let from = 0; from < items.length; from += size) groups.push(items.slice(from, from + size));
-    return groups;
-}
-
-function filtersFor(groups, limit) {
-    return groups.map((group) => ({
-        kinds: [KIND_RESULT],
-        '#d': group.map(resultDTag),
-        '#t': [PALAVRA_TOPIC],
-        limit,
-    }));
-}
-
-/** How many of `events` belong to each group, by the `d` tag matched on. */
-function countPerGroup(events, groups) {
-    const groupOf = new Map();
-    groups.forEach((group, index) => {
-        for (const day of group) groupOf.set(resultDTag(day), index);
-    });
-    const counts = new Array(groups.length).fill(0);
-    for (const event of events) {
-        const dTag = event.tags?.find((t) => t[0] === 'd')?.[1];
-        const index = dTag === undefined ? undefined : groupOf.get(dTag);
-        if (index !== undefined) counts[index]++;
-    }
-    return counts;
 }
 
 /**
@@ -276,27 +278,32 @@ function countPerGroup(events, groups) {
  */
 async function resultEventsFor(days) {
     const weeks = inGroupsOf(days, CHUNK_DAYS);
-    const events = await query(filtersFor(weeks, CHUNK_LIMIT));
+    const first = await query(filtersFor(weeks, CHUNK_LIMIT));
 
-    const perWeek = countPerGroup(events, weeks);
+    const perWeek = countPerGroup(first.events, weeks);
     const full = weeks.filter((_, index) => perWeek[index] >= CHUNK_LIMIT);
-    if (full.length === 0) return { events, incomplete: [] };
+    if (full.length === 0) {
+        return { events: first.events, unreadRelays: first.unread, saturatedDays: [] };
+    }
 
     const singles = full.flat().map((day) => [day]);
     const rest = await query(filtersFor(singles, DAY_LIMIT));
 
-    const perDay = countPerGroup(rest, singles);
-    const incomplete = singles.filter((_, index) => perDay[index] >= DAY_LIMIT).flat();
+    const perDay = countPerGroup(rest.events, singles);
 
     // Overlap between the two reads is fine: query() dedupes by event id, and
     // the tally counts one result per author per day regardless.
-    return { events: [...events, ...rest], incomplete };
+    return {
+        events: [...first.events, ...rest.events],
+        unreadRelays: [...new Set([...first.unread, ...rest.unread])],
+        saturatedDays: singles.filter((_, index) => perDay[index] >= DAY_LIMIT).flat(),
+    };
 }
 
 /** Which places this publisher has already awarded for a month. */
 async function alreadyAwarded(pubkey, month) {
     const coords = Array.from({ length: PODIUM }, (_, i) => badgeCoord(pubkey, month, i + 1));
-    const events = await query([{ kinds: [KIND_BADGE_AWARD], authors: [pubkey], '#a': coords }]);
+    const { events } = await query([{ kinds: [KIND_BADGE_AWARD], authors: [pubkey], '#a': coords }]);
     const awarded = new Set();
     for (const event of events) {
         const coord = event.tags.find((t) => t[0] === 'a')?.[1];
@@ -356,7 +363,8 @@ async function main() {
 
     // Read before signing: a dry run of an unfinished month shouldn't need the
     // publisher's key at all, since it never publishes.
-    const { podium, incomplete } = await podiumFor(month);
+    const { podium, unreadRelays, saturatedDays } = await podiumFor(month);
+    const readable = unreadRelays.length === 0 && saturatedDays.length === 0;
     if (podium.length === 0) {
         console.log(`No results found for ${month}; nothing to award.`);
         return;
@@ -367,23 +375,35 @@ async function main() {
         console.log(`  ${i + 1}. ${row.pubkey.slice(0, 12)}…  ${row.points} pts over ${row.played} days`);
     });
 
-    if (incomplete.length > 0) {
+    // Two different causes, said in their own words rather than under one
+    // vague heading: one is a relay that never answered, the other is a day
+    // busier than a single query can return. Both make the totals a floor
+    // rather than a count, and either can put the order wrong.
+    if (unreadRelays.length > 0) {
         console.error(
-            `\nCould not read ${incomplete.join(', ')} in full: more results were `
-            + 'published on those days than a relay query returns, so the totals '
-            + 'above are a floor and the order may be wrong.',
+            `\nThese relays did not finish answering: ${unreadRelays.join(', ')}. `
+            + 'Any results only they hold are missing from the totals above.',
+        );
+    }
+    if (saturatedDays.length > 0) {
+        console.error(
+            `\nThese days are busier than one query can read: ${saturatedDays.join(', ')}. `
+            + 'Their totals are a floor, not a count.',
         );
     }
 
     if (dryRun) {
-        console.log(`\n--dry-run: nothing published.${unfinished ? ' This month is still running.' : ''}`);
+        console.log(
+            `\n--dry-run: nothing published.${unfinished ? ' This month is still running.' : ''}`
+            + `${readable ? '' : ' The month could not be read in full, so a real run would refuse it.'}`,
+        );
         return;
     }
 
     // Refused, not warned. The board can render a total that is slightly off
     // for an afternoon; a badge is permanent, public, and names a person. If
     // the month cannot be read whole there is no podium worth minting from it.
-    if (incomplete.length > 0) {
+    if (!readable) {
         console.error('Not awarding a podium computed from an incomplete month.');
         process.exit(1);
     }

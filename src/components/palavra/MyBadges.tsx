@@ -79,6 +79,14 @@ export function MyBadges({ pubkey }: { pubkey: string }) {
                                 : publishing === 'failed' ? t.badgesPublishFailed
                                     : t.badgesPublish}
                     </button>
+                    {/* The button's own label is the only visible signal, and a
+                        label changing under an activated button is not reliably
+                        announced. This says it once, to assistive tech only. */}
+                    <p role="status" aria-live="polite" className="sr-only">
+                        {publishing === 'done' ? t.badgesPublished
+                            : publishing === 'failed' ? t.badgesPublishFailed
+                                : ''}
+                    </p>
                 </>
             )}
         </div>

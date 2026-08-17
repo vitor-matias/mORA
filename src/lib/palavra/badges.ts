@@ -135,11 +135,19 @@ export async function fetchBadges(pubkey: string): Promise<EarnedBadge[]> {
         return [];
     }
 
+    // Newest per coordinate, not last-one-seen. Kind 30009 is addressable, and
+    // `limit` applies per relay, so a pool spanning several relays can hand back
+    // more than one version of the same `d` — in whatever order they arrive. The
+    // loop used to keep the last, which meant a stale definition could overwrite
+    // a newer one and show an old name or old art.
     const byCoord = new Map<string, NostrEvent>();
     for (const definition of definitions) {
         if (definition.pubkey !== PALAVRA_PUBLISHER) continue;
         const dTag = tagValue(definition, 'd');
-        if (dTag) byCoord.set(`${KIND_BADGE_DEFINITION}:${PALAVRA_PUBLISHER}:${dTag}`, definition);
+        if (!dTag) continue;
+        const coord = `${KIND_BADGE_DEFINITION}:${PALAVRA_PUBLISHER}:${dTag}`;
+        const existing = byCoord.get(coord);
+        if (!existing || definition.created_at > existing.created_at) byCoord.set(coord, definition);
     }
 
     const badges: EarnedBadge[] = [];
@@ -185,12 +193,19 @@ export interface ProfileBadgeRef {
  */
 export async function fetchProfileBadges(pubkey: string): Promise<ProfileBadgeRef[] | null> {
     try {
-        const [list] = await pool.query(
+        const lists = await pool.query(
             [{ kinds: [KIND_PROFILE_BADGES], authors: [pubkey], '#d': [D_PROFILE_BADGES], limit: 1 }],
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
-        if (!list) return [];
-        return profileBadgeRefs(list.tags);
+        if (lists.length === 0) return [];
+        // Newest wins. `limit: 1` is per relay, so several relays can each
+        // return their own version of this replaceable event and the first in
+        // the array is not necessarily the current one. Taking a stale version
+        // here would be the worst kind of wrong: the write below replaces the
+        // whole list, so it would republish an old one and drop whatever has
+        // been added since.
+        const newest = lists.reduce((a, b) => (b.created_at > a.created_at ? b : a));
+        return profileBadgeRefs(newest.tags);
     } catch (error) {
         console.warn('Could not read the profile badge list.', error);
         return null;
@@ -251,16 +266,25 @@ export async function setPalavraProfileBadges(
         throw new Error('Could not read the current badge list, so it was not replaced.');
     }
 
-    const ours = new Set<string>();
-    if (PALAVRA_PUBLISHER) {
-        for (const ref of current) {
-            const parsed = parseCoord(ref.coord);
-            if (parsed?.pubkey === PALAVRA_PUBLISHER) ours.add(ref.coord);
-        }
-    }
-
-    const kept = current.filter((ref) => !ours.has(ref.coord));
-    const refs = [...kept, ...shown.map(({ coord, awardId }) => ({ coord, awardId }))];
+    // Everything already listed is kept — including our own badges that `shown`
+    // does not mention.
+    //
+    // The first version removed every coordinate of ours and re-added only
+    // `shown`, which quietly made this a delete. fetchBadges drops an award
+    // whose definition the relays did not return, so one incomplete read would
+    // have published a list with badges the person had been displaying for
+    // months simply missing. That is the same failure the refusal above guards
+    // against, arriving by a different door: do not delete what you could not
+    // confirm. Nothing in the app asks to remove a badge, so there is no case
+    // this costs us.
+    const listed = new Set(current.map((ref) => ref.coord));
+    const added = shown
+        .filter(({ coord }) => !listed.has(coord))
+        .map(({ coord, awardId }) => ({ coord, awardId }));
+    const refs = [...current, ...added];
+    // Nothing new to say. Republishing an identical list would only bump its
+    // timestamp and spend a signature.
+    if (added.length === 0) return;
 
     const event = await signNostrEvent({
         kind: KIND_PROFILE_BADGES,

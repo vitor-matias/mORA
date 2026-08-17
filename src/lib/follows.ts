@@ -28,12 +28,18 @@ const HEX64_RE = /^[0-9a-f]{64}$/i;
     Null and "no list yet" are deliberately different — see the module note. */
 async function fetchContactList(pubkey: string): Promise<NostrEvent | null | undefined> {
     try {
-        const [contacts] = await pool.query(
+        const lists = await pool.query(
             [{ kinds: [KIND_CONTACTS], authors: [pubkey], limit: 1 }],
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
         // undefined: read succeeded, this identity has no list yet.
-        return contacts ?? undefined;
+        if (lists.length === 0) return undefined;
+        // Newest wins. `limit: 1` is per relay, so several relays can each
+        // return their own version of this replaceable event, and the first in
+        // the array need not be the current one. Following rewrites the whole
+        // list, so building on a stale version would unfollow everyone added
+        // since it was signed.
+        return lists.reduce((a, b) => (b.created_at > a.created_at ? b : a));
     } catch (error) {
         console.warn('Could not read the contact list.', error);
         return null;

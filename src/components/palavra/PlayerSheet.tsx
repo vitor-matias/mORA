@@ -6,7 +6,12 @@ import { BadgeItem } from './BadgeItem';
 import { shortPubkey } from './playerLabel';
 import { useTranslations } from '@/lib/i18n';
 
-const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+// Disabled controls excluded: the follow button is disabled while loading,
+// saving, or already following, and a disabled button cannot take focus — so
+// picking it as the trap's first or last element made Tab call focus() on
+// something that ignores it, and focus escaped the dialog.
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), '
+    + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 type FollowState = 'loading' | 'following' | 'not-following' | 'unknown' | 'saving' | 'failed';
 
@@ -173,7 +178,12 @@ export function PlayerSheet({ player, you, onClose }: {
                         )}
                         {follows === 'following' ? t.followingAlready
                             : follows === 'saving' ? t.followSaving
-                                : follows === 'failed' ? t.followFailed
+                                // 'unknown' reads as failed on purpose: the
+                                // contact list could not be read, and follow()
+                                // refuses on exactly that, so offering "Seguir"
+                                // would promise something already known to be
+                                // unavailable.
+                                : follows === 'failed' || follows === 'unknown' ? t.followFailed
                                     : t.followToDuel}
                     </button>
                 )}

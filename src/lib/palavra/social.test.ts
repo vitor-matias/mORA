@@ -7,6 +7,8 @@ import {
     type RankableResult,
 } from './social.ts';
 import { resultDTag } from './nostr';
+import { KIND_RESULT } from './results';
+import { KIND_APP_STATE } from '@/lib/nostr';
 import { POW_MINIMUM } from './pow';
 import type { NostrEvent } from '@nostrify/nostrify';
 import type { LeaderboardEntry } from './types';
@@ -301,5 +303,14 @@ describe('recentDates', () => {
 
     it('defaults to today', () => {
         expect(recentDates(1)[0]).toBe(formatUTCDate(new Date()));
+    });
+});
+
+// results.ts restates the result kind as a plain number so Node can import it
+// without reaching for @/lib/nostr. That is a copy, and a copy that drifted
+// would point the whole monthly read at a kind nobody publishes.
+describe('the result kind', () => {
+    it('matches the kind the writer publishes under', () => {
+        expect(KIND_RESULT).toBe(KIND_APP_STATE);
     });
 });
