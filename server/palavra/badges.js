@@ -97,7 +97,10 @@ const PLACE_NAMES = ['1.º lugar', '2.º lugar', '3.º lugar'];
 // *relative* image URL into a signed event — and a relative URL in an event on
 // a relay resolves against nothing, which is the broken-image case this is
 // meant to avoid.
-const configuredAppUrl = (process.env.PALAVRA_APP_URL ?? '').trim();
+// BASE_URL is accepted as well, because that is what the repository variable
+// is called and someone running this by hand will reach for the name they
+// already set.
+const configuredAppUrl = (process.env.PALAVRA_APP_URL || process.env.BASE_URL || '').trim();
 const APP_URL = configuredAppUrl ? configuredAppUrl.replace(/\/*$/, '/') : '';
 
 /** The art tags for a place, or none when no app URL is configured.

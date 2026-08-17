@@ -1,0 +1,93 @@
+name: Award Palavra podium badges
+
+# Awards the monthly podium — see server/palavra/badges.js.
+#
+# Runs daily rather than on the 1st, for the reason the puzzle publisher runs
+# hourly: GitHub's scheduled jobs are best-effort, routinely late and sometimes
+# skipped outright, and a once-a-month job that gets skipped is a month with no
+# podium and nothing to notice it. Awarding is idempotent — the job asks the
+# relays which places it has already awarded and leaves those alone — so every
+# run after the first does nothing but a query.
+#
+# The target is always *last* month, on whichever day this runs, so the whole
+# month is a retry window. That matters more than it sounds: the job refuses to
+# award a month it could not read in full, so a day when a relay is down is a
+# day it declines, and it needs another chance tomorrow.
+on:
+  schedule:
+    # 03:00 UTC. After the day rolls at 00:00, and clear of the puzzle
+    # publisher's hourly slot at :05.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      month:
+        description: 'Award one specific month (YYYY-MM). Blank = last month.'
+        required: false
+      dry_run:
+        description: 'Work out the podium and publish nothing.'
+        type: boolean
+        default: false
+
+# Same reasoning as the publisher: this job holds the signing key, so its token
+# should be able to do as little as possible.
+permissions:
+  contents: read
+
+# Never two at once. The job checks the relays for an existing award before
+# publishing, but two runs can both check before either publishes, and the
+# result of losing that race is a duplicate award that cannot be withdrawn.
+concurrency:
+  group: palavra-badges
+  cancel-in-progress: false
+
+jobs:
+  award:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Don't leave the token in .git/config for later steps to find.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: 'npm'
+          cache-dependency-path: server/palavra/package-lock.json
+
+      - name: Install
+        working-directory: server/palavra
+        run: npm ci
+
+      - name: Award
+        working-directory: server/palavra
+        env:
+          # The same key that signs the puzzles. A NIP-58 badge is worth
+          # something only because a known issuer signed it, and this is that
+          # issuer. Never goes near the Pages build.
+          PALAVRA_NSEC: ${{ secrets.PALAVRA_NSEC }}
+          PALAVRA_RELAYS: ${{ vars.PALAVRA_RELAYS }}
+          # Where the badge art is served from. Unset, the definitions publish
+          # with no image — valid NIP-58, and better than a URL that 404s and
+          # gets cached by every client that tried it.
+          PALAVRA_APP_URL: ${{ vars.BASE_URL }}
+          # Through env, never interpolated into `run`. `${{ inputs.month }}`
+          # is substituted before the shell parses the script, so a dispatch
+          # value containing a quote executes as shell — in the one step that
+          # has PALAVRA_NSEC in its environment, which is the whole ballgame.
+          AWARD_MONTH: ${{ inputs.month }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ -z "$PALAVRA_NSEC" ]; then
+            echo "::error::PALAVRA_NSEC is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+          if [ -z "$PALAVRA_APP_URL" ]; then
+            echo "::warning::BASE_URL is not set, so the badges will be published without art. Add it under Settings → Secrets and variables → Actions → Variables."
+          fi
+
+          args=""
+          if [ -n "$AWARD_MONTH" ]; then args="$args $AWARD_MONTH"; fi
+          if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
+          # shellcheck disable=SC2086
+          npm run badges -- $args

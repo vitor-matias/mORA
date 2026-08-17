@@ -340,13 +340,30 @@ scanline-fills them with the nonzero rule SVG specifies, downsamples for
 antialiasing, and wraps the result in the three chunks a PNG needs around a
 `node:zlib` stream.
 
-Set **`PALAVRA_APP_URL`** to where the app is served, e.g. `https://mora.app/`,
-so the definitions can point at that art. The app itself reads its own URL off
-`window.location`, which is no help here. Left unset, definitions are published
-with no image — valid NIP-58, and better than a definition carrying a broken
-URL that clients will cache. Because definitions are addressable, art can be
-added or moved later without reissuing a single award: the awards point at the
-coordinate, not at a picture.
+Set **`PALAVRA_APP_URL`** — or **`BASE_URL`**, which is the name the repository
+variable uses and which this accepts too — to where the app is served, e.g.
+`https://mora.app/`, so the definitions can point at that art. The app itself
+reads its own URL off `window.location`, which is no help here. Left unset,
+definitions are published with no image — valid NIP-58, and better than a
+definition carrying a broken URL that clients will cache. Because definitions
+are addressable, art can be added or moved later without reissuing a single
+award: the awards point at the coordinate, not at a picture.
+
+## Scheduling the awards
+
+`.github/workflows/badges.yml` runs the job daily at 03:00 UTC and always
+targets *last* month, so the whole month is a retry window. Daily rather than
+on the 1st for the same reason the puzzle publisher runs hourly: GitHub's
+scheduled jobs are best-effort, and a once-a-month job that gets skipped is a
+month with no podium. Every run after a successful one does nothing but a
+query, because the job asks the relays what it has already awarded.
+
+That retry window is load-bearing rather than belt-and-braces. The job declines
+any month it could not read in full, so a day when a relay is down is a day it
+awards nothing and needs another chance tomorrow.
+
+It needs `PALAVRA_NSEC` as a secret and `BASE_URL` as a variable; without the
+latter it still runs and warns, publishing badges with no art.
 
 **Why it imports from `src/`.** The podium is computed with the app's own
 reader and the app's own scoring rule — `results.ts` and `scoring.ts` — not
