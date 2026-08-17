@@ -168,22 +168,38 @@ export function PlayerSheet({ player, you, onClose }: {
                     <button
                         type="button"
                         onClick={onFollow}
-                        disabled={follows === 'following' || follows === 'saving' || follows === 'loading'}
+                        // Tappable while the preflight read is still out.
+                        //
+                        // It used to be disabled during 'loading', which made
+                        // the button dead for as long as that read took — and
+                        // it waits on every relay, so one that never answers
+                        // costs the whole timeout. With a relay currently
+                        // timing out that was twelve seconds of a greyed-out
+                        // button, which is indistinguishable from broken.
+                        //
+                        // Nothing is risked by allowing the tap: follow() does
+                        // its own read and is the one that decides, refusing
+                        // outright if the list can't be seen. The preflight
+                        // only ever chooses a label.
+                        disabled={follows === 'following' || follows === 'saving'}
                         className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors disabled:opacity-60 disabled:hover:bg-liturgy-500/10"
                     >
                         {follows === 'saving' && <Loader2 size={15} className="animate-spin" aria-hidden="true" />}
                         {follows === 'following' && <UserCheck size={15} aria-hidden="true" />}
-                        {(follows === 'not-following' || follows === 'failed' || follows === 'unknown') && (
+                        {follows !== 'saving' && follows !== 'following' && (
                             <UserPlus size={15} aria-hidden="true" />
                         )}
                         {follows === 'following' ? t.followingAlready
                             : follows === 'saving' ? t.followSaving
-                                // 'unknown' reads as failed on purpose: the
-                                // contact list could not be read, and follow()
-                                // refuses on exactly that, so offering "Seguir"
-                                // would promise something already known to be
-                                // unavailable.
-                                : follows === 'failed' || follows === 'unknown' ? t.followFailed
+                                // 'failed' is the only state that reports a
+                                // failure, and it is only reached by a tap that
+                                // actually failed. 'unknown' — the preflight
+                                // read not coming back — reads as "Seguir":
+                                // follow() takes its own read and may well
+                                // succeed where the preflight didn't, so
+                                // refusing up front would withhold a button
+                                // that works.
+                                : follows === 'failed' ? t.followFailed
                                     : t.followToDuel}
                     </button>
                 )}
