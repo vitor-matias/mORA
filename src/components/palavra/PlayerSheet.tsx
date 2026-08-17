@@ -13,7 +13,7 @@ import { useTranslations } from '@/lib/i18n';
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), '
     + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-type FollowState = 'loading' | 'following' | 'not-following' | 'unknown' | 'saving' | 'failed';
+type FollowState = 'loading' | 'following' | 'not-following' | 'unknown' | 'failed';
 
 /**
  * One player, from a tap on any board row: what they have won, and the button
@@ -64,31 +64,53 @@ export function PlayerSheet({ player, you, onClose }: {
         // is why this returns rather than setting a state nothing will show.
         if (!you || isYou) return;
         let cancelled = false;
-        import('@/lib/follows')
-            .then(({ isFollowing }) => isFollowing(you, player.pubkey))
-            .then((already) => {
-                if (cancelled) return;
-                // Null means the read failed, which is not the same as "no".
-                // Offering "Seguir" on an unknown list invites a write that
-                // would replace it, and the write refuses for that reason —
-                // so the button says so instead of lying.
-                setFollows(already === null ? 'unknown' : already ? 'following' : 'not-following');
-            })
-            .catch(() => { if (!cancelled) setFollows('unknown'); });
-        return () => { cancelled = true; };
+        let unsubscribe: (() => void) | undefined;
+
+        // The queue first, and without touching the network: a follow queued
+        // earlier — possibly from this sheet before it was closed — is the
+        // truth about what this button should say, and the relays won't know
+        // about it until it lands.
+        import('@/lib/follows').then(({ queuedFollowState, onFollowsChanged, isFollowing }) => {
+            if (cancelled) return;
+
+            const fromQueue = () => {
+                const queued = queuedFollowState(you, player.pubkey);
+                if (queued === 'pending') { setFollows('following'); return true; }
+                if (queued === 'failed') { setFollows('failed'); return true; }
+                return false;
+            };
+
+            // Told when a queued follow lands or gives up, so a sheet still
+            // open when the answer arrives stops claiming success.
+            unsubscribe = onFollowsChanged(() => { if (!cancelled) fromQueue(); });
+
+            if (fromQueue()) return;
+
+            // Only then ask the relays. This decides a label and nothing else,
+            // so it is allowed to be slow — the button does not wait for it.
+            isFollowing(you, player.pubkey)
+                .then((already) => {
+                    // A tap while this was in flight has already set the
+                    // state; a stale answer must not overwrite it.
+                    if (cancelled || queuedFollowState(you, player.pubkey)) return;
+                    setFollows(already === null ? 'unknown' : already ? 'following' : 'not-following');
+                })
+                .catch(() => { if (!cancelled) setFollows('unknown'); });
+        }).catch(() => { if (!cancelled) setFollows('unknown'); });
+
+        return () => {
+            cancelled = true;
+            unsubscribe?.();
+        };
     }, [you, isYou, player.pubkey]);
 
-    const onFollow = async () => {
+    const onFollow = () => {
         if (!you) return;
-        setFollows('saving');
-        try {
-            const { follow } = await import('@/lib/follows');
-            await follow(you, player.pubkey);
-            setFollows('following');
-        } catch (error) {
-            console.warn('Could not follow.', error);
-            setFollows('failed');
-        }
+        // Answered on the tap, not on the round trip. The work is queued and
+        // retried in the background; the only thing that can still change this
+        // is running out of attempts, which the subscription above reports.
+        setFollows('following');
+        void import('@/lib/follows').then(({ queueFollow }) => queueFollow(you, player.pubkey));
     };
 
     const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -168,23 +190,34 @@ export function PlayerSheet({ player, you, onClose }: {
                     <button
                         type="button"
                         onClick={onFollow}
-                        disabled={follows === 'following' || follows === 'saving' || follows === 'loading'}
+                        // Tappable while the preflight read is still out.
+                        //
+                        // It used to be disabled during 'loading', which made
+                        // the button dead for as long as that read took — and
+                        // it waits on every relay, so one that never answers
+                        // costs the whole timeout. With a relay currently
+                        // timing out that was twelve seconds of a greyed-out
+                        // button, which is indistinguishable from broken.
+                        //
+                        // Nothing is risked by allowing the tap: follow() does
+                        // its own read and is the one that decides, refusing
+                        // outright if the list can't be seen. The preflight
+                        // only ever chooses a label.
+                        disabled={follows === 'following'}
                         className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors disabled:opacity-60 disabled:hover:bg-liturgy-500/10"
                     >
-                        {follows === 'saving' && <Loader2 size={15} className="animate-spin" aria-hidden="true" />}
-                        {follows === 'following' && <UserCheck size={15} aria-hidden="true" />}
-                        {(follows === 'not-following' || follows === 'failed' || follows === 'unknown') && (
-                            <UserPlus size={15} aria-hidden="true" />
-                        )}
+                        {follows === 'following'
+                            ? <UserCheck size={15} aria-hidden="true" />
+                            : <UserPlus size={15} aria-hidden="true" />}
+                        {/* 'failed' is the only state that reports a failure,
+                            and it is only reached once the queue has run out of
+                            attempts. Everything else — including 'unknown', the
+                            preflight not coming back — reads as "Seguir", since
+                            the queue takes its own read and may well succeed
+                            where the preflight didn't. */}
                         {follows === 'following' ? t.followingAlready
-                            : follows === 'saving' ? t.followSaving
-                                // 'unknown' reads as failed on purpose: the
-                                // contact list could not be read, and follow()
-                                // refuses on exactly that, so offering "Seguir"
-                                // would promise something already known to be
-                                // unavailable.
-                                : follows === 'failed' || follows === 'unknown' ? t.followFailed
-                                    : t.followToDuel}
+                            : follows === 'failed' ? t.followFailed
+                                : t.followToDuel}
                     </button>
                 )}
 
