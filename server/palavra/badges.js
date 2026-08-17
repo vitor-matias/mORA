@@ -43,7 +43,13 @@ import {
     filtersFor,
     inGroupsOf,
 } from '../../src/lib/palavra/results.ts';
-import { liveThrough, monthDays, tallyMonth } from '../../src/lib/palavra/scoring.ts';
+import {
+    liveThrough,
+    monthDays,
+    monthOf,
+    shiftMonth,
+    tallyMonth,
+} from '../../src/lib/palavra/scoring.ts';
 
 const configuredRelays = (process.env.PALAVRA_RELAYS ?? '')
     .split(',').map((r) => r.trim()).filter(Boolean);
@@ -108,15 +114,6 @@ function artTags(place) {
 
 const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
 const utcToday = () => isoDate(Date.now());
-const monthOf = (date) => date.slice(0, 7);
-
-/** `2026-08` stepped by whole months, in UTC. */
-function shiftMonth(month, delta) {
-    const [year, mon] = month.split('-').map(Number);
-    const shifted = new Date(Date.UTC(year, mon - 1 + delta, 1));
-    return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}`;
-}
-
 /** `mora-palavra-2026-07-1` — one identifier per place per month, so a win is
     a distinct badge that still reads correctly years later. */
 const badgeDTag = (month, place) => `mora-palavra-${month}-${place}`;

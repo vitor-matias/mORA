@@ -243,12 +243,17 @@ export function profileBadgeTags(refs: ProfileBadgeRef[]): string[][] {
 }
 
 /**
- * Add or remove our badges on the signed-in identity's profile.
+ * Add badges to the signed-in identity's profile. Never removes any.
  *
- * `shown` is the complete set of *our* badges to display; everything issued by
- * anyone else is carried through untouched. That asymmetry is the point — this
- * function is only ever entitled to speak for the badges this app knows about,
- * and a person's profile is very likely to hold others.
+ * `shown` is what to make sure is listed, not the list to end up with —
+ * passing fewer badges takes nothing away. Removal is deliberately absent
+ * because this cannot tell "you no longer have that badge" from "the relays
+ * did not return its definition just now", and fetchBadges drops an award in
+ * the second case; a function that trusted `shown` as complete would delete
+ * months-old badges off the back of one slow relay. Nothing in the app asks to
+ * remove a badge, so this costs nothing.
+ *
+ * Everything already on the list is kept, ours and anyone else's alike.
  *
  * Throws rather than returning false, so the caller can tell the difference
  * between "published" and "nothing happened" and say so. Publishing this is
