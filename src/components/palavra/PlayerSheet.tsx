@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Award, Loader2, Swords, UserCheck, UserPlus, X } from 'lucide-react';
+import { Loader2, Swords, User, UserCheck, UserPlus, X } from 'lucide-react';
 import type { EarnedBadge } from '@/lib/palavra/badges';
 import type { PlayerRef } from './Player';
 import { BadgeItem } from './BadgeItem';
@@ -206,6 +206,8 @@ export function PlayerSheet({ player, you, onClose }: {
     );
 }
 
+/** The player's picture, falling back to a person — as in Player.tsx. A medal
+    here read as a badge they had won rather than as a missing photo. */
 function Avatar({ player }: { player: PlayerRef }) {
     const [broken, setBroken] = useState(false);
     return (
@@ -223,7 +225,7 @@ function Avatar({ player }: { player: PlayerRef }) {
                     className="h-full w-full object-cover"
                     onError={() => setBroken(true)}
                 />
-                : <Award size={18} className="text-zinc-400" />}
+                : <User size={18} className="text-zinc-400" />}
         </span>
     );
 }
