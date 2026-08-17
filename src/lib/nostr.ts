@@ -33,6 +33,60 @@ export const RELAY_QUERY_TIMEOUT_MS = 5000;
 export const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
 
 /**
+ * Whether `candidate` supersedes `held` — the newest version of a replaceable
+ * or addressable event, decided the same way everywhere.
+ *
+ * `created_at` alone is not enough. Two versions signed in the same second are
+ * common — a republish takes milliseconds — and comparing only timestamps
+ * leaves the winner to whichever relay answered first. That is not merely
+ * untidy where the result feeds a read-modify-write: the contact list and the
+ * profile badge list are each one event holding everything, so picking the
+ * stale one of a tied pair republishes it over the current one and drops
+ * whatever was added in between.
+ *
+ * Ties break on the lower id, which is what NSet does inside the pool and what
+ * newestPerDay and the badge job's newestVersions do. Arbitrary, and that is
+ * the point: every reader has to land on the same event.
+ */
+export function supersedes(candidate: NostrEvent, held: NostrEvent | undefined): boolean {
+    if (!held) return true;
+    if (candidate.created_at !== held.created_at) return candidate.created_at > held.created_at;
+    return candidate.id < held.id;
+}
+
+/**
+ * Events that really are what was asked for.
+ *
+ * A relay is free to send anything down a subscription, and `queryComplete`
+ * passes on what it receives. That is harmless for a board, which drops
+ * anything malformed while parsing — but the contact list and the profile
+ * badge list are read to be *rewritten*, and their tags are copied wholesale
+ * into an event signed with the reader's own key. An unrelated kind-3 accepted
+ * there is someone else's follow list republished as yours.
+ *
+ * So the fields the filter asked on are checked again locally, where a relay
+ * cannot be the one answering the question.
+ */
+export function matching(
+    events: NostrEvent[],
+    want: { kind: number; author: string; dTag?: string },
+): NostrEvent[] {
+    return events.filter((event) => event.kind === want.kind
+        && event.pubkey === want.author
+        && (want.dTag === undefined
+            || event.tags.some(([name, value]) => name === 'd' && value === want.dTag)));
+}
+
+/** The newest of a set of versions of the same replaceable event, or
+    undefined when given none. */
+export function newestEvent(events: NostrEvent[]): NostrEvent | undefined {
+    return events.reduce<NostrEvent | undefined>(
+        (held, candidate) => (supersedes(candidate, held) ? candidate : held),
+        undefined,
+    );
+}
+
+/**
  * A read that says how many relays actually answered.
  *
  * `pool.query` cannot say: it swallows every abort and error and returns
@@ -58,37 +112,6 @@ export const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
  * get the union deduplicated by id and pick, which is what the ones that care
  * already do.
  */
-/**
- * Whether `candidate` supersedes `held` — the newest version of a replaceable
- * or addressable event, decided the same way everywhere.
- *
- * `created_at` alone is not enough. Two versions signed in the same second are
- * common — a republish takes milliseconds — and comparing only timestamps
- * leaves the winner to whichever relay answered first. That is not merely
- * untidy where the result feeds a read-modify-write: the contact list and the
- * profile badge list are each one event holding everything, so picking the
- * stale one of a tied pair republishes it over the current one and drops
- * whatever was added in between.
- *
- * Ties break on the lower id, which is what NSet does inside the pool and what
- * newestPerDay and the badge job's newestVersions do. Arbitrary, and that is
- * the point: every reader has to land on the same event.
- */
-export function supersedes(candidate: NostrEvent, held: NostrEvent | undefined): boolean {
-    if (!held) return true;
-    if (candidate.created_at !== held.created_at) return candidate.created_at > held.created_at;
-    return candidate.id < held.id;
-}
-
-/** The newest of a set of versions of the same replaceable event, or
-    undefined when given none. */
-export function newestEvent(events: NostrEvent[]): NostrEvent | undefined {
-    return events.reduce<NostrEvent | undefined>(
-        (held, candidate) => (supersedes(candidate, held) ? candidate : held),
-        undefined,
-    );
-}
-
 export async function queryComplete(
     filters: NostrFilter[],
     opts: { signal: AbortSignal; relays?: string[] },

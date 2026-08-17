@@ -185,7 +185,14 @@ async function fetchMonthEvents(days: string[]): Promise<MonthEvents> {
 
     const perWeek = countPerGroup(first.events, weeks);
     const full = weeks.filter((_, index) => perWeek[index] >= MONTH_CHUNK_LIMIT);
-    if (full.length === 0) return { events: first.events, partial: firstShort };
+    // Resolved even on the single-read path. queryComplete deduplicates by
+    // event id and nothing more — it is not pool.query, and does not collapse
+    // addressable coordinates — so one read can return two versions of the
+    // same result, and tallyMonth keeps whichever arrived first. A stale loss
+    // ahead of its replacement scores 0 where the replacement scores up to 6.
+    if (full.length === 0) {
+        return { events: newestPerDay(first.events), partial: firstShort };
+    }
 
     const singles = full.flat().map((day) => [day]);
     const rest = await queryDays(singles, MONTH_DAY_LIMIT);
@@ -203,9 +210,9 @@ async function fetchMonthEvents(days: string[]): Promise<MonthEvents> {
         );
     }
 
-    // Both reads together, resolved across the pair. Each was resolved on its
-    // own by the pool's NSet, which cannot see the other — so a result replayed
-    // between them arrives twice, and the tally would keep the older copy. See
+    // Both reads together, resolved across the pair as well as within each.
+    // queryComplete resolves neither, and a result replayed between the two
+    // reads arrives once in each, so the tally would keep the older copy. See
     // newestPerDay.
     return {
         events: newestPerDay([...first.events, ...rest.events]),

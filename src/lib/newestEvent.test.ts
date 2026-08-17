@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newestEvent, supersedes } from './nostr';
+import { matching, newestEvent, supersedes } from './nostr';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 // One rule for "which version of this replaceable event is current", used by
@@ -59,5 +59,38 @@ describe('newestEvent', () => {
         const backwards = newestEvent([...events].reverse())?.id;
         expect(forwards).toBe('a');
         expect(backwards).toBe('a');
+    });
+});
+
+// The tags of whatever this returns get copied into an event signed with the
+// reader's own key, so this is the boundary that stops a relay handing back
+// somebody else's list to be republished as yours.
+describe('matching', () => {
+    const ME = 'a'.repeat(64);
+    const THEM = 'b'.repeat(64);
+    const ev = (over: Partial<NostrEvent>): NostrEvent =>
+        ({ ...event('x', 1), pubkey: ME, kind: 3, tags: [], ...over });
+
+    it('keeps an event that is what was asked for', () => {
+        expect(matching([ev({})], { kind: 3, author: ME })).toHaveLength(1);
+    });
+
+    it('drops another author, however well-formed', () => {
+        expect(matching([ev({ pubkey: THEM })], { kind: 3, author: ME })).toEqual([]);
+    });
+
+    it('drops another kind', () => {
+        expect(matching([ev({ kind: 1 })], { kind: 3, author: ME })).toEqual([]);
+    });
+
+    it('checks the d tag when one is asked for', () => {
+        const want = { kind: 30008, author: ME, dTag: 'profile_badges' };
+        expect(matching([ev({ kind: 30008, tags: [['d', 'profile_badges']] })], want)).toHaveLength(1);
+        expect(matching([ev({ kind: 30008, tags: [['d', 'something_else']] })], want)).toEqual([]);
+        expect(matching([ev({ kind: 30008, tags: [] })], want)).toEqual([]);
+    });
+
+    it('ignores the d tag when none is asked for', () => {
+        expect(matching([ev({ tags: [['d', 'whatever']] })], { kind: 3, author: ME })).toHaveLength(1);
     });
 });

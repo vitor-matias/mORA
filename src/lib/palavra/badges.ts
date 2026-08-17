@@ -21,6 +21,7 @@ import { pool } from '@/lib/pool';
 import {
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
+    matching,
     newestEvent,
     queryComplete,
     signNostrEvent,
@@ -215,7 +216,13 @@ export async function fetchProfileBadges(pubkey: string): Promise<ProfileBadgeRe
         [{ kinds: [KIND_PROFILE_BADGES], authors: [pubkey], '#d': [D_PROFILE_BADGES], limit: 1 }],
         { signal: AbortSignal.timeout(PROFILE_BADGE_READ_TIMEOUT_MS), relays },
     );
-    if (events.length === 0) {
+    // Checked locally against the filter, not taken on the relay's word: these
+    // tags are copied into an event signed with this identity's key, so
+    // somebody else's badge list accepted here becomes this one's.
+    const mine = matching(events, {
+        kind: KIND_PROFILE_BADGES, author: pubkey, dTag: D_PROFILE_BADGES,
+    });
+    if (mine.length === 0) {
         // A majority has to have answered before "nothing came back" is
         // allowed to mean "displays nothing" — the same bar the contact list
         // write applies, and for the same reason: below it, the write would
@@ -236,7 +243,7 @@ export async function fetchProfileBadges(pubkey: string): Promise<ProfileBadgeRe
     // whole list, so it would republish an old one and drop whatever has
     // been added since. Ties on created_at break on the id, so two versions
     // signed in the same second don't resolve by whichever relay was quicker.
-    return profileBadgeRefs(newestEvent(events)!.tags);
+    return profileBadgeRefs(newestEvent(mine)!.tags);
 }
 
 /**

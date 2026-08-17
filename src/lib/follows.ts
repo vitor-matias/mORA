@@ -16,6 +16,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
 import {
     RELAY_PUBLISH_TIMEOUT_MS,
+    matching,
     newestEvent,
     queryComplete,
     signNostrEvent,
@@ -43,7 +44,12 @@ async function fetchContactList(pubkey: string): Promise<NostrEvent | null | und
         [{ kinds: [KIND_CONTACTS], authors: [pubkey], limit: 1 }],
         { signal: AbortSignal.timeout(CONTACT_READ_TIMEOUT_MS), relays },
     );
-    if (events.length > 0) {
+    // Checked against what was asked for, not taken on the relay's word. The
+    // tags below are copied into an event signed with this identity's key, so
+    // an unrelated kind-3 accepted here is someone else's follow list
+    // republished as this one's.
+    const mine = matching(events, { kind: KIND_CONTACTS, author: pubkey });
+    if (mine.length > 0) {
         // Newest wins. `limit: 1` is per relay, so several relays can each
         // return their own version of this replaceable event, and the first in
         // the array need not be the current one. Following rewrites the whole
@@ -52,7 +58,7 @@ async function fetchContactList(pubkey: string): Promise<NostrEvent | null | und
         // Ties on created_at break on the id: two lists signed in the same
         // second are entirely possible, and leaving that to relay order would
         // decide, by luck, which one this republishes the whole graph from.
-        return newestEvent(events)!;
+        return newestEvent(mine)!;
     }
     // Nothing came back, and that only means "no list yet" if enough of the
     // network said so. `pool.query` could not tell the two apart at all — an

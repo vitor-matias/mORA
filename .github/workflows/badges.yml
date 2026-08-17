@@ -101,8 +101,12 @@ jobs:
             echo "::warning::BASE_URL is not set, so the badges will be published without art. Add it under Settings → Secrets and variables → Actions → Variables."
           fi
 
-          args=""
-          if [ -n "$AWARD_MONTH" ]; then args="$args $AWARD_MONTH"; fi
-          if [ "$DRY_RUN" = "true" ]; then args="$args --dry-run"; fi
-          # shellcheck disable=SC2086
-          npm run badges -- $args
+          # An array, so each argument stays one argument. Built as a string and
+          # expanded unquoted, a month input with a space in it would split into
+          # two arguments — and the script takes the first non-flag argument as
+          # the month, so it would reject the leading fragment rather than the
+          # value that was actually entered.
+          args=()
+          if [ -n "$AWARD_MONTH" ]; then args+=("$AWARD_MONTH"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          npm run badges -- "${args[@]}"

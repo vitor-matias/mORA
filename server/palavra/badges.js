@@ -475,7 +475,12 @@ async function main() {
     // Refused rather than ignored: falling through to last month would award a
     // month nobody asked for, which is a strange thing to do quietly when the
     // output is permanent.
-    const monthArg = args.find((a) => /^\d{4}-\d{1,2}$/.test(a));
+    // The first thing that isn't a flag, whatever it looks like — then held to
+    // the strict pattern. Picking the argument by *matching* a loose month
+    // shape meant anything that missed the shape was not an argument at all:
+    // `2026-8x` simply wasn't found, and the run went quietly on to last month.
+    // A malformed month should be an error, not a different month.
+    const monthArg = args.find((a) => !a.startsWith('--'));
     if (monthArg !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthArg)) {
         console.error(`${monthArg} is not a month. Expected YYYY-MM, 01 to 12.`);
         process.exit(1);
