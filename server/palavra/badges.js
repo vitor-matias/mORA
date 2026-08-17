@@ -310,8 +310,8 @@ function definitionEvent(month, place, secretKey) {
     return finalizeEvent({
         kind: KIND_BADGE_DEFINITION,
         created_at: Math.floor(Date.now() / 1000),
-        // A cross in gold, silver or bronze — tools/make-badge-art.js draws
-        // them, public/badges/ holds them, and the app serves them.
+        // An open book in gold, silver or bronze — tools/make-badge-art.js
+        // renders them, public/badges/ holds them, the app serves them.
         tags: [
             ['d', badgeDTag(month, place)],
             ['name', badgeName(month)],

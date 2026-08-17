@@ -327,12 +327,18 @@ A third, kind 30008, is deliberately absent. NIP-58 has the **recipient**
 publish that to show a badge on their profile, so it belongs to the app and to
 the winner's choice. Nothing here writes to anyone else's profile.
 
-The art is a cross in gold, silver and bronze, drawn by
+The art is an open book in gold, silver and bronze, rendered by
 `npm run make-badge-art` in the repo root and committed to `public/badges/`.
+The shape is Material Symbols `menu_book` (Apache-2.0), path data verbatim from
+`google/material-design-icons` — not the 📖 emoji, whose good renderings live in
+proprietary fonts, which makes a PNG traced from one a licensing problem.
+
 PNG rather than SVG because a good number of Nostr clients refuse SVG, and an
 image format half the audience won't render defeats the point of putting badges
-on a profile. The generator has no dependencies — a cross is rectangles and a
-PNG is three chunks around a `node:zlib` stream.
+on a profile. The generator has no dependencies: it flattens the path's curves,
+scanline-fills them with the nonzero rule SVG specifies, downsamples for
+antialiasing, and wraps the result in the three chunks a PNG needs around a
+`node:zlib` stream.
 
 Set **`PALAVRA_APP_URL`** to where the app is served, e.g. `https://mora.app/`,
 so the definitions can point at that art. The app itself reads its own URL off
