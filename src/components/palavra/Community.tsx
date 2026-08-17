@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Trophy, Flame, Swords, Users } from 'lucide-react';
+import { Trophy, Crown, Swords, Users } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
 import { Leaderboard } from './Leaderboard';
-import { StreakBoard } from './StreakBoard';
+import { PointsBoard } from './PointsBoard';
 import { Duels } from './Duels';
 import { Leagues } from './Leagues';
 
-type Tab = 'board' | 'streaks' | 'duels' | 'leagues';
+type Tab = 'board' | 'month' | 'duels' | 'leagues';
 
-const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, streaks: Flame, duels: Swords, leagues: Users };
+const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, month: Crown, duels: Swords, leagues: Users };
 
 /**
  * The social half of the page: today's ranking, the standing streak board,
@@ -25,6 +25,7 @@ export function Community({
     pubkey,
     sharing,
     revealResults,
+    finishedToday,
 }: {
     /** Changes when this player's own result reaches the relays. The panels
         stay mounted once opened, so nothing else would make them look again —
@@ -41,24 +42,39 @@ export function Community({
     sharing: boolean;
     /** False until this player has finished the day's puzzle. Rankings say how
         many tries each person needed, which is a hint about how hard the word
-        is — so the numbers wait, while league membership stays usable. */
+        is — so the numbers wait, while league membership stays usable.
+
+        True for any archived day, whose results give nothing away about today. */
     revealResults: boolean;
+    /** False until this player has finished *today's* puzzle, whichever day is
+        on screen. The month board is the only panel that needs the difference:
+        every other one is scoped to the day being viewed, while a monthly total
+        with today in it is today's guess counts summed. */
+    finishedToday: boolean;
 }) {
     const t = useTranslations().palavra;
     const [tab, setTab] = useState<Tab>('board');
     // Which tabs have ever been opened. Panels mount lazily and then stay
     // mounted: unmounting on deselect re-ran the whole relay fan-out on every
     // switch back — including the leagues path, which reaches every member's
-    // write relays — while mounting all three up front would pay for tabs the
+    // write relays — while mounting all four up front would pay for tabs the
     // player may never open. This pays for each one exactly once.
-    const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(['board']));
+    //
+    // The month starts visited alongside the day. It is the standing ranking
+    // — the one people come here for — and its query is the widest of the
+    // four, so waiting for the tap to start it is exactly the wrong order:
+    // the panel would spend its first seconds loading every time, having sat
+    // idle while the day's board was being read. Both fetch on arrival, and
+    // switching between them is then instant. Duels and leagues still wait,
+    // since neither is on the way to anywhere.
+    const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(['board', 'month']));
     const openTab = (id: Tab) => {
         setTab(id);
         setVisited((seen) => (seen.has(id) ? seen : new Set(seen).add(id)));
     };
     const tabs: { id: Tab; label: string }[] = [
         { id: 'board', label: t.tabBoard },
-        { id: 'streaks', label: t.tabStreaks },
+        { id: 'month', label: t.tabMonth },
         { id: 'duels', label: t.tabDuels },
         { id: 'leagues', label: t.tabLeagues },
     ];
@@ -116,9 +132,20 @@ export function Community({
                         ? <Leaderboard date={date} you={pubkey} refreshKey={refreshKey} />
                         : <Spoiler text={t.spoiler} why={t.spoilerWhy} />)}
 
-                    {/* No sign-in needed and no spoiler gate: a streak count
-                        says nothing about today's word, unlike a guess count. */}
-                    {id === 'streaks' && <StreakBoard you={pubkey} refreshKey={refreshKey} />}
+                    {/* No sign-in needed, and no spoiler gate either — but for
+                        a different reason than the streak board it replaces.
+                        A month's points *are* guess counts summed, so the
+                        board withholds today's column until this player has
+                        finished, rather than withholding itself. A standing
+                        ranking nobody can see until they play would be a poor
+                        standing ranking. */}
+                    {id === 'month' && (
+                        // `finishedToday`, not `revealResults`: the archive
+                        // unlocks the other panels because a past day says
+                        // nothing about today's word, but this board sums
+                        // today's guess counts and so has to wait for today.
+                        <PointsBoard you={pubkey} refreshKey={refreshKey} revealResults={finishedToday} />
+                    )}
 
                     {id === 'duels' && (!pubkey
                         ? <SignInPrompt what={t.signInDuels} hint={t.signInHint} />

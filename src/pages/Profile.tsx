@@ -11,6 +11,7 @@ import { fileToAvatarDataUrl } from "@/lib/image";
 import { passkeysAvailable } from "@/lib/keyVault";
 import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { MyBadges } from "@/components/palavra/MyBadges";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
@@ -968,6 +969,11 @@ export default function Profile() {
                             />
                         </button>
                     </div>
+
+                    {/* Renders nothing at all until this identity has won
+                        something, so a profile page isn't given a section
+                        about an empty shelf. */}
+                    {palavraPubkey && <MyBadges pubkey={palavraPubkey} />}
 
                     <button
                         onClick={logout}

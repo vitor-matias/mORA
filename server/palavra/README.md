@@ -301,6 +301,83 @@ schedule so recent days are re-pushed; add a relay that keeps history; or pin
 the events with a paid relay. The puzzle being deterministic means nothing is
 ever truly lost — it can always be republished.
 
+## Monthly podium badges
+
+`badges.js` awards NIP-58 badges to the top three of a finished month.
+
+```bash
+npm run badges-dry-run          # standings, publishes nothing
+npm run badges                  # award last month
+node --experimental-strip-types badges.js 2026-07
+```
+
+It signs with the same `PALAVRA_NSEC` that signs the puzzles, and that is the
+point: a badge means something only because a *known* key issued it, and
+clients already pin this one. A badge anyone could mint for themselves would be
+worth nothing, so there is no client-side version of this.
+
+Per place, per month, two events:
+
+| Kind | What | `d` / `a` |
+| --- | --- | --- |
+| 30009 | badge definition | `mora-palavra-2026-07-1` |
+| 8 | the award, naming one winner | `30009:<publisher>:mora-palavra-2026-07-1` |
+
+A third, kind 30008, is deliberately absent. NIP-58 has the **recipient**
+publish that to show a badge on their profile, so it belongs to the app and to
+the winner's choice. Nothing here writes to anyone else's profile.
+
+The art is an open book in gold, silver and bronze, rendered by
+`npm run make-badge-art` in the repo root and committed to `public/badges/`.
+The shape is Material Symbols `menu_book` (Apache-2.0), path data verbatim from
+`google/material-design-icons` — not the 📖 emoji, whose good renderings live in
+proprietary fonts, which makes a PNG traced from one a licensing problem.
+
+PNG rather than SVG because a good number of Nostr clients refuse SVG, and an
+image format half the audience won't render defeats the point of putting badges
+on a profile. The generator has no dependencies: it flattens the path's curves,
+scanline-fills them with the nonzero rule SVG specifies, downsamples for
+antialiasing, and wraps the result in the three chunks a PNG needs around a
+`node:zlib` stream.
+
+Set **`PALAVRA_APP_URL`** — or **`BASE_URL`**, which is the name the repository
+variable uses and which this accepts too — to where the app is served, e.g.
+`https://mora.app/`, so the definitions can point at that art. The app itself
+reads its own URL off `window.location`, which is no help here. Left unset,
+definitions are published with no image — valid NIP-58, and better than a
+definition carrying a broken URL that clients will cache. Because definitions
+are addressable, art can be added or moved later without reissuing a single
+award: the awards point at the coordinate, not at a picture.
+
+## Scheduling the awards
+
+`.github/workflows/badges.yml` runs the job daily at 03:00 UTC and always
+targets *last* month, so the whole month is a retry window. Daily rather than
+on the 1st for the same reason the puzzle publisher runs hourly: GitHub's
+scheduled jobs are best-effort, and a once-a-month job that gets skipped is a
+month with no podium. Every run after a successful one does nothing but a
+query, because the job asks the relays what it has already awarded.
+
+That retry window is load-bearing rather than belt-and-braces. The job declines
+any month it could not read in full, so a day when a relay is down is a day it
+awards nothing and needs another chance tomorrow.
+
+It needs `PALAVRA_NSEC` as a secret and `BASE_URL` as a variable; without the
+latter it still runs and warns, publishing badges with no art.
+
+**Why it imports from `src/`.** The podium is computed with the app's own
+reader and the app's own scoring rule — `results.ts` and `scoring.ts` — not
+with copies of them. A second implementation of "who won" is a badge on the
+wrong profile the first time the two disagree, handed out silently, once a
+month, to someone who then has it forever. That is why those two modules import
+nothing that needs a browser, and why this runs under
+`--experimental-strip-types`.
+
+**Two things it refuses to do**, both because an award is a permanent public
+event naming a person and there is no unsaying it: it will not award a month
+that has not finished (`--dry-run` still shows the standings), and it will not
+award a place twice — it checks the relays for an existing award first.
+
 ## The verse pool
 
 `verses.js`, text taken verbatim from the **Bíblia dos Capuchinhos** corpus at
