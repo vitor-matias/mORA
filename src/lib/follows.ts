@@ -16,6 +16,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
 import {
     RELAY_PUBLISH_TIMEOUT_MS,
+    newestEvent,
     queryComplete,
     signNostrEvent,
 } from '@/lib/nostr';
@@ -48,7 +49,10 @@ async function fetchContactList(pubkey: string): Promise<NostrEvent | null | und
         // the array need not be the current one. Following rewrites the whole
         // list, so building on a stale version would unfollow everyone added
         // since it was signed.
-        return events.reduce((a, b) => (b.created_at > a.created_at ? b : a));
+        // Ties on created_at break on the id: two lists signed in the same
+        // second are entirely possible, and leaving that to relay order would
+        // decide, by luck, which one this republishes the whole graph from.
+        return newestEvent(events)!;
     }
     // Nothing came back, and that only means "no list yet" if enough of the
     // network said so. `pool.query` could not tell the two apart at all — an

@@ -58,6 +58,37 @@ export const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
  * get the union deduplicated by id and pick, which is what the ones that care
  * already do.
  */
+/**
+ * Whether `candidate` supersedes `held` — the newest version of a replaceable
+ * or addressable event, decided the same way everywhere.
+ *
+ * `created_at` alone is not enough. Two versions signed in the same second are
+ * common — a republish takes milliseconds — and comparing only timestamps
+ * leaves the winner to whichever relay answered first. That is not merely
+ * untidy where the result feeds a read-modify-write: the contact list and the
+ * profile badge list are each one event holding everything, so picking the
+ * stale one of a tied pair republishes it over the current one and drops
+ * whatever was added in between.
+ *
+ * Ties break on the lower id, which is what NSet does inside the pool and what
+ * newestPerDay and the badge job's newestVersions do. Arbitrary, and that is
+ * the point: every reader has to land on the same event.
+ */
+export function supersedes(candidate: NostrEvent, held: NostrEvent | undefined): boolean {
+    if (!held) return true;
+    if (candidate.created_at !== held.created_at) return candidate.created_at > held.created_at;
+    return candidate.id < held.id;
+}
+
+/** The newest of a set of versions of the same replaceable event, or
+    undefined when given none. */
+export function newestEvent(events: NostrEvent[]): NostrEvent | undefined {
+    return events.reduce<NostrEvent | undefined>(
+        (held, candidate) => (supersedes(candidate, held) ? candidate : held),
+        undefined,
+    );
+}
+
 export async function queryComplete(
     filters: NostrFilter[],
     opts: { signal: AbortSignal; relays?: string[] },

@@ -21,8 +21,10 @@ import { pool } from '@/lib/pool';
 import {
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
+    newestEvent,
     queryComplete,
     signNostrEvent,
+    supersedes,
 } from '@/lib/nostr';
 import { relaysForAuthors } from '@/lib/relayList';
 import { PALAVRA_PUBLISHER } from './api';
@@ -154,7 +156,7 @@ export async function fetchBadges(pubkey: string): Promise<EarnedBadge[]> {
         if (!dTag) continue;
         const coord = `${KIND_BADGE_DEFINITION}:${PALAVRA_PUBLISHER}:${dTag}`;
         const existing = byCoord.get(coord);
-        if (!existing || definition.created_at > existing.created_at) byCoord.set(coord, definition);
+        if (supersedes(definition, existing)) byCoord.set(coord, definition);
     }
 
     const badges: EarnedBadge[] = [];
@@ -232,9 +234,9 @@ export async function fetchProfileBadges(pubkey: string): Promise<ProfileBadgeRe
     // the array is not necessarily the current one. Taking a stale version
     // here would be the worst kind of wrong: the write below replaces the
     // whole list, so it would republish an old one and drop whatever has
-    // been added since.
-    const newest = events.reduce((a, b) => (b.created_at > a.created_at ? b : a));
-    return profileBadgeRefs(newest.tags);
+    // been added since. Ties on created_at break on the id, so two versions
+    // signed in the same second don't resolve by whichever relay was quicker.
+    return profileBadgeRefs(newestEvent(events)!.tags);
 }
 
 /**
