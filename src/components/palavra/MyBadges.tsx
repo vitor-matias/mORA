@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Award, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { EarnedBadge } from '@/lib/palavra/badges';
 import { useTranslations } from '@/lib/i18n';
+import { BadgeItem } from './BadgeItem';
 
 type Publishing = 'idle' | 'saving' | 'done' | 'failed';
 
@@ -64,19 +65,7 @@ export function MyBadges({ pubkey }: { pubkey: string }) {
             ) : (
                 <>
                     <ul className="mt-3 space-y-2">
-                        {badges.map((badge) => (
-                            <li key={badge.coord} className="flex items-center gap-3">
-                                <span className="h-9 w-9 shrink-0 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                                    <Award size={18} className="text-amber-600 dark:text-amber-400" aria-hidden="true" />
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block text-sm font-semibold truncate">{badge.name}</span>
-                                    {badge.description && (
-                                        <span className="block text-xs text-zinc-500 truncate">{badge.description}</span>
-                                    )}
-                                </span>
-                            </li>
-                        ))}
+                        {badges.map((badge) => <BadgeItem key={badge.coord} badge={badge} />)}
                     </ul>
 
                     <p className="text-xs text-zinc-500 mt-3">{t.badgesPublishHelp}</p>

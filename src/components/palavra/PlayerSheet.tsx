@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Award, Loader2, Swords, UserCheck, UserPlus, X } from 'lucide-react';
 import type { EarnedBadge } from '@/lib/palavra/badges';
 import type { PlayerRef } from './Player';
+import { BadgeItem } from './BadgeItem';
 import { shortPubkey } from './playerLabel';
 import { useTranslations } from '@/lib/i18n';
 
@@ -153,7 +154,7 @@ export function PlayerSheet({ player, you, onClose }: {
                     )}
                     {badges !== null && badges.length > 0 && (
                         <ul className="space-y-2">
-                            {badges.map((badge) => <BadgeRow key={badge.coord} badge={badge} />)}
+                            {badges.map((badge) => <BadgeItem key={badge.coord} badge={badge} />)}
                         </ul>
                     )}
                 </section>
@@ -214,35 +215,5 @@ function Avatar({ player }: { player: PlayerRef }) {
                 />
                 : <Award size={18} className="text-zinc-400" />}
         </span>
-    );
-}
-
-function BadgeRow({ badge }: { badge: EarnedBadge }) {
-    const [broken, setBroken] = useState(false);
-    const art = badge.thumb || badge.image;
-    return (
-        <li className="flex items-center gap-3">
-            <span className="h-9 w-9 shrink-0 rounded-lg overflow-hidden bg-amber-500/10 flex items-center justify-center">
-                {/* Definitions currently ship without art, so the medal is the
-                    normal case rather than a fallback. Because a definition is
-                    addressable, images can be added later and will appear here
-                    with no award reissued and no change to this component. */}
-                {art && !broken
-                    ? <img
-                        src={art}
-                        alt=""
-                        referrerPolicy="origin"
-                        className="h-full w-full object-cover"
-                        onError={() => setBroken(true)}
-                    />
-                    : <Award size={18} className="text-amber-600 dark:text-amber-400" />}
-            </span>
-            <span className="min-w-0">
-                <span className="block text-sm font-semibold truncate">{badge.name}</span>
-                {badge.description && (
-                    <span className="block text-xs text-zinc-500 truncate">{badge.description}</span>
-                )}
-            </span>
-        </li>
     );
 }

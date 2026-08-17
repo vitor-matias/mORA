@@ -327,10 +327,20 @@ A third, kind 30008, is deliberately absent. NIP-58 has the **recipient**
 publish that to show a badge on their profile, so it belongs to the app and to
 the winner's choice. Nothing here writes to anyone else's profile.
 
-Definitions carry no `image` yet. NIP-58 allows that, and because a definition
-is addressable, art can be added later without reissuing a single award — the
-awards point at the coordinate, not at a picture. Most clients will render a
-plain tile until then.
+The art is a cross in gold, silver and bronze, drawn by
+`npm run make-badge-art` in the repo root and committed to `public/badges/`.
+PNG rather than SVG because a good number of Nostr clients refuse SVG, and an
+image format half the audience won't render defeats the point of putting badges
+on a profile. The generator has no dependencies — a cross is rectangles and a
+PNG is three chunks around a `node:zlib` stream.
+
+Set **`PALAVRA_APP_URL`** to where the app is served, e.g. `https://mora.app/`,
+so the definitions can point at that art. The app itself reads its own URL off
+`window.location`, which is no help here. Left unset, definitions are published
+with no image — valid NIP-58, and better than a definition carrying a broken
+URL that clients will cache. Because definitions are addressable, art can be
+added or moved later without reissuing a single award: the awards point at the
+coordinate, not at a picture.
 
 **Why it imports from `src/`.** The podium is computed with the app's own
 reader and the app's own scoring rule — `results.ts` and `scoring.ts` — not

@@ -71,6 +71,31 @@ const MONTH_NAMES = [
 
 const PLACE_NAMES = ['1.º lugar', '2.º lugar', '3.º lugar'];
 
+/**
+ * Where the badge art is served from, e.g. https://mora.app/.
+ *
+ * The app works its own URL out from `window.location`, which is no help here,
+ * so this is configured. It matters more than most env vars: the URL is baked
+ * into a signed definition that sits on relays indefinitely, and every client
+ * that ever renders the badge fetches it from there. Moving the app later
+ * means republishing the definitions — which is possible precisely because
+ * they are addressable, and is why the awards point at a coordinate rather
+ * than at a picture.
+ */
+const APP_URL = (process.env.PALAVRA_APP_URL ?? '').trim().replace(/\/*$/, '/');
+
+/** The art tags for a place, or none when no app URL is configured.
+    NIP-58 allows a definition without an image, and a definition with a
+    *broken* image URL is worse than one with none — a client that caches the
+    404 shows a broken tile for as long as it keeps the entry. */
+function artTags(place) {
+    if (!APP_URL) return [];
+    return [
+        ['image', `${APP_URL}badges/palavra-${place}.png`, '512x512'],
+        ['thumb', `${APP_URL}badges/palavra-${place}-thumb.png`, '128x128'],
+    ];
+}
+
 const isoDate = (ms) => new Date(ms).toISOString().slice(0, 10);
 const utcToday = () => isoDate(Date.now());
 const monthOf = (date) => date.slice(0, 7);
@@ -285,14 +310,13 @@ function definitionEvent(month, place, secretKey) {
     return finalizeEvent({
         kind: KIND_BADGE_DEFINITION,
         created_at: Math.floor(Date.now() / 1000),
-        // No `image` yet, deliberately. NIP-58 allows a definition without
-        // one, and because a definition is addressable it can be given art
-        // later without reissuing a single award — the awards point at this
-        // coordinate, not at a picture.
+        // A cross in gold, silver or bronze — tools/make-badge-art.js draws
+        // them, public/badges/ holds them, and the app serves them.
         tags: [
             ['d', badgeDTag(month, place)],
             ['name', badgeName(month)],
             ['description', `${PLACE_NAMES[place - 1]} da classificação mensal da Palavra Bíblica do Dia`],
+            ...artTags(place),
             ['t', PALAVRA_TOPIC],
         ],
         content: '',
