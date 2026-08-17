@@ -44,33 +44,20 @@ async function fetchContactList(pubkey: string): Promise<NostrEvent | null | und
         [{ kinds: [KIND_CONTACTS], authors: [pubkey], limit: 1 }],
         { signal: AbortSignal.timeout(CONTACT_READ_TIMEOUT_MS), relays },
     );
-    // Checked against what was asked for, not taken on the relay's word. The
-    // tags below are copied into an event signed with this identity's key, so
-    // an unrelated kind-3 accepted here is someone else's follow list
-    // republished as this one's.
-    const mine = matching(events, { kind: KIND_CONTACTS, author: pubkey });
-    if (mine.length > 0) {
-        // Newest wins. `limit: 1` is per relay, so several relays can each
-        // return their own version of this replaceable event, and the first in
-        // the array need not be the current one. Following rewrites the whole
-        // list, so building on a stale version would unfollow everyone added
-        // since it was signed.
-        // Ties on created_at break on the id: two lists signed in the same
-        // second are entirely possible, and leaving that to relay order would
-        // decide, by luck, which one this republishes the whole graph from.
-        return newestEvent(mine)!;
-    }
-    // Nothing came back, and that only means "no list yet" if enough of the
-    // network said so. `pool.query` could not tell the two apart at all — an
-    // unreachable relay and an empty one both come back as an empty array —
-    // which is how a list built on a failed read gets published over a real
-    // one.
+    // The majority gate comes first, before anything is selected — not only
+    // when nothing came back.
+    //
+    // It used to guard the empty case alone, which left the nonempty one
+    // unguarded and was the more dangerous of the two: one relay answering
+    // with an old list, while the three that hold the current one never
+    // answered, gave a perfectly valid-looking baseline to rewrite from. The
+    // list would then be republished without everyone added since that copy
+    // was signed. "Some relay had something" is not the same as "the network
+    // agrees this is the list".
     //
     // A majority rather than every relay: insisting on all of them would let a
     // single chronically dead relay make following permanently impossible,
-    // which trades one broken feature for another. A majority answering and
-    // none of them holding a list is as close to "there isn't one" as a
-    // relay-backed read gets.
+    // which trades one broken feature for another.
     if (answered * 2 <= asked) {
         console.warn(
             `Only ${answered} of ${asked} relays finished answering for the contact list, `
@@ -78,6 +65,27 @@ async function fetchContactList(pubkey: string): Promise<NostrEvent | null | und
         );
         return null;
     }
+
+    // Checked against what was asked for, not taken on the relay's word. The
+    // tags below are copied into an event signed with this identity's key, so
+    // an unrelated kind-3 accepted here is someone else's follow list
+    // republished as this one's.
+    //
+    // Every candidate is kept, including those from relays that never
+    // finished: the one holding the current list may be exactly the one that
+    // died mid-send, and dropping its answer would hand the write a stale copy
+    // from a relay that happened to finish. More candidates, newest wins.
+    const mine = matching(events, { kind: KIND_CONTACTS, author: pubkey });
+    if (mine.length > 0) {
+        // Newest wins. `limit: 1` is per relay, so several relays can each
+        // return their own version of this replaceable event, and the first in
+        // the array need not be the current one. Ties on created_at break on
+        // the id: two lists signed in the same second are entirely possible,
+        // and leaving that to relay order would decide, by luck, which one this
+        // republishes the whole graph from.
+        return newestEvent(mine)!;
+    }
+
     // undefined: read succeeded, this identity has no list yet.
     return undefined;
 }

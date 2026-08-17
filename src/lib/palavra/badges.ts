@@ -216,26 +216,34 @@ export async function fetchProfileBadges(pubkey: string): Promise<ProfileBadgeRe
         [{ kinds: [KIND_PROFILE_BADGES], authors: [pubkey], '#d': [D_PROFILE_BADGES], limit: 1 }],
         { signal: AbortSignal.timeout(PROFILE_BADGE_READ_TIMEOUT_MS), relays },
     );
+    // The majority gate comes first, before anything is selected — not only
+    // when nothing came back.
+    //
+    // It used to guard the empty case alone, and the nonempty one was the more
+    // dangerous of the two: one relay answering with an old list, while the
+    // relays holding the current one never answered, gave a valid-looking
+    // baseline to rewrite from — and the write below would republish it,
+    // dropping every badge added since that copy was signed.
+    if (answered * 2 <= asked) {
+        console.warn(
+            `Only ${answered} of ${asked} relays finished answering for the profile badge `
+            + 'list, so it is unknown rather than empty.',
+        );
+        return null;
+    }
+
     // Checked locally against the filter, not taken on the relay's word: these
     // tags are copied into an event signed with this identity's key, so
     // somebody else's badge list accepted here becomes this one's.
+    //
+    // Candidates from relays that never finished are kept: the one holding the
+    // current list may be exactly the one that died mid-send, and dropping it
+    // would hand the write a stale copy from a relay that happened to finish.
     const mine = matching(events, {
         kind: KIND_PROFILE_BADGES, author: pubkey, dTag: D_PROFILE_BADGES,
     });
-    if (mine.length === 0) {
-        // A majority has to have answered before "nothing came back" is
-        // allowed to mean "displays nothing" — the same bar the contact list
-        // write applies, and for the same reason: below it, the write would
-        // replace a list it never saw.
-        if (answered * 2 <= asked) {
-            console.warn(
-                `Only ${answered} of ${asked} relays finished answering for the profile badge `
-                + 'list, so it is unknown rather than empty.',
-            );
-            return null;
-        }
-        return [];
-    }
+    if (mine.length === 0) return [];
+
     // Newest wins. `limit: 1` is per relay, so several relays can each
     // return their own version of this replaceable event and the first in
     // the array is not necessarily the current one. Taking a stale version
