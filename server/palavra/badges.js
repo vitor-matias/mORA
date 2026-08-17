@@ -245,9 +245,52 @@ async function query(filters) {
         for (const event of events) if (!byId.has(event.id)) byId.set(event.id, event);
     }
     return {
-        events: [...byId.values()],
+        events: newestVersions([...byId.values()]),
         unread: perRelay.filter((relay) => !relay.complete).map((relay) => relay.url),
     };
+}
+
+/** NIP-01 replaceable ranges. */
+const isReplaceable = (kind) => kind === 0 || kind === 3 || (kind >= 10_000 && kind < 20_000);
+const isAddressable = (kind) => kind >= 30_000 && kind < 40_000;
+
+/**
+ * One event per replaceable or addressable coordinate, newest kept.
+ *
+ * The app never needs this: its NPool collects into an NSet, which drops an
+ * older version of the same coordinate as it goes, and pool.ts says as much.
+ * This file talks to relays over a raw socket and so inherits none of that —
+ * it deduplicates by event id, and two *different* versions of the same
+ * addressable event have two different ids, so both survived.
+ *
+ * That matters because results are addressable, one per author per day. Replay
+ * a day and the relays hold both versions; entriesFromEvents drops created_at,
+ * and tallyMonth keeps the first result it sees for an author's day. So the
+ * version that scored was whichever relay answered first — and a stale loss
+ * arriving ahead of its replacement could cost someone the month.
+ *
+ * Ties break on the id, as NSet's own comparison does, so the outcome does not
+ * depend on relay order in any case.
+ */
+export function newestVersions(events) {
+    const newest = new Map();
+    const rest = [];
+    for (const event of events) {
+        if (!isReplaceable(event.kind) && !isAddressable(event.kind)) {
+            rest.push(event);
+            continue;
+        }
+        const dTag = isAddressable(event.kind)
+            ? event.tags?.find(([name]) => name === 'd')?.[1] ?? ''
+            : '';
+        const coord = `${event.kind}:${event.pubkey}:${dTag}`;
+        const held = newest.get(coord);
+        const wins = !held
+            || event.created_at > held.created_at
+            || (event.created_at === held.created_at && event.id < held.id);
+        if (wins) newest.set(coord, event);
+    }
+    return [...rest, ...newest.values()];
 }
 
 function sendTo(url, event) {
@@ -341,17 +384,28 @@ async function resultEventsFor(days) {
     };
 }
 
-/** Which places this publisher has already awarded for a month. */
+/**
+ * Which places this publisher has already awarded for a month, and whether the
+ * answer can be trusted.
+ *
+ * The same rule the podium read applies, and for a sharper reason. If the relay
+ * holding a previous award is the one that did not finish answering, this comes
+ * back without that place and the caller cheerfully awards it a second time —
+ * and an award cannot be withdrawn. A partial answer here is worse than no
+ * answer, so it is reported rather than returned as fact.
+ */
 async function alreadyAwarded(pubkey, month) {
     const coords = Array.from({ length: PODIUM }, (_, i) => badgeCoord(pubkey, month, i + 1));
-    const { events } = await query([{ kinds: [KIND_BADGE_AWARD], authors: [pubkey], '#a': coords }]);
+    const { events, unread } = await query([{
+        kinds: [KIND_BADGE_AWARD], authors: [pubkey], '#a': coords,
+    }]);
     const awarded = new Set();
     for (const event of events) {
         const coord = event.tags.find((t) => t[0] === 'a')?.[1];
         const place = coords.indexOf(coord);
         if (place !== -1) awarded.add(place + 1);
     }
-    return awarded;
+    return { awarded, unread };
 }
 
 function definitionEvent(month, place, art, secretKey) {
@@ -385,7 +439,20 @@ function awardEvent(pubkey, month, place, winner, secretKey) {
 async function main() {
     const args = process.argv.slice(2);
     const dryRun = args.includes('--dry-run');
-    const month = args.find((a) => /^\d{4}-\d{2}$/.test(a)) ?? shiftMonth(monthOf(utcToday()), -1);
+    // Bounded to real months. `2026-13` would otherwise reach badgeName, which
+    // indexes MONTH_NAMES and would sign "Palavra — undefined 2026" into a
+    // permanent definition. monthDays rejects it a few steps later too, but a
+    // guard on the argument should not depend on that.
+    //
+    // Refused rather than ignored: falling through to last month would award a
+    // month nobody asked for, which is a strange thing to do quietly when the
+    // output is permanent.
+    const monthArg = args.find((a) => /^\d{4}-\d{1,2}$/.test(a));
+    if (monthArg !== undefined && !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthArg)) {
+        console.error(`${monthArg} is not a month. Expected YYYY-MM, 01 to 12.`);
+        process.exit(1);
+    }
+    const month = monthArg ?? shiftMonth(monthOf(utcToday()), -1);
 
     // A podium is only a podium once the month is over. Awarding mid-month
     // would name whoever happens to be ahead, permanently and in public, and
@@ -458,7 +525,15 @@ async function main() {
 
     const secretKey = loadSecretKey();
     const pubkey = getPublicKey(secretKey);
-    const awarded = await alreadyAwarded(pubkey, month);
+    const { awarded, unread } = await alreadyAwarded(pubkey, month);
+    if (unread.length > 0) {
+        console.error(
+            `Could not check which places are already awarded: ${unread.join(', ')} `
+            + 'did not finish answering. Declining rather than risking a second award '
+            + 'for a place, which cannot be withdrawn.',
+        );
+        process.exit(1);
+    }
     let failed = false;
 
     for (const [index, row] of podium.entries()) {
