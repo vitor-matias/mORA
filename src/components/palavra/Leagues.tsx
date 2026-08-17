@@ -175,11 +175,19 @@ export function Leagues({
                                         {standings.map((row, i) => (
                                             <li key={row.pubkey} className="flex items-center gap-3 py-2 text-sm">
                                                 <span className="w-4 shrink-0 tabular-nums text-xs text-zinc-400">{i + 1}</span>
-                                                <span className={`flex-1 min-w-0 flex ${
+                                                {/* A div, not a span: Player
+                                                    now renders the player sheet
+                                                    beside its button, and that
+                                                    is a `fixed` overlay — flow
+                                                    content, which a span may
+                                                    not hold. The other three
+                                                    boards drop Player straight
+                                                    into their <li>. */}
+                                                <div className={`flex-1 min-w-0 flex ${
                                                     row.pubkey === pubkey ? 'font-semibold text-liturgy-700 dark:text-liturgy-300' : ''
                                                 }`}>
                                                     <Player player={row} />
-                                                </span>
+                                                </div>
                                                 <span className="shrink-0 tabular-nums text-zinc-500 text-xs">
                                                     {row.solved ? `${row.tries}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`}
                                                 </span>

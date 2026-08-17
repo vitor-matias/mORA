@@ -49,12 +49,12 @@ const PADDING = 0.08;
  * Material Symbols `menu_book`, outlined, 24px — Apache-2.0.
  * google/material-design-icons, symbols/web/menu_book/materialsymbolsoutlined.
  *
- * Verbatim, including the trailing `M280-494Z` degenerate subpath. Its viewBox
- * is `0 -960 960 960`, so y runs from -960 to 0 — the transform below is what
- * puts it back on screen.
+ * Verbatim, including the trailing `M280-494Z` degenerate subpath. Its declared
+ * viewBox is `0 -960 960 960`, so y runs from -960 to 0 — but nothing here
+ * reads it: `place` fits the path to its own ink instead, which is why the
+ * coordinates end up back on screen.
  */
 const ICON = {
-    viewBox: { x: 0, y: -960, width: 960, height: 960 },
     path: 'M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z',
 };
 
@@ -361,9 +361,11 @@ function toPng(size, pixels) {
 
 /** The icon in 0..1 canvas space: centred, scaled to fit inside the padding,
     aspect ratio kept. */
-function place(path, viewBox) {
+function place(path) {
     const raw = flatten(path);
 
+    // The icon's own ink, not its viewBox: `menu_book` is wider than it is
+    // tall, and fitting the square viewBox would leave it looking shrunken.
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const points of raw) {
         for (const [x, y] of points) {
@@ -371,9 +373,6 @@ function place(path, viewBox) {
             minY = Math.min(minY, y); maxY = Math.max(maxY, y);
         }
     }
-    // The icon's own ink, not the viewBox: `menu_book` is wider than it is
-    // tall, and fitting the square viewBox would leave it looking shrunken.
-    void viewBox;
 
     const usable = 1 - 2 * PADDING;
     const scale = Math.min(usable / (maxX - minX), usable / (maxY - minY));
@@ -390,7 +389,7 @@ function place(path, viewBox) {
     };
 }
 
-const { subpaths, bounds } = place(ICON.path, ICON.viewBox);
+const { subpaths, bounds } = place(ICON.path);
 
 mkdirSync(OUT_DIR, { recursive: true });
 for (const [place_, { name, stops }] of Object.entries(METALS)) {

@@ -51,8 +51,11 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
     // the top of the effect — the same reason the daily board stamps its date:
     // clearing there is a synchronous setState on every mount, and a stale-key
     // check says the same thing without the extra render.
-    const [loaded, setLoaded] = useState<{ month: string; rows: MonthlyEntry[] } | null>(null);
-    const rows = loaded?.month === month ? loaded.rows : null;
+    const [loaded, setLoaded] = useState<
+        { month: string; rows: MonthlyEntry[]; partial: boolean } | null
+    >(null);
+    const current = loaded?.month === month ? loaded : null;
+    const rows = current?.rows ?? null;
 
     // The oldest month the archive offers. Anything before it is out of reach
     // rather than merely empty, so the button is disabled instead of stepping
@@ -63,10 +66,12 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
         let cancelled = false;
         import('@/lib/palavra/social')
             .then(({ fetchMonthlyPoints }) => fetchMonthlyPoints(month, notAfter))
-            .then((entries) => { if (!cancelled) setLoaded({ month, rows: entries }); })
+            .then(({ entries, partial }) => {
+                if (!cancelled) setLoaded({ month, rows: entries, partial });
+            })
             .catch((error: unknown) => {
                 console.warn('Could not load the monthly ranking.', error);
-                if (!cancelled) setLoaded({ month, rows: [] });
+                if (!cancelled) setLoaded({ month, rows: [], partial: true });
             });
         return () => { cancelled = true; };
     }, [month, notAfter, refreshKey]);
@@ -109,12 +114,17 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                     {/* On the first of the month, holding today back leaves
                         nothing at all to sum — worth saying plainly, since
                         "nobody has scored" would be a different and wrong
-                        claim about a board that simply isn't looking yet. */}
-                    {month !== thisMonth
-                        ? t.emptyMonthArchive
-                        : holdingToday && monthOf(yesterday(today)) !== thisMonth
-                            ? t.emptyMonthFirstDay
-                            : t.emptyMonth}
+                        claim about a board that simply isn't looking yet.
+
+                        A read that came back short is a third thing again, and
+                        the one nobody could guess from an empty board. */}
+                    {current?.partial
+                        ? t.monthPartial
+                        : month !== thisMonth
+                            ? t.emptyMonthArchive
+                            : holdingToday && monthOf(yesterday(today)) !== thisMonth
+                                ? t.emptyMonthFirstDay
+                                : t.emptyMonth}
                 </p>
             )}
 
@@ -196,6 +206,15 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                             );
                         })}
                     </ol>
+                    {/* Said above the legend rather than instead of the board.
+                        A short read makes every total a floor, not a lie, so
+                        the ranking still reads — but leaving it unsaid is what
+                        makes a floor look like a count. */}
+                    {current?.partial && (
+                        <p className="text-xs text-amber-600 dark:text-amber-500 mt-3">
+                            {t.monthPartial}
+                        </p>
+                    )}
                     <p className="text-xs text-zinc-400 mt-3">{t.monthLegend}</p>
                 </>
             )}

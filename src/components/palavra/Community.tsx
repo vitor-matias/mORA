@@ -25,6 +25,7 @@ export function Community({
     pubkey,
     sharing,
     revealResults,
+    finishedToday,
 }: {
     /** Changes when this player's own result reaches the relays. The panels
         stay mounted once opened, so nothing else would make them look again —
@@ -41,8 +42,15 @@ export function Community({
     sharing: boolean;
     /** False until this player has finished the day's puzzle. Rankings say how
         many tries each person needed, which is a hint about how hard the word
-        is — so the numbers wait, while league membership stays usable. */
+        is — so the numbers wait, while league membership stays usable.
+
+        True for any archived day, whose results give nothing away about today. */
     revealResults: boolean;
+    /** False until this player has finished *today's* puzzle, whichever day is
+        on screen. The month board is the only panel that needs the difference:
+        every other one is scoped to the day being viewed, while a monthly total
+        with today in it is today's guess counts summed. */
+    finishedToday: boolean;
 }) {
     const t = useTranslations().palavra;
     const [tab, setTab] = useState<Tab>('board');
@@ -132,7 +140,11 @@ export function Community({
                         ranking nobody can see until they play would be a poor
                         standing ranking. */}
                     {id === 'month' && (
-                        <PointsBoard you={pubkey} refreshKey={refreshKey} revealResults={revealResults} />
+                        // `finishedToday`, not `revealResults`: the archive
+                        // unlocks the other panels because a past day says
+                        // nothing about today's word, but this board sums
+                        // today's guess counts and so has to wait for today.
+                        <PointsBoard you={pubkey} refreshKey={refreshKey} revealResults={finishedToday} />
                     )}
 
                     {id === 'duels' && (!pubkey

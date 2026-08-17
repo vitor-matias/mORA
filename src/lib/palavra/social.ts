@@ -11,7 +11,13 @@
 
 import type { NostrEvent } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
-import { KIND_APP_STATE, RELAY_QUERY_TIMEOUT_MS, fetchProfileCards, toProfileCard } from '@/lib/nostr';
+import {
+    KIND_APP_STATE,
+    RELAY_QUERY_TIMEOUT_MS,
+    fetchProfileCards,
+    queryComplete,
+    toProfileCard,
+} from '@/lib/nostr';
 import { currentPubkey, useAuthStore } from '@/store/auth';
 import { relaysForAuthors } from '@/lib/relayList';
 import { formatUTCDate } from '@/lib/format';
@@ -21,6 +27,7 @@ import {
     entriesFromEvents,
     filtersFor,
     inGroupsOf,
+    newestPerDay,
     resultDTag,
     tagValue,
 } from './results';
@@ -123,10 +130,18 @@ const MONTH_CHUNK_LIMIT = 500;
     the app doesn't already have. */
 const MONTH_DAY_LIMIT = 200;
 
-function queryDays(groups: string[][], limit: number): Promise<NostrEvent[]> {
-    return pool.query(filtersFor(groups, limit), {
+function queryDays(groups: string[][], limit: number) {
+    return queryComplete(filtersFor(groups, limit), {
         signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS),
     });
+}
+
+/** A month's events, and whether the reads behind them were whole. `partial`
+    covers both ways a month can come back short: a relay that never finished
+    answering, and a day busier than one query can return. */
+interface MonthEvents {
+    events: NostrEvent[];
+    partial: boolean;
 }
 
 /**
@@ -146,19 +161,37 @@ function queryDays(groups: string[][], limit: number): Promise<NostrEvent[]> {
  * A day that *still* comes back full is past what this can fix by narrowing —
  * there is nothing smaller than a day to split into — so it is reported rather
  * than passed off as complete.
+ *
+ * The other way a month comes back short needs no filter at all: a relay that
+ * never answers. `pool.query` cannot say when that happened — it returns what
+ * arrived — so the reads go through queryComplete, and a read no relay finished
+ * is reported the same way a saturated day is. A ranking missing whole players
+ * is the worst shape a bug can take here, and it is worse still for being
+ * indistinguishable from a quiet month.
  */
-async function fetchMonthEvents(days: string[]): Promise<NostrEvent[]> {
-    const weeks = inGroupsOf(days, MONTH_CHUNK_DAYS);
-    const events = await queryDays(weeks, MONTH_CHUNK_LIMIT);
+async function fetchMonthEvents(days: string[]): Promise<MonthEvents> {
+    const short = ({ answered, asked }: { answered: number; asked: number }) => {
+        if (answered === asked) return false;
+        console.warn(
+            `Only ${answered} of ${asked} relays finished answering the monthly read. `
+            + 'Any results only the others hold are missing, so the totals are a floor.',
+        );
+        return true;
+    };
 
-    const perWeek = countPerGroup(events, weeks);
+    const weeks = inGroupsOf(days, MONTH_CHUNK_DAYS);
+    const first = await queryDays(weeks, MONTH_CHUNK_LIMIT);
+    const firstShort = short(first);
+
+    const perWeek = countPerGroup(first.events, weeks);
     const full = weeks.filter((_, index) => perWeek[index] >= MONTH_CHUNK_LIMIT);
-    if (full.length === 0) return events;
+    if (full.length === 0) return { events: first.events, partial: firstShort };
 
     const singles = full.flat().map((day) => [day]);
     const rest = await queryDays(singles, MONTH_DAY_LIMIT);
+    const restShort = short(rest);
 
-    const perDay = countPerGroup(rest, singles);
+    const perDay = countPerGroup(rest.events, singles);
     const stillFull = singles
         .filter((_, index) => perDay[index] >= MONTH_DAY_LIMIT)
         .flat();
@@ -170,9 +203,14 @@ async function fetchMonthEvents(days: string[]): Promise<NostrEvent[]> {
         );
     }
 
-    // Both reads together. Overlap is fine — the tally counts one result per
-    // author per day however many times it arrives.
-    return [...events, ...rest];
+    // Both reads together, resolved across the pair. Each was resolved on its
+    // own by the pool's NSet, which cannot see the other — so a result replayed
+    // between them arrives twice, and the tally would keep the older copy. See
+    // newestPerDay.
+    return {
+        events: newestPerDay([...first.events, ...rest.events]),
+        partial: firstShort || restShort || stillFull.length > 0,
+    };
 }
 
 /**
@@ -190,6 +228,12 @@ async function fetchMonthEvents(days: string[]): Promise<NostrEvent[]> {
  * published. Proof of work prices bulk fabrication, and a single inflated
  * guess count is as cheap here as it is on the daily board. What changed is
  * that lying now costs one mined event per day lied about.
+ *
+ * `partial` comes back beside the rows rather than in place of them. A relay
+ * outage makes a total a floor, not a lie, and blanking a standing ranking over
+ * one flaky relay serves nobody — but rendering a floor as though it were a
+ * count is how a board ends up authoritative and wrong. The caller says so on
+ * screen instead.
  */
 export async function fetchMonthlyPoints(
     month: string,
@@ -206,30 +250,31 @@ export async function fetchMonthlyPoints(
      */
     notAfter?: string,
     limit = 50,
-): Promise<MonthlyEntry[]> {
+): Promise<{ entries: MonthlyEntry[]; partial: boolean }> {
     // Never past today either: the rest of the month has no puzzles yet, and
     // asking for them spends filter room on days nobody could have played.
     const today = formatUTCDate(new Date());
     const days = monthDays(month, notAfter && notAfter < today ? notAfter : today);
-    if (days.length === 0) return [];
+    if (days.length === 0) return { entries: [], partial: false };
 
-    let events: NostrEvent[];
+    let read: MonthEvents;
     try {
-        events = await fetchMonthEvents(days);
+        read = await fetchMonthEvents(days);
     } catch (error) {
         console.warn('Could not load the monthly ranking.', error);
-        return [];
+        return { entries: [], partial: true };
     }
 
     // Day by day through the same reader the daily board uses, so a month is
     // scored on exactly the rows a single day would have shown — proof-of-work
     // gate, bounds checks and `d`/`date` agreement included.
     const results: DatedResult[] = days.flatMap((date) =>
-        entriesFromEvents(events, date).map((entry) => ({ ...entry, date })));
+        entriesFromEvents(read.events, date).map((entry) => ({ ...entry, date })));
 
     // Judged against the real end of the window, not against `days` — which
     // is only as far as this query chose to look. See liveThrough.
-    return withNames(tallyMonth(results, liveThrough(month, today), limit));
+    const entries = await withNames(tallyMonth(results, liveThrough(month, today), limit));
+    return { entries, partial: read.partial };
 }
 
 /** The pubkeys this identity follows, from their kind-3 contact list. */

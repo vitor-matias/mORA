@@ -124,6 +124,7 @@ const translations = {
         emptyMonth: "Ainda ninguém pontuou este mês.",
         emptyMonthArchive: "Ninguém pontuou neste mês.",
         emptyMonthFirstDay: "O mês começa hoje. Termina o jogo para ver a classificação.",
+        monthPartial: "Nem todos os relays responderam. Podem faltar jogos, por isso os totais são um mínimo.",
         monthLegend: "Cada jogo vale 6 pontos se acertar à primeira, 5 à segunda, e assim por diante até 1 à sexta. Um jogo perdido não vale pontos, e a classificação é a soma do mês — quem joga mais dias soma mais. 🔥 é a sequência de dias seguidos a acertar: é publicada por cada jogador e não conta para a classificação.",
         monthLabel: (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`,
         points: (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`,

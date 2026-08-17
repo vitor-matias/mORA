@@ -16,34 +16,60 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
 import {
     RELAY_PUBLISH_TIMEOUT_MS,
-    RELAY_QUERY_TIMEOUT_MS,
+    queryComplete,
     signNostrEvent,
 } from '@/lib/nostr';
+import { relaysForAuthors } from '@/lib/relayList';
 
 const KIND_CONTACTS = 3;
 
 const HEX64_RE = /^[0-9a-f]{64}$/i;
 
+/** Longer than a board read, because this one gates a write that replaces the
+    whole list. A relay that has not answered yet is the difference between
+    "you follow nobody" and "we could not see", and telling those apart is
+    worth several more seconds on a button somebody deliberately pressed. */
+const CONTACT_READ_TIMEOUT_MS = 12_000;
+
 /** The signed-in identity's contact list event, or null if the read failed.
     Null and "no list yet" are deliberately different — see the module note. */
 async function fetchContactList(pubkey: string): Promise<NostrEvent | null | undefined> {
-    try {
-        const lists = await pool.query(
-            [{ kinds: [KIND_CONTACTS], authors: [pubkey], limit: 1 }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
-        );
-        // undefined: read succeeded, this identity has no list yet.
-        if (lists.length === 0) return undefined;
+    // Their own write relays as well as ours, as the duels reader does. A
+    // contact list published from another client to a relay set we don't ask
+    // is otherwise invisible here — and invisible is what gets overwritten.
+    const relays = await relaysForAuthors([pubkey]);
+    const { events, answered, asked } = await queryComplete(
+        [{ kinds: [KIND_CONTACTS], authors: [pubkey], limit: 1 }],
+        { signal: AbortSignal.timeout(CONTACT_READ_TIMEOUT_MS), relays },
+    );
+    if (events.length > 0) {
         // Newest wins. `limit: 1` is per relay, so several relays can each
         // return their own version of this replaceable event, and the first in
         // the array need not be the current one. Following rewrites the whole
         // list, so building on a stale version would unfollow everyone added
         // since it was signed.
-        return lists.reduce((a, b) => (b.created_at > a.created_at ? b : a));
-    } catch (error) {
-        console.warn('Could not read the contact list.', error);
+        return events.reduce((a, b) => (b.created_at > a.created_at ? b : a));
+    }
+    // Nothing came back, and that only means "no list yet" if enough of the
+    // network said so. `pool.query` could not tell the two apart at all — an
+    // unreachable relay and an empty one both come back as an empty array —
+    // which is how a list built on a failed read gets published over a real
+    // one.
+    //
+    // A majority rather than every relay: insisting on all of them would let a
+    // single chronically dead relay make following permanently impossible,
+    // which trades one broken feature for another. A majority answering and
+    // none of them holding a list is as close to "there isn't one" as a
+    // relay-backed read gets.
+    if (answered * 2 <= asked) {
+        console.warn(
+            `Only ${answered} of ${asked} relays finished answering for the contact list, `
+            + 'so it is unknown rather than empty.',
+        );
         return null;
     }
+    // undefined: read succeeded, this identity has no list yet.
+    return undefined;
 }
 
 /** Whether `pubkey` is in this identity's contact list. Null when unknown,

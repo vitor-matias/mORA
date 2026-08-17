@@ -1,6 +1,6 @@
-import type { NostrEvent, NostrSigner } from '@nostrify/nostrify';
+import type { NostrEvent, NostrFilter, NostrSigner } from '@nostrify/nostrify';
 import { NUser } from '@nostrify/react/login';
-import { pool } from '@/lib/pool';
+import { pool, RELAYS } from '@/lib/pool';
 import { useAuthStore, currentPubkey } from '@/store/auth';
 import {
     useAppStore, mergeStreaks, streaksEqual, emptyStreaks, sanitizeSyncedSettings, settingsEqual,
@@ -31,6 +31,64 @@ export const RELAY_QUERY_TIMEOUT_MS = 5000;
 /** Publishing succeeds as soon as one relay accepts, but a relay that neither
     accepts nor refuses would otherwise leave the publish pending forever. */
 export const RELAY_PUBLISH_TIMEOUT_MS = 10_000;
+
+/**
+ * A read that says how many relays actually answered.
+ *
+ * `pool.query` cannot say: it swallows every abort and error and returns
+ * whatever arrived, so an empty array means "nobody holds this" and "nobody
+ * answered" alike — and it gives the slower relays only one second after the
+ * *first* EOSE before aborting them, so a relay that has never heard of
+ * somebody can end the read before the one holding their event has spoken.
+ * For a board that is a thin result. For a read-modify-write on a replaceable
+ * event it is data loss: republishing a list built from a failed read deletes
+ * everything the read could not see.
+ *
+ * So this asks each relay separately, the way server/palavra/badges.js does,
+ * and counts the ones that reached EOSE — each relay's own statement that it
+ * sent everything it holds. A timeout, a socket error, or a CLOSED (which is
+ * how a relay refuses a filter) all yield whatever arrived first, and that is
+ * not an answer. There is no EOSE deadline beyond the caller's signal, so a
+ * slow relay is waited for rather than cut off.
+ *
+ * What a caller does with `answered` is its own decision: a board can say the
+ * totals are a floor, while a write that replaces a list must refuse outright.
+ *
+ * Replaceable events are not resolved here, unlike in `pool.query`. Callers
+ * get the union deduplicated by id and pick, which is what the ones that care
+ * already do.
+ */
+export async function queryComplete(
+    filters: NostrFilter[],
+    opts: { signal: AbortSignal; relays?: string[] },
+): Promise<{ events: NostrEvent[]; answered: number; asked: number }> {
+    const urls = opts.relays ?? RELAYS;
+
+    const perRelay = await Promise.all(urls.map(async (url) => {
+        const events: NostrEvent[] = [];
+        try {
+            for await (const msg of pool.relay(url).req(filters, { signal: opts.signal })) {
+                if (msg[0] === 'EVENT') events.push(msg[2]);
+                if (msg[0] === 'EOSE') return { events, answered: true };
+                // Declined. What it sent first is a fragment, not a result set.
+                if (msg[0] === 'CLOSED') return { events, answered: false };
+            }
+        } catch {
+            // Aborted, or the socket gave out.
+        }
+        return { events, answered: false };
+    }));
+
+    const byId = new Map<string, NostrEvent>();
+    for (const relay of perRelay) {
+        for (const event of relay.events) byId.set(event.id, event);
+    }
+    return {
+        events: [...byId.values()],
+        answered: perRelay.filter((relay) => relay.answered).length,
+        asked: urls.length,
+    };
+}
 
 // Devices don't agree on the clock to the second; allow a little slack before
 // calling a settings timestamp impossible.

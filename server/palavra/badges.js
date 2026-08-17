@@ -38,10 +38,12 @@ import { nip19 } from 'nostr-tools';
 // silently, once a month, to someone who would then have it forever. Node
 // reads these with --experimental-strip-types; see package.json.
 import {
+    PALAVRA_TOPIC,
     countPerGroup,
     entriesFromEvents,
     filtersFor,
     inGroupsOf,
+    newestPerDay,
 } from '../../src/lib/palavra/results.ts';
 import {
     liveThrough,
@@ -247,7 +249,30 @@ async function query(filters) {
     return {
         events: newestVersions([...byId.values()]),
         unread: perRelay.filter((relay) => !relay.complete).map((relay) => relay.url),
+        // Each relay's answer, raw and undeduplicated. Only these can say
+        // whether a filter was truncated — see saturatedGroups.
+        raw: perRelay.map((relay) => relay.events),
     };
+}
+
+/**
+ * Groups where at least one relay returned its whole limit, and so may have
+ * been cut short.
+ *
+ * Measured on each relay's raw answer, never on the merged set, because `limit`
+ * is applied by each relay to its own reply. Counting the merged set gets this
+ * wrong in the direction that hides the problem: `newestVersions` collapses
+ * every version of an addressable event into one, so a day someone replayed
+ * takes two events down to one, and a relay that returned exactly its limit can
+ * be measured as under it. The re-read would then never run, and the month
+ * would be scored from a truncated read while reporting itself complete.
+ *
+ * The merged set is safe to *score* from and unsafe to *measure* from, which is
+ * why the raw answers are carried this far.
+ */
+export function saturatedGroups(raw, groups, limit) {
+    const perRelay = raw.map((events) => countPerGroup(events, groups));
+    return groups.filter((_, index) => perRelay.some((counts) => counts[index] >= limit));
 }
 
 /** NIP-01 replaceable ranges. */
@@ -364,8 +389,7 @@ async function resultEventsFor(days) {
     const weeks = inGroupsOf(days, CHUNK_DAYS);
     const first = await query(filtersFor(weeks, CHUNK_LIMIT));
 
-    const perWeek = countPerGroup(first.events, weeks);
-    const full = weeks.filter((_, index) => perWeek[index] >= CHUNK_LIMIT);
+    const full = saturatedGroups(first.raw, weeks, CHUNK_LIMIT);
     if (full.length === 0) {
         return { events: first.events, unreadRelays: first.unread, saturatedDays: [] };
     }
@@ -373,14 +397,18 @@ async function resultEventsFor(days) {
     const singles = full.flat().map((day) => [day]);
     const rest = await query(filtersFor(singles, DAY_LIMIT));
 
-    const perDay = countPerGroup(rest.events, singles);
-
-    // Overlap between the two reads is fine: query() dedupes by event id, and
-    // the tally counts one result per author per day regardless.
+    // Resolved across both reads, not just within each.
+    //
+    // query() dedupes by event id and newestVersions collapses coordinates,
+    // but each does so for one read at a time — and a result replayed between
+    // them arrives as two events with the same coordinate and different ids,
+    // one per read. Concatenating those hands tallyMonth both, and it keeps
+    // whichever it sees first: the week read's, which is the stale one. See
+    // the note on newestVersions; here it decides a permanent badge.
     return {
-        events: [...first.events, ...rest.events],
+        events: newestPerDay([...first.events, ...rest.events]),
         unreadRelays: [...new Set([...first.unread, ...rest.unread])],
-        saturatedDays: singles.filter((_, index) => perDay[index] >= DAY_LIMIT).flat(),
+        saturatedDays: saturatedGroups(rest.raw, singles, DAY_LIMIT).flat(),
     };
 }
 
@@ -473,7 +501,35 @@ async function main() {
     // publisher's key at all, since it never publishes.
     const { podium, unreadRelays, saturatedDays } = await podiumFor(month);
     const readable = unreadRelays.length === 0 && saturatedDays.length === 0;
+
+    // Said before anything else, and before the empty-podium return below.
+    //
+    // Two different causes, in their own words rather than under one vague
+    // heading: one is a relay that never answered, the other is a day busier
+    // than a single query can return. Both make the totals a floor rather than
+    // a count, and either can put the order wrong.
+    if (unreadRelays.length > 0) {
+        console.error(
+            `These relays did not finish answering: ${unreadRelays.join(', ')}. `
+            + 'Any results only they hold are missing from the totals below.',
+        );
+    }
+    if (saturatedDays.length > 0) {
+        console.error(
+            `These days are busier than one query can read: ${saturatedDays.join(', ')}. `
+            + 'Their totals are a floor, not a count.',
+        );
+    }
+
     if (podium.length === 0) {
+        // A month nobody answered for looks exactly like a quiet one from
+        // here, and only one of the two is worth exiting 0 on. Reporting
+        // "nothing to award" after a total read failure sends a green job to
+        // an operator whose relays were down — the one signal they had.
+        if (!readable && !dryRun) {
+            console.error(`${month} could not be read in full, so "no results" is not an answer.`);
+            process.exit(1);
+        }
         console.log(`No results found for ${month}; nothing to award.`);
         return;
     }
@@ -482,23 +538,6 @@ async function main() {
     podium.forEach((row, i) => {
         console.log(`  ${i + 1}. ${row.pubkey.slice(0, 12)}…  ${row.points} pts over ${row.played} days`);
     });
-
-    // Two different causes, said in their own words rather than under one
-    // vague heading: one is a relay that never answered, the other is a day
-    // busier than a single query can return. Both make the totals a floor
-    // rather than a count, and either can put the order wrong.
-    if (unreadRelays.length > 0) {
-        console.error(
-            `\nThese relays did not finish answering: ${unreadRelays.join(', ')}. `
-            + 'Any results only they hold are missing from the totals above.',
-        );
-    }
-    if (saturatedDays.length > 0) {
-        console.error(
-            `\nThese days are busier than one query can read: ${saturatedDays.join(', ')}. `
-            + 'Their totals are a floor, not a count.',
-        );
-    }
 
     const art = await artTagsByPlace(podium.map((_, index) => index + 1));
     const withArt = [...art.values()].filter((tags) => tags.length > 0).length;

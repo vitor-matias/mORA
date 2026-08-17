@@ -21,8 +21,10 @@ import { pool } from '@/lib/pool';
 import {
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
+    queryComplete,
     signNostrEvent,
 } from '@/lib/nostr';
+import { relaysForAuthors } from '@/lib/relayList';
 import { PALAVRA_PUBLISHER } from './api';
 
 const KIND_BADGE_AWARD = 8;
@@ -35,6 +37,11 @@ const D_PROFILE_BADGES = 'profile_badges';
 /** Enough for many years of monthly podiums, small enough to stay a sane
     filter. */
 const MAX_BADGES = 200;
+
+/** Longer than a board read, for the same reason the contact list gets one:
+    this read decides whether a write that replaces the whole badge list is
+    allowed to proceed, so a relay still answering is worth waiting for. */
+const PROFILE_BADGE_READ_TIMEOUT_MS = 12_000;
 
 function tagValue(event: { tags: string[][] }, name: string): string | undefined {
     return event.tags.find((tag) => tag[0] === name)?.[1];
@@ -190,26 +197,44 @@ export interface ProfileBadgeRef {
  * anywhere else. That is the same mistake the profile editor made once — see
  * the note in publishNostrProfile — and it is worse here, because the evidence
  * that they ever had those badges is gone from their profile.
+ *
+ * Which means the distinction has to be one the reader can actually make.
+ * `pool.query` cannot make it — it returns whatever arrived and swallows the
+ * abort, so a relay that never answered comes back as an empty array, exactly
+ * like a person who displays nothing. queryComplete reports whether every
+ * relay finished, and only that answer is allowed to mean "no list".
  */
 export async function fetchProfileBadges(pubkey: string): Promise<ProfileBadgeRef[] | null> {
-    try {
-        const lists = await pool.query(
-            [{ kinds: [KIND_PROFILE_BADGES], authors: [pubkey], '#d': [D_PROFILE_BADGES], limit: 1 }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
-        );
-        if (lists.length === 0) return [];
-        // Newest wins. `limit: 1` is per relay, so several relays can each
-        // return their own version of this replaceable event and the first in
-        // the array is not necessarily the current one. Taking a stale version
-        // here would be the worst kind of wrong: the write below replaces the
-        // whole list, so it would republish an old one and drop whatever has
-        // been added since.
-        const newest = lists.reduce((a, b) => (b.created_at > a.created_at ? b : a));
-        return profileBadgeRefs(newest.tags);
-    } catch (error) {
-        console.warn('Could not read the profile badge list.', error);
-        return null;
+    // Their own write relays as well as ours: a list published from another
+    // client to a relay set we don't ask is otherwise invisible, and invisible
+    // is what the write below would replace.
+    const relays = await relaysForAuthors([pubkey]);
+    const { events, answered, asked } = await queryComplete(
+        [{ kinds: [KIND_PROFILE_BADGES], authors: [pubkey], '#d': [D_PROFILE_BADGES], limit: 1 }],
+        { signal: AbortSignal.timeout(PROFILE_BADGE_READ_TIMEOUT_MS), relays },
+    );
+    if (events.length === 0) {
+        // A majority has to have answered before "nothing came back" is
+        // allowed to mean "displays nothing" — the same bar the contact list
+        // write applies, and for the same reason: below it, the write would
+        // replace a list it never saw.
+        if (answered * 2 <= asked) {
+            console.warn(
+                `Only ${answered} of ${asked} relays finished answering for the profile badge `
+                + 'list, so it is unknown rather than empty.',
+            );
+            return null;
+        }
+        return [];
     }
+    // Newest wins. `limit: 1` is per relay, so several relays can each
+    // return their own version of this replaceable event and the first in
+    // the array is not necessarily the current one. Taking a stale version
+    // here would be the worst kind of wrong: the write below replaces the
+    // whole list, so it would republish an old one and drop whatever has
+    // been added since.
+    const newest = events.reduce((a, b) => (b.created_at > a.created_at ? b : a));
+    return profileBadgeRefs(newest.tags);
 }
 
 /**

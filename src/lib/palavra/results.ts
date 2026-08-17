@@ -75,6 +75,35 @@ export function filtersFor(groups: string[][], limit: number): NostrFilter[] {
     }));
 }
 
+/**
+ * One event per author per day key — the newest, ties broken on the id.
+ *
+ * A month is read in up to two passes, and each pass resolves its own results
+ * on its own: the pool collects into an NSet, and the badge job runs
+ * newestVersions over each relay union. Neither sees across the two. A result
+ * replayed between the passes therefore arrives as two events sharing a
+ * coordinate with different ids, one per pass, and concatenating those hands
+ * the tally both — where it keeps whichever it sees first, which is the older
+ * one. A stale loss outranking its own replacement can decide a month, and on
+ * the server it decides a permanent badge.
+ *
+ * Ties break on the id, the way NSet's own comparison does, so the outcome
+ * never depends on which relay answered first.
+ */
+export function newestPerDay(events: NostrEvent[]): NostrEvent[] {
+    const newest = new Map<string, NostrEvent>();
+    for (const event of events) {
+        const key = `${event.pubkey}:${tagValue(event, 'd') ?? ''}`;
+        const held = newest.get(key);
+        if (!held
+            || event.created_at > held.created_at
+            || (event.created_at === held.created_at && event.id < held.id)) {
+            newest.set(key, event);
+        }
+    }
+    return [...newest.values()];
+}
+
 /** How many of `events` belong to each group, by the `d` tag the relay matched
     on. Used to spot a filter that came back at its limit, and so may have been
     cut short. */
