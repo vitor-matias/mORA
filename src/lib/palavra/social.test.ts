@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     duelRecords,
+    duelVerdict,
     entriesFromEvents,
     rank,
     recentDates,
@@ -130,6 +131,23 @@ describe('rank', () => {
     });
 });
 
+describe('duelVerdict', () => {
+    it('puts fewer guesses first', () => {
+        expect(duelVerdict(result({ tries: 2 }), result({ tries: 4 }))).toBeLessThan(0);
+    });
+
+    it('puts a solved game ahead of an unsolved one, however fast', () => {
+        expect(duelVerdict(
+            result({ solved: true, tries: 6, ms: 900_000 }),
+            result({ solved: false, tries: 1, ms: 1 }),
+        )).toBeLessThan(0);
+    });
+
+    it('calls equal tries a draw, no matter how far apart the times are', () => {
+        expect(duelVerdict(result({ tries: 3, ms: 1 }), result({ tries: 3, ms: 900_000 }))).toBe(0);
+    });
+});
+
 describe('duelRecords', () => {
     const ME = 'a'.repeat(64);
     const RIVAL = 'b'.repeat(64);
@@ -172,6 +190,15 @@ describe('duelRecords', () => {
         ]);
         expect(duelRecords(ME, [RIVAL], byAuthor)[0])
             .toMatchObject({ wins: 1, losses: 1, draws: 1, played: 3 });
+    });
+
+    it('calls equal tries a draw even when the reported times differ wildly', () => {
+        const byAuthor = new Map<string, Map<string, LeaderboardEntry>>([
+            [ME, new Map([['2026-08-08', { ...play(ME, 3), ms: 1 }]])],
+            [RIVAL, new Map([['2026-08-08', { ...play(RIVAL, 3), ms: 900_000 }]])],
+        ]);
+        expect(duelRecords(ME, [RIVAL], byAuthor)[0])
+            .toMatchObject({ wins: 0, losses: 0, draws: 1, played: 1 });
     });
 
     it('ignores days only one of you played', () => {
