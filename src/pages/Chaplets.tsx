@@ -42,8 +42,7 @@ function ChapletChooser() {
                 "por si." — the browser evens the lines instead of filling the
                 first one and orphaning whatever is left. */}
             <p className="text-sm text-zinc-500 leading-relaxed mb-5 lg:max-w-2xl text-balance">
-                Cada coroa reza-se conta a conta, como o terço. Toque para avançar —
-                a aplicação conta as contas por si.
+                Cada coroa reza-se conta a conta, como o terço. Toca para avançar. A aplicação conta por ti.
             </p>
             <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4">
                 {CHAPLETS.map((chaplet) => (

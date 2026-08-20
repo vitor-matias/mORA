@@ -115,7 +115,12 @@ describe('searchChants', () => {
     });
 
     it('finds a chant typed without accents', () => {
-        expect(searchChants('canticos de simeao', null).length).toBeGreaterThanOrEqual(0);
+        // The property under test is that the two spellings of one query come
+        // back identical — asserting only a non-empty result would pass on a
+        // search that had stopped folding accents altogether.
+        const plain = searchChants('cantico de simeao', null).map((c) => c.id);
+        expect(plain).toContain('nunc-dimittis');
+        expect(plain).toEqual(searchChants('cântico de Simeão', null).map((c) => c.id));
         expect(searchChants('adeste', null)[0].id).toBe('adeste-fideles');
     });
 
