@@ -55,12 +55,19 @@ function ChapletChooser() {
                         <div className="flex-1 min-w-0">
                             <h2 className="text-base font-bold leading-tight">{chaplet.title}</h2>
                             <p className="text-zinc-500 text-xs mt-1 leading-snug">{chaplet.subtitle}</p>
+                            {/* Duration first: every one of them reads
+                                "≈ N minutos", so it is the same width on
+                                every card and the shape after it starts in
+                                the same place. The other way round, the shape
+                                runs from "5 dezenas" to "9 saudações de 1 + 3
+                                contas" and the clock wanders 100px down the
+                                list. */}
                             <p className="flex items-center gap-3 text-[0.7rem] text-zinc-400 dark:text-zinc-500 mt-2">
-                                <span>{chaplet.shape}</span>
                                 <span className="flex items-center gap-1">
                                     <Clock size={11} aria-hidden="true" />
                                     {chaplet.duration}
                                 </span>
+                                <span>{chaplet.shape}</span>
                             </p>
                         </div>
                         <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0 mt-1" aria-hidden="true" />
