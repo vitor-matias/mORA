@@ -567,7 +567,7 @@ Alegrai-vos no Senhor (Bis)`,
     },
     {
         id: 'cf-aleluia-ii',
-        title: "Aleluia Ii",
+        title: "Aleluia II",
         category: 'cf-reflexao',
         note: 'Cancioneiro dos Convívios Fraternos, n.º 37 · Música de reflexão',
         text: `Aleluia, Aleluia Aleluia, Aleluia
@@ -3171,7 +3171,7 @@ Hossana nas alturas`,
     },
     {
         id: 'cf-santo-ii',
-        title: "Santo Ii",
+        title: "Santo II",
         category: 'cf-reflexao',
         note: 'Cancioneiro dos Convívios Fraternos, n.º 153 · Música de reflexão',
         text: `Santo, Santo é o Senhor Deus do Universo

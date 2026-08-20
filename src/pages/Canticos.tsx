@@ -27,8 +27,9 @@ type Filter = ChantCategoryId | typeof FAVOURITES | null;
  * generations; the ones whose words are also prayed live in the Devocionário
  * and are rendered from there, with a link across.
  *
- * A list this size does not need a search box — the chips jump to a section
- * and the whole hymnal fits in one scroll.
+ * A search cuts across the seasons and returns one ranked list; without a
+ * query the chips narrow the page to a season and it stays a hymnal, section
+ * by section.
  */
 export default function Canticos() {
     const [filter, setFilter] = useState<Filter>(null);

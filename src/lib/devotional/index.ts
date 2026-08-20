@@ -11,10 +11,12 @@ import { DEFUNTOS } from './defuntos';
 import { SALMOS } from './salmos';
 import { FORMULAS } from './formulas';
 import { suggestedPrayer } from './suggestion';
+import { fold, rankByTiers } from '@/lib/textSearch';
 
 export type { Prayer, PrayerCategory, PrayerCategoryId } from './types';
 export { PRAYER_CATEGORIES } from './types';
 export { WEEKDAY_SUGGESTIONS, suggestedPrayer } from './suggestion';
+export { fold } from '@/lib/textSearch';
 
 /** The whole devocionário, in category order. */
 export const PRAYERS: readonly Prayer[] = [
@@ -26,12 +28,6 @@ const BY_ID = new Map(PRAYERS.map((p) => [p.id, p]));
 
 export function getPrayer(id: string | undefined): Prayer | undefined {
     return id ? BY_ID.get(id) : undefined;
-}
-
-/** Lowercase and strip diacritics, so "coracao" finds "Coração" and "Fatima"
-    finds "Fátima" — nobody types the accents into a search box on a phone. */
-export function fold(text: string): string {
-    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 /** Title, alternative names and the first line — what a title match is worth
@@ -47,30 +43,12 @@ function haystacks(prayer: Prayer): { title: string; head: string; body: string 
 const INDEX = new Map(PRAYERS.map((p) => [p.id, haystacks(p)]));
 
 /**
- * Filters by category and query together, in three tiers: the title (or an
- * alternative name) read as a whole phrase, then every whitespace-separated
- * term in the title, then every term anywhere.
- *
- * The phrase tier is what rescues short words — typed loosely, "ao pe de ti"
- * matches almost anything, because "pe" is inside "Pentecostes" and "ti"
- * inside "antífona".
+ * Filters by category and query together, ranked in the three tiers described
+ * in `@/lib/textSearch` — the same ranking the hymnal uses.
  */
 export function searchPrayers(query: string, category: PrayerCategoryId | null): Prayer[] {
     const pool = category ? PRAYERS.filter((p) => p.category === category) : PRAYERS;
-    const phrase = fold(query).trim().replace(/\s+/g, ' ');
-    const terms = phrase.split(' ').filter(Boolean);
-    if (terms.length === 0) return [...pool];
-
-    const named: Prayer[] = [];
-    const titleHits: Prayer[] = [];
-    const bodyHits: Prayer[] = [];
-    for (const prayer of pool) {
-        const { title, head, body } = INDEX.get(prayer.id)!;
-        if (title.includes(phrase)) named.push(prayer);
-        else if (terms.every((t) => head.includes(t))) titleHits.push(prayer);
-        else if (terms.every((t) => head.includes(t) || body.includes(t))) bodyHits.push(prayer);
-    }
-    return [...named, ...titleHits, ...bodyHits];
+    return rankByTiers(pool, query, (prayer) => INDEX.get(prayer.id)!);
 }
 
 /** The prayer to suggest today, following the weekday devotion. */

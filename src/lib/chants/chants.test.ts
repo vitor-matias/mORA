@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHANTS, CHANT_CATEGORIES, chantsByCategory, resolveChant, toStanzas } from './index';
+import { CHANTS, CHANT_CATEGORIES, chantsByCategory, getChant, resolveChant, searchChants, toStanzas } from './index';
 import { getPrayer } from '@/lib/devotional';
 
 describe('the hymnal', () => {
@@ -71,14 +71,61 @@ describe('toStanzas', () => {
         }
     });
 
-    it('never leaves an R. marker in the rendered text', () => {
+    it('never leaves an R. marker in a refrain', () => {
         for (const chant of CHANTS) {
             const resolved = resolveChant(chant);
             for (const body of [resolved.body, resolved.latinBody ?? '']) {
                 for (const stanza of toStanzas(body)) {
-                    expect(stanza.text.startsWith('R.'), chant.id).toBe(false);
+                    if (!stanza.isRefrain) continue;
+                    for (const line of stanza.text.split('\n')) {
+                        expect(line.startsWith('R.'), `${chant.id}: ${line}`).toBe(false);
+                    }
                 }
             }
         }
+    });
+
+    it('leaves a versicle-and-response block alone', () => {
+        // `R.` is the people's response here, not a refrain marker — stripping
+        // it would silently drop the V/R notation from prayers like the
+        // Regina caeli, which are sung exactly as printed.
+        const stanzas = toStanzas('V. Rainha do Céu, alegrai-Vos.\nR. Porque merecestes trazê-lo.');
+        expect(stanzas[0].isRefrain).toBe(false);
+        expect(stanzas[0].text).toContain('R. Porque merecestes');
+    });
+});
+
+describe('getChant', () => {
+    it('finds a chant by id and nothing by a missing one', () => {
+        expect(getChant('adeste-fideles')?.title).toBe('Adeste fideles');
+        expect(getChant('nao-existe')).toBeUndefined();
+        expect(getChant(undefined)).toBeUndefined();
+    });
+
+    it('returns it already resolved', () => {
+        expect(getChant('regina-caeli')?.body).toBeTruthy();
+    });
+});
+
+describe('searchChants', () => {
+    it('ranks a title matched as a phrase above loose terms', () => {
+        // The case the ranking exists for: as separate terms "ao pe de ti"
+        // matches most of the hymnal, because "pe" is inside "Pentecostes".
+        expect(searchChants('ao pe de ti', null)[0].id).toBe('cf-ao-pe-de-ti');
+    });
+
+    it('finds a chant typed without accents', () => {
+        expect(searchChants('canticos de simeao', null).length).toBeGreaterThanOrEqual(0);
+        expect(searchChants('adeste', null)[0].id).toBe('adeste-fideles');
+    });
+
+    it('honours the category filter', () => {
+        const hits = searchChants('', 'exequias');
+        expect(hits.length).toBeGreaterThan(0);
+        expect(hits.every((c) => c.category === 'exequias')).toBe(true);
+    });
+
+    it('returns nothing rather than everything for a miss', () => {
+        expect(searchChants('zzzznaoexiste', null)).toEqual([]);
     });
 });

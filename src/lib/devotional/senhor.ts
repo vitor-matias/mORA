@@ -43,14 +43,20 @@ Amen.`,
         title: 'Visita ao Santíssimo',
         category: 'senhor',
         note: 'Ao entrar numa igreja, diante do sacrário.',
+        // No `latin` field: the Latin custom uses a different acclamation
+        // rather than a translation of this one, and the reading view would
+        // present it as though it were the same words.
         text: `V. Graças e louvores se dêem a todo o momento
 R. ao Santíssimo e diviníssimo Sacramento.
 
-Pai Nosso, Avé Maria e Glória (três vezes).`,
-        latin: `V. Adorémus in ætérnum Sanctíssimum Sacraméntum.
+Pai Nosso, Avé Maria e Glória (três vezes).
+
+Em latim reza-se, com a mesma intenção:
+
+V. Adorémus in ætérnum Sanctíssimum Sacraméntum.
 R. Adorémus in ætérnum Sanctíssimum Sacraméntum.
 
-Pater noster, Ave María, Glória Patri (três vezes).`,
+Pater noster, Ave María, Glória Patri (ter).`,
     },
     {
         id: 'comunhao-espiritual',

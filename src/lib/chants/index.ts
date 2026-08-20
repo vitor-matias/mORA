@@ -1,18 +1,21 @@
 import type { Chant, ChantCategoryId } from './types';
 import { CHANTS } from './chants';
-import { fold, getPrayer } from '@/lib/devotional';
+import { getPrayer } from '@/lib/devotional';
+import { fold, rankByTiers } from '@/lib/textSearch';
 
 export type { Chant, ChantCategory, ChantCategoryId } from './types';
 export { CHANT_CATEGORIES } from './types';
 export { CHANTS } from './chants';
 
-export interface ResolvedChant extends Chant {
+/** A chant with its words filled in, wherever they came from. (An
+    intersection rather than an interface: `Chant` is a union.) */
+export type ResolvedChant = Chant & {
     /** The sung text, whether it came from the chant or from the prayer it
         points at. */
     body: string;
     /** The Latin, likewise. */
     latinBody?: string;
-}
+};
 
 /** Fills in the words for a chant that is sung from a text the Devocionário
     already holds, so the two can never say different things. */
@@ -25,12 +28,33 @@ export function resolveChant(chant: Chant): ResolvedChant {
     };
 }
 
+/** Every chant with its words filled in, resolved once at module load. */
+const RESOLVED: readonly ResolvedChant[] = CHANTS.map(resolveChant);
+const BY_ID = new Map(RESOLVED.map((c) => [c.id, c]));
+
+/** Folded once too: without this the whole hymnal — 200-odd chants plus the
+    prayer bodies they borrow — is re-normalised on every keystroke. */
+const INDEX = new Map(RESOLVED.map((chant) => [chant.id, {
+    title: fold(chant.title),
+    head: fold(`${chant.title} ${chant.note}`),
+    body: fold(`${chant.body} ${chant.latinBody ?? ''}`),
+}]));
+
 export function chantsByCategory(category: ChantCategoryId): ResolvedChant[] {
-    return CHANTS.filter((c) => c.category === category).map(resolveChant);
+    return RESOLVED.filter((c) => c.category === category);
 }
 
-export function getChant(id: string | undefined): Chant | undefined {
-    return id ? CHANTS.find((c) => c.id === id) : undefined;
+export function getChant(id: string | undefined): ResolvedChant | undefined {
+    return id ? BY_ID.get(id) : undefined;
+}
+
+/**
+ * Filters the hymnal by category and query together, ranked in the three tiers
+ * described in `@/lib/textSearch` — the same ranking the Devocionário uses.
+ */
+export function searchChants(query: string, category: ChantCategoryId | null): ResolvedChant[] {
+    const pool = category ? RESOLVED.filter((c) => c.category === category) : RESOLVED;
+    return rankByTiers(pool, query, (chant) => INDEX.get(chant.id)!);
 }
 
 export interface Stanza {
@@ -40,6 +64,10 @@ export interface Stanza {
 }
 
 const VERSE_NUMBER = /^\d+\.\s/;
+const REFRAIN_MARK = /^R\.\s*/;
+// `R.` also opens the people's response in a versicle-and-response block, so
+// a stanza written `V. … / R. …` must not be read as a marked refrain.
+const RESPONSORY = /^V\.\s/m;
 
 /**
  * Splits a sung text into stanzas and works out which of them is the refrain,
@@ -56,40 +84,10 @@ export function toStanzas(text: string): Stanza[] {
     const blocks = text.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
     const numbered = blocks.some((b) => VERSE_NUMBER.test(b));
     return blocks.map((block) => {
-        const marked = block.startsWith('R.');
+        const marked = REFRAIN_MARK.test(block) && !RESPONSORY.test(block);
         return {
-            text: marked ? block.slice(2).trimStart() : block,
+            text: marked ? block.replace(REFRAIN_MARK, '') : block,
             isRefrain: marked || (numbered && !VERSE_NUMBER.test(block)),
         };
     });
-}
-
-/**
- * Filters the hymnal by category and query together, in three tiers: the title
- * read as a phrase, then every term somewhere in the title or provenance line,
- * then every term anywhere at all.
- *
- * The phrase tier is what makes short words usable. Typing "ao pe de ti" as
- * loose terms matches half the book — "pe" is inside "Pentecostes", "ti"
- * inside "antífona" — so the hymn actually called "Ao Pé de Ti" has to be
- * recognised by its whole name, not by its parts.
- */
-export function searchChants(query: string, category: ChantCategoryId | null): ResolvedChant[] {
-    const pool = (category ? CHANTS.filter((c) => c.category === category) : CHANTS).map(resolveChant);
-    const phrase = fold(query).trim().replace(/\s+/g, ' ');
-    const terms = phrase.split(' ').filter(Boolean);
-    if (terms.length === 0) return pool;
-
-    const named: ResolvedChant[] = [];
-    const titleHits: ResolvedChant[] = [];
-    const bodyHits: ResolvedChant[] = [];
-    for (const chant of pool) {
-        const title = fold(chant.title);
-        const head = `${title} ${fold(chant.note)}`;
-        const body = fold(`${chant.body} ${chant.latinBody ?? ''}`);
-        if (title.includes(phrase)) named.push(chant);
-        else if (terms.every((t) => head.includes(t))) titleHits.push(chant);
-        else if (terms.every((t) => head.includes(t) || body.includes(t))) bodyHits.push(chant);
-    }
-    return [...named, ...titleHits, ...bodyHits];
 }

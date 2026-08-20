@@ -1,8 +1,9 @@
 import type { Prayer } from './types';
 
-/** To Our Lady. The four seasonal antiphons of the Church are here; the
-    Angelus and the Regina Caeli live with the hours of the day, where they
-    are actually prayed. */
+/** To Our Lady. Two of the Church's four seasonal antiphons are here — Alma
+    Redemptoris Mater and Ave Regina caelorum. The Salve Regina is among the
+    prayers everyone knows by heart, and the Regina Caeli with the hours of
+    the day, where each is actually prayed. */
 export const MARIA: Prayer[] = [
     {
         id: 'magnificat',

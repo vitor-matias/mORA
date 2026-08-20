@@ -87,9 +87,9 @@ export default function Home() {
         { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
         { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Rosary },
-        { path: "/coroas", label: "Coroas e Terços", context: "As devoções que se rezam nas contas", icon: Crown },
-        { path: "/devocionario", label: "Devocionário", context: `Hoje: ${devotionalSuggestion.title}`, icon: BookMarked },
-        { path: "/canticos", label: "Cânticos", context: "Os hinos da Igreja, por tempo litúrgico", icon: Music },
+        { path: "/coroas", label: t.chapletsTitle, context: t.chapletsDesc, icon: Crown },
+        { path: "/devocionario", label: t.devotionalTitle, context: t.devotionalDesc(devotionalSuggestion.title), icon: BookMarked },
+        { path: "/canticos", label: t.chantsTitle, context: t.chantsDesc, icon: Music },
     ];
     const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },

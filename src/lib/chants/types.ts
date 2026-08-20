@@ -10,22 +10,26 @@ export type ChantCategoryId =
     | 'cf-reflexao'
     | 'cf-animacao';
 
-export interface Chant {
+interface ChantBase {
     /** Stable slug — used as the anchor in the page and in shared links. */
     id: string;
     title: string;
     category: ChantCategoryId;
     /** Composer, provenance, and when it is sung. */
     note: string;
-    /** The sung text in Portuguese. Omitted when `prayerId` supplies it. */
-    text?: string;
-    /** The Latin, for what is sung in Latin. */
-    latin?: string;
-    /** When the words are already in the Devocionário, the prayer they come
-        from — the page renders that text and links to it, so the two never
-        drift apart. */
-    prayerId?: string;
 }
+
+/**
+ * A chant has to have words to sing, from one of three places: its own
+ * Portuguese text, its own Latin (O sanctissima is sung only in Latin), or a
+ * prayer in the Devocionário it is sung from. An entry with none of them
+ * renders as an empty card, which nothing else would catch.
+ */
+export type Chant = ChantBase & (
+    | { text: string; latin?: string; prayerId?: string }
+    | { latin: string; text?: string; prayerId?: string }
+    | { prayerId: string; text?: string; latin?: string }
+);
 
 export interface ChantCategory {
     id: ChantCategoryId;

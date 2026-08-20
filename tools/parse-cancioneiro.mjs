@@ -105,6 +105,15 @@ async function readSongs(pdfPath) {
         const fontOf = (item) => {
             try { return page.commonObjs.get(item.fontName)?.name ?? ''; } catch { return ''; }
         };
+        // The refrain is nothing but the font weight, so a page whose fonts
+        // never resolve would come out looking like all verses. Better to
+        // stop than to write a cancioneiro with the refrains quietly missing.
+        if (content.items.some((i) => i.str.trim()) && !content.items.some((i) => fontOf(i))) {
+            throw new Error(
+                `page ${p}: no font names resolved — pdf.js could not load the fonts, ` +
+                'so refrains cannot be detected',
+            );
+        }
 
         const lines = pageLines(content.items, fontOf);
         // The section heading sits in whichever column has room for it, so it
@@ -154,7 +163,11 @@ const titleCase = (text) =>
             return word[0].toUpperCase() + word.slice(1).toLowerCase();
         })
         .join(' ')
-        .replace(/\b(i{1,3}|iv|vi{0,3})\b/g, (m) => m.toUpperCase());
+        // "Santo I", "Aleluia II". Case-insensitive, because the words have
+        // already been lowercased above — and deliberately without `vi`,
+        // which is the past tense of "ver" and far likelier in a hymn title
+        // than a sixth setting of anything.
+        .replace(/\b(i{1,3}|iv|vii|viii|ix|xi{0,3})\b/gi, (m) => m.toUpperCase());
 
 const slugify = (text) =>
     text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

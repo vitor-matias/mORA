@@ -7,6 +7,7 @@ import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { TabBar } from "./TabBar";
+import { ChunkBoundary } from "@/components/ChunkBoundary";
 
 // Today's liturgical color/day info for the store (app theme + Home's day
 // card). Module scope so it runs both at mount and on day rollover.
@@ -159,12 +160,15 @@ export function Layout() {
                 }`}
             >
                 {/* The text libraries are code-split, so the outlet is where
-                    a route can be missing for a beat. Suspending here rather
-                    than around the router keeps the nav and the day's theme on
-                    screen while the chunk arrives. */}
-                <Suspense fallback={null}>
-                    <Outlet />
-                </Suspense>
+                    a route can be missing for a beat — or fail to arrive at
+                    all. Suspending and catching here rather than around the
+                    router keeps the nav and the day's theme on screen either
+                    way. */}
+                <ChunkBoundary>
+                    <Suspense fallback={null}>
+                        <Outlet />
+                    </Suspense>
+                </ChunkBoundary>
             </main>
         </div>
     );

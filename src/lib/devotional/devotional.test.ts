@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PRAYERS, WEEKDAY_SUGGESTIONS, fold, getPrayer, prayerOfTheDay, searchPrayers } from './index';
 import { PRAYER_CATEGORIES } from './types';
+import { getChaplet } from '@/lib/chaplets';
 
 describe('the corpus', () => {
     it('has no duplicate ids', () => {
@@ -27,6 +28,15 @@ describe('the corpus', () => {
         const known = new Set(PRAYER_CATEGORIES.map((c) => c.id));
         for (const prayer of PRAYERS) {
             expect(known.has(prayer.category), `${prayer.id}: ${prayer.category}`).toBe(true);
+        }
+    });
+
+    it('points every chaplet link at a chaplet that exists', () => {
+        // `chapletId` is a plain string, so a renamed or removed chaplet would
+        // otherwise leave the "Rezar conta a conta" button going nowhere.
+        for (const prayer of PRAYERS) {
+            if (!prayer.chapletId) continue;
+            expect(getChaplet(prayer.chapletId), `${prayer.id} → ${prayer.chapletId}`).toBeDefined();
         }
     });
 

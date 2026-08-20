@@ -112,7 +112,7 @@ Amen.`,
         title: 'Vinde, Santo Espírito',
         category: 'espirito',
         note: 'Sequência do Domingo de Pentecostes.',
-        aka: ['Veni Sancte Spiritus', 'Sequência de Pentecostes', 'Áureo sequência'],
+        aka: ['Veni Sancte Spiritus', 'Sequência de Pentecostes', 'Áurea Sequência'],
         text: `Vinde, ó Santo Espírito,
 vinde, Amor ardente,
 acendei na terra

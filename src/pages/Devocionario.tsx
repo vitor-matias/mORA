@@ -302,7 +302,13 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
             )}
 
             {prayer.latin && (
-                <details className="mt-8 border-t border-zinc-200/70 dark:border-zinc-700/60 pt-4">
+                <details
+                    // Keyed by the prayer: `open` lives on the DOM node, so
+                    // without this React reuses the element and the next
+                    // prayer opens with its Latin already expanded.
+                    key={prayer.id}
+                    className="mt-8 border-t border-zinc-200/70 dark:border-zinc-700/60 pt-4"
+                >
                     <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 select-none">
                         Em latim
                     </summary>

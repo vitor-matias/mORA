@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw, Clock } from "lucide-react";
 import { Rosary } from "@/components/icons";
@@ -360,19 +360,40 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
 }
 
 function FinishOverlay({ chaplet, open, onClose }: { chaplet: Chaplet; open: boolean; onClose: () => void }) {
+    // It blocks the page, so it has to behave like a dialog: announced as one,
+    // named by its heading, focused when it opens, and dismissible with Escape.
+    // Without the focus move, a keyboard or screen-reader user has to traverse
+    // the whole chaplet behind it to reach the one button.
+    const confirmRef = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        if (!open) return;
+        confirmRef.current?.focus();
+        const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [open, onClose]);
+
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm animate-in fade-in">
-            <div className="surface rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="coroa-concluida"
+                className="surface rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95"
+            >
                 <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
-                    <PartyPopper size={32} />
+                    <PartyPopper size={32} aria-hidden="true" />
                 </div>
-                <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Graças a Deus!</h2>
+                <h2 id="coroa-concluida" className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    Graças a Deus!
+                </h2>
                 <p className="text-zinc-500 text-sm leading-relaxed">
                     Concluiu a {chaplet.title}.
                 </p>
                 <button
                     type="button"
+                    ref={confirmRef}
                     onClick={onClose}
                     className="w-full py-3 px-6 cta-primary rounded-xl font-semibold transition-all active:scale-[0.97] hover:opacity-90"
                 >
