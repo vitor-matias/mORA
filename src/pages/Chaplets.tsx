@@ -38,7 +38,10 @@ export default function Chaplets() {
 function ChapletChooser() {
     return (
         <div className="p-6 pb-8 w-full max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto">
-            <p className="text-sm text-zinc-500 leading-relaxed mb-5 lg:max-w-2xl">
+            {/* text-balance so the last line never comes out as a stray
+                "por si." — the browser evens the lines instead of filling the
+                first one and orphaning whatever is left. */}
+            <p className="text-sm text-zinc-500 leading-relaxed mb-5 lg:max-w-2xl text-balance">
                 Cada coroa reza-se conta a conta, como o terço. Toque para avançar —
                 a aplicação conta as contas por si.
             </p>
@@ -395,7 +398,7 @@ function FinishOverlay({ chaplet, open, onClose }: { chaplet: Chaplet; open: boo
                 <h2 id="coroa-concluida" className="text-2xl font-bold text-zinc-900 dark:text-white">
                     Graças a Deus!
                 </h2>
-                <p className="text-zinc-500 text-sm leading-relaxed">
+                <p className="text-zinc-500 text-sm leading-relaxed text-balance">
                     Concluiu a {chaplet.title}.
                 </p>
                 <button

@@ -27,7 +27,7 @@ export class ChunkBoundary extends Component<{ children: ReactNode }, { failed: 
         if (!this.state.failed) return this.props.children;
         return (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
-                <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+                <p className="text-zinc-500 text-sm max-w-xs leading-relaxed text-balance">
                     Não foi possível abrir esta página. Se a aplicação foi actualizada
                     entretanto, basta recarregar.
                 </p>
