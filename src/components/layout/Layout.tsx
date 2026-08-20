@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
@@ -158,7 +158,13 @@ export function Layout() {
                         : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
                 }`}
             >
-                <Outlet />
+                {/* The text libraries are code-split, so the outlet is where
+                    a route can be missing for a beat. Suspending here rather
+                    than around the router keeps the nav and the day's theme on
+                    screen while the chunk arrives. */}
+                <Suspense fallback={null}>
+                    <Outlet />
+                </Suspense>
             </main>
         </div>
     );
