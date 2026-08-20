@@ -59,6 +59,19 @@ export function rank(a: RankableResult, b: RankableResult): number {
     return a.ms - b.ms;
 }
 
+/** Who won one day of a duel: solved first, then fewer guesses — same as
+    `rank`, but stops there. `ms` decides nothing here.
+
+    A duel is a running tally the two players see for a month at a time, not a
+    one-off sort, so a tie decided by the cheapest field in the event to forge
+    (see `rank`) would hand out wins and losses neither side can trust. Tied
+    tries is a draw instead — the same call pointsFor already made for the
+    monthly board, extended to the other ranking still built on `rank`. */
+export function duelVerdict(a: RankableResult, b: RankableResult): number {
+    if (a.solved !== b.solved) return a.solved ? -1 : 1;
+    return a.tries - b.tries;
+}
+
 /** Attach display names, keyed by pubkey. Rows whose author has no profile
     keep `name` undefined and are shown by a shortened key instead. */
 export async function withNames<T extends { pubkey: string }>(
@@ -405,7 +418,7 @@ export function duelRecords(
         for (const [date, me] of mine) {
             const them = theirs.get(date);
             if (!them) continue;
-            const verdict = rank(me, them);
+            const verdict = duelVerdict(me, them);
             if (verdict < 0) wins++;
             else if (verdict > 0) losses++;
             else draws++;
