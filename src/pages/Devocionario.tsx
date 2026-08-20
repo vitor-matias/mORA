@@ -191,7 +191,7 @@ export default function Devocionario() {
                         <div className="surface rounded-3xl px-6 py-16 text-center">
                             <BookMarked size={28} className="mx-auto text-liturgy-500 mb-3" aria-hidden="true" />
                             <p className="text-sm text-zinc-500 max-w-xs mx-auto leading-relaxed text-balance">
-                                Escolha uma oração da lista, ou procure pelo nome — «terço», «Fátima», «pelos doentes».
+                                Escolhe uma oração da lista ou procure pelo nome ou conteúdo.
                             </p>
                         </div>
                     )}

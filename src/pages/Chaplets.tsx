@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw, Clock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { ChevronRight, Undo2, RotateCcw, Clock } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useAppStore } from "@/store/app";
@@ -203,14 +203,12 @@ function Passage({ label, text, repeat }: { label: string; text: string; repeat?
 }
 
 function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
-    const navigate = useNavigate();
     const setBottomBarYielded = useAppStore((s) => s.setBottomBarYielded);
     const mode = useAppStore((s) => s.chapletMode);
     const setMode = useAppStore((s) => s.setChapletMode);
 
     const sequence = useMemo(() => generateChapletSequence(chaplet), [chaplet]);
     const [stepIndex, setStepIndex] = useState(0);
-    const [finished, setFinished] = useState(false);
 
     const step = sequence[Math.min(stepIndex, sequence.length - 1)];
     const atStart = stepIndex === 0;
@@ -220,17 +218,19 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
     // right under the Continuar button — the same reason the rosary session
     // hides it. Cleared on unmount so it never outlives the page.
     useEffect(() => {
-        setBottomBarYielded(mode === 'guiado' && !atStart && !finished);
-    }, [mode, atStart, finished, setBottomBarYielded]);
+        setBottomBarYielded(mode === 'guiado' && !atStart);
+    }, [mode, atStart, setBottomBarYielded]);
     useEffect(() => () => setBottomBarYielded(false), [setBottomBarYielded]);
 
     // Every bead is a new card — start it at the top of the screen.
     useEffect(() => { window.scrollTo(0, 0); }, [stepIndex]);
 
+    // The last bead is the end of it: there is nothing after the final prayer
+    // to advance to, and nothing to record.
     const next = () => {
+        if (atEnd) return;
         window.navigator?.vibrate?.(50);
-        if (stepIndex < sequence.length - 1) setStepIndex((i) => i + 1);
-        else setFinished(true);
+        setStepIndex((i) => i + 1);
     };
 
     const totalBeads = beadsPerGroup(chaplet);
@@ -241,27 +241,13 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
     const picker = <ModePicker mode={mode} onChange={changeMode} />;
 
     if (mode === 'resumido') {
-        return (
-            <>
-                <ChapletText chaplet={chaplet} picker={picker} />
-                <FinishOverlay chaplet={chaplet} open={finished} onClose={() => { setFinished(false); navigate('/coroas'); }} />
-                <div className="px-6 pb-8 w-full max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto">
-                    <button
-                        type="button"
-                        onClick={() => setFinished(true)}
-                        className="w-full lg:max-w-2xl lg:mx-auto h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                    >
-                        Concluir <Check size={24} />
-                    </button>
-                </div>
-            </>
-        );
+        return <ChapletText chaplet={chaplet} picker={picker} />;
     }
 
     return (
         <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative overflow-hidden">
             <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
-                {!atStart && !finished && (
+                {!atStart && (
                     <button
                         type="button"
                         onClick={() => { setStepIndex(0); }}
@@ -351,64 +337,18 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                             <Undo2 size={22} />
                         </button>
                     )}
-                    <button
-                        type="button"
-                        onClick={next}
-                        className="flex-1 h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                    >
-                        {atEnd
-                            ? <>Concluir <Check size={24} /></>
-                            : <>{atStart ? 'Começar' : 'Continuar'} <ChevronRight size={24} /></>}
-                    </button>
+                    {!atEnd && (
+                        <button
+                            type="button"
+                            onClick={next}
+                            className="flex-1 h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        >
+                            {atStart ? 'Começar' : 'Continuar'} <ChevronRight size={24} />
+                        </button>
+                    )}
                 </div>
             </div>
-
-            <FinishOverlay chaplet={chaplet} open={finished} onClose={() => { setFinished(false); navigate('/coroas'); }} />
         </div>
     );
 }
 
-function FinishOverlay({ chaplet, open, onClose }: { chaplet: Chaplet; open: boolean; onClose: () => void }) {
-    // It blocks the page, so it has to behave like a dialog: announced as one,
-    // named by its heading, focused when it opens, and dismissible with Escape.
-    // Without the focus move, a keyboard or screen-reader user has to traverse
-    // the whole chaplet behind it to reach the one button.
-    const confirmRef = useRef<HTMLButtonElement>(null);
-    useEffect(() => {
-        if (!open) return;
-        confirmRef.current?.focus();
-        const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [open, onClose]);
-
-    if (!open) return null;
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm animate-in fade-in">
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="coroa-concluida"
-                className="surface rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95"
-            >
-                <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
-                    <PartyPopper size={32} aria-hidden="true" />
-                </div>
-                <h2 id="coroa-concluida" className="text-2xl font-bold text-zinc-900 dark:text-white">
-                    Graças a Deus!
-                </h2>
-                <p className="text-zinc-500 text-sm leading-relaxed text-balance">
-                    Concluiu a {chaplet.title}.
-                </p>
-                <button
-                    type="button"
-                    ref={confirmRef}
-                    onClick={onClose}
-                    className="w-full py-3 px-6 cta-primary rounded-xl font-semibold transition-all active:scale-[0.97] hover:opacity-90"
-                >
-                    Amen
-                </button>
-            </div>
-        </div>
-    );
-}
