@@ -29,7 +29,7 @@ import { pathToFileURL } from 'node:url';
 import DEFAULT_RELAYS from '../../src/relays.json' with { type: 'json' };
 
 import WebSocket from 'ws';
-import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
+import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
 
 // The app's own reader and the app's own scoring rule, not copies of them.
@@ -220,7 +220,17 @@ function queryOn(url, filters) {
         socket.on('message', (raw) => {
             try {
                 const msg = JSON.parse(raw.toString());
-                if (msg[0] === 'EVENT' && msg[2]) found.push(msg[2]);
+                // A relay is free to send anything over this socket — including an
+                // event it made up. The client-side reader never sees that: NPool
+                // opens relays through NRelay1, which runs every incoming EVENT
+                // through nostr-tools' verifyEvent (id hashes the content, sig is
+                // valid for pubkey) before it ever reaches entriesFromEvents. This
+                // socket is the one place in the app that talks to a relay without
+                // that, so it has to do the same check itself — otherwise any one
+                // of the relays could name an arbitrary pubkey as a day's winner,
+                // with a made-up id that costs nothing to pass meetsPow, and this
+                // job would mint that pubkey a real, permanent badge for it.
+                if (msg[0] === 'EVENT' && msg[2] && verifyEvent(msg[2])) found.push(msg[2]);
                 if (msg[0] === 'EOSE') finish(true);
                 // The relay declined the subscription. Whatever it sent first
                 // is a fragment, not a result set.
