@@ -53,8 +53,12 @@ import {
     tallyMonth,
 } from '../../src/lib/palavra/scoring.ts';
 
-const configuredRelays = (process.env.PALAVRA_RELAYS ?? '')
-    .split(',').map((r) => r.trim()).filter(Boolean);
+// Deduplicated: a repeated URL in PALAVRA_RELAYS would otherwise inflate
+// RELAYS.length and count the same relay's answer as two independent votes,
+// which is exactly what the quorum math below assumes can't happen.
+const configuredRelays = [...new Set(
+    (process.env.PALAVRA_RELAYS ?? '').split(',').map((r) => r.trim()).filter(Boolean),
+)];
 const RELAYS = configuredRelays.length > 0 ? configuredRelays : DEFAULT_RELAYS;
 
 /**
@@ -366,14 +370,36 @@ function sendTo(url, event) {
     });
 }
 
+/** Extra attempts broadcast() gives a relay that didn't ack, before counting
+    it as a no. This is the one publish that has to clear quorum, so a
+    transient timeout — as opposed to a real rejection — is worth a retry. */
+const BROADCAST_ATTEMPTS = 3;
+
 /**
  * Publish to every relay. A majority must accept it — not "one acceptance is
  * enough" — so that a later majority read (see RELAY_QUORUM) is guaranteed to
  * land on a relay that has it.
+ *
+ * This does not, however, persist the exact event or its per-relay acceptance
+ * across separate runs of this job: if a run still falls short of quorum
+ * after BROADCAST_ATTEMPTS, it leaves the place unawarded, and a future run
+ * builds a *new* event (a fresh created_at, so a different id) rather than
+ * resuming this one. Making that durable across days would need state this
+ * job doesn't keep anywhere — there is no store here but the relays
+ * themselves — so a run that falls short simply retries tomorrow, the same
+ * way any other read failure does.
  */
 async function broadcast(event) {
-    const results = await Promise.all(RELAYS.map((url) => sendTo(url, event)));
-    return results.filter(Boolean).length >= RELAY_QUORUM;
+    let outstanding = RELAYS;
+    const accepted = new Set();
+    for (let attempt = 0; attempt < BROADCAST_ATTEMPTS && accepted.size < RELAY_QUORUM; attempt++) {
+        const results = await Promise.all(
+            outstanding.map(async (url) => [url, await sendTo(url, event)]),
+        );
+        outstanding = results.filter(([, ok]) => !ok).map(([url]) => url);
+        for (const [url, ok] of results) if (ok) accepted.add(url);
+    }
+    return accepted.size >= RELAY_QUORUM;
 }
 
 // ── The podium ───────────────────────────────────────────────────────────
