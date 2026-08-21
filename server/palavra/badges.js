@@ -57,6 +57,30 @@ const configuredRelays = (process.env.PALAVRA_RELAYS ?? '')
     .split(',').map((r) => r.trim()).filter(Boolean);
 const RELAYS = configuredRelays.length > 0 ? configuredRelays : DEFAULT_RELAYS;
 
+/**
+ * How many relays must agree before a read is trusted, or a write counted as
+ * landed.
+ *
+ * Requiring *all* of them used to mean one dead relay blocked the job
+ * forever — which is exactly what happened when relay.damus.io went quiet:
+ * every run since refused to award a month that had finished weeks earlier.
+ *
+ * A plain majority fixes that without giving up the guarantee that actually
+ * matters. Any two majorities drawn from the same set of relays are
+ * guaranteed to share at least one member (3-of-5 and 3-of-5 can't both miss
+ * each other). So as long as publishing an award also requires a majority —
+ * see broadcast(), below — a majority read afterwards is guaranteed to land
+ * on a relay that has it. Relaxing the read side to a majority while leaving
+ * the write side at "one acceptance is enough" would break that: an award
+ * sitting on a single relay could be missed by a majority read that happens
+ * to sample the other four.
+ */
+const RELAY_QUORUM = Math.floor(RELAYS.length / 2) + 1;
+
+/** Whether enough relays answered in full to trust a read — a majority, not
+    all of them. See RELAY_QUORUM. */
+const hasQuorum = (unread) => RELAYS.length - unread.length >= RELAY_QUORUM;
+
 /** NIP-58. */
 const KIND_BADGE_DEFINITION = 30009;
 const KIND_BADGE_AWARD = 8;
@@ -342,10 +366,14 @@ function sendTo(url, event) {
     });
 }
 
-/** Publish to every relay. One acceptance is enough for the event to exist. */
+/**
+ * Publish to every relay. A majority must accept it — not "one acceptance is
+ * enough" — so that a later majority read (see RELAY_QUORUM) is guaranteed to
+ * land on a relay that has it.
+ */
 async function broadcast(event) {
     const results = await Promise.all(RELAYS.map((url) => sendTo(url, event)));
-    return results.some(Boolean);
+    return results.filter(Boolean).length >= RELAY_QUORUM;
 }
 
 // ── The podium ───────────────────────────────────────────────────────────
@@ -416,10 +444,11 @@ async function resultEventsFor(days) {
  * Which places this publisher has already awarded for a month, and whether the
  * answer can be trusted.
  *
- * The same rule the podium read applies, and for a sharper reason. If the relay
- * holding a previous award is the one that did not finish answering, this comes
- * back without that place and the caller cheerfully awards it a second time —
- * and an award cannot be withdrawn. A partial answer here is worse than no
+ * The same majority the podium read trusts (see RELAY_QUORUM) applies here,
+ * and it is safe for the same reason: broadcast() requires a majority to
+ * accept a publish, so any award actually landed on enough relays that a
+ * majority read afterwards is guaranteed to see it, even if a different relay
+ * or two has gone quiet since. Falling short of that majority is worse than no
  * answer, so it is reported rather than returned as fact.
  */
 async function alreadyAwarded(pubkey, month) {
@@ -505,7 +534,7 @@ async function main() {
     // Read before signing: a dry run of an unfinished month shouldn't need the
     // publisher's key at all, since it never publishes.
     const { podium, unreadRelays, saturatedDays } = await podiumFor(month);
-    const readable = unreadRelays.length === 0 && saturatedDays.length === 0;
+    const readable = hasQuorum(unreadRelays) && saturatedDays.length === 0;
 
     // Said before anything else, and before the empty-podium return below.
     //
@@ -570,11 +599,11 @@ async function main() {
     const secretKey = loadSecretKey();
     const pubkey = getPublicKey(secretKey);
     const { awarded, unread } = await alreadyAwarded(pubkey, month);
-    if (unread.length > 0) {
+    if (!hasQuorum(unread)) {
         console.error(
-            `Could not check which places are already awarded: ${unread.join(', ')} `
-            + 'did not finish answering. Declining rather than risking a second award '
-            + 'for a place, which cannot be withdrawn.',
+            `Could not check which places are already awarded: only ${RELAYS.length - unread.length} `
+            + `of ${RELAYS.length} relays answered (${unread.join(', ')} did not finish). Declining `
+            + 'rather than risking a second award for a place, which cannot be withdrawn.',
         );
         process.exit(1);
     }
