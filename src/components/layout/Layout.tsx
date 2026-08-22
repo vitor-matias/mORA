@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
@@ -7,6 +7,7 @@ import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
 import { TabBar } from "./TabBar";
+import { ChunkBoundary } from "@/components/ChunkBoundary";
 
 // Today's liturgical color/day info for the store (app theme + Home's day
 // card). Module scope so it runs both at mount and on day rollover.
@@ -158,7 +159,16 @@ export function Layout() {
                         : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
                 }`}
             >
-                <Outlet />
+                {/* The text libraries are code-split, so the outlet is where
+                    a route can be missing for a beat — or fail to arrive at
+                    all. Suspending and catching here rather than around the
+                    router keeps the nav and the day's theme on screen either
+                    way. */}
+                <ChunkBoundary>
+                    <Suspense fallback={null}>
+                        <Outlet />
+                    </Suspense>
+                </ChunkBoundary>
             </main>
         </div>
     );

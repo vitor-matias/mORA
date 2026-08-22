@@ -127,12 +127,14 @@ export function generateRosarySequence(day: MysteryDay, mode: RosaryBeadMode): R
             });
         }
 
-        // Glória e Jaculatória
+        // Glória e jaculatórias, in the order Portugal says them: the Glória,
+        // then «Ó Maria concebida sem pecado» — which was defined here but
+        // never reached the step — and only then the Fátima «Ó meu Jesus».
         steps.push({
             id: `m${decNum}-gloria`,
             type: 'gloria',
-            title: 'Glória e Jaculatória',
-            content: `${prayers.gloria}\n\n${prayers.jaculatoria1}`,
+            title: 'Glória e Jaculatórias',
+            content: `${prayers.gloria}\n\n${prayers.jaculatoria2}\n\n${prayers.jaculatoria1}`,
             decadeIndex: decNum,
             beadIndex: 11
         });
