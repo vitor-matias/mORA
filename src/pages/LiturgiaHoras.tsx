@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { ChevronRight, ChevronDown, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
@@ -188,6 +189,20 @@ function buildCanonicalHours(rawParts: LiturgyHourPart[]): HourMoment[] {
 }
 
 export default function LiturgiaHoras() {
+    const navigate = useNavigate();
+    // From lg the sidebar carries the title, so the header is not rendered at
+    // all rather than hidden with CSS: hidden, it would still portal its back
+    // orb and the day into the global top bar, leaving two back buttons.
+    const [hasSidebar, setHasSidebar] = useState(
+        () => window.matchMedia('(min-width: 1024px)').matches
+    );
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const onChange = () => setHasSidebar(mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [retryToken, setRetryToken] = useState(0);
@@ -535,18 +550,39 @@ export default function LiturgiaHoras() {
     return (
         <div className="flex-1 w-full flex flex-col">
 
-            {/* ── Sticky header ────────────────────────────────────────────── */}
-            <PageHeader
-                title="Liturgia das Horas"
-                subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay}
-            />
+            {/* ── Header ───────────────────────────────────────────────────
+                Below lg only — from lg the sidebar carries the title. */}
+            {/* The sidebar only exists once the hours have loaded, so while it
+                is loading or after it failed there is nothing to carry the
+                title or the way back — the header stands in for it. */}
+            {(!hasSidebar || loading || canonicalHours.length === 0) && (
+                <PageHeader
+                    title="Liturgia das Horas"
+                    subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay}
+                />
+            )}
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
 
                 {/* ── Desktop sidebar ──────────────────────────────────────── */}
                 {!loading && canonicalHours.length > 0 && (
-                    <aside className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                    <aside className="hidden lg:flex flex-col gap-4 w-72 xl:w-80 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                        {/* The page's title, which from lg lives here rather
+                            than in a header bar above the reading. */}
+                        <div className="flex items-center gap-3 min-w-0">
+                            <button
+                                type="button"
+                                aria-label="Voltar ao início"
+                                onClick={() => navigate('/')}
+                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-1.5"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <h1 className="text-xl font-bold tracking-tight page-title truncate">
+                                Liturgia das Horas
+                            </h1>
+                        </div>
                         {dateNav}
                         {officeChooser}
                         <nav aria-label="Horas do Ofício">

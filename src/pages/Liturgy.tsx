@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { CheckCircle2, RotateCcw } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { CheckCircle2, ChevronLeft, RotateCcw } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy, fetchLiturgicalColorFromCalendar, getDefaultMassDate } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgicalDayInfo } from "@/lib/liturgy";
-import { useAppStore, isCompletedToday } from "@/store/app";
+import { buildGuidedMassHtml, extractMassTexts } from "@/lib/massGuide";
+import { resolveMassOrdo } from "@/lib/massOrdo";
+import { useAppStore, isCompletedToday, clampMassMode } from "@/store/app";
+import type { MassMode } from "@/store/app";
 import { formatDisplayDate, formatISODate } from "@/lib/format";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
@@ -321,13 +324,37 @@ function makeCommentariesCollapsible(html: string): string {
 interface TocEntry { id: string; label: string; }
 
 export default function Liturgy() {
+    const navigate = useNavigate();
+    // From lg the sidebar carries the title, so the header is not rendered at
+    // all rather than hidden with CSS: hidden, it would still portal its back
+    // orb and the day into the global top bar, leaving two back buttons and
+    // the day named twice.
+    const [hasSidebar, setHasSidebar] = useState(
+        () => window.matchMedia('(min-width: 1024px)').matches
+    );
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1024px)');
+        const onChange = () => setHasSidebar(mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+
     const [liturgy, setLiturgy] = useState<DailyLiturgy | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadFailed, setLoadFailed] = useState(false);
     const [retryToken, setRetryToken] = useState(0);
-    const [showOnlyReadings, setShowOnlyReadings] = useState(true);
 
-    const { streaks, incrementStreak, setLiturgicalColorOverride } = useAppStore();
+    // Selected field by field: a bare useAppStore() subscribes this page to
+    // every setting in the store, so changing the theme or the font size
+    // would re-render the whole reading. The setters are stable references,
+    // so they never trigger one.
+    const streaks = useAppStore((s) => s.streaks);
+    const incrementStreak = useAppStore((s) => s.incrementStreak);
+    const setLiturgicalColorOverride = useAppStore((s) => s.setLiturgicalColorOverride);
+    const setMassMode = useAppStore((s) => s.setMassMode);
+    // Clamped on read: the persisted store rehydrates unvalidated, and an
+    // older build wrote a boolean here under a different key.
+    const massMode = clampMassMode(useAppStore((s) => s.massMode));
 
     // Date being viewed — a ?date=YYYY-MM-DD param (e.g. from the calendar
     // page) wins; otherwise today (or Sunday from Saturday 16:00, when vigil
@@ -376,6 +403,7 @@ export default function Liturgy() {
 
     // Table of contents
     const articleRef = useRef<HTMLElement>(null);
+    const chipsRef = useRef<HTMLElement>(null);
     const [sections, setSections] = useState<TocEntry[]>([]);
     const [activeSection, setActiveSection] = useState('');
 
@@ -477,29 +505,38 @@ export default function Liturgy() {
         if (!liturgy?.htmlContent) return '';
 
         let result: string;
-        if (!showOnlyReadings) {
+        if (massMode === 'explicada') {
+            // Whether this day's Mass carries the Glória and the Credo. Only
+            // the guided mode prints them, so the resolution lives inside this
+            // branch rather than in a memo of its own — the other two modes
+            // never pay for the scan. The calendar entry states it outright;
+            // the Mass text and the general rules back it up.
+            const ordo = resolveMassOrdo(
+                selectedDate,
+                dayInfo?.description,
+                dayInfo?.dayName ?? liturgy.saintOfDay,
+                liturgy.htmlContent,
+            );
+            result = buildGuidedMassHtml(liturgy.htmlContent, ordo);
+        } else if (massMode === 'missal') {
             result = liturgy.htmlContent;
         } else {
-            const html = liturgy.htmlContent;
-            const startIdx = html.indexOf('<p><strong>LEITURA I');
-            if (startIdx === -1) {
-                result = html;
-            } else {
-                const postStart = html.slice(startIdx);
-                const endMatch = postStart.search(
-                    /<p>(?:<b>(?:Oração sobre as oblatas|Prefácio)|Diz-se o Credo|<strong>(?:Credo|Oração sobre as oblatas))/i
-                );
-                const endIdx = endMatch !== -1 ? startIdx + endMatch : html.length;
-                let extracted = html.substring(startIdx, endIdx);
-                extracted = extracted.replace(
-                    /<p><strong>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/strong>[\s\S]*?(?=<p><strong>EVANGELHO<\/strong>)/i,
-                    ''
-                );
-                result = extracted;
-            }
+            // Taken block by block rather than sliced between a start and an
+            // end marker. The API marks its labels inconsistently — on the
+            // Assumption the offertory prayer carries no <strong> at all and
+            // "Diz-se o Credo" sits inside an <em> — so a marker-based slice
+            // found no end and ran on through the orations and the preface.
+            // The Aleluia is dropped: it belongs to the Mass, not the readings.
+            const { readings } = extractMassTexts(liturgy.htmlContent);
+            const wanted = readings.filter((r) => r.kind !== 'aleluia');
+            result = wanted.length > 0
+                ? wanted.map((r) => r.header + r.body).join('')
+                : liturgy.htmlContent;
         }
         return makeCommentariesCollapsible(result);
-    }, [liturgy, showOnlyReadings]);
+        // selectedDateStr is the stable identity of selectedDate
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [liturgy, massMode, dayInfo, selectedDateStr]);
 
     // Hands-free scrolling through the readings.
     const scroll = useAutoScroll(displayHtml);
@@ -516,14 +553,25 @@ export default function Liturgy() {
     // We depend on both displayHtml (content) and loading (mount gate).
     // Fall back to document.querySelector in case the ref isn't captured yet.
     useEffect(() => {
-        if (loading || !liturgy) return;
+        // Every path that cannot produce a table of contents clears it rather
+        // than leaving the last one standing: a day still loading, a day the
+        // API has none for, or text whose mode yields no headers. Left alone,
+        // yesterday's chips stay on screen and each one scrolls to an anchor
+        // that is no longer in the document.
+        const clear = () => {
+            setSections([]);
+            setActiveSection('');
+        };
+        if (loading || !liturgy) return clear();
         const el = articleRef.current ?? document.querySelector<HTMLElement>('article');
-        if (!el) return;
+        if (!el) return clear();
         const id = window.setTimeout(() => {
             // Both reading sections and prayer/Mass-part headers carry
-            // data-toc-label, in document order.
-            const headers = el.querySelectorAll<HTMLElement>('[id][data-toc-label]');
-            if (headers.length === 0) return;
+            // data-toc-label, in document order. data-toc-skip opts a section
+            // out — the guided Mass uses it for the Aleluia, which is styled
+            // as a reading but too slight to navigate to.
+            const headers = el.querySelectorAll<HTMLElement>('[id][data-toc-label]:not([data-toc-skip])');
+            if (headers.length === 0) return clear();
             setSections(Array.from(headers).map((h) => ({
                 id: h.id,
                 label: h.getAttribute('data-toc-label') ?? h.id,
@@ -569,6 +617,18 @@ export default function Liturgy() {
         return () => window.removeEventListener('scroll', onScroll);
     }, [sections]);
 
+    // Keep the active chip in view as the reader moves down the page. The nav's
+    // own scrollLeft is set rather than scrollIntoView, which would also move
+    // the page vertically and fight the scroll that triggered this.
+    useEffect(() => {
+        const nav = chipsRef.current;
+        if (!nav || !activeSection) return;
+        const chip = nav.querySelector<HTMLElement>(`[data-section="${CSS.escape(activeSection)}"]`);
+        if (!chip) return;
+        const left = chip.offsetLeft - (nav.clientWidth - chip.offsetWidth) / 2;
+        nav.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    }, [activeSection]);
+
     const scrollToSection = useCallback((id: string) => {
         stopScroll();
         const el = document.getElementById(id);
@@ -581,8 +641,19 @@ export default function Liturgy() {
         }
     }, [stopScroll]);
 
-    // Commentary expand/collapse (event delegation on article).
-    const handleToggleCommentary = (e: React.MouseEvent<HTMLElement>) => {
+    // Two disclosures, both by event delegation on the article: the guided
+    // Mass's explanations, behind the info button beside each part's title,
+    // and the readings' commentaries. Each opens in place and stays open —
+    // nothing overlaps, so nothing has to be dismissed to read on.
+    const handleArticleClick = (e: React.MouseEvent<HTMLElement>) => {
+        const info = (e.target as HTMLElement).closest('.mass-info');
+        if (info) {
+            const part = info.closest('.mass-explain');
+            if (!part) return;
+            info.setAttribute('aria-expanded', String(part.classList.toggle('open')));
+            return;
+        }
+
         const toggle = (e.target as HTMLElement).closest('.commentary-toggle');
         if (!toggle) return;
         const container = toggle.closest('.reading-commentary');
@@ -593,17 +664,24 @@ export default function Liturgy() {
 
     // ── Shared UI pieces rendered in both sidebar (desktop) and toolbar (mobile) ──
 
-    // Segmented control: both options always visible, so the label never
+    // Segmented control: every option always visible, so the label never
     // reads as "the action a click would take" vs "the current state".
+    // "Explicada" walks a newcomer through the whole celebration in order.
     const filterButton = (
         <div role="group" aria-label="Conteúdo a mostrar" className="flex w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 gap-1">
-            {([[true, 'Leituras'], [false, 'Missal']] as [boolean, string][]).map(([value, label]) => (
+            {([
+                ['leituras', 'Leituras', 'Só as leituras do dia'],
+                ['missal', 'Missal', 'Todos os textos próprios do dia'],
+                ['explicada', 'Explicada', 'A Missa passo a passo, para quem está a começar'],
+            ] as [MassMode, string, string][]).map(([value, label, hint]) => (
                 <button
-                    key={label}
-                    onClick={() => { stopScroll(); setShowOnlyReadings(value); }}
-                    aria-pressed={showOnlyReadings === value}
-                    className={`flex-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        showOnlyReadings === value
+                    key={value}
+                    type="button"
+                    onClick={() => { stopScroll(); setMassMode(value); }}
+                    aria-pressed={massMode === value}
+                    title={hint}
+                    className={`flex-1 px-1.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        massMode === value
                             ? 'surface text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
@@ -648,7 +726,15 @@ export default function Liturgy() {
     return (
         <div className="flex-1 w-full flex flex-col">
 
-            {/* ── Sticky header ────────────────────────────────────────────── */}
+            {/* ── Header ───────────────────────────────────────────────────
+                Below lg only. From lg the sidebar carries the title instead:
+                it is pinned and always in view, so a second bar at the top of
+                the page would be a shrinking duplicate of something already on
+                screen, and it would cost the reading column its height. */}
+            {/* The sidebar only exists once the day has loaded, so while it is
+                loading or after it failed there is nothing to carry the title
+                or the way back — the header stands in for it. */}
+            {(!hasSidebar || loading || !liturgy) && (
             <PageHeader
                 title="Missa Diária"
                 subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
@@ -656,12 +742,15 @@ export default function Liturgy() {
                 {/* Mobile section chips — quick jumps without the desktop sidebar */}
                 {!loading && sections.length > 0 && (
                     <nav
+                        ref={chipsRef}
                         aria-label="Secções das leituras"
                         className="lg:hidden max-w-5xl mx-auto px-6 mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
                         {sections.map(({ id, label }) => (
                             <button
                                 key={id}
+                                type="button"
+                                data-section={id}
                                 onClick={() => scrollToSection(id)}
                                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                                     activeSection === id
@@ -675,13 +764,34 @@ export default function Liturgy() {
                     </nav>
                 )}
             </PageHeader>
+            )}
 
             {/* ── Page body ────────────────────────────────────────────────── */}
             <div className="max-w-5xl 2xl:max-w-6xl mx-auto w-full px-4 sm:px-6 pt-4 lg:pt-8 pb-20 flex-1 flex flex-col lg:flex-row lg:gap-12 lg:items-start">
 
-                {/* ── Desktop sidebar ──────────────────────────────────────── */}
+                {/* ── Desktop sidebar ──────────────────────────────────────────
+                    Never moves: with no header above it the sidebar starts
+                    higher than top-24, so it is pinned from the first paint.
+                    That matters most under autoscroll, where the reader has
+                    let go of the page. */}
                 {!loading && liturgy && (
-                    <aside className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                    <aside className="hidden lg:flex flex-col gap-4 w-72 xl:w-80 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
+                        {/* The page's title, which from lg lives here rather
+                            than in a header bar above the reading. */}
+                        <div className="flex items-center gap-3 min-w-0">
+                            <button
+                                type="button"
+                                aria-label="Voltar ao início"
+                                onClick={() => navigate('/')}
+                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-1.5"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <h1 className="text-xl font-bold tracking-tight page-title truncate">
+                                Missa Diária
+                            </h1>
+                        </div>
+
                         {dateNav}
                         {dateCard}
                         {saintCard}
@@ -736,13 +846,11 @@ export default function Liturgy() {
                                 {saintCard}
                             </div>
 
-                            {/* Filter + autoscroll row — mobile / tablet only.
-                                Speed controls live in the floating pill while
-                                scrolling, so they aren't duplicated here. */}
-                            <div className="lg:hidden flex items-center gap-2 mb-6">
-                                <div className="flex-1">{filterButton}</div>
-                                <div className="shrink-0"><AutoScrollButton scroll={scroll} /></div>
-                            </div>
+                            {/* Mode picker — mobile / tablet only. Autoscroll
+                                isn't duplicated here: the floating pill is
+                                always on screen below lg and does the same job,
+                                and three modes need the full width. */}
+                            <div className="lg:hidden mb-6">{filterButton}</div>
 
                             {/* Reading article */}
                             <article
@@ -755,7 +863,7 @@ export default function Liturgy() {
                                     [&_i]:italic [&_i]:text-zinc-700 dark:[&_i]:text-zinc-300
                                     [&_br]:my-0
                                 "
-                                onClick={handleToggleCommentary}
+                                onClick={handleArticleClick}
                             >
                                 <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
                             </article>

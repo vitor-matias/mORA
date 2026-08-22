@@ -29,7 +29,19 @@ export function DateNav({
     selectedDateStr: string;
     isToday: boolean;
     onChangeDay: (delta: number) => void;
-    onSelectDate: (date: Date) => void;
+    /**
+     * The day the player picked: as a local-midnight `Date`, and as the raw
+     * YYYY-MM-DD the picker actually reported.
+     *
+     * Both, because the two are not the same day everywhere. A UTC-keyed
+     * caller that reads the `Date` has to convert it back, and local midnight
+     * east of Greenwich is still *yesterday* in UTC — so picking Monday in
+     * Lisbon selected Sunday's puzzle, and today was unreachable from the
+     * picker for the whole of a summer day. Locally-keyed callers (Missa, the
+     * Hours) want the `Date`; UTC-keyed ones (Palavra) want the string, which
+     * has made no round trip and cannot drift.
+     */
+    onSelectDate: (date: Date, iso: string) => void;
     /**
      * The last day that can be chosen, YYYY-MM-DD. Opt-in, because most pages
      * here have no such limit — the readings and the Hours exist for any date
@@ -109,7 +121,7 @@ export function DateNav({
                     onChange={(e) => {
                         if (!e.target.value) return;
                         if (maxDateStr && e.target.value > maxDateStr) return;
-                        onSelectDate(new Date(e.target.value + 'T00:00:00'));
+                        onSelectDate(new Date(e.target.value + 'T00:00:00'), e.target.value);
                     }}
                     className="absolute inset-0 opacity-0 pointer-events-none"
                 />
