@@ -417,7 +417,7 @@ function enrichReadingTypography(doc: Document): void {
  * missal, prayers and all.
  */
 export function extractReadings(html: string): string {
-    const start = html.search(/<p>\s*<(?:b|strong)>LEITURA I/i);
+    const start = html.search(/<p>\s*<(?:b|strong)>LEITURA I\b/i);
     if (start === -1) return html;
 
     // What follows the Gospel is the offertory and on: stop at whichever

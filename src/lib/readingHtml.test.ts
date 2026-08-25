@@ -308,4 +308,14 @@ describe('extractReadings', () => {
         const html = '<p><strong>Antífona de entrada</strong><br />\nOs pensamentos do Senhor.</p>';
         expect(extractReadings(html)).toBe(html);
     });
+
+    it('does not mistake a later reading for the first one', () => {
+        // "LEITURA I" is a prefix of "LEITURA II"/"III"/"IV". Without a token
+        // boundary a day missing its first reading would be sliced from
+        // whichever reading came next, losing the fallback.
+        const html = '<p><strong>Antífona de entrada</strong><br />\nOs pensamentos do Senhor.</p>\n'
+            + '<p><strong>LEITURA II</strong> Rm 11, 33-36<br />\n«D’Ele são todas as coisas»</p>';
+
+        expect(extractReadings(html)).toBe(html);
+    });
 });
