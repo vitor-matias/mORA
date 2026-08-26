@@ -127,6 +127,13 @@
     background: rgb(var(--liturgy-500) / 0.12);
     color: rgb(var(--liturgy-300));
   }
+  /* "Ou: …" — an equally valid response the missal offers alongside */
+  .psalm-refrain .psalm-refrain-alt {
+    display: block;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-top: 0.3rem;
+  }
   .psalm-refrain .psalm-refrain-note {
     display: block;
     font-weight: 500;
