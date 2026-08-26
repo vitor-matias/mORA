@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
     duelRecords,
+    duelVerdict,
     entriesFromEvents,
-    liveStreaks,
     rank,
     recentDates,
     type RankableResult,
 } from './social.ts';
+import { resultDTag } from './nostr';
+import { KIND_RESULT } from './results';
+import { KIND_APP_STATE } from '@/lib/nostr';
 import { POW_MINIMUM } from './pow';
 import type { NostrEvent } from '@nostrify/nostrify';
 import type { LeaderboardEntry } from './types';
@@ -26,14 +29,18 @@ const MINED_ID = '0'.repeat(POW_MINIMUM / 4) + 'f'.repeat(64 - POW_MINIMUM / 4);
 const BARE_ID = 'f'.repeat(64);
 
 function event(over: {
-    id?: string; date?: string; content?: string; pubkey?: string;
+    id?: string; date?: string; content?: string; pubkey?: string; dTag?: string;
 } = {}): NostrEvent {
+    const date = over.date ?? DATE;
     return {
         id: over.id ?? MINED_ID,
         pubkey: over.pubkey ?? 'a'.repeat(64),
         created_at: 1_786_233_600,
         kind: 30078,
-        tags: [['date', over.date ?? DATE]],
+        // The `d` tag as well as the `date` tag, because a real result carries
+        // both and the reader now requires them to agree. A fixture with only
+        // one of them would have passed a check no genuine event can skip.
+        tags: [['d', over.dTag ?? resultDTag(date)], ['date', date]],
         content: over.content ?? JSON.stringify({ tries: 3, solved: true, ms: 60_000 }),
         sig: '0'.repeat(128),
     };
@@ -124,6 +131,23 @@ describe('rank', () => {
     });
 });
 
+describe('duelVerdict', () => {
+    it('puts fewer guesses first', () => {
+        expect(duelVerdict(result({ tries: 2 }), result({ tries: 4 }))).toBeLessThan(0);
+    });
+
+    it('puts a solved game ahead of an unsolved one, however fast', () => {
+        expect(duelVerdict(
+            result({ solved: true, tries: 6, ms: 900_000 }),
+            result({ solved: false, tries: 1, ms: 1 }),
+        )).toBeLessThan(0);
+    });
+
+    it('calls equal tries a draw, no matter how far apart the times are', () => {
+        expect(duelVerdict(result({ tries: 3, ms: 1 }), result({ tries: 3, ms: 900_000 }))).toBe(0);
+    });
+});
+
 describe('duelRecords', () => {
     const ME = 'a'.repeat(64);
     const RIVAL = 'b'.repeat(64);
@@ -168,6 +192,15 @@ describe('duelRecords', () => {
             .toMatchObject({ wins: 1, losses: 1, draws: 1, played: 3 });
     });
 
+    it('calls equal tries a draw even when the reported times differ wildly', () => {
+        const byAuthor = new Map<string, Map<string, LeaderboardEntry>>([
+            [ME, new Map([['2026-08-08', { ...play(ME, 3), ms: 1 }]])],
+            [RIVAL, new Map([['2026-08-08', { ...play(RIVAL, 3), ms: 900_000 }]])],
+        ]);
+        expect(duelRecords(ME, [RIVAL], byAuthor)[0])
+            .toMatchObject({ wins: 0, losses: 0, draws: 1, played: 1 });
+    });
+
     it('ignores days only one of you played', () => {
         const byAuthor = grouped([
             [ME, '2026-08-08', 3], [RIVAL, '2026-08-08', 4],
@@ -186,70 +219,37 @@ describe('duelRecords', () => {
     });
 });
 
-describe('liveStreaks', () => {
-    const YESTERDAY = '2026-08-07';
-    const dates = [DATE, YESTERDAY];
-    const result = (over: { pk: string; date: string; solved?: boolean; streak?: number }) => event({
-        pubkey: over.pk.repeat(64).slice(0, 64),
-        date: over.date,
-        content: JSON.stringify({
-            tries: 3,
-            solved: over.solved ?? true,
-            ms: 1000,
-            ...(over.streak === undefined ? {} : { streak: over.streak }),
-        }),
+// The guard that makes a summed board possible. `d` and `date` are separate
+// fields, and any reader asking for more than one `d` at a time — the monthly
+// tally asks for thirty-one, duels for thirty — would otherwise count one
+// game under every day key its author cared to publish it beneath.
+describe('the d/date agreement guard', () => {
+    it('accepts an event whose d tag matches its date', () => {
+        expect(entriesFromEvents([event({ dTag: resultDTag(DATE) })], DATE)).toHaveLength(1);
     });
 
-    it('lists a running streak', () => {
-        const rows = liveStreaks([result({ pk: 'a', date: DATE, streak: 12 })], dates);
-        expect(rows.map((r) => r.streak)).toEqual([12]);
+    it('drops a result filed under another day\'s key', () => {
+        expect(entriesFromEvents([event({ dTag: resultDTag('2026-08-01') })], DATE)).toEqual([]);
     });
 
-    // The important one. Filtering while choosing the newest day would skip
-    // today's loss, fall through to yesterday's win, and print a streak that
-    // ended yesterday as though it were still going.
-    it('drops someone who lost today, rather than showing yesterday', () => {
-        const rows = liveStreaks([
-            result({ pk: 'a', date: YESTERDAY, streak: 40 }),
-            result({ pk: 'a', date: DATE, solved: false, streak: 0 }),
-        ], dates);
-        expect(rows).toEqual([]);
+    it('drops a result whose day key carries no date', () => {
+        expect(entriesFromEvents([event({ dTag: 'mora-palavra-r:' })], DATE)).toEqual([]);
     });
 
-    it('keeps yesterday when that is genuinely their latest day', () => {
-        const rows = liveStreaks([result({ pk: 'b', date: YESTERDAY, streak: 9 })], dates);
-        expect(rows.map((r) => r.streak)).toEqual([9]);
+    // The other half: a `d` tag that isn't there at all, where tagValue
+    // returns undefined rather than a string that fails to match. The fixture
+    // always emits one, so this is the only way to reach that branch.
+    it('drops a result with no d tag at all', () => {
+        const bare: NostrEvent = { ...event(), tags: [['date', DATE]] };
+        expect(entriesFromEvents([bare], DATE)).toEqual([]);
     });
 
-    it('prefers today over yesterday for the same author', () => {
-        const rows = liveStreaks([
-            result({ pk: 'c', date: YESTERDAY, streak: 5 }),
-            result({ pk: 'c', date: DATE, streak: 6 }),
-        ], dates);
-        expect(rows.map((r) => r.streak)).toEqual([6]);
-    });
-
-    it('omits a streak of zero', () => {
-        expect(liveStreaks([result({ pk: 'd', date: DATE, streak: 0 })], dates)).toEqual([]);
-    });
-
-    it('omits a row that declares no streak at all', () => {
-        expect(liveStreaks([result({ pk: 'e', date: DATE })], dates)).toEqual([]);
-    });
-
-    it('omits an unsolved day even when it claims a streak', () => {
-        expect(liveStreaks([
-            result({ pk: 'f', date: DATE, solved: false, streak: 99 }),
-        ], dates)).toEqual([]);
-    });
-
-    it('ranks longest first', () => {
-        const rows = liveStreaks([
-            result({ pk: 'a', date: DATE, streak: 3 }),
-            result({ pk: 'b', date: DATE, streak: 30 }),
-            result({ pk: 'c', date: DATE, streak: 8 }),
-        ], dates);
-        expect(rows.map((r) => r.streak)).toEqual([30, 8, 3]);
+    // The attack the guard exists for: one game, published beneath a week of
+    // day keys, all declaring the same date. Every copy but the real one goes.
+    it('refuses to count one game under many day keys', () => {
+        const copies = ['2026-08-02', '2026-08-03', '2026-08-04', DATE]
+            .map((day) => event({ dTag: resultDTag(day) }));
+        expect(entriesFromEvents(copies, DATE)).toHaveLength(1);
     });
 });
 
@@ -330,5 +330,14 @@ describe('recentDates', () => {
 
     it('defaults to today', () => {
         expect(recentDates(1)[0]).toBe(formatUTCDate(new Date()));
+    });
+});
+
+// results.ts restates the result kind as a plain number so Node can import it
+// without reaching for @/lib/nostr. That is a copy, and a copy that drifted
+// would point the whole monthly read at a kind nobody publishes.
+describe('the result kind', () => {
+    it('matches the kind the writer publishes under', () => {
+        expect(KIND_RESULT).toBe(KIND_APP_STATE);
     });
 });

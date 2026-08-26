@@ -66,6 +66,18 @@ export default function Palavra() {
     const [notice, setNotice] = useState<string | null>(null);
     const t = useTranslations().palavra;
     const [pageTab, setPageTab] = useState<PageTab>('game');
+    // Whether the social half has ever been opened. It mounts lazily and then
+    // stays mounted, hidden — the same bargain Community strikes with its own
+    // four panels, and it has to be struck out here too or Community's
+    // `visited` set dies with it: unmounting on every hop back to the game
+    // re-ran the whole relay fan-out on the next hop over, the monthly read
+    // included, and that one is five filters wide. Never mounted at all for a
+    // player who only ever plays the game.
+    const [socialSeen, setSocialSeen] = useState(false);
+    const openPageTab = useCallback((id: PageTab) => {
+        setPageTab(id);
+        if (id === 'social') setSocialSeen(true);
+    }, []);
 
     const writeDraft = useCallback((next: string) => {
         draftRef.current = next;
@@ -103,6 +115,10 @@ export default function Palavra() {
     const over = isFinished(play);
     // A recorded archive day is history: shown, not replayable.
     const readOnly = isArchive && Boolean(recorded);
+    // Whether *today* is done, which is not what `over` says while an archive
+    // day is on screen — there `play` is the archived day's. The month board
+    // sums today's guess counts, so that is the question it has to ask.
+    const finishedToday = isFinished(plays[today] ?? EMPTY_PLAY);
 
     // A PWA resumed from the background can be days behind; re-anchor and
     // re-fetch rather than leave yesterday's puzzle on screen. Only moves the
@@ -546,7 +562,7 @@ export default function Palavra() {
                     key={id}
                     role="tab"
                     aria-selected={pageTab === id}
-                    onClick={() => setPageTab(id)}
+                    onClick={() => openPageTab(id)}
                     className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors ${
                         vertical ? 'w-full justify-start' : 'flex-1 justify-center'
                     } ${
@@ -644,17 +660,27 @@ export default function Palavra() {
                         single tablist in the accessibility tree. */}
                     <div className="lg:hidden mb-4">{pageTabs(false)}</div>
 
-                    {pageTab === 'social' && (
-                        <Community
-                            refreshKey={resultsVersion}
-                            date={viewDate}
-                            pubkey={myPubkey}
-                            sharing={sharing}
-                            // Today's rankings say how many tries people
-                            // needed, which is a hint about how hard the word
-                            // is. Withheld until this player has finished it.
-                            revealResults={over || isArchive}
-                        />
+                    {socialSeen && (
+                        <div hidden={pageTab !== 'social'}>
+                            <Community
+                                refreshKey={resultsVersion}
+                                date={viewDate}
+                                pubkey={myPubkey}
+                                sharing={sharing}
+                                // Today's rankings say how many tries people
+                                // needed, which is a hint about how hard the
+                                // word is. Withheld until this player has
+                                // finished it.
+                                revealResults={over || isArchive}
+                                // Not the same question, and the month board
+                                // needs this one: browsing the archive reveals
+                                // nothing about today's word, but a monthly
+                                // total *with today in it* is today's guess
+                                // counts summed. `over` describes whichever day
+                                // is on screen; this describes today.
+                                finishedToday={finishedToday}
+                            />
+                        </div>
                     )}
 
                     <div className={pageTab === 'game' ? 'space-y-4 sm:space-y-5' : 'hidden'}>

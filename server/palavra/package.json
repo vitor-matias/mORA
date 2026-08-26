@@ -9,7 +9,9 @@
     "keygen": "node keygen.js",
     "verify": "node verify.js",
     "publish-today": "node publish.js",
-    "backfill": "node publish.js --backfill 7"
+    "backfill": "node publish.js --backfill 7",
+    "badges": "node --experimental-strip-types badges.js",
+    "badges-dry-run": "node --experimental-strip-types badges.js --dry-run"
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",

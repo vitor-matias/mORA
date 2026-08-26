@@ -1,3 +1,12 @@
+/** Month names, for the monthly ranking's header. Written out rather than
+    formatted through Intl: the whole UI is Portuguese, so a runtime locale
+    lookup would only add a way for the header to come back in the browser's
+    language instead of the app's. */
+const MONTH_NAMES = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
 const translations = {
     home: {
         greeting: "Bom dia.",
@@ -110,19 +119,44 @@ const translations = {
         publishFailed: "Não foi possível publicar",
 
         tabBoard: "Do dia",
-        tabStreaks: "Seguidos",
-        loadingStreaks: "A carregar as sequências…",
-        emptyStreaks: "Ainda ninguém tem uma sequência a decorrer.",
-        streaksLegend: "Dias seguidos a acertar, entre quem jogou hoje ou ontem. O número é publicado por cada jogador; ✓ marca os que foram confirmados nos relays, por amostragem dos dias da sequência.",
-        streakVerified: "Sequência confirmada nos relays",
+        tabMonth: "Do mês",
+        loadingMonth: "A somar os pontos do mês…",
+        emptyMonth: "Ainda ninguém pontuou este mês.",
+        emptyMonthArchive: "Ninguém pontuou neste mês.",
+        emptyMonthFirstDay: "O mês começa hoje. Termina o jogo para ver a classificação.",
+        monthPartial: "Nem todos os relays responderam. Podem faltar jogos, por isso os totais são um mínimo.",
+        monthLegend: "Cada jogo vale 6 pontos se acertar à primeira, 5 à segunda, e assim por diante até 1 à sexta. Um jogo perdido não vale pontos, e a classificação é a soma do mês — quem joga mais dias soma mais. 🔥 é a sequência de dias seguidos a acertar: é publicada por cada jogador e não conta para a classificação.",
+        monthLabel: (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`,
+        points: (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`,
+        pointsAbbr: "pts",
+        streakLabel: (n: number) => `Sequência de ${n} ${n === 1 ? "dia" : "dias"}`,
+        prevMonth: "Mês anterior",
+        nextMonth: "Mês seguinte",
         tabDuels: "Duelos",
         tabLeagues: "Ligas",
-        notSharing: "Está a ver os resultados dos outros. Para aparecer nas classificações, ative a partilha em Perfil.",
+        notSharing: "Estás a ver os resultados dos outros. Para apareceres nas classificações, ativa a partilha em Perfil.",
         spoiler: "Termina o jogo de hoje para ver os resultados.",
-        spoilerWhy: "Quantas tentativas os outros precisaram diz-lhe quão difícil é a palavra.",
-        signInHint: "Entre com uma identidade Nostr em Perfil.",
-        signInDuels: "Os duelos comparam-no com quem segue no Nostr.",
-        signInLeagues: "As ligas precisam de uma identidade Nostr para guardar de quais faz parte.",
+        spoilerWhy: "As tentativas dos outros dão-te uma pista sobre a dificuldade da palavra.",
+        signInHint: "Entra com uma identidade Nostr em Perfil.",
+        signInDuels: "Os duelos comparam-te com quem segues no Nostr.",
+        signInLeagues: "As ligas precisam de uma identidade Nostr para saber de quais fazes parte.",
+
+        playerOpen: (name: string) => `Ver ${name}`,
+        playerClose: "Fechar",
+        badgesTitle: "Medalhas",
+        badgesLoading: "A procurar medalhas…",
+        badgesNone: "Ainda sem medalhas.",
+        badgesNoneYours: "Ainda não tens medalhas. Os três primeiros de cada mês recebem uma.",
+        badgesPublishHelp: "Publica as tuas medalhas no perfil Nostr para aparecerem ao teu lado noutras aplicações. As medalhas de outros emissores mantêm-se.",
+        badgesPublish: "Mostrar no perfil Nostr",
+        badgesPublishing: "A publicar…",
+        badgesPublished: "Publicado no perfil Nostr",
+        badgesPublishFailed: "Não foi possível publicar. Tenta outra vez.",
+        followToDuel: "Seguir",
+        followingAlready: "Já segues",
+        followFailed: "Não foi possível seguir. Tenta outra vez.",
+        followWhy: "Os duelos comparam-te com quem segues, nos dias em que ambos jogam.",
+        signInFollow: "Entra com uma identidade Nostr em Perfil para seguires e duelares.",
 
         loadingBoard: "A consultar os relays…",
         emptyBoard: "Ainda ninguém publicou o resultado de hoje.",
