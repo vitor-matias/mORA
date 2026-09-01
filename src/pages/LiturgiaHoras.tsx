@@ -200,6 +200,13 @@ export default function LiturgiaHoras() {
         const mq = window.matchMedia('(min-width: 1024px)');
         const onChange = () => setHasSidebar(mq.matches);
         mq.addEventListener('change', onChange);
+        // Re-read on subscribe, rather than trusting the initializer alone:
+        // a width change between that first read and this listener going up
+        // fires with nobody listening, and the page would sit on the wrong
+        // side of the breakpoint until the next one. Cheap insurance for a
+        // mismatch that shows as a header and a sidebar both claiming the
+        // title, with two back buttons between them.
+        onChange();
         return () => mq.removeEventListener('change', onChange);
     }, []);
 
