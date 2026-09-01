@@ -78,6 +78,11 @@ export function Layout() {
         // so the initial run and the OS-theme listener stay consistent.
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
+            // The dark background is painted by the root element and by
+            // color-scheme, not only by Layout's wrapper — otherwise the area
+            // outside it (overscroll, and the canvas the mobile status bar
+            // tints itself from) stays the UA's white.
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
 
             // Status bar matches the page background. Read --app-bg (set by the
             // .dark class we just toggled) rather than repeating the literals,
@@ -95,6 +100,11 @@ export function Layout() {
                 document.head.appendChild(meta);
             }
             meta.setAttribute('content', themeColor);
+
+            // The pre-paint script in index.html sets an inline background for
+            // the first frame; the stylesheet's html rule is the real source of
+            // truth, so drop the inline copy once we're running.
+            document.documentElement.style.removeProperty('background');
         };
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
