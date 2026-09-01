@@ -20,7 +20,20 @@ const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:
  * strangers see next to someone's name, so it is theirs to decide. Dismissing
  * costs nothing: the badge is already won, and Perfil keeps the same button.
  */
-export function BadgeAward({ badges, onClose }: { badges: EarnedBadge[]; onClose: () => void }) {
+export function BadgeAward({
+    recipient,
+    badges,
+    onClose,
+}: {
+    /** Who won them. Fixed when the award was read, not looked up at publish
+        time: the two dynamic imports below give a sign-out room to land
+        mid-publish, and asking who is signed in *then* could write these
+        badges onto whoever signed in next. Passing it here means the writer's
+        signer check catches the switch and refuses. */
+    recipient: string;
+    badges: EarnedBadge[];
+    onClose: () => void;
+}) {
     const t = useTranslations().palavra;
     const dialogRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
@@ -58,10 +71,7 @@ export function BadgeAward({ badges, onClose }: { badges: EarnedBadge[]; onClose
             // The award names its recipient, and that is the only identity
             // whose list this can be added to — the publish refuses if the
             // signer turns out to be someone else.
-            const { currentPubkey } = await import('@/store/auth');
-            const pubkey = currentPubkey();
-            if (!pubkey) throw new Error('Signed out before the badge list could be published.');
-            await setPalavraProfileBadges(pubkey, badges);
+            await setPalavraProfileBadges(recipient, badges);
             setPublishing('done');
         } catch (error) {
             // Includes the deliberate refusal when the current list can't be

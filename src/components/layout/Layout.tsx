@@ -41,7 +41,7 @@ export function Layout() {
     // won one. Announced app-wide rather than from the Palavra page: the award
     // lands whenever it lands, and hearing about it should not depend on being
     // on that page at the time.
-    const { pending: awardedBadges, dismiss: dismissAwards } = useBadgeAwards();
+    const { recipient: awardRecipient, pending: awardedBadges, dismiss: dismissAwards } = useBadgeAwards();
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
     useEffect(() => {
@@ -158,8 +158,12 @@ export function Layout() {
             {/* Before <main> so the xl sticky top bar occupies the top of the
                 page flow (the mobile bottom bar is fixed and doesn't care). */}
             <TabBar />
-            {awardedBadges.length > 0 && (
-                <BadgeAward badges={awardedBadges} onClose={dismissAwards} />
+            {awardRecipient && awardedBadges.length > 0 && (
+                <BadgeAward
+                    recipient={awardRecipient}
+                    badges={awardedBadges}
+                    onClose={dismissAwards}
+                />
             )}
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device

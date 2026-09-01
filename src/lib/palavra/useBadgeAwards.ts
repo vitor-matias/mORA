@@ -26,7 +26,13 @@ const FIRST_CHECK_DELAY_MS = 4000;
  * otherwise start the announcement again on the next launch, and a badge that
  * keeps announcing itself is worse than one announced once.
  */
-export function useBadgeAwards(): { pending: EarnedBadge[]; dismiss: () => void } {
+export function useBadgeAwards(): {
+    /** Whose awards these are. Carried through to the publish so a sign-out
+        mid-dialog cannot write one identity's badges onto another's profile. */
+    recipient: string | null;
+    pending: EarnedBadge[];
+    dismiss: () => void;
+} {
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey ?? null);
     const markBadgesAnnounced = usePalavraStore((s) => s.markBadgesAnnounced);
     const t = useTranslations().palavra;
@@ -92,5 +98,6 @@ export function useBadgeAwards(): { pending: EarnedBadge[]; dismiss: () => void 
         };
     }, [pubkey, markBadgesAnnounced, t]);
 
-    return { pending: awarded && awarded.pubkey === pubkey ? awarded.badges : [], dismiss };
+    const mine = awarded && awarded.pubkey === pubkey ? awarded : null;
+    return { recipient: mine?.pubkey ?? null, pending: mine?.badges ?? [], dismiss };
 }

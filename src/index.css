@@ -248,6 +248,17 @@
   }
 }
 
+/* Someone who asked for less motion means the dialogs too. The rule inside
+   the components layer above covers the board's own animations; these are the
+   tailwindcss-animate utilities every modal in the app enters with, and a
+   utility can only be overridden from outside the layers — an unlayered rule
+   wins over any @layer, whatever order the plugin registered them in. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in, .animate-out {
+    animation: none;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Liturgical dynamic colors — switched via data-theme on <html>      */
 /* Stored as "R G B" channel triplets (no rgb() wrapper) so Tailwind  */
