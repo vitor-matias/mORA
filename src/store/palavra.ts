@@ -106,6 +106,27 @@ export function sanitizeSharing(value: unknown): Record<string, boolean> {
     return clean;
 }
 
+/** The key a badge announcement is remembered under. Identity first, so one
+    account's history can be read off the map by prefix. */
+export function badgeAnnouncementKey(pubkey: string, coord: string): string {
+    return `${pubkey}:${coord}`;
+}
+
+/** Keep only `key: true` pairs whose key names a pubkey and a coordinate.
+    Junk that read as truthy would silence a real award for good — the one
+    failure here nothing downstream could notice. */
+export function sanitizeAnnouncedBadges(value: unknown): Record<string, true> {
+    if (!value || typeof value !== 'object') return {};
+    const clean: Record<string, true> = {};
+    for (const [key, announced] of Object.entries(value as Record<string, unknown>)) {
+        if (announced !== true) continue;
+        const [pubkey, ...rest] = key.split(':');
+        if (!/^[0-9a-f]{64}$/i.test(pubkey ?? '') || rest.length === 0 || !rest.join(':')) continue;
+        clean[key] = true;
+    }
+    return clean;
+}
+
 /** Which of two records for the same day to keep. Two devices can play the
     same puzzle independently, so this picks the better outcome rather than
     the later write: a win beats a loss, a faster win beats a slower one, and
@@ -316,6 +337,22 @@ interface PalavraState {
     sharing: Record<string, boolean>;
     setSharePalavraResults: (pubkey: string | null, share: boolean) => void;
 
+    /**
+     * Badges this device has already told this identity about, keyed
+     * `pubkey:<badge coordinate>`.
+     *
+     * An award is a NIP-58 event on a relay: nothing about winning one reaches
+     * the player, so the app announces it. This is what stops it announcing
+     * the same badge on every launch — it is marked the moment the badge is
+     * shown, not when the card is dismissed, because a reload between the two
+     * would otherwise start the announcement over.
+     *
+     * Keyed by identity as well as coordinate, so two accounts sharing a
+     * browser are each told about their own.
+     */
+    announcedBadges: Record<string, true>;
+    markBadgesAnnounced: (pubkey: string, coords: string[]) => void;
+
     /** Whether this device has already dismissed the "how to play" explainer.
         Device-local and not synced: a new device is exactly when it's worth
         showing again, so it isn't part of the record a sync would carry. */
@@ -420,6 +457,14 @@ export const usePalavraStore = create<PalavraState>()(
                 return { sharing: next };
             }),
 
+            announcedBadges: {},
+            markBadgesAnnounced: (pubkey, coords) => set((state) => {
+                if (!pubkey || coords.length === 0) return {};
+                const next = { ...state.announcedBadges };
+                for (const coord of coords) next[badgeAnnouncementKey(pubkey, coord)] = true;
+                return { announcedBadges: next };
+            }),
+
             seenTutorial: false,
             markTutorialSeen: () => set({ seenTutorial: true }),
         }),
@@ -446,6 +491,7 @@ export const usePalavraStore = create<PalavraState>()(
                     // corrupted write) must read as "not seen yet" — the
                     // failure mode of the loose default is a tutorial that
                     // can never show, which nothing after this would catch.
+                    announcedBadges: sanitizeAnnouncedBadges(saved.announcedBadges),
                     seenTutorial: saved.seenTutorial === true,
                 };
             },

@@ -6,6 +6,8 @@ import { useNostrSync } from "@/lib/useNostrSync";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
+import { useBadgeAwards } from "@/lib/palavra/useBadgeAwards";
+import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
 
 // Today's liturgical color/day info for the store (app theme + Home's day
@@ -35,6 +37,11 @@ export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
+    // Badges are awarded on a relay, where nothing would tell the person they
+    // won one. Announced app-wide rather than from the Palavra page: the award
+    // lands whenever it lands, and hearing about it should not depend on being
+    // on that page at the time.
+    const { recipient: awardRecipient, pending: awardedBadges, dismiss: dismissAwards } = useBadgeAwards();
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
     useEffect(() => {
@@ -78,6 +85,11 @@ export function Layout() {
         // so the initial run and the OS-theme listener stay consistent.
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
+            // The dark background is painted by the root element and by
+            // color-scheme, not only by Layout's wrapper — otherwise the area
+            // outside it (overscroll, and the canvas the mobile status bar
+            // tints itself from) stays the UA's white.
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
 
             // Status bar matches the page background. Read --app-bg (set by the
             // .dark class we just toggled) rather than repeating the literals,
@@ -95,6 +107,11 @@ export function Layout() {
                 document.head.appendChild(meta);
             }
             meta.setAttribute('content', themeColor);
+
+            // The pre-paint script in index.html sets an inline background for
+            // the first frame; the stylesheet's html rule is the real source of
+            // truth, so drop the inline copy once we're running.
+            document.documentElement.style.removeProperty('background');
         };
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
@@ -141,6 +158,13 @@ export function Layout() {
             {/* Before <main> so the xl sticky top bar occupies the top of the
                 page flow (the mobile bottom bar is fixed and doesn't care). */}
             <TabBar />
+            {awardRecipient && awardedBadges.length > 0 && (
+                <BadgeAward
+                    recipient={awardRecipient}
+                    badges={awardedBadges}
+                    onClose={dismissAwards}
+                />
+            )}
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device
                 safe-area inset it hovers over — until xl, where navigation
