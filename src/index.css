@@ -21,6 +21,19 @@
      scrollbar-gutter: stable, which some engines ignore on the root. */
   html {
     overflow-y: scroll;
+    /* The page background lives on the root element, not only on Layout's
+       wrapper: everything outside that wrapper — the overscroll area and the
+       canvas the mobile system bars sit on — paints from here, and left at the
+       UA default it stayed white under a dark page. */
+    background: rgb(var(--app-bg));
+    /* Tell the UA which scheme the page is in, so system chrome (status bar
+       tint, scrollbars, form controls) follows the app's theme rather than the
+       OS setting. Kept in sync by Layout and by the pre-paint script in
+       index.html for the very first frame. */
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
 
   /* Headings use the same sans as the rest of the chrome — one family
@@ -232,6 +245,17 @@
   @media (prefers-reduced-motion: reduce) {
     .palavra-reveal, .palavra-shake { animation: none; }
     .palavra-tile-filled { transform: none; }
+  }
+}
+
+/* Someone who asked for less motion means the dialogs too. The rule inside
+   the components layer above covers the board's own animations; these are the
+   tailwindcss-animate utilities every modal in the app enters with, and a
+   utility can only be overridden from outside the layers — an unlayered rule
+   wins over any @layer, whatever order the plugin registered them in. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in, .animate-out {
+    animation: none;
   }
 }
 

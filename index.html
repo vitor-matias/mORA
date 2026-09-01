@@ -6,7 +6,14 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#FAF9F6" />
+  <!-- Scheme-scoped, and both are kept: an installed Android PWA reads the
+       theme-color it starts with, and a WebAPK does not reliably re-read one
+       that script mutates afterwards. Declaring the dark answer up front means
+       the system bar is right without depending on that mutation landing. The
+       script below drops the media attributes when the app's own theme setting
+       disagrees with the OS, so an explicit choice still wins. -->
+  <meta name="theme-color" content="#FAF9F6" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
   <title>mORA</title>
   <script>
     // Apply theme before first paint so there is no flash of the wrong
@@ -20,9 +27,21 @@
           (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         var root = document.documentElement;
         root.classList.toggle('dark', dark);
+        // Before the stylesheet lands this is what keeps the system bars and
+        // the page canvas dark on the first frame.
+        root.style.colorScheme = dark ? 'dark' : 'light';
+        root.style.background = dark ? '#121212' : '#FAF9F6';
         if (state.liturgicalColor) root.setAttribute('data-theme', state.liturgicalColor);
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', dark ? '#121212' : '#FAF9F6');
+        // Only when the app's theme setting overrides the OS: the two metas
+        // above already say the right thing for 'system', and leaving them
+        // scheme-scoped is what keeps an installed PWA correct.
+        if (theme !== 'system') {
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          for (var i = 0; i < metas.length; i++) {
+            metas[i].removeAttribute('media');
+            metas[i].setAttribute('content', dark ? '#121212' : '#FAF9F6');
+          }
+        }
       } catch (e) { /* first visit or blocked storage — defaults apply */ }
     })();
   </script>

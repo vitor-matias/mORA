@@ -1,12 +1,24 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
+import { useBadgeAwards } from "@/lib/palavra/useBadgeAwards";
+import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
+import { ChunkBoundary } from "@/components/ChunkBoundary";
+
+/** `"18 18 18"` (the channel triplet --app-bg holds, so Tailwind can apply
+    opacity modifiers) as `#121212`. Null for anything else, so a caller can
+    fall back rather than write a colour nothing will parse. */
+function toHex(channels: string): string | null {
+    const parts = channels.split(/[\s,]+/).filter(Boolean).map(Number);
+    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return null;
+    return `#${parts.map((n) => Math.round(n).toString(16).padStart(2, '0')).join('')}`;
+}
 
 // Today's liturgical color/day info for the store (app theme + Home's day
 // card). Module scope so it runs both at mount and on day rollover.
@@ -35,6 +47,11 @@ export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
+    // Badges are awarded on a relay, where nothing would tell the person they
+    // won one. Announced app-wide rather than from the Palavra page: the award
+    // lands whenever it lands, and hearing about it should not depend on being
+    // on that page at the time.
+    const { recipient: awardRecipient, pending: awardedBadges, dismiss: dismissAwards } = useBadgeAwards();
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
     useEffect(() => {
@@ -78,23 +95,50 @@ export function Layout() {
         // so the initial run and the OS-theme listener stay consistent.
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
+            // The dark background is painted by the root element and by
+            // color-scheme, not only by Layout's wrapper — otherwise the area
+            // outside it (overscroll, and the canvas the mobile status bar
+            // tints itself from) stays the UA's white.
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+            // The pre-paint script in index.html sets an inline background for
+            // the first frame; the stylesheet's html rule is the real source of
+            // truth, so drop the inline copy once we're running.
+            document.documentElement.style.removeProperty('background');
 
             // Status bar matches the page background. Read --app-bg (set by the
             // .dark class we just toggled) rather than repeating the literals,
             // so the bar can't drift from the page under it.
+            //
+            // As hex, not `rgb(18 18 18)`: the variable holds bare channels for
+            // Tailwind's opacity modifiers, and the space-separated form that
+            // makes is modern CSS colour syntax that a page stylesheet parses
+            // but a platform reading this attribute need not. Hex is understood
+            // everywhere the bar is drawn.
             const appBg = getComputedStyle(document.documentElement)
                 .getPropertyValue('--app-bg')
                 .trim();
-            const themeColor = appBg
-                ? `rgb(${appBg})`
-                : (isDark ? '#121212' : '#FAF9F6'); // stylesheet not applied yet
-            let meta = document.querySelector('meta[name="theme-color"]');
-            if (!meta) {
-                meta = document.createElement('meta');
+            const themeColor = toHex(appBg) ?? (isDark ? '#121212' : '#FAF9F6');
+
+            // index.html declares one theme-color per colour scheme, which is
+            // what keeps an installed Android PWA right: a WebAPK reads the
+            // colour the page starts with and does not reliably follow a later
+            // mutation. So the scheme-scoped pair is left alone while the app
+            // follows the OS, and only an explicit Claro/Escuro — which the OS
+            // knows nothing about — takes them over.
+            const metas = document.querySelectorAll('meta[name="theme-color"]');
+            if (theme === 'system' && metas.length > 1) return;
+            if (metas.length === 0) {
+                const meta = document.createElement('meta');
                 meta.setAttribute('name', 'theme-color');
+                meta.setAttribute('content', themeColor);
                 document.head.appendChild(meta);
+                return;
             }
-            meta.setAttribute('content', themeColor);
+            for (const meta of metas) {
+                meta.removeAttribute('media');
+                meta.setAttribute('content', themeColor);
+            }
+
         };
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
@@ -141,6 +185,13 @@ export function Layout() {
             {/* Before <main> so the xl sticky top bar occupies the top of the
                 page flow (the mobile bottom bar is fixed and doesn't care). */}
             <TabBar />
+            {awardRecipient && awardedBadges.length > 0 && (
+                <BadgeAward
+                    recipient={awardRecipient}
+                    badges={awardedBadges}
+                    onClose={dismissAwards}
+                />
+            )}
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device
                 safe-area inset it hovers over — until xl, where navigation
@@ -158,7 +209,16 @@ export function Layout() {
                         : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
                 }`}
             >
-                <Outlet />
+                {/* The text libraries are code-split, so the outlet is where
+                    a route can be missing for a beat — or fail to arrive at
+                    all. Suspending and catching here rather than around the
+                    router keeps the nav and the day's theme on screen either
+                    way. */}
+                <ChunkBoundary>
+                    <Suspense fallback={null}>
+                        <Outlet />
+                    </Suspense>
+                </ChunkBoundary>
             </main>
         </div>
     );

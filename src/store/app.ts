@@ -165,6 +165,7 @@ export function settingsEqual(a: SyncedSettings, b: Partial<SyncedSettings>): bo
     return SYNCED_SETTING_KEYS.every((key) => a[key] === b[key]);
 }
 
+export type ChapletMode = 'guiado' | 'resumido';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
@@ -248,6 +249,22 @@ interface AppState {
     shareStreaks: boolean;
     setShareStreaks: (share: boolean) => void;
 
+    /** Prayers starred in the Devocionário, newest first. Device-local, like
+        theme and fontSize: it is not in SyncedSettings, so a second device
+        keeps its own shortlist rather than inheriting this one's. */
+    favouritePrayers: string[];
+    togglePrayerFavourite: (id: string) => void;
+    /** Hymns starred in the Cânticos section, newest first. Device-local for
+        the same reason as the prayers above. */
+    favouriteChants: string[];
+    toggleChantFavourite: (id: string) => void;
+
+    /** How the Coroas play: 'guiado' walks every bead, 'resumido' lays the
+        whole chaplet on one page for those who count on their own beads.
+        Device-local — it answers to how you pray on *this* device. */
+    chapletMode: ChapletMode;
+    setChapletMode: (mode: ChapletMode) => void;
+
     // Preferences
     theme: ThemeMode;
     setTheme: (theme: ThemeMode) => void;
@@ -298,6 +315,21 @@ export const useAppStore = create<AppState>()(
             setBottomBarYielded: (bottomBarYielded) => set({ bottomBarYielded }),
             shareStreaks: false,
             setShareStreaks: (shareStreaks) => set({ shareStreaks }),
+
+            chapletMode: 'guiado',
+            setChapletMode: (chapletMode) => set({ chapletMode }),
+            favouritePrayers: [],
+            togglePrayerFavourite: (id) => set((state) => ({
+                favouritePrayers: state.favouritePrayers.includes(id)
+                    ? state.favouritePrayers.filter((entry) => entry !== id)
+                    : [id, ...state.favouritePrayers],
+            })),
+            favouriteChants: [],
+            toggleChantFavourite: (id) => set((state) => ({
+                favouriteChants: state.favouriteChants.includes(id)
+                    ? state.favouriteChants.filter((entry) => entry !== id)
+                    : [id, ...state.favouriteChants],
+            })),
 
             // Default preferences
             theme: 'system',
