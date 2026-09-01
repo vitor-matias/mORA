@@ -21,8 +21,20 @@ export default defineConfig(({ command }) => ({
         name: 'mORA — Oração diária',
         short_name: 'mORA',
         description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
-        theme_color: '#FAF9F6',
-        background_color: '#FAF9F6',
+        // Dark, and deliberately not the light page background it used to be.
+        // A manifest carries one colour and cannot vary by colour scheme, and
+        // on Android this is the one that counts: the values here are baked
+        // into the WebAPK at install time and are what paints the system bar
+        // and the splash, whatever the page's own theme-color meta says
+        // afterwards. Light is the worse default of the two — a light bar
+        // under a dark page is unreadable and permanent, while a dark bar
+        // above a light page is a moment at launch before the page paints.
+        //
+        // Changing this only reaches a device once Chrome re-checks the
+        // manifest and updates the installed WebAPK; reinstalling the app
+        // applies it immediately.
+        theme_color: '#121212',
+        background_color: '#121212',
         icons: [
           {
             src: 'pwa-192x192.png',
