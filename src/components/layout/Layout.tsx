@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
@@ -9,6 +9,7 @@ import { useDayRollover } from "@/lib/useDayRollover";
 import { useBadgeAwards } from "@/lib/palavra/useBadgeAwards";
 import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
+import { ChunkBoundary } from "@/components/ChunkBoundary";
 
 /** `"18 18 18"` (the channel triplet --app-bg holds, so Tailwind can apply
     opacity modifiers) as `#121212`. Null for anything else, so a caller can
@@ -208,7 +209,16 @@ export function Layout() {
                         : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
                 }`}
             >
-                <Outlet />
+                {/* The text libraries are code-split, so the outlet is where
+                    a route can be missing for a beat — or fail to arrive at
+                    all. Suspending and catching here rather than around the
+                    router keeps the nav and the day's theme on screen either
+                    way. */}
+                <ChunkBoundary>
+                    <Suspense fallback={null}>
+                        <Outlet />
+                    </Suspense>
+                </ChunkBoundary>
             </main>
         </div>
     );

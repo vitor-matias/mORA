@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink } from "lucide-react";
+import { BookOpen, Clock, User, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Crown, Music } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -10,6 +10,7 @@ import { useTranslations } from "@/lib/i18n";
 import { getGreeting, formatDisplayDate, formatISODate, formatUTCDate } from "@/lib/format";
 import { getHourForTime } from "@/lib/hours";
 import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
+import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
@@ -48,6 +49,9 @@ export default function Home() {
 
     const currentHour = getHourForTime();
     const mysteryLabel = MYSTERY_LABELS[getMysteryForToday()];
+    // The Devocionário row carries the day's suggestion, which follows the
+    // same weekday devotion the Intenções card shows under "Hoje".
+    const devotionalSuggestion = suggestedPrayer();
     // From Saturday 16:00 the Missa page opens on Sunday's (vigil) readings
     const anticipatingSunday = formatISODate(getDefaultMassDate()) !== formatISODate(new Date());
 
@@ -83,6 +87,9 @@ export default function Home() {
         { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
         { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Rosary },
+        { path: "/coroas", label: t.chapletsTitle, context: t.chapletsDesc, icon: Crown },
+        { path: "/devocionario", label: t.devotionalTitle, context: t.devotionalDesc(devotionalSuggestion.title), icon: BookMarked },
+        { path: "/canticos", label: t.chantsTitle, context: t.chantsDesc, icon: Music },
     ];
     const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
