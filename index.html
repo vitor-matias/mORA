@@ -5,7 +5,15 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover: the page draws under the system bars instead of
+       being inset below them. Android 15 stopped honouring an app's status bar
+       colour and shows whatever is drawn behind the bar, which for an installed
+       PWA was the manifest colour baked in at install — light, whatever the
+       theme. Owning that strip means the html background paints it in the
+       active theme. Every top-anchored element pads by
+       env(safe-area-inset-top) to stay clear of the clock; where the platform
+       does not draw edge-to-edge the inset is 0 and nothing changes. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- Scheme-scoped, and both are kept: an installed Android PWA reads the
        theme-color it starts with, and a WebAPK does not reliably re-read one
        that script mutates afterwards. Declaring the dark answer up front means
