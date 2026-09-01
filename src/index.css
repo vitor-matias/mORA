@@ -32,6 +32,15 @@
        index.html for the very first frame. */
     color-scheme: light;
   }
+  /* With viewport-fit=cover the page also extends under a display cutout in
+     landscape; keep content clear of it. The top inset is taken by each
+     top-anchored element (PageHeader, Home) rather than here, so the sticky
+     header's own frosted background is what covers the status-bar strip when
+     the page scrolls under it. */
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
   html.dark {
     color-scheme: dark;
   }
