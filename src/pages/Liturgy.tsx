@@ -126,6 +126,10 @@ export default function Liturgy() {
     const [activeSection, setActiveSection] = useState('');
 
     const readToday = isCompletedToday(streaks.liturgy);
+    // A Mass with no text is not a Mass to read: the API has been seen
+    // answering with an entry whose body is empty, and `liturgy` alone being
+    // truthy then renders an empty article that still counts down to "read".
+    const hasContent = !!liturgy?.htmlContent;
 
     // Theme the app to the color of the day being read: browsing another
     // date overrides today's liturgical color for as long as we're here.
@@ -194,7 +198,11 @@ export default function Liturgy() {
     // timer counts instead — otherwise the streak would be unearnable there.
     const autoCompletedRef = useRef(false);
     useEffect(() => {
-        if (loading || !liturgy || !canMarkPrayed || readToday) return;
+        // hasContent, not just `liturgy`: the API can answer with a Mass whose
+        // text is empty, and the dwell timer below fires on anything that does
+        // not overflow the viewport — including a blank article. That recorded
+        // the day as prayed without ever showing it.
+        if (loading || !hasContent || !canMarkPrayed || readToday) return;
         autoCompletedRef.current = false;
 
         const complete = () => {
@@ -217,7 +225,7 @@ export default function Liturgy() {
             window.clearTimeout(dwellTimer);
             window.removeEventListener('scroll', onScroll);
         };
-    }, [loading, liturgy, canMarkPrayed, readToday, markAsRead]);
+    }, [loading, hasContent, canMarkPrayed, readToday, markAsRead]);
 
     const displayHtml = useMemo(() => {
         if (!liturgy?.htmlContent) return '';
@@ -270,7 +278,7 @@ export default function Liturgy() {
             setSections([]);
             setActiveSection('');
         };
-        if (loading || !liturgy) return clear();
+        if (loading || !hasContent) return clear();
         const el = articleRef.current ?? document.querySelector<HTMLElement>('article');
         if (!el) return clear();
         const id = window.setTimeout(() => {
@@ -287,7 +295,7 @@ export default function Liturgy() {
             setActiveSection('');
         }, 50);
         return () => window.clearTimeout(id);
-    }, [displayHtml, loading, liturgy]);
+    }, [displayHtml, loading, hasContent]);
 
     // Highlight the section currently in view (scrollspy).
     // An IntersectionObserver band is unreliable here: sections are long, so
@@ -442,7 +450,7 @@ export default function Liturgy() {
             {/* The sidebar only exists once the day has loaded, so while it is
                 loading or after it failed there is nothing to carry the title
                 or the way back — the header stands in for it. */}
-            {(!hasSidebar || loading || !liturgy) && (
+            {(!hasSidebar || loading || !hasContent) && (
             <PageHeader
                 title="Missa Diária"
                 subtitle={loading ? 'A carregar...' : liturgy?.saintOfDay ?? 'Sem leituras'}
@@ -482,7 +490,7 @@ export default function Liturgy() {
                     higher than top-24, so it is pinned from the first paint.
                     That matters most under autoscroll, where the reader has
                     let go of the page. */}
-                {!loading && liturgy && (
+                {!loading && hasContent && (
                     <aside className="hidden lg:flex flex-col gap-4 w-72 xl:w-80 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
                         {/* The page's title, which from lg lives here rather
                             than in a header bar above the reading. */}
@@ -545,7 +553,7 @@ export default function Liturgy() {
                             <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-amber-500 animate-spin" />
                             <p className="text-zinc-400">A obter leituras de hoje...</p>
                         </div>
-                    ) : liturgy ? (
+                    ) : hasContent ? (
                         <>
                             {/* Date nav + date card — mobile / tablet only */}
                             <div className="lg:hidden mb-4 space-y-3">
@@ -614,7 +622,7 @@ export default function Liturgy() {
             </div>
 
             {/* ── Floating autoscroll FAB — mobile / tablet only ────────── */}
-            {!loading && liturgy && <AutoScrollFab scroll={scroll} />}
+            {!loading && hasContent && <AutoScrollFab scroll={scroll} />}
         </div>
     );
 }
