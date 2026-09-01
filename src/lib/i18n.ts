@@ -152,6 +152,14 @@ const translations = {
         badgesPublishing: "A publicar…",
         badgesPublished: "Publicado no perfil Nostr",
         badgesPublishFailed: "Não foi possível publicar. Tenta outra vez.",
+        badgeAwardTitle: (n: number) => n === 1 ? "Recebeste uma medalha!" : `Recebeste ${n} medalhas!`,
+        badgeAwardLater: "Agora não",
+        badgeAwardDone: "Fechar",
+        badgeAwardClose: "Fechar",
+        badgeAwardNotificationTitle: "mORA — Nova medalha 🏅",
+        badgeAwardNotificationBody: (names: string[]) => names.length === 1
+            ? `Recebeste a medalha “${names[0]}”.`
+            : `Recebeste ${names.length} medalhas: ${names.join(", ")}.`,
         followToDuel: "Seguir",
         followingAlready: "Já segues",
         followFailed: "Não foi possível seguir. Tenta outra vez.",

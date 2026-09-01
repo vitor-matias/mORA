@@ -6,6 +6,8 @@ import { useNostrSync } from "@/lib/useNostrSync";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
+import { useBadgeAwards } from "@/lib/palavra/useBadgeAwards";
+import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
 
 // Today's liturgical color/day info for the store (app theme + Home's day
@@ -35,6 +37,11 @@ export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
+    // Badges are awarded on a relay, where nothing would tell the person they
+    // won one. Announced app-wide rather than from the Palavra page: the award
+    // lands whenever it lands, and hearing about it should not depend on being
+    // on that page at the time.
+    const { pending: awardedBadges, dismiss: dismissAwards } = useBadgeAwards();
 
     // Fetch/parse Liturgical Color on every load (cheap — ICS is cached in localStorage)
     useEffect(() => {
@@ -151,6 +158,9 @@ export function Layout() {
             {/* Before <main> so the xl sticky top bar occupies the top of the
                 page flow (the mobile bottom bar is fixed and doesn't care). */}
             <TabBar />
+            {awardedBadges.length > 0 && (
+                <BadgeAward badges={awardedBadges} onClose={dismissAwards} />
+            )}
             {/* max-w-md on mobile/tablet; individual pages control width on lg+.
                 Bottom padding clears the floating tab bar plus the device
                 safe-area inset it hovers over — until xl, where navigation
