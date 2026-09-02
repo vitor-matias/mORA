@@ -136,6 +136,19 @@ export function Layout() {
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
         applyDarkMode(resolveIsDark());
 
+        // Written again once the page has loaded and settled. An installed
+        // app (Android and iOS alike) can miss a theme-color written before
+        // it is ready to paint the system bar: the pre-paint script's write
+        // and this effect's first run both arrived too early, and the bar
+        // only caught up on the next write — which, until now, meant
+        // navigating to a page that re-ran this effect. The same value again,
+        // later, is what makes the launch screen right on its own.
+        const settle = () => applyDarkMode(resolveIsDark());
+        const settleTimers = [window.setTimeout(settle, 1000), window.setTimeout(settle, 3000)];
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', settle, { once: true });
+        }
+
         // When following the system, react live to OS appearance changes.
         const onSchemeChange = () => applyDarkMode(resolveIsDark());
         if (theme === 'system') {
@@ -166,6 +179,8 @@ export function Layout() {
 
         return () => {
             mq.removeEventListener('change', onSchemeChange);
+            for (const timer of settleTimers) window.clearTimeout(timer);
+            window.removeEventListener('load', settle);
         };
     }, [theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily]);
 
