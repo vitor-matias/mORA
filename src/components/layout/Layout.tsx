@@ -119,25 +119,17 @@ export function Layout() {
                 .trim();
             const themeColor = toHex(appBg) ?? (isDark ? '#121212' : '#FAF9F6');
 
-            // index.html declares one theme-color per colour scheme, which is
-            // what keeps an installed Android PWA right: a WebAPK reads the
-            // colour the page starts with and does not reliably follow a later
-            // mutation. So the scheme-scoped pair is left alone while the app
-            // follows the OS, and only an explicit Claro/Escuro — which the OS
-            // knows nothing about — takes them over.
-            const metas = document.querySelectorAll('meta[name="theme-color"]');
-            if (theme === 'system' && metas.length > 1) return;
-            if (metas.length === 0) {
-                const meta = document.createElement('meta');
+            // One meta, always written. index.html declares exactly one, and
+            // an installed app reads the first theme-color it finds — a pair
+            // scoped by media="(prefers-color-scheme)" looked right in a
+            // browser tab and left the system bar light on both platforms.
+            let meta = document.querySelector('meta[name="theme-color"]');
+            if (!meta) {
+                meta = document.createElement('meta');
                 meta.setAttribute('name', 'theme-color');
-                meta.setAttribute('content', themeColor);
                 document.head.appendChild(meta);
-                return;
             }
-            for (const meta of metas) {
-                meta.removeAttribute('media');
-                meta.setAttribute('content', themeColor);
-            }
+            meta.setAttribute('content', themeColor);
 
         };
 
