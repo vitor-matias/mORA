@@ -33,24 +33,14 @@
 
 @layer components {
   /* A single static wash, so the day's liturgical colour is present in the
-     background without haze. No animation, no starfield. */
+     background without haze. No animation, no starfield. The gradient itself
+     is the --app-wash token, shared with .app-bar below. */
   .app-ambient {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    /* Long tail: the fade must not end near a card edge, or the terminus
-       reads as a hairline across the page. */
-    background: linear-gradient(to bottom,
-      rgb(var(--liturgy-200) / 0.35),
-      rgb(var(--liturgy-200) / 0.10) 30%,
-      rgb(var(--liturgy-200) / 0) 70%);
-  }
-  .dark .app-ambient {
-    background: linear-gradient(to bottom,
-      rgb(var(--liturgy-900) / 0.25),
-      rgb(var(--liturgy-900) / 0.08) 30%,
-      rgb(var(--liturgy-900) / 0) 70%);
+    background: var(--app-wash);
   }
 
   /* Card surface — opaque, hairline border, no blur and no coloured shadow. */
@@ -97,12 +87,19 @@
   }
   .dark .cta-primary:hover { background: rgb(var(--liturgy-400)); }
 
-  /* Sticky top bars (Missa / Horas headers) — full-bleed, with only a
-     bottom hairline that appears once the page scrolls. */
+  /* Sticky top bars (Missa / Horas headers, the xl nav) — full-bleed, with
+     only a bottom hairline that appears once the page scrolls.
+
+     The bar sits at the top of the viewport, over the strongest part of the
+     ambient wash. A plain page-colour fill hid that wash and left a neutral
+     slab between the tinted status bar above and the tinted content below.
+     So the bar paints the same wash over its frosted fill: stuck at top-0 its
+     gradient lines up with .app-ambient's, and the bar reads as the page's
+     own background with the reading blurred underneath — not a lid on it. */
   .app-bar {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: rgb(var(--app-bg) / 0.9);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    background: var(--app-wash), rgb(var(--app-bg) / 0.8);
     border-bottom: 1px solid transparent;
   }
   .app-bar-scrolled {
@@ -337,10 +334,20 @@ html[data-theme="rosa"] {
    theme-color meta both derive from --app-bg, and .surface/.app-bar read
    these instead of repeating literals. The pre-paint script in index.html
    duplicates the --app-bg values by necessity — it runs before any
-   stylesheet — so keep those two hex literals in step with these. */
+   stylesheet — so keep those two hex literals in step with these.
+
+   --app-wash is the day's liturgical tint over the page, painted once by
+   .app-ambient (fixed to the viewport) and again by .app-bar so a stuck bar
+   matches the page around it. Its stops are in viewport units, not the
+   element's own height, so both paint the same gradient. Long tail: the fade
+   must not end near a card edge, or the terminus reads as a hairline. */
 :root {
   --app-bg: 250 249 246;
   --surface-bg: 255 255 255;
+  --app-wash: linear-gradient(to bottom,
+    rgb(var(--liturgy-200) / 0.35),
+    rgb(var(--liturgy-200) / 0.10) 30vh,
+    rgb(var(--liturgy-200) / 0) 70vh);
 
   --radius: 0.625rem;
   --background: 0 0% 100%;
@@ -379,6 +386,10 @@ html[data-theme="rosa"] {
 .dark {
   --app-bg: 18 18 18;
   --surface-bg: 27 27 30;
+  --app-wash: linear-gradient(to bottom,
+    rgb(var(--liturgy-900) / 0.25),
+    rgb(var(--liturgy-900) / 0.08) 30vh,
+    rgb(var(--liturgy-900) / 0) 70vh);
 
   --background: 0 0% 7%;
   --foreground: 0 0% 97%;
