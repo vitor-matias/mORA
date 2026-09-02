@@ -119,30 +119,35 @@ export function Layout() {
                 .trim();
             const themeColor = toHex(appBg) ?? (isDark ? '#121212' : '#FAF9F6');
 
-            // index.html declares one theme-color per colour scheme, which is
-            // what keeps an installed Android PWA right: a WebAPK reads the
-            // colour the page starts with and does not reliably follow a later
-            // mutation. So the scheme-scoped pair is left alone while the app
-            // follows the OS, and only an explicit Claro/Escuro — which the OS
-            // knows nothing about — takes them over.
-            const metas = document.querySelectorAll('meta[name="theme-color"]');
-            if (theme === 'system' && metas.length > 1) return;
-            if (metas.length === 0) {
-                const meta = document.createElement('meta');
+            // One meta, always written. index.html declares exactly one, and
+            // an installed app reads the first theme-color it finds — a pair
+            // scoped by media="(prefers-color-scheme)" looked right in a
+            // browser tab and left the system bar light on both platforms.
+            let meta = document.querySelector('meta[name="theme-color"]');
+            if (!meta) {
+                meta = document.createElement('meta');
                 meta.setAttribute('name', 'theme-color');
-                meta.setAttribute('content', themeColor);
                 document.head.appendChild(meta);
-                return;
             }
-            for (const meta of metas) {
-                meta.removeAttribute('media');
-                meta.setAttribute('content', themeColor);
-            }
+            meta.setAttribute('content', themeColor);
 
         };
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
         applyDarkMode(resolveIsDark());
+
+        // Written again once the page has loaded and settled. An installed
+        // app (Android and iOS alike) can miss a theme-color written before
+        // it is ready to paint the system bar: the pre-paint script's write
+        // and this effect's first run both arrived too early, and the bar
+        // only caught up on the next write — which, until now, meant
+        // navigating to a page that re-ran this effect. The same value again,
+        // later, is what makes the launch screen right on its own.
+        const settle = () => applyDarkMode(resolveIsDark());
+        const settleTimers = [window.setTimeout(settle, 1000), window.setTimeout(settle, 3000)];
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', settle, { once: true });
+        }
 
         // When following the system, react live to OS appearance changes.
         const onSchemeChange = () => applyDarkMode(resolveIsDark());
@@ -174,6 +179,8 @@ export function Layout() {
 
         return () => {
             mq.removeEventListener('change', onSchemeChange);
+            for (const timer of settleTimers) window.clearTimeout(timer);
+            window.removeEventListener('load', settle);
         };
     }, [theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily]);
 
