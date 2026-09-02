@@ -96,13 +96,24 @@ export function Layout() {
             const themeColor = appBg
                 ? `rgb(${appBg})`
                 : (isDark ? '#121212' : '#FAF9F6'); // stylesheet not applied yet
-            let meta = document.querySelector('meta[name="theme-color"]');
-            if (!meta) {
-                meta = document.createElement('meta');
-                meta.setAttribute('name', 'theme-color');
-                document.head.appendChild(meta);
+            // A fresh element each time, not a mutated one. A Home Screen web
+            // app on iOS reads theme-color when it launches and ignores a
+            // later change to the meta's content, so Claro/Escuro in Perfil,
+            // or the OS switching schemes, left the bar on the old colour
+            // until the next load. A newly inserted element is noticed. It
+            // goes in ahead of the old one, which is only then removed, so
+            // there is never a moment without a theme-color: the first in
+            // document order is the one that counts, and nothing falls back.
+            const fresh = document.createElement('meta');
+            fresh.setAttribute('name', 'theme-color');
+            fresh.setAttribute('content', themeColor);
+            const stale = document.querySelector('meta[name="theme-color"]');
+            if (stale) {
+                stale.before(fresh);
+                stale.remove();
+            } else {
+                document.head.appendChild(fresh);
             }
-            meta.setAttribute('content', themeColor);
         };
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
