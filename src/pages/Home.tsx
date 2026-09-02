@@ -111,11 +111,8 @@ export default function Home() {
         return () => { cancelled = true; };
     }, []);
 
-    // The root's top padding carries env(safe-area-inset-top): Home has no
-    // PageHeader to take it, and the page draws under the status bar (see the
-    // viewport meta in index.html).
     return (
-        <div className="p-6 pt-[calc(3rem+env(safe-area-inset-top))] space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
+        <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
                     <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
