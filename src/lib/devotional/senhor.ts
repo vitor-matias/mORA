@@ -112,7 +112,7 @@ que convêm à salvação da minha alma.
 Ó Pai cheio de amor,
 fazei que, recebendo agora o vosso Filho
 sob o véu do sacramento,
-possa na eternidade contemplá-lo face a face.
+possa na eternidade contemplá-Lo face a face.
 Amen.`,
     },
     {
@@ -401,7 +401,7 @@ Coração de Jesus, digníssimo de todo o louvor,
 Coração de Jesus, rei e centro de todos os corações,
 Coração de Jesus, no qual estão todos os tesouros da sabedoria e da ciência,
 Coração de Jesus, no qual habita toda a plenitude da divindade,
-Coração de Jesus, no qual o Pai põe as suas complacências,
+Coração de Jesus, no qual o Pai pôs as suas complacências,
 Coração de Jesus, de cuja plenitude todos nós recebemos,
 Coração de Jesus, desejo das colinas eternas,
 Coração de Jesus, paciente e misericordioso,
@@ -530,6 +530,7 @@ Sede-nos propício: ouvi-nos, Jesus.
 
 De todo o mal, livrai-nos, Jesus.
 De todo o pecado, livrai-nos, Jesus.
+Da vossa ira, livrai-nos, Jesus.
 Das ciladas do demónio, livrai-nos, Jesus.
 Do espírito de impureza, livrai-nos, Jesus.
 Da morte eterna, livrai-nos, Jesus.

@@ -47,7 +47,7 @@ fazei-o vós também a eles.» (Mt 7, 12)`,
         id: 'bem-aventurancas',
         title: 'As Bem-aventuranças',
         category: 'formulas',
-        note: 'Mt 5, 3-12 — o programa do Sermão da Montanha.',
+        note: 'Mt 5, 3-12: o programa do Sermão da Montanha.',
         aka: ['Sermão da Montanha', 'Bem-aventurados'],
         text: `Bem-aventurados os pobres em espírito,
 porque deles é o Reino dos Céus.
@@ -176,13 +176,23 @@ mansidão, fé, modéstia, continência, castidade.`,
         title: 'Os pecados capitais e as virtudes que se lhes opõem',
         category: 'formulas',
         aka: ['Vícios capitais', 'Sete pecados mortais'],
-        text: `1. Soberba — humildade.
-2. Avareza — generosidade.
-3. Luxúria — castidade.
-4. Ira — mansidão.
-5. Gula — temperança.
-6. Inveja — caridade.
-7. Preguiça — diligência.`,
+        text: `Os sete pecados capitais:
+1. Soberba.
+2. Avareza.
+3. Luxúria.
+4. Ira.
+5. Gula.
+6. Inveja.
+7. Preguiça.
+
+As virtudes que se lhes opõem:
+1. Humildade.
+2. Generosidade.
+3. Castidade.
+4. Mansidão.
+5. Temperança.
+6. Caridade.
+7. Diligência.`,
     },
     {
         id: 'novissimos',

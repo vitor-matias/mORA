@@ -139,9 +139,9 @@ Tirai-me o gosto amargo de ter razão.
 Curai a memória que guarda a ofensa
 como quem guarda um tesouro.
 
-Abençoai quem me fez mal —
-e se não for capaz de o fazer de coração,
-dai-me pelo menos a vontade de o querer.
+Abençoai quem me fez mal;
+e, se eu não for capaz de o fazer de coração,
+dai-me ao menos a vontade de o querer.
 
 Perdoai as minhas ofensas,
 assim como eu quero perdoar
@@ -161,7 +161,7 @@ Dai-me atenção e prudência,
 respeito por quem viaja comigo
 e por quem vai na estrada ao meu lado.
 Guardai-me a mim e aos que espero encontrar,
-e trazei-nos a todos em paz a nossa casa.
+e trazei-nos a todos em paz à nossa casa.
 
 Nossa Senhora da Boa Viagem,
 Anjo da minha Guarda,

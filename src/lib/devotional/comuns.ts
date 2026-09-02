@@ -178,7 +178,7 @@ e paz na terra aos homens por Ele amados.
 Senhor Deus, Rei dos céus, Deus Pai todo-poderoso:
 nós Vos louvamos, nós Vos bendizemos,
 nós Vos adoramos, nós Vos glorificamos,
-nós Vos damos graças pela vossa imensa glória.
+nós Vos damos graças por vossa imensa glória.
 
 Senhor Jesus Cristo, Filho Unigénito,
 Senhor Deus, Cordeiro de Deus, Filho de Deus Pai:
@@ -291,8 +291,8 @@ Creio que o Filho de Deus Se fez homem,
 padeceu e morreu na cruz para nos salvar,
 e que ao terceiro dia ressuscitou.
 
-Creio tudo o mais que ensina
-a santa Igreja Católica Apostólica,
+Creio tudo o mais que crê e ensina
+a santa Igreja Católica, Apostólica, Romana,
 porque Deus, verdade infalível, lho revelou.
 E nesta crença quero viver e morrer.
 Amen.`,
@@ -354,8 +354,8 @@ Meu Senhor e meu Deus.
 
 Sagrado Coração de Jesus, eu confio em Vós.
 
-Ó Maria concebida sem pecado,
-rogai por nós que recorremos a Vós.
+Ó Maria, concebida sem pecado,
+rogai por nós que recorremos a vós.
 
 Doce Coração de Maria, sede a salvação da minha alma.
 
