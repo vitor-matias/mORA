@@ -332,20 +332,47 @@ Amen.`,
 peço-Vos a mais importante de todas as graças:
 a perseverança final e uma morte santa.
 
-Por muito que tenha abusado da vida que me destes,
-fazei-me vivê-la desde agora
-e terminá-la no vosso santo amor.
+Por maior que tenha sido o abuso da vida que me destes,
+concedei-me a graça de a viver desde agora
+e de a terminar no vosso santo amor.
+
+Que eu morra como os santos Patriarcas,
+abandonando sem tristeza este vale de lágrimas,
+para ir gozar o descanso eterno na minha verdadeira pátria.
 
 Que eu morra como o glorioso São José,
-acompanhado de Jesus e de Maria,
-pronunciando esses nomes por toda a eternidade.
+acompanhado por Jesus e Maria,
+pronunciando estes nomes dulcíssimos,
+que espero bendizer por toda a eternidade.
 
-V. Jesus, José e Maria,
-R. dou-Vos o meu coração e a minha alma.
-V. Jesus, José e Maria,
-R. assisti-me na minha última agonia.
-V. Jesus, José e Maria,
-R. expire em paz convosco a minha alma.
+Que eu morra como a Virgem Imaculada,
+na mais pura caridade
+e com o desejo de me unir ao único objecto dos meus amores.
+
+Que eu morra como Jesus na Cruz,
+plenamente identificado com a vontade do Pai,
+feito um holocausto por amor.
+
+Jesus, morto por mim,
+concedei-me a graça de morrer
+com um acto de perfeita caridade para convosco.
+Santa Maria, Mãe de Deus,
+rogai por mim agora e na hora da minha morte.
+São José, meu pai e senhor,
+alcançai-me a graça de morrer com a morte dos justos.
+
+Para o momento da morte:
+Senhor, meu Deus, de boa vontade aceito desde já,
+como vinda das vossas mãos,
+qualquer espécie de morte que quiserdes enviar-me,
+com todas as suas angústias, penas e dores.
+
+V. Amado Jesus, José e Maria,
+R. dou-vos o coração e a alma minha.
+V. Amado Jesus, José e Maria,
+R. assisti-me na última agonia.
+V. Amado Jesus, José e Maria,
+R. expire em paz entre vós a alma minha.
 Amen.`,
     },
 ];

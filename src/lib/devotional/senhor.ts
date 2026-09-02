@@ -70,15 +70,15 @@ com o espírito e o fervor dos Santos.
 
 Ou:
 
-Ó meu Jesus, creio que estais presente
-no Santíssimo Sacramento.
+Creio, meu Jesus, que estais realmente presente
+no Santíssimo Sacramento do altar.
 Amo-Vos sobre todas as coisas
 e desejo receber-Vos na minha alma.
-Já que agora não posso receber-Vos sacramentalmente,
-vinde ao menos espiritualmente ao meu coração.
-Como se já tivésseis vindo, eu Vos abraço
-e todo me uno a Vós;
-não permitais que jamais me separe de Vós.
+Mas, como agora não Vos posso receber sacramentalmente,
+vinde, pelo menos espiritualmente, ao meu coração.
+Como se já Vos tivesse recebido,
+abraço-Vos e me uno todo a Vós.
+Não permitais, Senhor, que nunca me separe de Vós.
 Amen.`,
     },
     {
@@ -94,7 +94,7 @@ Impuro, venho à fonte da misericórdia;
 cego, à luz da eterna claridade;
 pobre e indigente, ao Senhor do céu e da terra.
 
-Imploro, pois, a abundância da vossa generosidade,
+Imploro, pois, a abundância da vossa liberalidade,
 para que Vos digneis curar a minha fraqueza,
 lavar as minhas manchas,
 iluminar a minha cegueira,
@@ -108,6 +108,17 @@ a contrição e a devoção,
 a pureza e a fé,
 o propósito e a intenção
 que convêm à salvação da minha alma.
+
+Concedei-me que receba
+não só o sacramento do Corpo e Sangue do Senhor,
+mas também o seu efeito e a sua força.
+
+Ó Deus de mansidão,
+fazei-me acolher com tais disposições
+o Corpo que o vosso Filho único, Nosso Senhor Jesus Cristo,
+recebeu da Virgem Maria,
+que seja incorporado ao seu Corpo místico
+e contado entre os seus membros.
 
 Ó Pai cheio de amor,
 fazei que, recebendo agora o vosso Filho
@@ -135,11 +146,17 @@ não me seja imputada como culpa,
 mas interceda eficazmente pelo meu perdão;
 seja armadura da minha fé
 e escudo da minha boa vontade;
-livre-me dos meus vícios;
+livre-me dos meus vícios,
+extinga em mim a concupiscência e os maus desejos;
 aumente em mim a caridade e a paciência,
 a humildade, a obediência e todas as virtudes;
+seja firme defesa contra as ciladas de todos os inimigos,
+visíveis e invisíveis;
+pacifique perfeitamente os movimentos
+da minha carne e do meu espírito;
 e una-me firmemente a Vós,
-que sois o único e verdadeiro Deus.
+que sois o único e verdadeiro Deus,
+feliz consumação do meu destino.
 
 Dignai-Vos, Senhor, conduzir-me,
 a mim pecador, àquele banquete inefável
@@ -158,7 +175,11 @@ Amen.`,
 eu, pecador, não presumindo dos meus méritos
 mas confiando na vossa bondade e misericórdia,
 temo e hesito em aproximar-me
-da mesa do vosso doce convite.
+da mesa do vosso doce convívio.
+Pois o meu corpo e o meu coração
+estão manchados por muitas faltas,
+e não guardei com cuidado
+o meu espírito e a minha língua.
 
 Por isso, ó bondade divina e temível majestade,
 na minha miséria recorro a Vós, fonte de misericórdia;
@@ -173,10 +194,40 @@ Sei que os meus pecados são muitos e grandes,
 e temo por causa deles,
 mas espero na vossa infinita misericórdia.
 
+Olhai-me, pois, com os vossos olhos misericordiosos,
+Senhor Jesus Cristo, Rei eterno,
+Deus e homem, crucificado por causa do homem.
+Escutai-me, pois espero em Vós;
+tende piedade de mim, cheio de misérias e pecados,
+Vós que jamais deixareis de ser para nós
+a fonte da compaixão.
+
+Salve, vítima salvadora,
+oferecida no patíbulo da Cruz
+por mim e por todos os homens.
+Salve, nobre e precioso Sangue,
+que brotas das chagas do meu Senhor Jesus Cristo crucificado
+e lavas os pecados do mundo inteiro.
+
 Lembrai-Vos, Senhor, da vossa criatura
 resgatada pelo vosso Sangue.
 Arrependo-me de ter pecado
 e desejo reparar o que fiz.
+
+Livrai-me, ó Pai clementíssimo,
+de todas as minhas iniquidades e pecados,
+para que, inteiramente purificado,
+mereça participar dos santos mistérios.
+
+E concedei que o vosso Corpo e o vosso Sangue,
+que eu, embora indigno, me preparo para receber,
+sejam perdão para os meus pecados
+e completa purificação das minhas faltas.
+Que eles afastem de mim os pensamentos maus
+e despertem os bons sentimentos;
+tornem eficazes as obras que Vos agradam
+e protejam o meu corpo e a minha alma
+contra as ciladas dos meus inimigos.
 Amen.`,
     },
     {
@@ -190,16 +241,20 @@ a medula da minha alma
 com o suave e salutar dardo do vosso amor,
 com a verdadeira, pura e santíssima caridade apostólica,
 a fim de que a minha alma
-sempre desfaleça só com o amor e o desejo de Vos possuir.
+sempre desfaleça só com o amor e o desejo de Vos possuir,
+Vos deseje e desfaleça nos vossos átrios,
+e anseie por deixar tudo para estar convosco.
 
 Fazei que a minha alma tenha fome de Vós,
 Pão dos Anjos, alimento das almas santas,
+a Quem os Anjos desejam contemplar,
 pão nosso de cada dia,
 cheio de força, de toda a doçura e sabor.
 
 Tenha sempre sede de Vós,
 fonte de vida, manancial de sabedoria e de ciência,
-rio de luz eterna, torrente de delícias.
+rio de luz eterna, torrente de delícias,
+riqueza da casa de Deus.
 Que Vos deseje, Vos procure, Vos encontre;
 que para Vós caminhe e a Vós chegue;
 que em Vós pense, de Vós fale,
@@ -543,15 +598,20 @@ Pela vossa vida santíssima, livrai-nos, Jesus.
 Pelos vossos trabalhos, livrai-nos, Jesus.
 Pela vossa agonia e Paixão, livrai-nos, Jesus.
 Pela vossa cruz e desamparo, livrai-nos, Jesus.
+Pelas vossas angústias, livrai-nos, Jesus.
 Pela vossa morte e sepultura, livrai-nos, Jesus.
 Pela vossa Ressurreição, livrai-nos, Jesus.
 Pela vossa Ascensão, livrai-nos, Jesus.
 Pela instituição da Santíssima Eucaristia, livrai-nos, Jesus.
+Pelas vossas alegrias, livrai-nos, Jesus.
 Pela vossa glória, livrai-nos, Jesus.
 
 Cordeiro de Deus, que tirais os pecados do mundo, perdoai-nos, Jesus.
 Cordeiro de Deus, que tirais os pecados do mundo, ouvi-nos, Jesus.
 Cordeiro de Deus, que tirais os pecados do mundo, tende piedade de nós.
+
+V. Jesus, ouvi-nos.
+R. Jesus, atendei-nos.
 
 Oremos:
 Senhor Jesus Cristo, que dissestes:
@@ -623,7 +683,7 @@ exalto-Vos como benfeitor perpétuo;
 invoco-Vos como defensor propício.
 
 Dirigi-me com a vossa sabedoria;
-guardai-me com a vossa justiça;
+atai-me com a vossa justiça;
 consolai-me com a vossa clemência;
 protegei-me com o vosso poder.
 
@@ -637,10 +697,31 @@ quero porque o quereis,
 quero como o quereis,
 quero enquanto o quiserdes.
 
-Senhor, iluminai o meu entendimento,
-inflamai a minha vontade,
-purificai o meu coração,
-santificai a minha alma.
+Senhor, peço-Vos que ilumineis a minha mente,
+inflameis a minha vontade,
+limpeis o meu coração,
+santifiqueis a minha alma.
+
+Que me afaste das faltas passadas,
+rejeite as tentações futuras,
+corrija as más inclinações,
+pratique as virtudes necessárias.
+
+Concedei-me, Deus de bondade,
+amor por Vós,
+ódio por mim,
+zelo pelo próximo,
+desprezo pelo mundano.
+
+Que saiba obedecer aos superiores,
+ajudar os inferiores,
+acolher os amigos,
+perdoar os inimigos.
+
+Que vença a sensualidade com a mortificação,
+a avareza com a generosidade,
+a ira com a bondade,
+a tibieza com a piedade.
 
 Fazei-me prudente nos conselhos,
 constante nos perigos,
@@ -652,15 +733,25 @@ sóbrio na comida,
 perseverante no trabalho,
 firme nos propósitos.
 
-Que eu aprenda de Vós
-como é pouco o que é da terra,
-como é grande o que é de Deus,
-como é breve o tempo,
-como é segura a eternidade.
+Que procure ter inocência interior,
+modéstia exterior,
+conversa exemplar,
+vida ordenada.
 
-Concedei-me preparar-me para a morte,
-temer o vosso juízo,
-fugir do inferno
+Que lute para dominar a minha natureza,
+fomentar a graça,
+servir a vossa lei
+e obter a salvação.
+
+Que aprenda de Vós
+como é pouco o terreno,
+como é grande o divino,
+como é breve o tempo,
+como é duradouro o eterno.
+
+Fazei-me preparar a morte,
+temer o juízo,
+evitar o inferno
 e alcançar o paraíso.
 Por Cristo, Nosso Senhor.
 Amen.`,
@@ -673,13 +764,38 @@ Amen.`,
         text: `Que eu chegue a Ti, Senhor,
 por um caminho seguro e recto,
 que não se desvie nem na prosperidade nem na adversidade,
-de tal forma que eu Te dê graças nas horas prósperas e nas adversas,
-e conserve a paciência, sem me deixar exaltar pelas primeiras
-nem abater pelas outras.
+de tal forma que eu Te dê graças nas horas prósperas e nas adversas
+e conserve a paciência,
+sem me deixar exaltar pelas primeiras nem abater pelas outras.
 
 Que nada me alegre ou entristeça
 senão o que me conduza a Ti ou de Ti me separe.
 Que eu não deseje agradar nem receie desagradar senão a Ti.
+
+Tudo o que passa se torne desprezível a meus olhos por tua causa, Senhor,
+e tudo o que Te diz respeito me seja caro,
+mas Tu, meu Deus, mais do que tudo o resto.
+Qualquer alegria sem Ti me seja fastidiosa,
+e nada eu deseje fora de Ti.
+Qualquer trabalho feito por Ti, Senhor, me seja agradável,
+e insuportável aquele de que estiveres ausente.
+
+Concede-me a graça de erguer continuamente o coração a Ti
+e, quando eu cair, de me arrepender.
+
+Torna-me, Senhor meu Deus,
+obediente, pobre e casto;
+paciente, sem reclamação;
+humilde, sem fingimento;
+alegre, sem dissipação;
+triste, sem abatimento;
+reservado, sem rigidez;
+activo, sem leviandade;
+animado pelo temor, sem desânimo;
+sincero, sem duplicidade;
+fazendo o bem sem presunção;
+corrigindo o próximo sem altivez;
+edificando-o com palavras e exemplos, sem falsidade.
 
 Dá-me, Senhor meu Deus, um coração vigilante,
 que nenhum pensamento curioso arraste para longe de Ti;

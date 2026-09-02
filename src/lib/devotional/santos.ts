@@ -212,16 +212,31 @@ se moderam, se retiram;
 digam-no aqueles que o viram
 e digam-no os paduanos.
 
+Recupera-se o perdido…
+
 Pela sua intercessão
 foge a peste, o erro, a morte;
 o fraco torna-se forte
 e torna-se o enfermo são.
 
+Recupera-se o perdido…
+
 Glória ao Pai e ao Filho e ao Espírito Santo.
 Como era no princípio, agora e sempre. Amen.
 
+Recupera-se o perdido…
+
 V. Rogai por nós, bem-aventurado Santo António.
-R. Para que sejamos dignos das promessas de Cristo.`,
+R. Para que sejamos dignos das promessas de Cristo.
+
+Oremos:
+Ó Deus, nós Vos suplicamos que a memória votiva
+do bem-aventurado Santo António, vosso confessor e doutor,
+alegre a vossa Igreja,
+para que, fortalecida sempre com os auxílios espirituais,
+mereça gozar as alegrias eternas.
+Por Cristo, Nosso Senhor.
+Amen.`,
     },
     {
         id: 'oracao-a-santo-antonio',
@@ -280,6 +295,8 @@ Amen.`,
         aka: ['Cântico do Irmão Sol', 'Louvado sejas meu Senhor'],
         text: `Altíssimo, omnipotente, bom Senhor,
 teus são o louvor, a glória, a honra e toda a bênção.
+Só a ti, Altíssimo, convêm,
+e nenhum homem é digno de te nomear.
 
 Louvado sejas, meu Senhor, com todas as tuas criaturas,
 especialmente o senhor irmão Sol,
@@ -308,10 +325,15 @@ e produz frutos diversos, flores e ervas.
 Louvado sejas, meu Senhor,
 pelos que perdoam pelo teu amor
 e suportam enfermidades e tribulações.
+Bem-aventurados os que as suportam em paz,
+porque por ti, Altíssimo, serão coroados.
 
 Louvado sejas, meu Senhor,
 pela nossa irmã, a morte corporal,
 da qual homem algum pode escapar.
+Ai dos que morrem em pecado mortal!
+Bem-aventurados os que ela encontrar na tua santíssima vontade,
+porque a segunda morte não lhes fará mal.
 
 Louvai e bendizei o meu Senhor,
 dai-Lhe graças e servi-O com grande humildade.`,
@@ -356,12 +378,22 @@ a vós recorre com a doce esperança de ser atendida,
 por terdes o título incomparável
 de advogada dos casos impossíveis e desesperados.
 
-Interessai-vos pela minha causa,
+Ó cara Santa, interessai-vos pela minha causa,
 intercedei junto de Deus
 para que me conceda a graça de que tanto necessito.
+(Diz-se a graça que se pede.)
+Não permitais que tenha de me afastar
+dos vossos pés sem ser atendido.
 Se houver em mim algum obstáculo
 que me impeça de obter a graça que imploro,
 auxiliai-me para que o afaste.
+
+Envolvei o meu pedido nos vossos preciosos méritos
+e apresentai-o ao vosso celeste Esposo, Jesus,
+em união com a vossa prece.
+Ó Santa Rita, eu ponho em vós toda a minha confiança;
+por vosso intermédio,
+espero tranquilamente a graça que vos peço.
 
 Santa Rita, advogada dos impossíveis, rogai por nós.
 Amen.`,

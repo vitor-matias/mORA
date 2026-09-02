@@ -11,7 +11,7 @@ export const COMUNS: Prayer[] = [
         note: 'Abre e fecha toda a oração cristã.',
         aka: ['Signum Crucis', 'Em nome do Pai'],
         text: `Pelo sinal da Santa Cruz,
-livrai-nos, Deus, Nosso Senhor,
+livre-nos Deus, Nosso Senhor,
 dos nossos inimigos.
 
 Em nome do Pai e do Filho

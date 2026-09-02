@@ -190,7 +190,13 @@ e do mundo inteiro.
 
 No fim, três vezes:
 Deus santo, Deus forte, Deus imortal,
-tende piedade de nós e do mundo inteiro.`,
+tende piedade de nós e do mundo inteiro.
+
+E, para terminar:
+Ó Sangue e Água que jorrastes
+do Coração de Jesus
+como fonte de misericórdia para nós:
+eu confio em Vós.`,
     },
     {
         id: 'bencao-da-mesa',

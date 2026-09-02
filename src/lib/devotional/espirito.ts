@@ -74,6 +74,12 @@ conheçamos igualmente o Filho,
 e em Vós, Espírito de ambos,
 creiamos em todo o tempo.
 
+Glória a Deus Pai,
+e ao Filho, que ressuscitou dos mortos,
+e ao Espírito Consolador,
+por todos os séculos.
+Amen.
+
 V. Enviai o vosso Espírito e tudo será criado.
 R. E renovareis a face da terra.`,
         latin: `Veni, creátor Spíritus,
@@ -105,6 +111,11 @@ Per te sciámus da Patrem
 noscámus atque Fílium,
 teque utriúsque Spíritum
 credámus omni témpore.
+
+Deo Patri sit glória,
+et Fílio, qui a mórtuis
+surréxit, ac Paráclito,
+in sæculórum sǽcula.
 Amen.`,
     },
     {
@@ -243,19 +254,19 @@ Santíssima Trindade, que sois um só Deus, tende piedade de nós.
 Espírito da verdade, tende piedade de nós.
 Espírito da sabedoria,
 Espírito da inteligência,
-Espírito do bom conselho,
 Espírito da fortaleza,
-Espírito da ciência,
 Espírito da piedade,
-Espírito do santo temor de Deus,
+Espírito do bom conselho,
+Espírito da ciência,
+Espírito do santo temor,
 Espírito da caridade,
 Espírito da alegria,
 Espírito da paz,
-Espírito de todas as virtudes,
+Espírito das virtudes,
 Espírito de toda a graça,
-Espírito de adopção dos filhos de Deus,
+Espírito da adopção dos filhos de Deus,
 Purificador das nossas almas,
-Santificador e guia da Igreja,
+Santificador e guia da Igreja Católica,
 Distribuidor dos dons celestes,
 Conhecedor dos pensamentos e das intenções do coração,
 Doçura dos que começam a servir-Vos,
@@ -269,35 +280,56 @@ Ciência dos Confessores,
 Pureza das Virgens,
 Unção de todos os Santos, tende piedade de nós.
 
+Sede-nos propício: perdoai-nos, Senhor.
+Sede-nos propício: atendei-nos, Senhor.
+
 De todo o pecado, livrai-nos, Senhor.
 De todas as tentações e ciladas do demónio, livrai-nos, Senhor.
 De toda a presunção e desesperação, livrai-nos, Senhor.
-Da resistência à verdade conhecida, livrai-nos, Senhor.
+Do ataque à verdade conhecida, livrai-nos, Senhor.
+Da inveja da graça fraterna, livrai-nos, Senhor.
 De toda a obstinação e impenitência, livrai-nos, Senhor.
-De toda a negligência e tibieza, livrai-nos, Senhor.
+De toda a negligência e torpor do espírito, livrai-nos, Senhor.
 De toda a impureza da mente e do corpo, livrai-nos, Senhor.
-De todo o erro e de toda a heresia, livrai-nos, Senhor.
-Da morte eterna, livrai-nos, Senhor.
+De todas as heresias e erros, livrai-nos, Senhor.
+De todo o mau espírito, livrai-nos, Senhor.
+Da morte má e eterna, livrai-nos, Senhor.
 
 Pela vossa eterna procedência do Pai e do Filho, livrai-nos, Senhor.
-Pela conceição do Filho de Deus, livrai-nos, Senhor.
+Pela milagrosa conceição do Filho de Deus, livrai-nos, Senhor.
 Pela vossa descida sobre Jesus Cristo baptizado, livrai-nos, Senhor.
-Pela vossa vinda sobre os Apóstolos, livrai-nos, Senhor.
+Pela vossa vinda sobre os discípulos do Senhor, livrai-nos, Senhor.
 No dia do juízo, livrai-nos, Senhor.
 
-Cordeiro de Deus, que tirais os pecados do mundo, perdoai-nos, Senhor.
-Cordeiro de Deus, que tirais os pecados do mundo, ouvi-nos, Senhor.
-Cordeiro de Deus, que tirais os pecados do mundo, tende piedade de nós.
+Ainda que pecadores, nós Vos rogamos: ouvi-nos.
+Para que nos perdoeis, nós Vos rogamos: ouvi-nos.
+Para que Vos digneis vivificar e santificar todos os membros da Igreja,
+Para que Vos digneis conceder-nos o dom da verdadeira piedade, devoção e oração,
+Para que Vos digneis inspirar-nos sinceros afectos de misericórdia e de caridade,
+Para que Vos digneis criar em nós um espírito novo e um coração puro,
+Para que Vos digneis conceder-nos verdadeira paz e tranquilidade do coração,
+Para que Vos digneis fazer-nos dignos e fortes para suportar as perseguições pela justiça,
+Para que Vos digneis confirmar-nos na vossa graça,
+Para que Vos digneis receber-nos no número dos vossos eleitos,
+Para que Vos digneis ouvir-nos,
+Espírito de Deus, nós Vos rogamos: ouvi-nos.
+
+Cordeiro de Deus, que tirais os pecados do mundo, enviai-nos o Espírito Santo.
+Cordeiro de Deus, que tirais os pecados do mundo, mandai-nos o Espírito prometido do Pai.
+Cordeiro de Deus, que tirais os pecados do mundo, dai-nos o Espírito bom.
+
+Espírito Santo, ouvi-nos.
+Espírito Consolador, atendei-nos.
 
 V. Enviai o vosso Espírito e tudo será criado.
 R. E renovareis a face da terra.
 
 Oremos:
-Ó Deus, que instruístes os corações dos vossos fiéis
+Deus nosso Pai, que instruístes os corações dos vossos fiéis
 com a luz do Espírito Santo,
 concedei-nos que, no mesmo Espírito,
 conheçamos o que é recto
-e gozemos sempre das suas divinas consolações.
+e gozemos sempre das suas consolações.
 Por Cristo, Nosso Senhor.
 Amen.`,
     },

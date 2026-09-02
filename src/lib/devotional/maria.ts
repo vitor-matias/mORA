@@ -136,7 +136,7 @@ Santa Mãe de Deus, rogai por nós.
 Santa Virgem das virgens, rogai por nós.
 Mãe de Jesus Cristo,
 Mãe da Igreja,
-Mãe de misericórdia,
+Mãe da misericórdia,
 Mãe da divina graça,
 Mãe da esperança,
 Mãe puríssima,
@@ -169,7 +169,7 @@ Porta do céu,
 Estrela da manhã,
 Saúde dos enfermos,
 Refúgio dos pecadores,
-Conforto dos migrantes,
+Socorro dos migrantes,
 Consoladora dos aflitos,
 Auxílio dos cristãos,
 Rainha dos Anjos,
@@ -397,30 +397,48 @@ Salve, ó morada do Senhor.
 Salve, ó manto do Senhor.
 Salve, ó serva do Senhor.
 Salve, ó Mãe do Senhor.
+
+E salve, vós todas, ó santas virtudes,
+derramadas, pela graça e iluminação do Espírito Santo,
+nos corações dos fiéis,
+transformando-os de infiéis em fiéis servos de Deus.
 Amen.`,
     },
     {
         id: 'ave-mae-de-deus',
         title: 'Avé, Mãe de Deus',
         category: 'maria',
-        note: 'De São Cirilo de Alexandria, no Concílio de Éfeso (431).',
-        text: `Avé, Maria, Mãe de Deus,
-tesouro venerado de todo o universo,
-luz que não se extingue,
-de quem nasceu o Sol da justiça,
-ceptro da verdade, templo indestrutível.
+        note: 'De São Cirilo de Alexandria, no Concílio de Éfeso (431); texto da Liturgia das Horas.',
+        aka: ['Nós Vos saudamos ó Maria', 'São Cirilo', 'Éfeso'],
+        text: `Nós Vos saudamos, ó Maria, Mãe de Deus,
+venerando tesouro de toda a terra,
+lâmpada inextinguível,
+coroa da virgindade,
+ceptro da doutrina verdadeira,
+templo indestrutível,
+morada d'Aquele que nenhum lugar pode conter,
+Mãe e Virgem,
+por meio da qual nos santos Evangelhos
+é chamado bendito O que vem em nome do Senhor.
 
-Avé, Maria, morada
-daquele que nenhum lugar contém,
-que fizeste crescer uma espiga
-que nunca murchará.
+Nós Vos saudamos, ó Maria,
+que trouxestes no vosso seio virginal
+Aquele que é imenso e infinito;
+por Vós, a santa Trindade é glorificada e adorada;
+por Vós, a cruz preciosa é adorada no mundo inteiro;
+por Vós, o Céu exulta;
+por Vós, alegram-se os Anjos e os Arcanjos;
+por Vós, a criatura decaída é elevada ao Céu;
+por Vós, todo o género humano
+chega ao conhecimento da verdade;
+por Vós, o santo Baptismo purifica os crentes;
+por Vós, são fundadas as Igrejas em toda a terra;
+por Vós, os povos são conduzidos à penitência.
 
-Por ti é abençoado, no Evangelho,
-aquele que vem em nome do Senhor.
-Por ti a Trindade é glorificada,
-por ti a Cruz é adorada no universo inteiro.
-Por ti exultam os céus,
-por ti a humanidade caída foi levantada.
+Quem de entre os homens é capaz
+de celebrar dignamente os louvores de Maria?
+Ela é Mãe e Virgem:
+oh realidade admirável, oh surpreendente maravilha!
 Amen.`,
     },
     {
@@ -464,7 +482,10 @@ São Domingos, apóstolo do Rosário,
 acompanhai-nos com a vossa bênção
 na recitação do terço,
 para que, por meio desta devoção a Maria,
-cheguemos mais depressa a Jesus.
+cheguemos mais depressa a Jesus,
+e, como na batalha de Lepanto,
+Nossa Senhora do Rosário nos leve à vitória
+em todas as lutas da vida.
 Amen.`,
     },
 ];

@@ -14,10 +14,10 @@ export const FORMULAS: Prayer[] = [
 3. Guardar domingos e festas de guarda.
 4. Honrar pai e mãe.
 5. Não matar.
-6. Não pecar contra a castidade.
+6. Guardar castidade nas palavras e nas obras.
 7. Não furtar.
 8. Não levantar falsos testemunhos.
-9. Não desejar a mulher do próximo.
+9. Guardar castidade nos pensamentos e nos desejos.
 10. Não cobiçar as coisas alheias.
 
 Estes dez mandamentos encerram-se em dois:
@@ -40,7 +40,7 @@ que vos ameis uns aos outros;
 como Eu vos amei, amai-vos também uns aos outros.» (Jo 13, 34)
 
 A regra de ouro:
-«Tudo quanto quereis que os homens vos façam,
+«Tudo quanto quiserdes que os homens vos façam,
 fazei-o vós também a eles.» (Mt 7, 12)`,
     },
     {
@@ -70,10 +70,10 @@ porque verão a Deus.
 Bem-aventurados os que promovem a paz,
 porque serão chamados filhos de Deus.
 
-Bem-aventurados os que sofrem perseguição por causa da justiça,
+Bem-aventurados os que sofrem perseguição por amor da justiça,
 porque deles é o Reino dos Céus.
 
-Bem-aventurados sois vós, quando, por minha causa,
+Bem-aventurados sereis quando, por minha causa,
 vos insultarem, vos perseguirem
 e, mentindo, disserem todo o mal contra vós.
 Alegrai-vos e exultai,
@@ -84,17 +84,18 @@ porque é grande nos Céus a vossa recompensa.`,
         title: 'Os mandamentos da Igreja',
         category: 'formulas',
         text: `1. Participar na Missa aos domingos e festas de guarda
-e abster-se dos trabalhos que impeçam a santificação desses dias.
+e abster-se de trabalhos e actividades
+que impeçam a santificação desses dias.
 
-2. Confessar os próprios pecados pelo menos uma vez por ano.
+2. Confessar os pecados ao menos uma vez cada ano.
 
-3. Receber o sacramento da Eucaristia ao menos pela Páscoa.
+3. Comungar o sacramento da Eucaristia ao menos pela Páscoa.
 
-4. Guardar os dias de jejum e de abstinência
-estabelecidos pela Igreja.
+4. Guardar a abstinência e jejuar
+nos dias determinados pela Igreja.
 
 5. Contribuir para as necessidades materiais da Igreja,
-segundo as próprias possibilidades.`,
+segundo as possibilidades.`,
     },
     {
         id: 'obras-de-misericordia',
