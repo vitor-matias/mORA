@@ -99,15 +99,7 @@ export function PageHeader({
             <header inert={isXl && isScrolled} className={isXl
                 ? 'pt-12 pb-5'
                 : `sticky top-0 z-30 transition-all duration-300 ${
-                    // Top padding carries env(safe-area-inset-top): the page
-                    // draws under the status bar (viewport-fit=cover), so the
-                    // header starts at the screen edge and its padding keeps
-                    // the title clear of the clock. Stuck and collapsed, the
-                    // frosted bar then covers that strip too, rather than
-                    // letting content scroll past under the clock.
-                    collapsed
-                        ? 'app-bar app-bar-scrolled pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3'
-                        : 'pt-[calc(2.5rem+env(safe-area-inset-top))] pb-4 lg:pt-[calc(3rem+env(safe-area-inset-top))] lg:pb-5'
+                    collapsed ? 'app-bar app-bar-scrolled py-3' : 'pt-10 pb-4 lg:pt-12 lg:pb-5'
                 }`
             }>
                 {/* One frame for every page (matches the desktop top bar), so

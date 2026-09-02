@@ -11,15 +11,6 @@ import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
 import { ChunkBoundary } from "@/components/ChunkBoundary";
 
-/** `"18 18 18"` (the channel triplet --app-bg holds, so Tailwind can apply
-    opacity modifiers) as `#121212`. Null for anything else, so a caller can
-    fall back rather than write a colour nothing will parse. */
-function toHex(channels: string): string | null {
-    const parts = channels.split(/[\s,]+/).filter(Boolean).map(Number);
-    if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return null;
-    return `#${parts.map((n) => Math.round(n).toString(16).padStart(2, '0')).join('')}`;
-}
-
 // Today's liturgical color/day info for the store (app theme + Home's day
 // card). Module scope so it runs both at mount and on day rollover.
 async function refreshLiturgicalColor(): Promise<void> {
@@ -95,34 +86,16 @@ export function Layout() {
         // so the initial run and the OS-theme listener stay consistent.
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
-            // The dark background is painted by the root element and by
-            // color-scheme, not only by Layout's wrapper — otherwise the area
-            // outside it (overscroll, and the canvas the mobile status bar
-            // tints itself from) stays the UA's white.
-            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
-            // The pre-paint script in index.html sets an inline background for
-            // the first frame; the stylesheet's html rule is the real source of
-            // truth, so drop the inline copy once we're running.
-            document.documentElement.style.removeProperty('background');
 
             // Status bar matches the page background. Read --app-bg (set by the
             // .dark class we just toggled) rather than repeating the literals,
             // so the bar can't drift from the page under it.
-            //
-            // As hex, not `rgb(18 18 18)`: the variable holds bare channels for
-            // Tailwind's opacity modifiers, and the space-separated form that
-            // makes is modern CSS colour syntax that a page stylesheet parses
-            // but a platform reading this attribute need not. Hex is understood
-            // everywhere the bar is drawn.
             const appBg = getComputedStyle(document.documentElement)
                 .getPropertyValue('--app-bg')
                 .trim();
-            const themeColor = toHex(appBg) ?? (isDark ? '#121212' : '#FAF9F6');
-
-            // One meta, always written. index.html declares exactly one, and
-            // an installed app reads the first theme-color it finds — a pair
-            // scoped by media="(prefers-color-scheme)" looked right in a
-            // browser tab and left the system bar light on both platforms.
+            const themeColor = appBg
+                ? `rgb(${appBg})`
+                : (isDark ? '#121212' : '#FAF9F6'); // stylesheet not applied yet
             let meta = document.querySelector('meta[name="theme-color"]');
             if (!meta) {
                 meta = document.createElement('meta');
@@ -130,24 +103,10 @@ export function Layout() {
                 document.head.appendChild(meta);
             }
             meta.setAttribute('content', themeColor);
-
         };
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
         applyDarkMode(resolveIsDark());
-
-        // Written again once the page has loaded and settled. An installed
-        // app (Android and iOS alike) can miss a theme-color written before
-        // it is ready to paint the system bar: the pre-paint script's write
-        // and this effect's first run both arrived too early, and the bar
-        // only caught up on the next write — which, until now, meant
-        // navigating to a page that re-ran this effect. The same value again,
-        // later, is what makes the launch screen right on its own.
-        const settle = () => applyDarkMode(resolveIsDark());
-        const settleTimers = [window.setTimeout(settle, 1000), window.setTimeout(settle, 3000)];
-        if (document.readyState !== 'complete') {
-            window.addEventListener('load', settle, { once: true });
-        }
 
         // When following the system, react live to OS appearance changes.
         const onSchemeChange = () => applyDarkMode(resolveIsDark());
@@ -179,8 +138,6 @@ export function Layout() {
 
         return () => {
             mq.removeEventListener('change', onSchemeChange);
-            for (const timer of settleTimers) window.clearTimeout(timer);
-            window.removeEventListener('load', settle);
         };
     }, [theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily]);
 

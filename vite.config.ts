@@ -21,10 +21,6 @@ export default defineConfig(({ command }) => ({
         name: 'mORA — Oração diária',
         short_name: 'mORA',
         description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
-        // The launch colour only: a manifest carries one, and cannot vary by
-        // colour scheme. It is the light page background because that is what
-        // an unconfigured first launch looks like; the page's own theme-color
-        // meta takes the system bar from here once it paints.
         theme_color: '#FAF9F6',
         background_color: '#FAF9F6',
         icons: [
