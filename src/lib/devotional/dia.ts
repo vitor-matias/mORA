@@ -80,7 +80,7 @@ R. Faça-se em mim segundo a vossa palavra.
 
 Avé Maria…
 
-V. E o Verbo divino Se fez carne.
+V. E o Verbo divino encarnou.
 R. E habitou entre nós.
 
 Avé Maria…
