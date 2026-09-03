@@ -155,8 +155,8 @@ visíveis e invisíveis;
 pacifique perfeitamente os movimentos
 da minha carne e do meu espírito;
 e una-me firmemente a Vós,
-que sois o único e verdadeiro Deus,
-feliz consumação do meu destino.
+que sois o único e verdadeiro Deus;
+e seja, enfim, a feliz consumação do meu destino.
 
 Dignai-Vos, Senhor, conduzir-me,
 a mim pecador, àquele banquete inefável
@@ -241,17 +241,20 @@ a medula da minha alma
 com o suave e salutar dardo do vosso amor,
 com a verdadeira, pura e santíssima caridade apostólica,
 a fim de que a minha alma
-sempre desfaleça só com o amor e o desejo de Vos possuir,
-Vos deseje e desfaleça nos vossos átrios,
-e anseie por deixar tudo para estar convosco.
+sempre desfaleça e se desfaça só com o amor e o desejo de Vos possuir;
+que por Vós suspire e desfaleça por achar-se nos vossos átrios,
+e deseje separar-se do corpo para se unir a Vós.
 
 Fazei que a minha alma tenha fome de Vós,
 Pão dos Anjos, alimento das almas santas,
-a Quem os Anjos desejam contemplar,
-pão nosso de cada dia,
-cheio de força, de toda a doçura e sabor.
+pão nosso de cada dia, supersubstancial,
+cheio de força, de toda a doçura e sabor
+e de todo o suave deleite.
 
-Tenha sempre sede de Vós,
+Ó Jesus, a Quem os Anjos desejam contemplar,
+tenha sempre o meu coração fome de Vós e de Vós se alimente,
+e o íntimo da minha alma se encha da doçura do vosso sabor;
+tenha sempre sede de Vós,
 fonte de vida, manancial de sabedoria e de ciência,
 rio de luz eterna, torrente de delícias,
 riqueza da casa de Deus.

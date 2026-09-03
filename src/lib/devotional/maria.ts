@@ -136,7 +136,7 @@ Santa Mãe de Deus, rogai por nós.
 Santa Virgem das virgens, rogai por nós.
 Mãe de Jesus Cristo,
 Mãe da Igreja,
-Mãe da misericórdia,
+Mãe de misericórdia,
 Mãe da divina graça,
 Mãe da esperança,
 Mãe puríssima,
@@ -398,8 +398,8 @@ Salve, ó manto do Senhor.
 Salve, ó serva do Senhor.
 Salve, ó Mãe do Senhor.
 
-E salve, vós todas, ó santas virtudes,
-derramadas, pela graça e iluminação do Espírito Santo,
+E salve, vós todas, ó santas virtudes derramadas,
+pela graça e iluminação do Espírito Santo,
 nos corações dos fiéis,
 transformando-os de infiéis em fiéis servos de Deus.
 Amen.`,
