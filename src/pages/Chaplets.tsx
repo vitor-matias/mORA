@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronRight, Undo2, RotateCcw, Clock } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { StickyActions } from "@/components/layout/StickyActions";
 import { useAppStore } from "@/store/app";
 import type { ChapletMode } from "@/store/app";
 import { CHAPLETS, generateChapletSequence, getChaplet, beadsPerGroup } from "@/lib/chaplets";
@@ -245,7 +246,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
     }
 
     return (
-        <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative overflow-hidden">
+        <div className="p-6 pb-0 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative">
             <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
                 {!atStart && (
                     <button
@@ -326,7 +327,8 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                     <div className="mt-auto mb-8 h-12" />
                 )}
 
-                <div className="flex items-stretch gap-3">
+                {/* Stuck to the foot of the viewport — see StickyActions. */}
+                <StickyActions clearsBottomBar={atStart}>
                     {!atStart && (
                         <button
                             type="button"
@@ -346,7 +348,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                             {atStart ? 'Começar' : 'Continuar'} <ChevronRight size={24} />
                         </button>
                     )}
-                </div>
+                </StickyActions>
             </div>
         </div>
     );

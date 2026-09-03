@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { StickyActions } from "@/components/layout/StickyActions";
 import { useAppStore, isCompletedToday } from "@/store/app";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { useTranslations } from "@/lib/i18n";
@@ -10,7 +11,7 @@ import { formatISODate } from "@/lib/format";
 
 export default function Rosary() {
     const navigate = useNavigate();
-    const { rosaryMode, setRosaryMode, setRosarySession, streaks, incrementStreak } = useAppStore();
+    const { rosaryMode, setRosaryMode, setRosarySession, streaks, incrementStreak, setBottomBarYielded } = useAppStore();
     const t = useTranslations().rosary;
 
     const todayStr = formatISODate(new Date());
@@ -95,6 +96,17 @@ export default function Rosary() {
 
     const atStart = currentStepIndex === 0;
 
+    // Once praying has started the tab bar steps aside (TabBar hides it for
+    // an active session) — tell the store too, so the layout stops holding
+    // 5.5rem of clearance for a bar that isn't drawn and the action rail can
+    // settle at the bar's own inset. Cleared on unmount so it never outlives
+    // the page.
+    const barYielded = rosaryMode === 'beginner' && !atStart;
+    useEffect(() => {
+        setBottomBarYielded(barYielded);
+    }, [barYielded, setBottomBarYielded]);
+    useEffect(() => () => setBottomBarYielded(false), [setBottomBarYielded]);
+
     // Shared by both layouts: guided shows it only before starting, the
     // mysteries-only page always shows it (there is no "started" state).
     const modePicker = (
@@ -140,11 +152,11 @@ export default function Rosary() {
                     </button>
                 ) : undefined}
             />
-            <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative overflow-hidden">
+            <div className="p-6 pb-0 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative">
             {rosaryMode === 'advanced' ? (
                 /* ── Mysteries-only mode: all five on one page, prayed at the
                    user's own pace, closed with a single complete button. ── */
-                <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
+                <div className="flex-1 flex flex-col mt-4 pb-8 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
                     {modePicker}
                     <div className="space-y-3 mb-8">
                         {mysteries[todayMysteryClass].map((m) => (
@@ -241,8 +253,9 @@ export default function Rosary() {
                     <div className="mt-auto mb-8 h-12"></div> // Spacer
                 )}
 
-                {/* Action row: back-step + big advance button */}
-                <div className="flex items-stretch gap-3">
+                {/* Action row: back-step + big advance button. Stuck to the
+                    foot of the viewport — see StickyActions. */}
+                <StickyActions clearsBottomBar={atStart}>
                     {!atStart && (
                         <button
                         type="button"
@@ -267,7 +280,7 @@ export default function Rosary() {
                                         'Continuar'} <ChevronRight size={24} /></>
                         )}
                     </button>
-                </div>
+                </StickyActions>
             </div>
             )}
 
