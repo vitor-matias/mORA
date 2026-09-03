@@ -258,7 +258,7 @@ export default function Rosary() {
                 <StickyActions clearsBottomBar={atStart}>
                     {!atStart && (
                         <button
-                        type="button"
+                            type="button"
                             onClick={handleBackStep}
                             aria-label="Passo anterior"
                             className="w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center transition-all active:scale-[0.96]"
@@ -302,7 +302,7 @@ export default function Rosary() {
                             </p>
                         )}
                         <button
-                        type="button"
+                            type="button"
                             onClick={() => {
                                 setShowFinish(false);
                                 setCurrentStepIndex(0);
