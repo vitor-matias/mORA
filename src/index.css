@@ -109,6 +109,27 @@
     border-bottom-color: rgb(255 255 255 / 0.1);
   }
 
+  /* Foot of a guided prayer page — the rail the back/advance buttons stick
+     to, so the button that turns the bead is under the thumb at every step
+     however long the prayer runs (the Salve Rainha and the mystery
+     announcements used to push it past the fold, and every step does at a
+     large reading size).
+
+     Frosted like .app-bar, not filled like a card: it lies over the step
+     card, and an opaque page-coloured slab read as a cut across it. Blurred,
+     the prayer passes underneath — the same thing the header does at the top
+     of a reading. No hairline: on the short steps the rail sits over bare
+     page background, where a line would divide nothing. Where there is a
+     card under it the tonal step does the separating on its own.
+
+     --app-wash is left out on purpose: it has faded to nothing by 70vh, so
+     at the foot of the viewport --app-bg alone is what the page is. */
+  .action-rail {
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    background: rgb(var(--app-bg) / 0.85);
+  }
+
   /* Responsorial-psalm refrain — the line the congregation answers with,
      lifted out of the section title by enrichReadingTypography. */
   .psalm-refrain {
