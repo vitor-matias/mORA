@@ -408,7 +408,7 @@ Amen.`,
         id: 'ave-mae-de-deus',
         title: 'Avé, Mãe de Deus',
         category: 'maria',
-        note: 'De São Cirilo de Alexandria, no Concílio de Éfeso (431); texto da Liturgia das Horas.',
+        note: 'De São Cirilo de Alexandria, no Concílio de Éfeso (431); a saudação da sua homilia, no texto da Liturgia das Horas.',
         aka: ['Nós Vos saudamos ó Maria', 'São Cirilo', 'Éfeso'],
         text: `Nós Vos saudamos, ó Maria, Mãe de Deus,
 venerando tesouro de toda a terra,
@@ -428,12 +428,24 @@ por Vós, a santa Trindade é glorificada e adorada;
 por Vós, a cruz preciosa é adorada no mundo inteiro;
 por Vós, o Céu exulta;
 por Vós, alegram-se os Anjos e os Arcanjos;
+por Vós, são postos em fuga os demónios;
+por Vós, o diabo tentador foi precipitado do Céu;
 por Vós, a criatura decaída é elevada ao Céu;
-por Vós, todo o género humano
+por Vós, todo o género humano,
+sujeito à insensatez da idolatria,
 chega ao conhecimento da verdade;
 por Vós, o santo Baptismo purifica os crentes;
+por Vós, nos vem o óleo da alegria;
 por Vós, são fundadas as Igrejas em toda a terra;
 por Vós, os povos são conduzidos à penitência.
+
+E que mais hei-de dizer?
+Por Vós, o Filho Unigénito de Deus
+iluminou aqueles que jaziam nas trevas e na sombra da morte;
+por Vós, os Profetas anunciaram as coisas futuras;
+por Vós, os Apóstolos pregaram aos povos a salvação;
+por Vós, os mortos são ressuscitados;
+por Vós, reinam os reis em nome da santa Trindade.
 
 Quem de entre os homens é capaz
 de celebrar dignamente os louvores de Maria?

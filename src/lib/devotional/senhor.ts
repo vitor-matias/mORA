@@ -117,7 +117,7 @@ mas também o seu efeito e a sua força.
 fazei-me acolher com tais disposições
 o Corpo que o vosso Filho único, Nosso Senhor Jesus Cristo,
 recebeu da Virgem Maria,
-que seja incorporado ao seu Corpo místico
+para que eu seja incorporado ao seu Corpo místico
 e contado entre os seus membros.
 
 Ó Pai cheio de amor,
