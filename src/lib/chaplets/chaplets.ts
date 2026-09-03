@@ -36,7 +36,7 @@ Amen.`,
 const SINAL_DA_CRUZ = {
     title: 'Sinal da Cruz',
     text: `Pelo sinal da Santa Cruz,
-livrai-nos, Deus, Nosso Senhor, dos nossos inimigos.
+livre-nos Deus, Nosso Senhor, dos nossos inimigos.
 Em nome do Pai e do Filho e do Espírito Santo.
 Amen.`,
 };

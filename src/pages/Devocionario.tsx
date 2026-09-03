@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PrayerText } from "@/components/PrayerText";
+import { withVersicleGlyphs } from "@/lib/versicles";
 import { useAppStore } from "@/store/app";
 import {
     PRAYERS,
@@ -240,7 +242,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
 
     const copy = async () => {
         try {
-            await navigator.clipboard.writeText(`${prayer.title}\n\n${prayer.text}`);
+            await navigator.clipboard.writeText(`${prayer.title}\n\n${withVersicleGlyphs(prayer.text)}`);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
@@ -286,9 +288,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                 <p className="text-sm text-zinc-500 mt-2 leading-snug">{prayer.note}</p>
             )}
 
-            <p className="content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line mt-6">
-                {prayer.text}
-            </p>
+            <PrayerText text={prayer.text} className="content-text text-zinc-800 dark:text-zinc-200 mt-6" />
 
             {/* Some of these are prayed on beads rather than read — hand those
                 over to the player that counts the beads. */}
@@ -312,9 +312,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                     <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 select-none">
                         Em latim
                     </summary>
-                    <p className="content-text text-zinc-600 dark:text-zinc-400 whitespace-pre-line mt-4">
-                        {prayer.latin}
-                    </p>
+                    <PrayerText text={prayer.latin} className="content-text text-zinc-600 dark:text-zinc-400 mt-4" />
                 </details>
             )}
         </article>
