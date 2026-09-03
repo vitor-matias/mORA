@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronRight, Undo2, RotateCcw, Clock } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PrayerText } from "@/components/PrayerText";
 import { useAppStore } from "@/store/app";
 import type { ChapletMode } from "@/store/app";
 import { CHAPLETS, generateChapletSequence, getChaplet, beadsPerGroup } from "@/lib/chaplets";
@@ -159,8 +160,8 @@ function ChapletText({ chaplet, picker }: { chaplet: Chaplet; picker: React.Reac
                                 {group.smallBeadTexts && (
                                     <ul className="mt-2 space-y-1 list-none">
                                         {group.smallBeadTexts.map((text, j) => (
-                                            <li key={j} className="content-text text-zinc-700 dark:text-zinc-300 whitespace-pre-line">
-                                                {text}
+                                            <li key={j}>
+                                                <PrayerText text={text} className="content-text text-zinc-700 dark:text-zinc-300" />
                                             </li>
                                         ))}
                                     </ul>
@@ -197,7 +198,7 @@ function Passage({ label, text, repeat }: { label: string; text: string; repeat?
             <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
                 {label}{repeat && repeat > 1 ? ` (${repeat} vezes)` : ''}
             </p>
-            <p className="content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line">{text}</p>
+            <PrayerText text={text} className="content-text text-zinc-800 dark:text-zinc-200" />
         </div>
     );
 }
@@ -270,11 +271,10 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                         {step.title}
                     </span>
                     <div className="flex-1 flex flex-col justify-center overflow-y-auto">
-                        <p className={`content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line font-medium ${
-                            step.kind === 'anuncio' ? 'italic' : ''
-                        }`}>
-                            {step.content}
-                        </p>
+                        <PrayerText
+                            text={step.content}
+                            className={`content-text text-zinc-800 dark:text-zinc-200 font-medium ${step.kind === 'anuncio' ? 'italic' : ''}`}
+                        />
                     </div>
                 </div>
 
