@@ -8,7 +8,10 @@ export interface Intention {
 }
 
 const WPJSON_BASE = 'https://redemundialdeoracaodopapa.pt/wp-json/wp/v2';
-const CACHE_PREFIX = 'mora_intention_';
+// v2: bumped when the monthly intention's cached text changed from the WP
+// post's title to its body, so browsers that already cached this month's
+// title under the old prefix don't keep showing it for the rest of the month.
+const CACHE_PREFIX = 'mora_intention_v2_';
 const NETWORK_LABEL = 'Rede Mundial de Oração do Papa';
 
 // The Church's traditional monthly devotions — fixed, the same every year, so
