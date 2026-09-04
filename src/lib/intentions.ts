@@ -171,7 +171,7 @@ async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: 
     return { title: theme, url: docUrl };
 }
 
-async function fetchLatestPost(postType: string): Promise<{ title: string; url: string; monthKey: string; slug: string } | null> {
+async function fetchLatestPost(postType: string): Promise<{ title: string; content: string; url: string; monthKey: string; slug: string } | null> {
     const res = await fetch(`${WPJSON_BASE}/${postType}?per_page=1&orderby=date&order=desc`);
     if (!res.ok) return null;
     const items = await res.json();
@@ -181,6 +181,7 @@ async function fetchLatestPost(postType: string): Promise<{ title: string; url: 
     if (!title || typeof item.date !== 'string') return null;
     return {
         title,
+        content: stripHtml(item.content?.rendered ?? ''),
         url: item.link || 'https://redemundialdeoracaodopapa.pt/',
         monthKey: item.date.slice(0, 7),
         slug: typeof item.slug === 'string' ? item.slug : '',
@@ -286,8 +287,12 @@ export async function fetchMonthlyIntention(now: Date = new Date()): Promise<Int
         // wrong intention for the rest of the month.
         const postMonthKey = (post && parseMonthKeyFromSlug(post.slug)) || post?.monthKey;
         if (!post || postMonthKey !== monthKey) return null;
+        // The post's title is just a label ("Setembro 2026 – Intenção do
+        // Papa"); the actual "Rezemos por..." intention text lives in the
+        // post body, so that's what's shown, falling back to the title only
+        // if the body didn't parse into any text.
         const intention: Intention = {
-            title: post.title,
+            title: post.content || post.title,
             sourceLabel: NETWORK_LABEL,
             sourceUrl: post.url,
         };
