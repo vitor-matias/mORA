@@ -3,5 +3,8 @@
   "wss://nos.lol",
   "wss://relay.primal.net",
   "wss://nostr.mom",
-  "wss://relay.ditto.pub"
+  "wss://relay.ditto.pub",
+  "wss://relay.nostr.com",
+  "wss://nostr.bitcoiner.social",
+  "wss://relay.wisp.talk"
 ]
