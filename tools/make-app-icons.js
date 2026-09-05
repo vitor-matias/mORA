@@ -2,7 +2,7 @@
 //
 //   npm run make-app-icons
 //
-// Reads tools/icon-master-512.png and writes the six files in public/ that
+// Reads tools/icon-master-512.png and writes the five files in public/ that
 // index.html and the PWA manifest point at. Committed to the repo rather than
 // generated at build time, same as the badge art: these bytes end up cached in
 // launchers and app switchers, so they want to be stable and reviewable.
@@ -69,12 +69,14 @@ const CRC_TABLE = (() => {
     return table;
 })();
 
+/** CRC-32 over a chunk's type and data, the checksum PNG puts after every one. */
 function crc32(buffer) {
     let c = -1;
     for (const byte of buffer) c = CRC_TABLE[(c ^ byte) & 0xff] ^ (c >>> 8);
     return (c ^ -1) >>> 0;
 }
 
+/** Wraps a payload in PNG's length/type/data/CRC framing. */
 function chunk(type, data) {
     const length = Buffer.alloc(4);
     length.writeUInt32BE(data.length);
