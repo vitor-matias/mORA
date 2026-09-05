@@ -113,51 +113,110 @@ async function doSync(): Promise<void> {
         await publishPalavraStateToNostr();
     }
 
-    await publishTodaysResultIfMissing(pubkey);
+    // The public-result catch-up used to hang here. It runs from useNostrSync
+    // instead, after this merge and whether or not the encrypted sync is
+    // switched on — the two are separate opt-ins, and only one of them is on
+    // by default.
 }
 
 /**
- * Publish today's finished game as a public result, if it hasn't been.
+ * How far back the catch-up looks for a finished game that never reached the
+ * relays.
+ *
+ * "Today" was the whole window, and it is the wrong one: a game finished at
+ * 23:50 UTC whose publish failed — offline, a relay hiccup, an app closed
+ * before the round trip returned — is not today's game the next time the app
+ * opens, so nothing ever tried again and the result was lost for good. A week
+ * covers the ordinary gap of not opening the app for a few days.
+ */
+const CATCH_UP_DAYS = 7;
+
+/**
+ * How many of those a single pass will publish.
+ *
+ * Each one mines a proof of work — around a million hashes — so a week of
+ * missing days would otherwise put several seconds of a phone's CPU into one
+ * foreground. The rest go on the next pass; sync runs on every foreground, so
+ * a backlog drains rather than being dropped.
+ */
+const CATCH_UP_PER_PASS = 3;
+
+/**
+ * Publish any finished game from the last few days that hasn't reached the
+ * relays as a public result.
  *
  * The per-game publish in the page fires the moment a board is completed, and
- * only then — which misses two ordinary sequences. Someone can play the day's
- * puzzle with no identity at all, sign in afterwards, and have nothing to show
- * for it; or play while opted out, change their mind in Perfil, and stay
- * invisible until tomorrow. Both are cases where the player has done the work
- * and asked to be counted.
+ * only then — which misses several ordinary sequences. Someone can play the
+ * day's puzzle with no identity at all, sign in afterwards, and have nothing
+ * to show for it; or play while opted out, change their mind in Perfil, and
+ * stay invisible until tomorrow; or simply be on a train when the board is
+ * finished, in which case that single attempt is the only one that was ever
+ * made.
  *
- * Sync runs on sign-in and on every foreground, so hanging this here covers
- * both without a new trigger. Publishing is an addressable event keyed on the
- * date, so a repeat overwrites itself rather than accumulating.
+ * Publishing is an addressable event keyed on the date, so a repeat overwrites
+ * itself rather than accumulating, and a day published late is filed under its
+ * own day — the board and the badge job read by date tag, not by when the
+ * event was written, so a late result still counts for the day it was played.
+ *
+ * Runs on sign-in and on every foreground. Deliberately not gated on
+ * `shareStreaks`: that toggle governs the encrypted cross-device snapshot,
+ * while publishing a result is governed by `sharePalavraResults`. They are
+ * separate switches on purpose, and hanging the retry off the wrong one left
+ * every player with sync off — the default — with exactly one attempt per
+ * game and no second chance.
  */
-async function publishTodaysResultIfMissing(pubkey: string): Promise<void> {
+let inFlightCatchUp: Promise<void> | null = null;
+
+export function publishMissingResults(pubkey: string): Promise<void> {
+    // One pass at a time. Sign-in forces a sync that can land while a
+    // foreground one is still running, and two passes over the same day would
+    // each mine the same proof of work before either could set the marker.
+    inFlightCatchUp ??= doPublishMissingResults(pubkey)
+        .finally(() => { inFlightCatchUp = null; });
+    return inFlightCatchUp;
+}
+
+async function doPublishMissingResults(pubkey: string): Promise<void> {
     const state = usePalavraStore.getState();
     if (!sharesResults(state, pubkey)) return;
 
-    const today = formatUTCDate(new Date());
-    const play = state.plays[today];
-    if (!play || !isFinished(play)) return;
+    const today = Date.now();
+    const dates = Array.from(
+        { length: CATCH_UP_DAYS },
+        (_, back) => formatUTCDate(new Date(today - back * 86_400_000)),
+    ).reverse(); // Oldest first: a backlog drains in the order it was played.
 
-    // The name meant this from the start and the code didn't check. Sync runs
-    // on every foreground, and publishing mines a proof of work — roughly a
-    // million hashes — so without this the app re-mined an event the relays
-    // already had every time it came back on screen.
-    if (state.publishedResults[`${pubkey}:${today}`]) return;
+    let published = 0;
+    for (const date of dates) {
+        if (published >= CATCH_UP_PER_PASS) return;
 
-    try {
-        // Marked on the return value, not on the absence of a throw. This
-        // function swallows its own failures and returns early on half a dozen
-        // paths — no signer, the proof of work lost, the relay unreachable —
-        // so awaiting it said nothing about whether anything was published.
-        // Marking the day done on that basis was precisely the bug the marker
-        // exists to prevent: invisible until tomorrow, and retried never.
-        if (await publishPalavraResult(today, play, pubkey)) {
-            usePalavraStore.getState().markResultPublished(pubkey, today);
+        // Read the store afresh each time: publishing awaits the network, and
+        // a game can finish — or the identity can change — while it does.
+        const current = usePalavraStore.getState();
+        const play = current.plays[date];
+        if (!play || !isFinished(play)) continue;
+        // Sync runs on every foreground and publishing mines a proof of work,
+        // so without this the app re-mined events the relays already had every
+        // time it came back on screen.
+        if (current.publishedResults[`${pubkey}:${date}`]) continue;
+
+        try {
+            // Marked on the return value, not on the absence of a throw.
+            // `publishPalavraResult` swallows its own failures and returns
+            // early on half a dozen paths — no signer, the proof of work lost,
+            // the relay unreachable — so awaiting it says nothing about
+            // whether anything was published. Marking the day done on that
+            // basis was precisely the bug the marker exists to prevent:
+            // invisible for good, and retried never.
+            if (await publishPalavraResult(date, play, pubkey)) {
+                usePalavraStore.getState().markResultPublished(pubkey, date);
+                published++;
+            }
+        } catch (error) {
+            // Never let this fail the caller it rides on — the play log is the
+            // part that matters, and the next foreground tries again.
+            console.warn(`Could not publish the result for ${date}.`, error);
         }
-    } catch (error) {
-        // Never let this fail the sync it rides on — the play log is the part
-        // that matters, and the next foreground tries again.
-        console.warn('Could not publish today\'s result.', error);
     }
 }
 

@@ -27,32 +27,39 @@ export function useNostrSync() {
 
     useEffect(() => {
         // A protected key that hasn't been unlocked this session can't sign or
-        // decrypt anything. Prayers still count locally; syncing resumes on
-        // unlock, which re-runs this effect.
-        if (!pubkey || !shareStreaks || isLocked) return;
+        // decrypt anything, so nothing below can run. Prayers still count
+        // locally; syncing resumes on unlock, which re-runs this effect.
+        //
+        // `shareStreaks` is not checked here: it governs the four syncs, not
+        // the public Palavra result, which has its own opt-in — see the
+        // catch-up below.
+        if (!pubkey || isLocked) return;
 
         const pull = async (force = false) => {
             const now = Date.now();
             if (!force && now - lastSyncAt < MIN_INTERVAL_MS) return;
             lastSyncAt = now;
             try {
-                const [{ syncStreaksWithNostr, syncSettingsWithNostr, fetchNostrProfile }, { syncPalavraWithNostr }] =
+                const [{ syncStreaksWithNostr, syncSettingsWithNostr, fetchNostrProfile }, { syncPalavraWithNostr, publishMissingResults }] =
                     await Promise.all([import('@/lib/nostr'), import('@/lib/palavra/nostr')]);
                 // allSettled, not all: the four are independent, and a relay
                 // that fails one shouldn't abandon the others — nor release
                 // the throttle below and have every foreground retry all of
                 // them because one is consistently unhappy.
-                const named = [
-                    ['streaks', syncStreaksWithNostr()],
-                    ['settings', syncSettingsWithNostr()],
-                    ['palavra', syncPalavraWithNostr()],
-                    // Keeps the cached profile (name, avatar) from going stale
-                    // when it's edited from another client — the cache itself
-                    // is what lets Home show it instantly on every visit.
-                    ['profile', fetchNostrProfile(pubkey).then(p => {
-                        if (p) useAuthStore.getState().setProfile(p);
-                    })],
-                ] as const;
+                const named = shareStreaks
+                    ? [
+                        ['streaks', syncStreaksWithNostr()],
+                        ['settings', syncSettingsWithNostr()],
+                        ['palavra', syncPalavraWithNostr()],
+                        // Keeps the cached profile (name, avatar) from going
+                        // stale when it's edited from another client — the
+                        // cache itself is what lets Home show it instantly on
+                        // every visit.
+                        ['profile', fetchNostrProfile(pubkey).then(p => {
+                            if (p) useAuthStore.getState().setProfile(p);
+                        })],
+                    ] as const
+                    : [] as const;
                 const settled = await Promise.allSettled(named.map(([, task]) => task));
                 // allSettled swallows the reasons, which left a sync that
                 // failed every time with nothing to diagnose it by.
@@ -61,6 +68,18 @@ export function useNostrSync() {
                         console.warn(`Nostr sync failed for ${named[i][0]}:`, result.reason);
                     }
                 });
+
+                // After the merge, not beside it: a game this identity played
+                // on another device arrives in that pull, and the device that
+                // is awake is the one that can publish it.
+                //
+                // Outside the `shareStreaks` branch on purpose. Sharing
+                // results is its own opt-in, and with sync off — the default —
+                // this retry was unreachable, which left the publish fired
+                // when the board is completed as the only attempt a result
+                // ever got. One unlucky moment offline and the game was gone
+                // from the board for good.
+                await publishMissingResults(pubkey);
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own
                 // state stands until the next attempt. Release the throttle so
