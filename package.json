@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "parse-lh": "node --experimental-strip-types tools/parse-lh.ts",
-    "make-badge-art": "node tools/make-badge-art.js"
+    "make-badge-art": "node tools/make-badge-art.js",
+    "make-app-icons": "node tools/make-app-icons.js"
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",

@@ -23,16 +23,37 @@ export default defineConfig(({ command }) => ({
         description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
         theme_color: '#FAF9F6',
         background_color: '#FAF9F6',
+        // Both purposes, deliberately. Without a `maskable` entry Android
+        // cannot crop the icon to the launcher's shape, so it shrinks the
+        // `any` one onto a white circle instead — the artwork ends up a small
+        // square floating in a plate. The maskable files are full bleed with
+        // the hands inside the central 80% safe zone; the `any` files keep
+        // their own rounded-square shape for surfaces that draw the icon
+        // as-is. All five are built by `npm run make-app-icons`.
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'pwa-maskable-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'maskable'
+          },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }
