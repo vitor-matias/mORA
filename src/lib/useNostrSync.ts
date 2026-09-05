@@ -27,12 +27,11 @@ export function useNostrSync() {
 
     useEffect(() => {
         // A protected key that hasn't been unlocked this session can't sign or
-        // decrypt anything, so nothing below can run. Prayers still count
-        // locally; syncing resumes on unlock, which re-runs this effect.
+        // decrypt anything. Prayers still count locally; syncing resumes on
+        // unlock, which re-runs this effect.
         //
-        // `shareStreaks` is not checked here: it governs the four syncs, not
-        // the public Palavra result, which has its own opt-in — see the
-        // catch-up below.
+        // `shareStreaks` is not part of this guard: it governs the four syncs
+        // below, not the public Palavra result, which has its own opt-in.
         if (!pubkey || isLocked) return;
 
         const pull = async (force = false) => {
@@ -69,16 +68,14 @@ export function useNostrSync() {
                     }
                 });
 
-                // After the merge, not beside it: a game this identity played
-                // on another device arrives in that pull, and the device that
-                // is awake is the one that can publish it.
+                // After the syncs rather than among them: a game this
+                // identity played on another device arrives in that pull, and
+                // whichever device is awake is the one that can publish it.
                 //
-                // Outside the `shareStreaks` branch on purpose. Sharing
-                // results is its own opt-in, and with sync off — the default —
-                // this retry was unreachable, which left the publish fired
-                // when the board is completed as the only attempt a result
-                // ever got. One unlucky moment offline and the game was gone
-                // from the board for good.
+                // Outside the `shareStreaks` branch on purpose — sharing
+                // results is its own opt-in, and it is the one that is on by
+                // default. Under that branch, a player with sync off got a
+                // single attempt per game and no second chance.
                 await publishMissingResults(pubkey);
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own
