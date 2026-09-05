@@ -150,15 +150,25 @@ const CATCH_UP_PER_PASS = 3;
  * result is governed by `sharePalavraResults`. Two switches, and the one that
  * matters here is the one that is on by default.
  */
-let inFlightCatchUp: Promise<void> | null = null;
+const inFlightCatchUp = new Map<string, Promise<void>>();
 
 export function publishMissingResults(pubkey: string): Promise<void> {
-    // One pass at a time. Sign-in forces a sync that can land while a
-    // foreground one is still running, and two passes over the same day would
-    // each mine the same proof of work before either could set the marker.
-    inFlightCatchUp ??= doPublishMissingResults(pubkey)
-        .finally(() => { inFlightCatchUp = null; });
-    return inFlightCatchUp;
+    // One pass at a time per identity. Sign-in forces a sync that can land
+    // while a foreground one is still running, and two passes over the same
+    // day would each mine the same proof of work before either could set the
+    // marker.
+    //
+    // Keyed on the pubkey rather than shared: switching identity while a pass
+    // is running would otherwise hand the new one the old one's promise, which
+    // publishes nothing of theirs — and, since the caller awaits it and
+    // returns, leaves them with no pass until some later foreground.
+    let pass = inFlightCatchUp.get(pubkey);
+    if (!pass) {
+        pass = doPublishMissingResults(pubkey)
+            .finally(() => { inFlightCatchUp.delete(pubkey); });
+        inFlightCatchUp.set(pubkey, pass);
+    }
+    return pass;
 }
 
 async function doPublishMissingResults(pubkey: string): Promise<void> {

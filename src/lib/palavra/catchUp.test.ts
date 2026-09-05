@@ -11,6 +11,11 @@ import { resultDTag } from './results';
 import type { PalavraPlay } from '@/store/palavra';
 
 const ME = 'a'.repeat(64);
+const THEM = 'b'.repeat(64);
+
+/** Who the signer would sign as right now. Mutable: an identity can be
+    switched while a pass is in flight, which is one of the cases below. */
+let signedIn = ME;
 
 const relayPublish = vi.fn();
 const signEvent = vi.fn();
@@ -22,7 +27,7 @@ vi.mock('@/lib/pool', () => ({
     },
     RELAYS: [],
 }));
-vi.mock('@/store/auth', () => ({ currentPubkey: () => ME }));
+vi.mock('@/store/auth', () => ({ currentPubkey: () => signedIn }));
 vi.mock('@/lib/nostr', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/nostr')>()),
     signNostrEvent: (template: unknown) => signEvent(template),
@@ -57,8 +62,9 @@ const publishedTags = () => relayPublish.mock.calls
 describe('publishMissingResults', () => {
     beforeEach(() => {
         relayPublish.mockReset().mockResolvedValue(undefined);
+        signedIn = ME;
         signEvent.mockReset().mockImplementation(async (t: object) =>
-            ({ ...t, id: 'signed', pubkey: ME, sig: 'sig' }));
+            ({ ...t, id: 'signed', pubkey: signedIn, sig: 'sig' }));
         usePalavraStore.setState({ plays: {}, publishedResults: {}, sharing: { [ME]: true } });
     });
 
@@ -106,6 +112,24 @@ describe('publishMissingResults', () => {
         await publishMissingResults(ME);
 
         expect(relayPublish).not.toHaveBeenCalled();
+    });
+
+    // The pass is single-flight so two foregrounds can't mine the same day
+    // twice — but per identity, not globally: an account switch while one is
+    // running must not hand the new identity the old one's pass, which
+    // publishes nothing of theirs and leaves them with none of their own.
+    it('gives a second identity its own pass', async () => {
+        usePalavraStore.setState({
+            plays: { [day(1)]: finished() },
+            sharing: { [ME]: true, [THEM]: true },
+        });
+
+        const first = publishMissingResults(ME);
+        signedIn = THEM;
+        const second = publishMissingResults(THEM);
+        await Promise.all([first, second]);
+
+        expect(usePalavraStore.getState().publishedResults[`${THEM}:${day(1)}`]).toBe(true);
     });
 
     // An unfinished board is a game in progress, not a result.
