@@ -93,6 +93,9 @@ export default function Home() {
     ];
     const exploreAreas = [
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
+        // External while the Bible text isn't licensed for in-app use — the
+        // same Capuchinhos edition the Palavra references already point to.
+        { href: "https://biblia.capuchinhos.org", label: "Bíblia Sagrada", context: "Edição da Difusora Bíblica", icon: BookMarked },
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];
 
@@ -224,22 +227,35 @@ export default function Home() {
                         {/* Desktop: tiles across the frame instead of a
                             phone-style stack of full-width rows. */}
                         <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
-                        {items.map((area) => (
-                            <Link
-                                key={area.path}
-                                to={area.path}
-                                className="group flex items-center gap-4 p-4 surface rounded-2xl transition-all active:scale-[0.99]"
-                            >
-                                <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
-                                    <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-base font-bold leading-tight">{area.label}</h3>
-                                    <p className="text-zinc-500 text-xs mt-0.5 truncate">{area.context}</p>
-                                </div>
-                                <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
-                            </Link>
-                        ))}
+                        {items.map((area) => {
+                            const cardClass = "group flex items-center gap-4 p-4 surface rounded-2xl transition-all active:scale-[0.99]";
+                            const card = (
+                                <>
+                                    <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
+                                        <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-base font-bold leading-tight">{area.label}</h3>
+                                        <p className="text-zinc-500 text-xs mt-0.5 truncate">{area.context}</p>
+                                    </div>
+                                    {"href" in area
+                                        ? <ExternalLink size={16} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
+                                        : <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />}
+                                </>
+                            );
+                            return "href" in area ? (
+                                <a key={area.href} href={area.href} target="_blank" rel="noopener noreferrer" className={cardClass}>
+                                    {card}
+                                    {/* The ExternalLink icon is decorative, so
+                                        say it in words too: this one leaves the app. */}
+                                    <span className="sr-only">(abre noutro separador)</span>
+                                </a>
+                            ) : (
+                                <Link key={area.path} to={area.path} className={cardClass}>
+                                    {card}
+                                </Link>
+                            );
+                        })}
                         </div>
                     </section>
                 ))}
