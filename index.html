@@ -5,7 +5,16 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- viewport-fit=cover: the page draws under the system bars instead of
+       being inset below them, and pads by env(safe-area-inset-*) to stay clear
+       of the clock, the gesture pill and any display cutout. This is the
+       opt-in the platforms want from the page: iOS already draws installed
+       apps edge-to-edge on it, and Chrome on Android is wiring the same for
+       installed web apps (WebAppShortEdgesCutoutMode) — until it ships, the
+       insets there are 0 and nothing changes. See the note above the
+       theme-color effect in Layout for why the status bar cannot be coloured
+       from the page alone on Android 15+. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#FAF9F6" />
   <title>mORA</title>
   <script>

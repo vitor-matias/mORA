@@ -134,7 +134,7 @@ export function TabBar() {
                 accessibility tree, so only one nav landmark is exposed. */}
             <nav
                 aria-label="Navegação principal"
-                className={`hidden xl:block sticky top-0 z-40 app-bar ${barScrolled ? 'app-bar-scrolled' : ''}`}
+                className={`hidden xl:block sticky top-0 z-40 app-bar pt-[env(safe-area-inset-top)] ${barScrolled ? 'app-bar-scrolled' : ''}`}
             >
                 <div className="max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-6">
                     {/* Wordmark — the favicon mark, tinted by the day's
