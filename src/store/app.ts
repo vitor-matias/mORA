@@ -170,24 +170,47 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
 
-// Autoscroll speed levels (px/s). ½ is a meditative half-pace below 1.
-// Lives here (like CONTENT_FONT_SCALE) because both the Missa page and the
-// Profile default-speed picker render from it.
+// Autoscroll speed levels (px/s). 1 is the reference reading pace; the
+// fractions below it are meditative crawls for a slow, prayed reading.
+// Lives here (like CONTENT_FONT_SCALE) because the Missa and Liturgia das
+// Horas pages and the Profile speed picker all render from it.
 export const SCROLL_LEVELS = [
+    { label: '¼', pps: 6 },
     { label: '½', pps: 11 },
+    { label: '¾', pps: 17 },
     { label: '1', pps: 22 },
     { label: '2', pps: 42 },
     { label: '3', pps: 72 },
 ] as const;
 
 // Index into SCROLL_LEVELS.
-export type AutoScrollSpeed = 0 | 1 | 2 | 3;
+export type AutoScrollSpeed = 0 | 1 | 2 | 3 | 4 | 5;
+
+/** The '2' level — where a reader who has never touched the setting starts. */
+export const DEFAULT_SCROLL_LEVEL: AutoScrollSpeed = 4;
 
 // Persisted values rehydrate from JSON unvalidated — clamp to a valid index
 // so a corrupted store entry can't crash SCROLL_LEVELS lookups.
 export function clampScrollLevel(value: number): AutoScrollSpeed {
-    if (!Number.isInteger(value)) return 2;
+    if (!Number.isInteger(value)) return DEFAULT_SCROLL_LEVEL;
     return Math.min(Math.max(value, 0), SCROLL_LEVELS.length - 1) as AutoScrollSpeed;
+}
+
+/** Where each index of the original four-step scale (½ 1 2 3) landed once ¼
+    and ¾ were inserted below and between them. */
+const V0_SCROLL_LEVELS: readonly AutoScrollSpeed[] = [1, 3, 4, 5];
+
+/** Persisted speeds are indices, so inserting levels moved every one of them:
+    a store written before the fractions existed says "2" for what is now ¾.
+    Remap it to the level the reader actually chose instead of silently
+    slowing them down. Anything unrecognised falls back to the default, the
+    same as a corrupted value would. */
+export function migrateScrollLevel(stored: unknown, version: number): AutoScrollSpeed {
+    if (version >= 1) {
+        return typeof stored === 'number' ? clampScrollLevel(stored) : DEFAULT_SCROLL_LEVEL;
+    }
+    if (typeof stored !== 'number') return DEFAULT_SCROLL_LEVEL;
+    return V0_SCROLL_LEVELS[stored] ?? DEFAULT_SCROLL_LEVEL;
 }
 
 // Single source of truth for the content (prayer/reading) text scale.
@@ -343,7 +366,7 @@ export const useAppStore = create<AppState>()(
             // in a book face; the chrome stays in Inter regardless.
             fontFamily: 'serif',
             setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
-            autoScrollSpeed: 2,
+            autoScrollSpeed: DEFAULT_SCROLL_LEVEL,
             setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
             streaks: emptyStreaks(),
             incrementStreak: (item) => set((state) => {
@@ -397,6 +420,16 @@ export const useAppStore = create<AppState>()(
                     // hidden tab bar on a page that has no keyboard.
                     && key !== 'bottomBarYielded')
             ) as Omit<AppState, 'liturgicalColorOverride' | 'settingsFromRemote' | 'bottomBarYielded'>,
+            // v1 inserted ¼ and ¾ into SCROLL_LEVELS, shifting the indices
+            // autoScrollSpeed is stored as.
+            version: 1,
+            migrate: (persisted, version) => {
+                const state = (persisted ?? {}) as Partial<AppState>;
+                return {
+                    ...state,
+                    autoScrollSpeed: migrateScrollLevel(state.autoScrollSpeed, version),
+                } as AppState;
+            },
         }
     )
 );

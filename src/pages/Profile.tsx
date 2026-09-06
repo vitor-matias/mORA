@@ -550,14 +550,16 @@ export default function Profile() {
                             <Gauge className="text-zinc-400" size={16} />
                             <p className="text-sm font-medium">Velocidade do Auto-scroll</p>
                         </div>
-                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-2">
+                        {/* Six levels now, so tighter than the other pickers
+                            to keep them on one row on a narrow phone. */}
+                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-1.5">
                             {SCROLL_LEVELS.map((level, idx) => (
                                 <button
                                     type="button"
                                     key={level.label}
                                     onClick={() => setAutoScrollSpeed(idx as AutoScrollSpeed)}
                                     aria-pressed={autoScrollSpeed === idx}
-                                    className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${autoScrollSpeed === idx
+                                    className={`flex-1 py-2 px-2 rounded-xl text-center transition-colors ${autoScrollSpeed === idx
                                         ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
