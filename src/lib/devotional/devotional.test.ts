@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRAYERS, WEEKDAY_SUGGESTIONS, fold, getPrayer, prayerOfTheDay, searchPrayers } from './index';
+import { PRAYERS, WEEKDAY_SUGGESTIONS, fold, getPrayer, prayerAsText, prayerOfTheDay, prayerUrl, searchPrayers } from './index';
 import { PRAYER_CATEGORIES } from './types';
 import { getChaplet } from '@/lib/chaplets';
 
@@ -111,6 +111,35 @@ describe('WEEKDAY_SUGGESTIONS', () => {
             const prayer = getPrayer(suggestion.id);
             expect(prayer, suggestion.id).toBeDefined();
             expect(prayer!.title, suggestion.id).toBe(suggestion.title);
+        }
+    });
+});
+
+describe('sharing a prayer', () => {
+    // Salve Rainha, because it ends in a versicle and a response — the part
+    // that has to be translated on the way out.
+    const salve = getPrayer('salve-rainha')!;
+
+    it('reads the way the page does', () => {
+        // Title first — a prayer pasted into a chat with nothing naming it
+        // makes the reader guess — and the markers as glyphs, not as "V.".
+        const text = prayerAsText(salve);
+        expect(text.startsWith(`${salve.title}\n\n`)).toBe(true);
+        expect(text).toMatch(/^℣ Rogai por nós/m);
+        expect(text).not.toMatch(/^[VR]\. /m);
+    });
+
+    it('links back through the hash the router reads', () => {
+        // The base is whatever the app is served from, so the deep link has
+        // to hang off it rather than be a path of its own.
+        expect(prayerUrl(salve, 'https://vitor-matias.github.io/mORA/'))
+            .toBe('https://vitor-matias.github.io/mORA/#/devocionario/salve-rainha');
+    });
+
+    it('links to a prayer that the route can resolve', () => {
+        for (const prayer of PRAYERS) {
+            const url = prayerUrl(prayer, 'https://example.test/');
+            expect(getPrayer(url.split('/devocionario/')[1]), prayer.id).toBe(prayer);
         }
     });
 });
