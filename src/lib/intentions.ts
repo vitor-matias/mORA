@@ -124,8 +124,9 @@ async function fetchTextViaProxy(url: string): Promise<string | null> {
         `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     ];
-    const attempts = candidateUrls.map(async (proxyUrl) => {
-        const controller = new AbortController();
+    const controllers = candidateUrls.map(() => new AbortController());
+    const attempts = candidateUrls.map(async (proxyUrl, i) => {
+        const controller = controllers[i];
         const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
@@ -141,6 +142,11 @@ async function fetchTextViaProxy(url: string): Promise<string | null> {
         return await Promise.any(attempts);
     } catch {
         return null;
+    } finally {
+        // Cancel whichever attempts lost the race (or are still in flight
+        // when all of them fail) instead of leaving them running to their
+        // own timeout.
+        for (const controller of controllers) controller.abort();
     }
 }
 

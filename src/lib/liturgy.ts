@@ -295,9 +295,13 @@ async function loadCalendarICS(): Promise<string | null> {
     ];
 
     const PROXY_TIMEOUT_MS = 8000;
-    async function fetchIcsFrom(url: string): Promise<string> {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+    // `controller` is owned by the caller so a losing candidate can be
+    // cancelled once the race is decided; `timedOut` distinguishes that
+    // caller-triggered abort (nothing to log — the candidate never got a
+    // chance to fail on its own) from this fetch's own timeout firing.
+    async function fetchIcsFrom(url: string, controller: AbortController): Promise<string> {
+        let timedOut = false;
+        const timer = setTimeout(() => { timedOut = true; controller.abort(); }, PROXY_TIMEOUT_MS);
         try {
             const response = await fetch(url, { signal: controller.signal });
             if (!response.ok) throw new Error(`proxy responded ${response.status}`);
@@ -307,7 +311,7 @@ async function loadCalendarICS(): Promise<string | null> {
             return body.replace(/\r?\n /g, '');
         } catch (e) {
             if (e instanceof DOMException && e.name === 'AbortError') {
-                console.warn('ICS fetch timed out, trying next route');
+                if (timedOut) console.warn('ICS fetch timed out, trying next route');
             } else {
                 console.warn('ICS fetch failed, trying next route:', e);
             }
@@ -320,16 +324,21 @@ async function loadCalendarICS(): Promise<string | null> {
     let text = '';
     if (ownWorker) {
         try {
-            text = await fetchIcsFrom(`${ownWorker}/ics`);
+            text = await fetchIcsFrom(`${ownWorker}/ics`, new AbortController());
         } catch {
             // fall through to the public proxies
         }
     }
     if (!text) {
+        const controllers = publicProxyUrls.map(() => new AbortController());
         try {
-            text = await Promise.any(publicProxyUrls.map(fetchIcsFrom));
+            text = await Promise.any(publicProxyUrls.map((url, i) => fetchIcsFrom(url, controllers[i])));
         } catch {
             // every public proxy failed too
+        } finally {
+            // Cancel whichever candidate lost the race instead of leaving it
+            // running to its own timeout.
+            for (const controller of controllers) controller.abort();
         }
     }
 
