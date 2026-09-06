@@ -256,7 +256,7 @@ export type LiturgicalDayInfo = {
 /** Fetches (or reads from cache) the raw liturgia.pt ICS text, unfolded. */
 async function loadCalendarICS(): Promise<string | null> {
     const CACHE_KEY = 'mora_agenda_ics_v4';
-    const CACHE_DAYS = 90;
+    const CACHE_DAYS = 60;
     const now = Date.now();
 
     // An expired cache is kept around as a last resort: the feed is
