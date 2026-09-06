@@ -46,6 +46,12 @@ worker ([src/sw.ts](../../src/sw.ts)) renders the notification text.
    and rebuild the app. Without these two vars the app keeps the old
    in-app reminder and never contacts the Worker.
 
+   `VITE_PUSH_SERVER_URL` is worth setting even if you don't want push:
+   the Worker's `GET /ics` route proxies liturgia.pt's calendar (which
+   sends no CORS headers) under your own control. Unset, the app's
+   liturgical colours fall back to public CORS proxies that are
+   unaffiliated, rate-limited and periodically down.
+
 ## Notes
 
 - iOS delivers Web Push only to PWAs installed on the home screen (iOS 16.4+).

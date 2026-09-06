@@ -1,5 +1,6 @@
 import { formatISODate } from "@/lib/format";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
+import { fetchTextViaCorsProxy } from "@/lib/corsProxy";
 
 export interface Intention {
     title: string;
@@ -110,32 +111,11 @@ function pruneCache(): void {
     }
 }
 
-// vatican.va sends no CORS headers, so it's fetched through the same public
-// proxy chain src/lib/liturgy.ts already uses for liturgia.pt's calendar.
-const PROXY_TIMEOUT_MS = 8000;
-
-async function fetchTextViaProxy(url: string): Promise<string | null> {
-    const candidateUrls = [
-        `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-        `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    ];
-    for (const proxyUrl of candidateUrls) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
-        try {
-            const response = await fetch(proxyUrl, { signal: controller.signal });
-            if (!response.ok) continue;
-            const text = await response.text();
-            if (text) return text;
-        } catch {
-            // try the next proxy
-        } finally {
-            clearTimeout(timer);
-        }
-    }
-    return null;
-}
+// vatican.va sends no CORS headers, so it's fetched through the same shared
+// proxy chain src/lib/corsProxy.ts drives for liturgia.pt's calendar. Each
+// call passes a validator: a proxy that is up but failing answers with its
+// own HTML notice under a 200, and without a check on the body the chain
+// would accept that and stop instead of falling through to a route that works.
 
 const ITALIAN_MONTHS = [
     'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
@@ -152,7 +132,9 @@ const ITALIAN_MONTHS = [
  */
 async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: string } | null> {
     const indexUrl = 'https://www.vatican.va/content/leo-xiv/pt/prayers.html';
-    const indexHtml = await fetchTextViaProxy(indexUrl);
+    const indexHtml = await fetchTextViaCorsProxy(indexUrl, {
+        validate: (body) => body.includes('popesprayer'),
+    });
     if (!indexHtml) return null;
 
     const italianMonth = ITALIAN_MONTHS[now.getMonth()];
@@ -162,7 +144,9 @@ async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: 
     if (!linkMatch) return null;
     const docUrl = `https://www.vatican.va${linkMatch[1]}`;
 
-    const docHtml = await fetchTextViaProxy(docUrl);
+    const docHtml = await fetchTextViaCorsProxy(docUrl, {
+        validate: (body) => /<title>/i.test(body),
+    });
     if (!docHtml) return null;
     const titleMatch = docHtml.match(/<title>([^<]*)<\/title>/i);
     if (!titleMatch) return null;

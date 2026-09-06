@@ -1,3 +1,5 @@
+import { fetchTextViaCorsProxy, ownProxyRoute } from "@/lib/corsProxy";
+
 export interface LiturgyHourVerse {
     id: string;
     text: string;
@@ -251,11 +253,32 @@ export type LiturgicalDayInfo = {
     description: string;
 };
 
+/** Removes ICS line folding: a CRLF followed by a space *or* a horizontal tab. Exported for tests. */
+export function unfoldICS(body: string): string {
+    return body.replace(/\r?\n[ \t]/g, '');
+}
+
+/**
+ * Whether a cached calendar still reaches `dateStr` — i.e. its last event is
+ * today or later. Deliberately "reaches" rather than "contains": a feed that
+ * happened to skip a single day would otherwise be re-fetched on every load.
+ * Exported for tests.
+ */
+export function calendarReaches(icsText: string, dateStr: string): boolean {
+    const target = dateStr.replace(/-/g, '');
+    let last = '';
+    for (const m of icsText.matchAll(/DTSTART(?:;VALUE=DATE)?:(\d{8})/g)) {
+        if (m[1] > last) last = m[1];
+    }
+    return last !== '' && last >= target;
+}
+
 /** Fetches (or reads from cache) the raw liturgia.pt ICS text, unfolded. */
 async function loadCalendarICS(): Promise<string | null> {
-    const CACHE_KEY = 'mora_agenda_ics_v4';
+    const CACHE_KEY = 'mora_agenda_ics_v5';
     const CACHE_DAYS = 90;
     const now = Date.now();
+    const todayStr = formatLocalDate(new Date());
 
     // An expired cache is kept around as a last resort: the feed is
     // published for the whole year, so stale beats nothing when every
@@ -272,8 +295,13 @@ async function loadCalendarICS(): Promise<string | null> {
             const parsed = JSON.parse(cached);
             const ageDays = (now - parsed.timestamp) / (1000 * 60 * 60 * 24);
             if (parsed.text && parsed.text.includes('BEGIN:VEVENT')) {
-                if (ageDays < CACHE_DAYS) return parsed.text;
                 staleText = parsed.text;
+                // Age alone isn't enough. A cached feed whose last event is
+                // behind us is indistinguishable from a working one by
+                // timestamp, and serving it means the app shows no colour and
+                // never re-fetches — the same symptom as a dead proxy, with
+                // none of the noise.
+                if (ageDays < CACHE_DAYS && calendarReaches(parsed.text, todayStr)) return parsed.text;
             }
         } catch (e) {
             console.warn('Failed to parse cached ICS:', e);
@@ -283,44 +311,21 @@ async function loadCalendarICS(): Promise<string | null> {
     const icsUrl = 'https://www.liturgia.pt/agenda/agenda.ics';
 
     // liturgia.pt doesn't send CORS headers. The mORA push Worker (when
-    // deployed and configured) proxies the feed under our own control;
-    // otherwise fall back to public CORS proxies, which occasionally go
-    // down — hence trying several in order until one returns a calendar.
-    const ownWorker = import.meta.env.VITE_PUSH_SERVER_URL as string | undefined;
-    const candidateUrls = [
-        ...(ownWorker ? [`${ownWorker}/ics`] : []),
-        `https://api.codetabs.com/v1/proxy/?quest=${icsUrl}`,
-        `https://corsproxy.io/?url=${encodeURIComponent(icsUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(icsUrl)}`,
-    ];
+    // deployed and configured) proxies the feed under our own control and is
+    // always preferred; the public CORS proxies behind it are unaffiliated
+    // and go down without warning, so fetchTextViaCorsProxy races them rather
+    // than paying each dead route's timeout in turn.
+    const ownWorker = ownProxyRoute(
+        import.meta.env.VITE_PUSH_SERVER_URL as string | undefined,
+        '/ics'
+    );
+    const body = await fetchTextViaCorsProxy(icsUrl, {
+        preferredUrls: ownWorker ? [ownWorker] : [],
+        validate: (candidate) => candidate.includes('BEGIN:VEVENT'),
+    });
 
-    let text = '';
-    const PROXY_TIMEOUT_MS = 8000;
-    for (const url of candidateUrls) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
-        try {
-            const response = await fetch(url, { signal: controller.signal });
-            if (!response.ok) continue;
-
-            const body = await response.text();
-            if (!body.includes('BEGIN:VEVENT')) continue; // not a usable calendar
-
-            // Remove ICS line folding (\r\n followed by a space)
-            text = body.replace(/\r?\n /g, '');
-            break;
-        } catch (e) {
-            if (e instanceof DOMException && e.name === 'AbortError') {
-                console.warn('ICS fetch timed out, trying next route');
-            } else {
-                console.warn('ICS fetch failed, trying next route:', e);
-            }
-        } finally {
-            clearTimeout(timer);
-        }
-    }
-
-    if (!text) return staleText;
+    if (!body) return staleText;
+    const text = unfoldICS(body);
 
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, text }));

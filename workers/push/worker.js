@@ -15,7 +15,7 @@
 
 const CORS = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
 };
 
@@ -143,12 +143,27 @@ export default {
         // doesn't have to rely on rotating public proxies. Cached at the
         // Cloudflare edge for 6 hours.
         if (url.pathname === '/ics' && request.method === 'GET') {
-            try {
-                const res = await fetch('https://www.liturgia.pt/agenda/agenda.ics', {
-                    cf: { cacheTtl: 21600, cacheEverything: true },
+            // `cacheEverything` caches on status, and liturgia.pt answers an
+            // outage with a 200 HTML page — which would sit in the edge cache
+            // as "the calendar" for the whole 6 hours and keep every visitor
+            // on the public proxies. So the body is checked for events, and a
+            // cached non-calendar is re-fetched once with the cache bypassed
+            // before giving up.
+            const fetchICS = (cacheTtl) =>
+                fetch('https://www.liturgia.pt/agenda/agenda.ics', {
+                    cf: { cacheTtl, cacheEverything: true },
                 });
-                if (!res.ok) return json(502, { error: 'calendar upstream unavailable' });
-                return new Response(await res.text(), {
+            try {
+                let res = await fetchICS(21600);
+                let body = res.ok ? await res.text() : '';
+                if (!body.includes('BEGIN:VEVENT')) {
+                    res = await fetchICS(0);
+                    body = res.ok ? await res.text() : '';
+                }
+                if (!body.includes('BEGIN:VEVENT')) {
+                    return json(502, { error: 'calendar upstream unavailable' });
+                }
+                return new Response(body, {
                     headers: { 'Content-Type': 'text/calendar; charset=utf-8', ...CORS },
                 });
             } catch {
