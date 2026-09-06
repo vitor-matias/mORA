@@ -20,18 +20,31 @@ const KIND_AGENDA = 30078;
 const HEX64_RE = /^[0-9a-f]{64}$/i;
 const COLORS: LiturgicalColor[] = ['verde', 'roxo', 'vermelho', 'branco', 'rosa'];
 
-const CONFIGURED_PUBLISHER = (import.meta.env.VITE_AGENDA_PUBLISHER_PUBKEY as string | undefined)?.trim() ?? '';
-
-// An npub or a truncated key is the easy mistake, and unchecked it fails in
-// the worst way: the pin never matches, so every day looks like "nothing
-// published" with nothing on screen to point at.
-export const AGENDA_PUBLISHER = !CONFIGURED_PUBLISHER || HEX64_RE.test(CONFIGURED_PUBLISHER)
-    ? CONFIGURED_PUBLISHER.toLowerCase()
-    : '';
-
-if (CONFIGURED_PUBLISHER && !AGENDA_PUBLISHER) {
-    console.warn('VITE_AGENDA_PUBLISHER_PUBKEY must be 64 hex characters, not an npub.');
+/**
+ * Which key's calendar is *the* calendar.
+ *
+ * Falls back to the Palavra publisher, because one identity signing both
+ * feeds is the sensible default — the events are told apart by their `d` and
+ * `t` tags, never by who signed them — and it means reusing that key needs no
+ * second variable set anywhere. `VITE_AGENDA_PUBLISHER_PUBKEY` separates them
+ * for anyone who publishes the calendar under its own key.
+ */
+export function resolvePublisher(agenda: string | undefined, palavra: string | undefined): string {
+    const configured = (agenda?.trim() || palavra?.trim()) ?? '';
+    // An npub or a truncated key is the easy mistake, and unchecked it fails
+    // in the worst way: the pin never matches, so every day looks like
+    // "nothing published" with nothing on screen to point at.
+    if (configured && !HEX64_RE.test(configured)) {
+        console.warn('The calendar publisher pubkey must be 64 hex characters, not an npub.');
+        return '';
+    }
+    return configured.toLowerCase();
 }
+
+export const AGENDA_PUBLISHER = resolvePublisher(
+    import.meta.env.VITE_AGENDA_PUBLISHER_PUBKEY as string | undefined,
+    import.meta.env.VITE_PALAVRA_PUBLISHER_PUBKEY as string | undefined,
+);
 
 const dayDTag = (date: string) => `mora-agenda:${date}`;
 const themeDTag = (month: string) => `mora-vatican-theme:${month}`;

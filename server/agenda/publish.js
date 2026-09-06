@@ -78,10 +78,21 @@ const ITALIAN_MONTHS = [
 const hashOf = (text) => bytesToHex(sha256(utf8ToBytes(text)));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The publisher identity.
+ *
+ * Falls back to the Palavra key, because reusing it is the sensible default
+ * rather than a shortcut: both feeds are "mORA publishes something official",
+ * one identity means one profile on the relays, and the events are told apart
+ * by their `d` and `t` tags, never by who signed them. Setting AGENDA_NSEC
+ * separates them again — worth doing only if you want to rotate one without
+ * disturbing the other.
+ */
 function loadSecretKey() {
-    const nsec = process.env.AGENDA_NSEC;
+    const source = process.env.AGENDA_NSEC ? 'AGENDA_NSEC' : 'PALAVRA_NSEC';
+    const nsec = process.env.AGENDA_NSEC || process.env.PALAVRA_NSEC;
     if (!nsec) {
-        console.error('AGENDA_NSEC is not set. Run `npm run keygen` and set it.');
+        console.error('Neither AGENDA_NSEC nor PALAVRA_NSEC is set. Reuse the Palavra key, or run `npm run keygen`.');
         process.exit(1);
     }
     let decoded;
@@ -90,13 +101,14 @@ function loadSecretKey() {
     } catch {
         // nip19.decode throws on anything that isn't valid bech32, and a typo
         // in a secret is the likeliest way to get here.
-        console.error('AGENDA_NSEC is not a valid nsec. Run `npm run keygen`.');
+        console.error(`${source} is not a valid nsec.`);
         process.exit(1);
     }
     if (decoded.type !== 'nsec') {
-        console.error('AGENDA_NSEC is not an nsec.');
+        console.error(`${source} is not an nsec.`);
         process.exit(1);
     }
+    console.log(`Signing with ${source}`);
     return decoded.data;
 }
 

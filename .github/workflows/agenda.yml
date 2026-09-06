@@ -53,7 +53,12 @@ jobs:
           # The one secret here: it signs the calendar, and clients pin the
           # matching pubkey to tell the real calendar from an impersonator's.
           # Never goes near the Pages build.
+          #
+          # Both are passed because the publisher reuses the Palavra identity
+          # unless a separate AGENDA_NSEC exists — one identity for everything
+          # mORA publishes, and nothing new to set up for it.
           AGENDA_NSEC: ${{ secrets.AGENDA_NSEC }}
+          PALAVRA_NSEC: ${{ secrets.PALAVRA_NSEC }}
           AGENDA_RELAYS: ${{ vars.AGENDA_RELAYS }}
           # Through env, never interpolated into `run`: `${{ inputs.force }}`
           # is substituted before the shell parses the script, so a dispatch
@@ -61,8 +66,8 @@ jobs:
           # that has AGENDA_NSEC in its environment.
           FORCE: ${{ inputs.force }}
         run: |
-          if [ -z "$AGENDA_NSEC" ]; then
-            echo "::error::AGENDA_NSEC is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
+          if [ -z "$AGENDA_NSEC" ] && [ -z "$PALAVRA_NSEC" ]; then
+            echo "::error::No publisher key. The calendar signs with PALAVRA_NSEC unless AGENDA_NSEC is set; add one under Settings → Secrets and variables → Actions → Secrets."
             exit 1
           fi
           if [ "$FORCE" = "true" ]; then

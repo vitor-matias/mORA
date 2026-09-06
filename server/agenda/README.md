@@ -48,6 +48,22 @@ daily runs, oldest first.
 
 ## Deploy
 
+**If Palavra is already publishing, there is nothing to set up.** The calendar
+signs with `PALAVRA_NSEC` and the app pins `VITE_PALAVRA_PUBLISHER_PUBKEY`,
+both of which already exist. Just run the workflow once: Actions → "Publish
+Liturgical Calendar" → Run workflow. The first run publishes 150 days; the
+next daily runs fill in the rest.
+
+One identity signing both feeds is the sensible default rather than a
+shortcut: they are both "mORA publishes something official", it means one
+profile on the relays, and the events are told apart by their `d` and `t`
+tags, never by who signed them.
+
+### Under its own key instead
+
+Worth doing only if you want to rotate the calendar without disturbing
+Palavra:
+
 1. **Generate the identity** (once):
 
    ```bash
@@ -59,15 +75,13 @@ daily runs, oldest first.
    build.
 
 3. **Set the variable**: `VITE_AGENDA_PUBLISHER_PUBKEY` (the pubkey from step
-   1), under the same page → **Variables**. The app pins it, so that a
-   stranger's event cannot pose as the calendar. This one *does* ship in the
-   bundle, and is meant to.
+   1), under the same page → **Variables**. The app pins it, so a stranger's
+   event cannot pose as the calendar. This one *does* ship in the bundle, and
+   is meant to.
 
-4. **Run it once** — Actions → "Publish Liturgical Calendar" → Run workflow.
-   The first run publishes 150 days; the next daily runs fill in the rest.
-
-Without the variable the app shows no liturgical colours or day names; without
-the secret the workflow fails loudly rather than publishing nothing quietly.
+Both take precedence over the Palavra pair when present. With neither key set
+the workflow fails loudly rather than publishing nothing quietly; with no
+pubkey pinned the app shows no liturgical colours or day names.
 
 ## Locally
 
@@ -75,6 +89,7 @@ the secret the workflow fails loudly rather than publishing nothing quietly.
 npm install
 AGENDA_NSEC=nsec1... npm run dry-run    # works out what would go, sends nothing
 AGENDA_NSEC=nsec1... npm run publish-agenda
+# (or PALAVRA_NSEC=..., the same key the workflow falls back to)
 ```
 
 `AGENDA_RELAYS` (comma-separated) overrides the relay list for pointing at a
