@@ -90,6 +90,16 @@ export function Layout() {
             // Status bar matches the page background. Read --app-bg (set by the
             // .dark class we just toggled) rather than repeating the literals,
             // so the bar can't drift from the page under it.
+            //
+            // This is all the page can do for the bar, and on the installed
+            // Android app it is not enough: Chrome accepts this colour (its
+            // icon tint follows it) but on Android 15+ paints the bar through
+            // Window.setStatusBarColor, which the OS now ignores, so the strip
+            // shows whatever sits behind it — the manifest's light launch
+            // colour. Chrome's fix (WebAppShortEdgesCutoutMode) lets an
+            // installed app draw under the bar when the page opts in with
+            // viewport-fit=cover, which index.html does; until it ships,
+            // nothing written here moves that bar.
             const appBg = getComputedStyle(document.documentElement)
                 .getPropertyValue('--app-bg')
                 .trim();
