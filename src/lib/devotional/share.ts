@@ -23,3 +23,15 @@ export function prayerAsText(prayer: Prayer): string {
 export function prayerUrl(prayer: Prayer, base: string = appUrl()): string {
     return `${base}#/devocionario/${prayer.id}`;
 }
+
+/**
+ * The prayer with its link under it — what the clipboard gets.
+ *
+ * Pasted text travels as far as anything shared from the sheet does, and it
+ * arrives with no field to hold the link, so the link has to be part of the
+ * text. Without it a prayer pasted into a chat is where it stops: whoever
+ * reads it has the words but no way to the rest of the book.
+ */
+export function prayerWithLink(prayer: Prayer, base?: string): string {
+    return `${prayerAsText(prayer)}\n\n${prayerUrl(prayer, base)}`;
+}

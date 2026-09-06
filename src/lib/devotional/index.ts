@@ -16,7 +16,7 @@ import { fold, rankByTiers } from '@/lib/textSearch';
 export type { Prayer, PrayerCategory, PrayerCategoryId } from './types';
 export { PRAYER_CATEGORIES } from './types';
 export { WEEKDAY_SUGGESTIONS, suggestedPrayer } from './suggestion';
-export { prayerAsText, prayerUrl } from './share';
+export { prayerAsText, prayerUrl, prayerWithLink } from './share';
 export { fold } from '@/lib/textSearch';
 
 /** The whole devocionário, in category order. */

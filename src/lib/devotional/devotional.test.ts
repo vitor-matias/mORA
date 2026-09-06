@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRAYERS, WEEKDAY_SUGGESTIONS, fold, getPrayer, prayerAsText, prayerOfTheDay, prayerUrl, searchPrayers } from './index';
+import { PRAYERS, WEEKDAY_SUGGESTIONS, fold, getPrayer, prayerAsText, prayerOfTheDay, prayerUrl, prayerWithLink, searchPrayers } from './index';
 import { PRAYER_CATEGORIES } from './types';
 import { getChaplet } from '@/lib/chaplets';
 
@@ -134,6 +134,14 @@ describe('sharing a prayer', () => {
         // to hang off it rather than be a path of its own.
         expect(prayerUrl(salve, 'https://vitor-matias.github.io/mORA/'))
             .toBe('https://vitor-matias.github.io/mORA/#/devocionario/salve-rainha');
+    });
+
+    it('sends the link along with the words on the clipboard', () => {
+        // A paste has nowhere but the text to put the link, so it goes under
+        // the prayer — otherwise the copy is a dead end for whoever it reaches.
+        const pasted = prayerWithLink(salve, 'https://example.test/');
+        expect(pasted.startsWith(prayerAsText(salve))).toBe(true);
+        expect(pasted.endsWith('\n\nhttps://example.test/#/devocionario/salve-rainha')).toBe(true);
     });
 
     it('links to a prayer that the route can resolve', () => {

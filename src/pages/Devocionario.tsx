@@ -11,6 +11,7 @@ import {
     prayerAsText,
     prayerOfTheDay,
     prayerUrl,
+    prayerWithLink,
     searchPrayers,
     type Prayer,
     type PrayerCategoryId,
@@ -259,7 +260,10 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
 
     const copy = async () => {
         try {
-            await navigator.clipboard.writeText(prayerAsText(prayer));
+            // With the link under it: pasted text carries no field to hold one,
+            // and a prayer that lands in a chat with no way back to the book
+            // is where it stops.
+            await navigator.clipboard.writeText(prayerWithLink(prayer));
             flash('copied');
         } catch {
             // Clipboard permission denied or unavailable — the text is on
@@ -292,8 +296,9 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
             }
             return;
         }
-        // Mostly desktop. Copying the prayer is already the button next door,
-        // so this one copies the part that isn't on the page: the link.
+        // Mostly desktop. The whole prayer, link and all, is already the
+        // button next door — this one puts the bare link on the clipboard,
+        // for a chat that wants a pointer rather than forty lines of ladainha.
         try {
             await navigator.clipboard.writeText(url);
             flash('shared');
