@@ -184,24 +184,68 @@ export function clampMassMode(value: unknown): MassMode {
     return MASS_MODES.includes(value as MassMode) ? (value as MassMode) : 'leituras';
 }
 
-// Autoscroll speed levels (px/s). ½ is a meditative half-pace below 1.
-// Lives here (like CONTENT_FONT_SCALE) because both the Missa page and the
-// Profile default-speed picker render from it.
+// Autoscroll speed levels (px/s). 1 is the reference reading pace and the
+// fractions below it are literally that fraction of it — meditative crawls
+// for a slow, prayed reading. Above 1 the steps widen faster than the label
+// suggests, which is how they read on a phone.
+// Lives here (like CONTENT_FONT_SCALE) because the Missa and Liturgia das
+// Horas pages and the Profile speed picker all render from it.
+const BASE_PPS = 22;
+
 export const SCROLL_LEVELS = [
-    { label: '½', pps: 11 },
-    { label: '1', pps: 22 },
+    { label: '¼', pps: BASE_PPS / 4 },
+    { label: '⅓', pps: BASE_PPS / 3 },
+    { label: '½', pps: BASE_PPS / 2 },
+    { label: '¾', pps: (BASE_PPS * 3) / 4 },
+    { label: '1', pps: BASE_PPS },
     { label: '2', pps: 42 },
     { label: '3', pps: 72 },
 ] as const;
 
-// Index into SCROLL_LEVELS.
-export type AutoScrollSpeed = 0 | 1 | 2 | 3;
+/** A chosen speed, stored by label rather than by position in SCROLL_LEVELS:
+    levels get inserted (¼, ⅓ and ¾ all arrived after the first release) and a
+    stored index would quietly mean a slower pace every time one did. */
+export type AutoScrollSpeed = typeof SCROLL_LEVELS[number]['label'];
 
-// Persisted values rehydrate from JSON unvalidated — clamp to a valid index
-// so a corrupted store entry can't crash SCROLL_LEVELS lookups.
-export function clampScrollLevel(value: number): AutoScrollSpeed {
-    if (!Number.isInteger(value)) return 2;
-    return Math.min(Math.max(value, 0), SCROLL_LEVELS.length - 1) as AutoScrollSpeed;
+/** Where a reader who has never touched the setting starts. */
+export const DEFAULT_SCROLL_SPEED: AutoScrollSpeed = '2';
+
+const SCROLL_LABELS: readonly AutoScrollSpeed[] = SCROLL_LEVELS.map((level) => level.label);
+
+/** The position of a stored speed, for the SCROLL_LEVELS lookup and for the
+    +/- controls to step from. Persisted values rehydrate from JSON
+    unvalidated, so an unknown one falls back to the default rather than
+    indexing out of bounds. */
+export function scrollLevelIndex(speed: unknown): number {
+    const index = SCROLL_LABELS.indexOf(speed as AutoScrollSpeed);
+    return index === -1 ? SCROLL_LABELS.indexOf(DEFAULT_SCROLL_SPEED) : index;
+}
+
+/** The speed at a position, clamped — what the +/- controls store after a
+    step off either end of the scale. */
+export function scrollSpeedAt(index: number): AutoScrollSpeed {
+    return SCROLL_LABELS[Math.min(Math.max(index, 0), SCROLL_LABELS.length - 1)];
+}
+
+/** The scales speeds used to be persisted as indices into, newest first.
+    v0 shipped four levels; v1 added ¼ and ¾; v2 stores the label instead, so
+    this table stops growing here. */
+const INDEXED_SCROLL_SCALES: Record<number, readonly AutoScrollSpeed[]> = {
+    0: ['½', '1', '2', '3'],
+    1: ['¼', '½', '¾', '1', '2', '3'],
+};
+
+/** Reads a speed persisted by an older build. Until v2 it was an index, so
+    every level inserted since shifted what a stored number means — resolve it
+    against the scale that build actually had, rather than letting a reader on
+    '2' come back on ⅓. Anything unrecognised falls back to the default, the
+    same as a corrupted value would. */
+export function migrateScrollSpeed(stored: unknown, version: number): AutoScrollSpeed {
+    const scale = INDEXED_SCROLL_SCALES[version];
+    if (scale) {
+        return typeof stored === 'number' ? scale[stored] ?? DEFAULT_SCROLL_SPEED : DEFAULT_SCROLL_SPEED;
+    }
+    return SCROLL_LABELS.includes(stored as AutoScrollSpeed) ? stored as AutoScrollSpeed : DEFAULT_SCROLL_SPEED;
 }
 
 // Single source of truth for the content (prayer/reading) text scale.
@@ -359,7 +403,7 @@ export const useAppStore = create<AppState>()(
             // in a book face; the chrome stays in Inter regardless.
             fontFamily: 'serif',
             setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
-            autoScrollSpeed: 2,
+            autoScrollSpeed: DEFAULT_SCROLL_SPEED,
             setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
             // Local-only, like theme and fontSize: which view of the Mass suits
             // you is about where you are in learning it, not about the account.
@@ -417,6 +461,16 @@ export const useAppStore = create<AppState>()(
                     // hidden tab bar on a page that has no keyboard.
                     && key !== 'bottomBarYielded')
             ) as Omit<AppState, 'liturgicalColorOverride' | 'settingsFromRemote' | 'bottomBarYielded'>,
+            // v1 inserted ¼ and ¾ into SCROLL_LEVELS and v2 stopped storing
+            // autoScrollSpeed as an index into it — see migrateScrollSpeed.
+            version: 2,
+            migrate: (persisted, version) => {
+                const state = (persisted ?? {}) as Partial<AppState>;
+                return {
+                    ...state,
+                    autoScrollSpeed: migrateScrollSpeed(state.autoScrollSpeed, version),
+                } as AppState;
+            },
         }
     )
 );

@@ -8,7 +8,10 @@ export interface Intention {
 }
 
 const WPJSON_BASE = 'https://redemundialdeoracaodopapa.pt/wp-json/wp/v2';
-const CACHE_PREFIX = 'mora_intention_';
+// v2: bumped when the monthly intention's cached text changed from the WP
+// post's title to its body, so browsers that already cached this month's
+// title under the old prefix don't keep showing it for the rest of the month.
+const CACHE_PREFIX = 'mora_intention_v2_';
 const NETWORK_LABEL = 'Rede Mundial de Oração do Papa';
 
 // The Church's traditional monthly devotions — fixed, the same every year, so
@@ -171,7 +174,7 @@ async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: 
     return { title: theme, url: docUrl };
 }
 
-async function fetchLatestPost(postType: string): Promise<{ title: string; url: string; monthKey: string } | null> {
+async function fetchLatestPost(postType: string): Promise<{ title: string; content: string; url: string; monthKey: string; slug: string } | null> {
     const res = await fetch(`${WPJSON_BASE}/${postType}?per_page=1&orderby=date&order=desc`);
     if (!res.ok) return null;
     const items = await res.json();
@@ -179,7 +182,32 @@ async function fetchLatestPost(postType: string): Promise<{ title: string; url: 
     if (!item) return null;
     const title = stripHtml(item.title?.rendered ?? '');
     if (!title || typeof item.date !== 'string') return null;
-    return { title, url: item.link || 'https://redemundialdeoracaodopapa.pt/', monthKey: item.date.slice(0, 7) };
+    return {
+        title,
+        content: stripHtml(item.content?.rendered ?? ''),
+        url: item.link || 'https://redemundialdeoracaodopapa.pt/',
+        monthKey: item.date.slice(0, 7),
+        slug: typeof item.slug === 'string' ? item.slug : '',
+    };
+}
+
+const PORTUGUESE_MONTHS = [
+    'janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+
+/**
+ * intencoes_mensais slugs name the month the intention is actually *for*
+ * (e.g. "setembro-2026-intencao-do-papa"), unlike the post's own `date` field:
+ * the Network routinely publishes a day or more before that month starts, so
+ * date-derived month keys lag behind and reject a perfectly valid early post.
+ */
+function parseMonthKeyFromSlug(slug: string): string | null {
+    const match = slug.match(/^([a-z]+)-(\d{4})-/);
+    if (!match) return null;
+    const monthIndex = PORTUGUESE_MONTHS.indexOf(match[1]);
+    if (monthIndex === -1) return null;
+    return `${match[2]}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
 
 /** The Pope's Prayer Network publishes a new short reflection every calendar day. */
@@ -253,12 +281,21 @@ export async function fetchMonthlyIntention(now: Date = new Date()): Promise<Int
     try {
         const post = await fetchLatestPost('intencoes_mensais');
         // "Latest" isn't necessarily *this* month — the Network sometimes
-        // publishes early, or a fetch right after rollover can still see last
-        // month's post. Caching a mismatched title under this month's key
-        // would keep showing the wrong intention for the rest of the month.
-        if (!post || post.monthKey !== monthKey) return null;
+        // publishes a few days before that month starts (so its `date` still
+        // reads as last month) or a fetch right after rollover can still see
+        // last month's post. The slug names the actual target month, which is
+        // what the post's own date can't be trusted for; fall back to the
+        // date-derived key only if the slug doesn't parse. Caching a
+        // mismatched title under this month's key would keep showing the
+        // wrong intention for the rest of the month.
+        const postMonthKey = (post && parseMonthKeyFromSlug(post.slug)) || post?.monthKey;
+        if (!post || postMonthKey !== monthKey) return null;
+        // The post's title is just a label ("Setembro 2026 – Intenção do
+        // Papa"); the actual "Rezemos por..." intention text lives in the
+        // post body, so that's what's shown, falling back to the title only
+        // if the body didn't parse into any text.
         const intention: Intention = {
-            title: post.title,
+            title: post.content || post.title,
             sourceLabel: NETWORK_LABEL,
             sourceUrl: post.url,
         };

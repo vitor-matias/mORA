@@ -27,8 +27,14 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 const MAX_RELAYS_PER_AUTHOR = 4;
 
 /** Total sockets for one query. A fifty-person league would otherwise try to
-    open a connection per member per relay, which is both slow and rude. */
-const MAX_RELAYS_PER_QUERY = 12;
+    open a connection per member per relay, which is both slow and rude.
+
+    The defaults are part of this budget, so the cap has to sit above their
+    count with room to spare: at eight defaults, a cap of twelve would leave
+    four discovered slots for the whole league, and NIP-65 lookup would mostly
+    stop mattering. Sixteen keeps the eight-or-so discovered slots the smaller
+    default list used to allow. */
+const MAX_RELAYS_PER_QUERY = 16;
 
 const cache = new Map<string, { relays: string[]; fetchedAt: number }>();
 

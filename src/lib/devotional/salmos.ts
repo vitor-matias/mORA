@@ -46,33 +46,47 @@ Porque eu reconheço os meus pecados
 e tenho sempre diante de mim as minhas culpas.
 Pequei contra Vós, só contra Vós,
 e fiz o mal diante dos vossos olhos.
+
 Assim é justa a vossa sentença
 e recto o vosso julgamento.
+Porque eu nasci na culpa
+e minha mãe concebeu-me em pecado.
 
+Amais a sinceridade de coração
+e fazeis-me conhecer a sabedoria no íntimo da alma.
 Aspergi-me com o hissope e ficarei puro,
 lavai-me e ficarei mais branco do que a neve.
-Fazei-me ouvir uma palavra de gozo e de alegria
-e estremeçam os meus ossos que triturastes.
 
+Fazei-me ouvir uma palavra de gozo e de alegria
+e estremeçam meus ossos que triturastes.
 Desviai o vosso rosto das minhas faltas
 e purificai-me de todos os meus pecados.
+
 Criai em mim, ó Deus, um coração puro
 e fazei nascer dentro de mim um espírito firme.
-
 Não queirais repelir-me da vossa presença
 e não retireis de mim o vosso espírito de santidade.
+
 Dai-me de novo a alegria da vossa salvação
 e sustentai-me com espírito generoso.
-
 Ensinarei aos pecadores os vossos caminhos
 e os transviados hão-de voltar para Vós.
+
+Ó Deus, meu Salvador, livrai-me do sangue derramado
+e a minha língua proclamará a vossa justiça.
 Abri, Senhor, os meus lábios
 e a minha boca anunciará o vosso louvor.
 
 Não é do sacrifício que Vos agradais
 e, se eu oferecer um holocausto, não o aceitareis.
-Sacrifício agradável a Deus é o espírito arrependido:
-não desprezareis, Senhor, um coração humilhado e contrito.`,
+Sacrifício agradável a Deus é o espírito arrependido;
+não desprezareis, Senhor, o espírito humilhado e contrito.
+
+Pela vossa bondade, tratai Sião com benevolência,
+reconstruí os muros de Jerusalém.
+Então Vos agradareis dos sacrifícios devidos,
+oblações e holocaustos,
+então serão oferecidas vítimas sobre o vosso altar.`,
     },
     {
         id: 'salmo-129',

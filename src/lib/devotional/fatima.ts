@@ -93,9 +93,12 @@ Por Ele e com Ele seremos levados ao Pai.
 Caminharemos à luz da fé
 e faremos tudo para que o mundo creia
 que Jesus Cristo é o Enviado do Pai.
+Com Ele queremos levar o amor e a salvação
+até aos confins do mundo.
 
 Sob a protecção do vosso Coração Imaculado
 seremos um só povo com Cristo.
+Seremos testemunhas da sua Ressurreição.
 Por Ele seremos levados ao Pai,
 para glória da Santíssima Trindade,
 a Quem adoramos, louvamos e bendizemos.

@@ -80,7 +80,7 @@ R. Faça-se em mim segundo a vossa palavra.
 
 Avé Maria…
 
-V. E o Verbo divino Se fez carne.
+V. E o Verbo divino encarnou.
 R. E habitou entre nós.
 
 Avé Maria…
@@ -132,8 +132,8 @@ R. Amen.`,
         note: 'Substitui o Angelus durante todo o Tempo Pascal.',
         aka: ['Regina Caeli', 'Regina Coeli', 'Rainha do Céu alegrai-Vos'],
         text: `V. Rainha do Céu, alegrai-Vos, aleluia.
-R. Porque Aquele que merecestes trazer em vosso seio, aleluia,
-V. ressuscitou como disse, aleluia.
+R. Porque Aquele que merecestes trazer em vosso seio, aleluia.
+V. Ressuscitou como disse, aleluia.
 R. Rogai a Deus por nós, aleluia.
 
 V. Exultai e alegrai-Vos, ó Virgem Maria, aleluia.
@@ -148,8 +148,8 @@ alcancemos as alegrias da vida eterna.
 Por Cristo, Nosso Senhor.
 Amen.`,
         latin: `V. Regína cæli, lætáre, allelúia.
-R. Quia quem meruísti portáre, allelúia,
-V. resurréxit, sicut dixit, allelúia.
+R. Quia quem meruísti portáre, allelúia.
+V. Resurréxit, sicut dixit, allelúia.
 R. Ora pro nobis Deum, allelúia.
 
 V. Gaude et lætáre, Virgo María, allelúia.
@@ -190,7 +190,13 @@ e do mundo inteiro.
 
 No fim, três vezes:
 Deus santo, Deus forte, Deus imortal,
-tende piedade de nós e do mundo inteiro.`,
+tende piedade de nós e do mundo inteiro.
+
+E, para terminar:
+Ó Sangue e Água que jorrastes
+do Coração de Jesus
+como fonte de misericórdia para nós:
+eu confio em Vós.`,
     },
     {
         id: 'bencao-da-mesa',

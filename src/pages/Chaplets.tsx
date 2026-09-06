@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { ChevronRight, Undo2, RotateCcw, Clock } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { PrayerText } from "@/components/PrayerText";
+import { StickyActions } from "@/components/layout/StickyActions";
 import { useAppStore } from "@/store/app";
 import type { ChapletMode } from "@/store/app";
 import { CHAPLETS, generateChapletSequence, getChaplet, beadsPerGroup } from "@/lib/chaplets";
@@ -159,8 +161,8 @@ function ChapletText({ chaplet, picker }: { chaplet: Chaplet; picker: React.Reac
                                 {group.smallBeadTexts && (
                                     <ul className="mt-2 space-y-1 list-none">
                                         {group.smallBeadTexts.map((text, j) => (
-                                            <li key={j} className="content-text text-zinc-700 dark:text-zinc-300 whitespace-pre-line">
-                                                {text}
+                                            <li key={j}>
+                                                <PrayerText text={text} className="content-text text-zinc-700 dark:text-zinc-300" />
                                             </li>
                                         ))}
                                     </ul>
@@ -197,7 +199,7 @@ function Passage({ label, text, repeat }: { label: string; text: string; repeat?
             <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
                 {label}{repeat && repeat > 1 ? ` (${repeat} vezes)` : ''}
             </p>
-            <p className="content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line">{text}</p>
+            <PrayerText text={text} className="content-text text-zinc-800 dark:text-zinc-200" />
         </div>
     );
 }
@@ -245,7 +247,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
     }
 
     return (
-        <div className="p-6 pb-8 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative overflow-hidden">
+        <div className="p-6 pb-0 flex-1 w-full flex flex-col max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto relative">
             <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
                 {!atStart && (
                     <button
@@ -270,11 +272,10 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                         {step.title}
                     </span>
                     <div className="flex-1 flex flex-col justify-center overflow-y-auto">
-                        <p className={`content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line font-medium ${
-                            step.kind === 'anuncio' ? 'italic' : ''
-                        }`}>
-                            {step.content}
-                        </p>
+                        <PrayerText
+                            text={step.content}
+                            className={`content-text text-zinc-800 dark:text-zinc-200 font-medium ${step.kind === 'anuncio' ? 'italic' : ''}`}
+                        />
                     </div>
                 </div>
 
@@ -326,7 +327,8 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                     <div className="mt-auto mb-8 h-12" />
                 )}
 
-                <div className="flex items-stretch gap-3">
+                {/* Stuck to the foot of the viewport — see StickyActions. */}
+                <StickyActions clearsBottomBar={atStart}>
                     {!atStart && (
                         <button
                             type="button"
@@ -346,7 +348,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                             {atStart ? 'Começar' : 'Continuar'} <ChevronRight size={24} />
                         </button>
                     )}
-                </div>
+                </StickyActions>
             </div>
         </div>
     );

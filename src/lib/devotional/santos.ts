@@ -130,7 +130,7 @@ Amen.`,
         id: 'ladainha-de-sao-jose',
         title: 'Ladainha de São José',
         category: 'santos',
-        note: 'Aprovada por São Pio X em 1909.',
+        note: 'Aprovada por São Pio X em 1909 e alargada pelo Papa Francisco em 2021; texto do Secretariado Nacional de Liturgia.',
         text: `Senhor, tende piedade de nós.
 Jesus Cristo, tende piedade de nós.
 Senhor, tende piedade de nós.
@@ -144,12 +144,15 @@ Santíssima Trindade, que sois um só Deus, tende piedade de nós.
 
 Santa Maria, rogai por nós.
 São José, rogai por nós.
-Ínclito filho de David,
+Ilustre descendente de David,
 Luz dos Patriarcas,
 Esposo da Mãe de Deus,
-Castíssimo guardião da Virgem,
+Guarda do Redentor,
+Casto guarda da Virgem,
 Sustento do Filho de Deus,
 Zeloso defensor de Cristo,
+Servo de Cristo,
+Ministro da salvação,
 Chefe da Sagrada Família,
 José justíssimo,
 José castíssimo,
@@ -160,12 +163,16 @@ José fidelíssimo,
 Espelho de paciência,
 Amante da pobreza,
 Modelo dos trabalhadores,
-Honra da vida doméstica,
+Honra da vida de família,
 Guarda das virgens,
 Amparo das famílias,
-Consolação dos infelizes,
-Esperança dos enfermos,
-Advogado dos moribundos,
+Socorro nas dificuldades,
+Conforto dos infelizes,
+Esperança dos doentes,
+Defensor dos exilados,
+Defensor dos aflitos,
+Defensor dos pobres,
+Amparo dos moribundos,
 Terror dos demónios,
 Protector da santa Igreja, rogai por nós.
 
@@ -173,23 +180,22 @@ Cordeiro de Deus, que tirais os pecados do mundo, perdoai-nos, Senhor.
 Cordeiro de Deus, que tirais os pecados do mundo, ouvi-nos, Senhor.
 Cordeiro de Deus, que tirais os pecados do mundo, tende piedade de nós.
 
-V. Ele o constituiu senhor da sua casa.
+V. Deus constituiu-o senhor da sua casa.
 R. E príncipe de todos os seus bens.
 
 Oremos:
-Ó Deus, que na vossa inefável providência
-Vos dignastes escolher o bem-aventurado São José
-para esposo de vossa Mãe santíssima,
-concedei que mereçamos ter por intercessor no céu
-aquele que veneramos na terra como protector.
-Vós que viveis e reinais pelos séculos dos séculos.
+Senhor nosso Deus, que, na vossa admirável providência,
+escolhestes São José para esposo da vossa Santíssima Mãe,
+concedei-nos que, venerando-o como protector na terra,
+o tenhamos como intercessor no céu.
+Por Cristo, Nosso Senhor.
 R. Amen.`,
     },
     {
         id: 'responso-de-santo-antonio',
         title: 'Responso de Santo António',
         category: 'santos',
-        note: 'De Frei Juliano de Espira, 1235 — para quem perdeu alguma coisa.',
+        note: 'De Frei Juliano de Espira, século XIII; reza-se por quem perdeu alguma coisa.',
         aka: ['Se milagres desejais', 'Santo António de Lisboa', 'Objectos perdidos'],
         text: `Se milagres desejais,
 recorrei a Santo António;
@@ -206,16 +212,31 @@ se moderam, se retiram;
 digam-no aqueles que o viram
 e digam-no os paduanos.
 
+Recupera-se o perdido…
+
 Pela sua intercessão
 foge a peste, o erro, a morte;
 o fraco torna-se forte
 e torna-se o enfermo são.
 
+Recupera-se o perdido…
+
 Glória ao Pai e ao Filho e ao Espírito Santo.
 Como era no princípio, agora e sempre. Amen.
 
+Recupera-se o perdido…
+
 V. Rogai por nós, bem-aventurado Santo António.
-R. Para que sejamos dignos das promessas de Cristo.`,
+R. Para que sejamos dignos das promessas de Cristo.
+
+Oremos:
+Ó Deus, nós Vos suplicamos que a memória votiva
+do bem-aventurado Santo António, vosso confessor e doutor,
+alegre a vossa Igreja,
+para que, fortalecida sempre com os auxílios espirituais,
+mereça gozar as alegrias eternas.
+Por Cristo, Nosso Senhor.
+Amen.`,
     },
     {
         id: 'oracao-a-santo-antonio',
@@ -274,6 +295,8 @@ Amen.`,
         aka: ['Cântico do Irmão Sol', 'Louvado sejas meu Senhor'],
         text: `Altíssimo, omnipotente, bom Senhor,
 teus são o louvor, a glória, a honra e toda a bênção.
+Só a ti, Altíssimo, convêm,
+e nenhum homem é digno de te nomear.
 
 Louvado sejas, meu Senhor, com todas as tuas criaturas,
 especialmente o senhor irmão Sol,
@@ -302,10 +325,15 @@ e produz frutos diversos, flores e ervas.
 Louvado sejas, meu Senhor,
 pelos que perdoam pelo teu amor
 e suportam enfermidades e tribulações.
+Bem-aventurados os que as suportam em paz,
+porque por ti, Altíssimo, serão coroados.
 
 Louvado sejas, meu Senhor,
 pela nossa irmã, a morte corporal,
 da qual homem algum pode escapar.
+Ai dos que morrem em pecado mortal!
+Bem-aventurados os que ela encontrar na tua santíssima vontade,
+porque a segunda morte não lhes fará mal.
 
 Louvai e bendizei o meu Senhor,
 dai-Lhe graças e servi-O com grande humildade.`,
@@ -350,12 +378,22 @@ a vós recorre com a doce esperança de ser atendida,
 por terdes o título incomparável
 de advogada dos casos impossíveis e desesperados.
 
-Interessai-vos pela minha causa,
+Ó cara Santa, interessai-vos pela minha causa,
 intercedei junto de Deus
 para que me conceda a graça de que tanto necessito.
+(Diz-se a graça que se pede.)
+Não permitais que tenha de me afastar
+dos vossos pés sem ser atendido.
 Se houver em mim algum obstáculo
 que me impeça de obter a graça que imploro,
 auxiliai-me para que o afaste.
+
+Envolvei o meu pedido nos vossos preciosos méritos
+e apresentai-o ao vosso celeste Esposo, Jesus,
+em união com a vossa prece.
+Ó Santa Rita, eu ponho em vós toda a minha confiança;
+por vosso intermédio,
+espero tranquilamente a graça que vos peço.
 
 Santa Rita, advogada dos impossíveis, rogai por nós.
 Amen.`,
@@ -405,20 +443,17 @@ Amen.`,
         id: 'rainha-santa-isabel',
         title: 'À Rainha Santa Isabel',
         category: 'santos',
-        note: 'Padroeira de Coimbra e mensageira da paz, 4 de Julho.',
-        aka: ['Isabel de Portugal', 'Rainha Santa', 'Paz nos lares'],
-        text: `Ó Deus, autor da paz e amigo da caridade,
-que concedestes à Rainha Santa Isabel
-a graça insigne de reconciliar os que estavam divididos:
+        note: 'A oração da Liturgia das Horas no seu dia, 4 de Julho; padroeira de Coimbra.',
+        aka: ['Isabel de Portugal', 'Rainha Santa', 'Paz'],
+        text: `Senhor nosso Deus, fonte de paz e de amor,
+que destes a Santa Isabel de Portugal
+o dom de reconciliar os homens desavindos,
+concedei-nos, por sua intercessão,
+a graça de trabalhar ao serviço da paz,
+para podermos ser chamados filhos de Deus.
+Por Cristo, Nosso Senhor.
+Amen.
 
-por sua intercessão,
-dai-nos um coração pacificador,
-para que sejamos chamados filhos de Deus,
-saibamos perdoar as ofensas
-e levemos a paz aos nossos lares,
-como ela a levou ao seu povo.
-
-Rainha Santa Isabel, rogai por nós.
-Amen.`,
+Rainha Santa Isabel, rogai por nós.`,
     },
 ];
