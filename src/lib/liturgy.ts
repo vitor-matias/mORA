@@ -290,7 +290,6 @@ async function loadCalendarICS(): Promise<string | null> {
     const candidateUrls = [
         ...(ownWorker ? [`${ownWorker}/ics`] : []),
         `https://api.codetabs.com/v1/proxy/?quest=${icsUrl}`,
-        `https://corsproxy.io/?url=${encodeURIComponent(icsUrl)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(icsUrl)}`,
     ];
 
