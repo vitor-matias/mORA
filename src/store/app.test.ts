@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+    clampScrollLevel,
     isCompleteSyncedSettings,
     sanitizeSyncedSettings,
     settingsEqual,
+    useAppStore,
+    SCROLL_LEVELS,
     type SyncedSettings,
 } from './app.ts';
 
@@ -63,5 +66,32 @@ describe('settingsEqual', () => {
 
     it('reports a differing setting', () => {
         expect(settingsEqual(local, { fontFamily: 'sans', rosaryMode: 'beginner' })).toBe(false);
+    });
+});
+
+describe('clampScrollLevel', () => {
+    it('keeps every valid level', () => {
+        SCROLL_LEVELS.forEach((_, idx) => expect(clampScrollLevel(idx)).toBe(idx));
+    });
+
+    it('clamps a step past either end back into range', () => {
+        expect(clampScrollLevel(-1)).toBe(0);
+        expect(clampScrollLevel(SCROLL_LEVELS.length)).toBe(SCROLL_LEVELS.length - 1);
+    });
+
+    it('falls back to the default for a corrupted persisted value', () => {
+        expect(clampScrollLevel(1.5)).toBe(2);
+        expect(clampScrollLevel(NaN)).toBe(2);
+    });
+});
+
+// The +/- controls during a reading write straight to this value, so the
+// speed last used is the one the next reading starts at.
+describe('autoScrollSpeed', () => {
+    it('remembers the speed it is set to', () => {
+        useAppStore.getState().setAutoScrollSpeed(0);
+        expect(useAppStore.getState().autoScrollSpeed).toBe(0);
+        useAppStore.getState().setAutoScrollSpeed(3);
+        expect(useAppStore.getState().autoScrollSpeed).toBe(3);
     });
 });

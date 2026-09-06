@@ -544,7 +544,7 @@ export default function Profile() {
                         </div>
                     </div>
 
-                    {/* Auto-scroll Default Speed */}
+                    {/* Auto-scroll Speed */}
                     <div>
                         <div className="flex items-center gap-2 mb-3">
                             <Gauge className="text-zinc-400" size={16} />
@@ -566,7 +566,7 @@ export default function Profile() {
                                 </button>
                             ))}
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">Velocidade inicial da leitura automática na Missa</p>
+                        <p className="text-xs text-zinc-500 mt-2">Velocidade da leitura automática na Missa e na Liturgia das Horas. Os botões +/− durante a leitura guardam-se aqui.</p>
                     </div>
 
                     {/* Rosary Mode — segmented so both options are always visible */}

@@ -23,12 +23,15 @@ export interface AutoScroll {
  * the page height isn't final at the moment the content state updates.
  */
 export function useAutoScroll(contentKey: unknown): AutoScroll {
-    const autoScrollSpeed = useAppStore((s) => s.autoScrollSpeed);
+    // The speed lives in the persisted store rather than in component state,
+    // so the +/- controls change the remembered speed: whatever pace was last
+    // used comes back on the next reading, on either page, and the Profile
+    // picker shows it. Read through the clamp — a corrupted stored value must
+    // not reach SCROLL_LEVELS.
+    const speed = useAppStore((s) => clampScrollLevel(s.autoScrollSpeed));
+    const setAutoScrollSpeed = useAppStore((s) => s.setAutoScrollSpeed);
 
     const [isScrolling, setIsScrolling] = useState(false);
-    // Starts at the default configured in Profile — the +/- controls only
-    // adjust this session, not the saved default.
-    const [speed, setSpeed] = useState<number>(() => clampScrollLevel(autoScrollSpeed));
     const [atPageEnd, setAtPageEnd] = useState(false);
 
     const rafRef = useRef<number | null>(null);
@@ -88,8 +91,16 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
         if (isScrolling) stop(); else start();
     }, [isScrolling, start, stop]);
 
-    const slower = useCallback(() => setSpeed((s) => Math.max(0, s - 1)), []);
-    const faster = useCallback(() => setSpeed((s) => Math.min(SCROLL_LEVELS.length - 1, s + 1)), []);
+    // Stepped off the live store value rather than the rendered one: a quick
+    // double-tap fires both handlers before React re-renders, and a stale
+    // closure would make the second tap repeat the first step.
+    const stepSpeed = useCallback((delta: number) => {
+        const current = clampScrollLevel(useAppStore.getState().autoScrollSpeed);
+        setAutoScrollSpeed(clampScrollLevel(current + delta));
+    }, [setAutoScrollSpeed]);
+
+    const slower = useCallback(() => stepSpeed(-1), [stepSpeed]);
+    const faster = useCallback(() => stepSpeed(1), [stepSpeed]);
 
     // Pause when the user manually scrolls (touchmove = drag, not tap).
     // Using touchmove rather than touchstart means tapping speed/stop
