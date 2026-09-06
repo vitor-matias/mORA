@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore, localNsec, localPrivkeyHex } from "@/store/auth";
 import type { BunkerLogin } from "@/lib/signer";
-import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily, type AutoScrollSpeed } from "@/store/app";
+import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
 import { sharesResults, usePalavraStore } from "@/store/palavra";
 import type { RosaryBeadMode } from "@/lib/rosary";
 import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
@@ -550,16 +550,16 @@ export default function Profile() {
                             <Gauge className="text-zinc-400" size={16} />
                             <p className="text-sm font-medium">Velocidade do Auto-scroll</p>
                         </div>
-                        {/* Six levels now, so tighter than the other pickers
+                        {/* Seven levels now, so tighter than the other pickers
                             to keep them on one row on a narrow phone. */}
-                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-1.5">
-                            {SCROLL_LEVELS.map((level, idx) => (
+                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-1">
+                            {SCROLL_LEVELS.map((level) => (
                                 <button
                                     type="button"
                                     key={level.label}
-                                    onClick={() => setAutoScrollSpeed(idx as AutoScrollSpeed)}
-                                    aria-pressed={autoScrollSpeed === idx}
-                                    className={`flex-1 py-2 px-2 rounded-xl text-center transition-colors ${autoScrollSpeed === idx
+                                    onClick={() => setAutoScrollSpeed(level.label)}
+                                    aria-pressed={autoScrollSpeed === level.label}
+                                    className={`flex-1 py-2 px-1.5 rounded-xl text-center transition-colors ${autoScrollSpeed === level.label
                                         ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}

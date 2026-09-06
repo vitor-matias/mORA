@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-    clampScrollLevel,
     isCompleteSyncedSettings,
-    migrateScrollLevel,
+    migrateScrollSpeed,
     sanitizeSyncedSettings,
+    scrollLevelIndex,
+    scrollSpeedAt,
     settingsEqual,
     useAppStore,
-    DEFAULT_SCROLL_LEVEL,
+    DEFAULT_SCROLL_SPEED,
     SCROLL_LEVELS,
     type SyncedSettings,
 } from './app.ts';
@@ -71,19 +72,23 @@ describe('settingsEqual', () => {
     });
 });
 
-describe('clampScrollLevel', () => {
-    it('keeps every valid level', () => {
-        SCROLL_LEVELS.forEach((_, idx) => expect(clampScrollLevel(idx)).toBe(idx));
+describe('scrollLevelIndex', () => {
+    it('finds every level of the scale', () => {
+        SCROLL_LEVELS.forEach((level, idx) => expect(scrollLevelIndex(level.label)).toBe(idx));
     });
 
-    it('clamps a step past either end back into range', () => {
-        expect(clampScrollLevel(-1)).toBe(0);
-        expect(clampScrollLevel(SCROLL_LEVELS.length)).toBe(SCROLL_LEVELS.length - 1);
+    it('falls back to the default for a value no longer on the scale', () => {
+        expect(scrollLevelIndex('⅞')).toBe(scrollLevelIndex(DEFAULT_SCROLL_SPEED));
+        expect(scrollLevelIndex(undefined)).toBe(scrollLevelIndex(DEFAULT_SCROLL_SPEED));
+        // A raw index is what pre-v2 stores held; only the migration reads those.
+        expect(scrollLevelIndex(2)).toBe(scrollLevelIndex(DEFAULT_SCROLL_SPEED));
     });
+});
 
-    it('falls back to the default for a corrupted persisted value', () => {
-        expect(clampScrollLevel(1.5)).toBe(DEFAULT_SCROLL_LEVEL);
-        expect(clampScrollLevel(NaN)).toBe(DEFAULT_SCROLL_LEVEL);
+describe('scrollSpeedAt', () => {
+    it('clamps a step past either end back onto the scale', () => {
+        expect(scrollSpeedAt(-1)).toBe(SCROLL_LEVELS[0].label);
+        expect(scrollSpeedAt(SCROLL_LEVELS.length)).toBe(SCROLL_LEVELS[SCROLL_LEVELS.length - 1].label);
     });
 });
 
@@ -94,40 +99,46 @@ describe('SCROLL_LEVELS', () => {
         expect(new Set(speeds).size).toBe(speeds.length);
     });
 
-    it('defaults to the level labelled 2, as it did before the fractions', () => {
-        expect(SCROLL_LEVELS[DEFAULT_SCROLL_LEVEL].label).toBe('2');
+    it('gives each fraction that fraction of the pace labelled 1', () => {
+        const base = SCROLL_LEVELS.find((level) => level.label === '1')!.pps;
+        const fractions: [string, number][] = [['¼', 1 / 4], ['⅓', 1 / 3], ['½', 1 / 2], ['¾', 3 / 4]];
+        fractions.forEach(([label, fraction]) => {
+            expect(SCROLL_LEVELS.find((level) => level.label === label)!.pps).toBeCloseTo(base * fraction, 5);
+        });
     });
 });
 
-describe('migrateScrollLevel', () => {
-    // ¼ and ¾ went in below and between the old levels, so every stored index
-    // above ½ shifted; left alone, a reader on '2' would find themselves on ¾.
-    it('maps each level of the old four-step scale onto the same label', () => {
-        const oldLabels = ['½', '1', '2', '3'];
-        oldLabels.forEach((label, storedIndex) => {
-            expect(SCROLL_LEVELS[migrateScrollLevel(storedIndex, 0)].label).toBe(label);
+describe('migrateScrollSpeed', () => {
+    // Speeds were stored as indices until v2, so every level inserted since
+    // shifted what a stored number meant; left alone, a reader on '2' would
+    // have come back on ⅓.
+    it('resolves an index against the scale the build that wrote it had', () => {
+        ['½', '1', '2', '3'].forEach((label, storedIndex) => {
+            expect(migrateScrollSpeed(storedIndex, 0)).toBe(label);
+        });
+        ['¼', '½', '¾', '1', '2', '3'].forEach((label, storedIndex) => {
+            expect(migrateScrollSpeed(storedIndex, 1)).toBe(label);
         });
     });
 
-    it('leaves an already-migrated value alone', () => {
-        SCROLL_LEVELS.forEach((_, idx) => expect(migrateScrollLevel(idx, 1)).toBe(idx));
+    it('keeps a label written by v2 or later', () => {
+        SCROLL_LEVELS.forEach((level) => expect(migrateScrollSpeed(level.label, 2)).toBe(level.label));
     });
 
     it('falls back to the default for a missing or unrecognised value', () => {
-        expect(migrateScrollLevel(undefined, 0)).toBe(DEFAULT_SCROLL_LEVEL);
-        expect(migrateScrollLevel(9, 0)).toBe(DEFAULT_SCROLL_LEVEL);
-        expect(migrateScrollLevel('2', 0)).toBe(DEFAULT_SCROLL_LEVEL);
-        expect(migrateScrollLevel(99, 1)).toBe(SCROLL_LEVELS.length - 1);
+        expect(migrateScrollSpeed(undefined, 0)).toBe(DEFAULT_SCROLL_SPEED);
+        expect(migrateScrollSpeed(9, 1)).toBe(DEFAULT_SCROLL_SPEED);
+        expect(migrateScrollSpeed('2', 0)).toBe(DEFAULT_SCROLL_SPEED);
+        expect(migrateScrollSpeed(2, 2)).toBe(DEFAULT_SCROLL_SPEED);
+        expect(migrateScrollSpeed('⅞', 2)).toBe(DEFAULT_SCROLL_SPEED);
     });
 });
 
-// The +/- controls during a reading write straight to this value, so the
-// speed last used is the one the next reading starts at.
 describe('autoScrollSpeed', () => {
     it('remembers the speed it is set to', () => {
-        useAppStore.getState().setAutoScrollSpeed(0);
-        expect(useAppStore.getState().autoScrollSpeed).toBe(0);
-        useAppStore.getState().setAutoScrollSpeed(5);
-        expect(useAppStore.getState().autoScrollSpeed).toBe(5);
+        useAppStore.getState().setAutoScrollSpeed('¼');
+        expect(useAppStore.getState().autoScrollSpeed).toBe('¼');
+        useAppStore.getState().setAutoScrollSpeed('3');
+        expect(useAppStore.getState().autoScrollSpeed).toBe('3');
     });
 });

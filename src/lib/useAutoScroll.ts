@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAppStore, SCROLL_LEVELS, clampScrollLevel } from '@/store/app';
+import { useAppStore, SCROLL_LEVELS, scrollLevelIndex, scrollSpeedAt } from '@/store/app';
 
 export interface AutoScroll {
     isScrolling: boolean;
@@ -26,9 +26,9 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
     // The speed lives in the persisted store rather than in component state,
     // so the +/- controls change the remembered speed: whatever pace was last
     // used comes back on the next reading, on either page, and the Profile
-    // picker shows it. Read through the clamp — a corrupted stored value must
-    // not reach SCROLL_LEVELS.
-    const speed = useAppStore((s) => clampScrollLevel(s.autoScrollSpeed));
+    // picker shows it. The store keeps a label; resolving it here is also what
+    // keeps a corrupted stored value from reaching SCROLL_LEVELS.
+    const speed = useAppStore((s) => scrollLevelIndex(s.autoScrollSpeed));
     const setAutoScrollSpeed = useAppStore((s) => s.setAutoScrollSpeed);
 
     const [isScrolling, setIsScrolling] = useState(false);
@@ -95,8 +95,8 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
     // double-tap fires both handlers before React re-renders, and a stale
     // closure would make the second tap repeat the first step.
     const stepSpeed = useCallback((delta: number) => {
-        const current = clampScrollLevel(useAppStore.getState().autoScrollSpeed);
-        setAutoScrollSpeed(clampScrollLevel(current + delta));
+        const current = scrollLevelIndex(useAppStore.getState().autoScrollSpeed);
+        setAutoScrollSpeed(scrollSpeedAt(current + delta));
     }, [setAutoScrollSpeed]);
 
     const slower = useCallback(() => stepSpeed(-1), [stepSpeed]);
