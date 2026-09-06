@@ -117,7 +117,6 @@ const PROXY_TIMEOUT_MS = 8000;
 async function fetchTextViaProxy(url: string): Promise<string | null> {
     const candidateUrls = [
         `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-        `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     ];
     for (const proxyUrl of candidateUrls) {
