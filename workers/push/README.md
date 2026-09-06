@@ -53,3 +53,9 @@ worker ([src/sw.ts](../../src/sw.ts)) renders the notification text.
   message content ever transits the push service — the notification text is
   fixed in the service worker.
 - Dead subscriptions (push service answers 404/410) are pruned automatically.
+- Beyond push, this Worker also serves as the app's own CORS proxy for the
+  two feeds that send no CORS headers (`liturgia.pt`'s calendar at `/ics`,
+  vatican.va's monthly prayer-intention theme at `/vatican-theme`), so
+  `VITE_PUSH_SERVER_URL` is worth setting even for that alone — the public
+  CORS proxies those features fall back to (codetabs.com, allorigins.win)
+  are unreliable and go down often.

@@ -35,3 +35,6 @@ dist-ssr
 
 # parse-lh download cache (copyrighted PDFs — never commit)
 tools/.cache
+
+# Wrangler local dev state (workers/)
+.wrangler/

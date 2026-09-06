@@ -156,6 +156,40 @@ export default {
             }
         }
 
+        // Authoritative scrape of vatican.va's own short monthly prayer-intention
+        // theme, so the app doesn't have to rely on rotating public CORS
+        // proxies for a site that sends no CORS headers. Mirrors the parsing
+        // src/lib/intentions.ts did client-side through those proxies: find
+        // this month's document link on the PT prayers index, then read its
+        // <title> tag. Returns the raw fields; the client derives the actual
+        // theme text and decides what to do with them.
+        if (url.pathname === '/vatican-theme' && request.method === 'GET') {
+            const month = url.searchParams.get('month') ?? '';
+            if (!/^[a-z]+$/.test(month)) return json(400, { error: 'month query param required' });
+            try {
+                const indexRes = await fetch('https://www.vatican.va/content/leo-xiv/pt/prayers.html', {
+                    cf: { cacheTtl: 21600, cacheEverything: true },
+                });
+                if (!indexRes.ok) return json(502, { error: 'vatican.va index unavailable' });
+                const indexHtml = await indexRes.text();
+
+                const linkMatch = indexHtml.match(
+                    new RegExp(`href="(/content/leo-xiv/pt/prayers/documents/\\d{8}-popesprayer-${month}\\.html)"`)
+                );
+                if (!linkMatch) return json(404, { error: 'no document found for month' });
+                const docUrl = `https://www.vatican.va${linkMatch[1]}`;
+
+                const docRes = await fetch(docUrl, { cf: { cacheTtl: 21600, cacheEverything: true } });
+                if (!docRes.ok) return json(502, { error: 'vatican.va document unavailable' });
+                const titleMatch = (await docRes.text()).match(/<title>([^<]*)<\/title>/i);
+                if (!titleMatch) return json(404, { error: 'no title found in document' });
+
+                return json(200, { title: titleMatch[1], url: docUrl });
+            } catch {
+                return json(502, { error: 'vatican.va upstream unavailable' });
+            }
+        }
+
         if (url.pathname !== '/subscriptions') return json(404, { error: 'not found' });
 
         let body;

@@ -67,6 +67,7 @@ jobs:
           VITE_NOSTR_RELAYS: ${{ vars.VITE_NOSTR_RELAYS }}
           VITE_PUSH_SERVER_URL: ${{ vars.VITE_PUSH_SERVER_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+          VITE_CORSPROXY_KEY: ${{ vars.VITE_CORSPROXY_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

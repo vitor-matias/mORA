@@ -1,3 +1,5 @@
+import { corsProxyIoUrl } from "@/lib/corsProxy";
+
 export interface LiturgyHourVerse {
     id: string;
     text: string;
@@ -289,7 +291,9 @@ async function loadCalendarICS(): Promise<string | null> {
     // in parallel rather than tried one at a time — a slow/dead one would
     // otherwise burn its whole timeout before the next one even starts.
     const ownWorker = import.meta.env.VITE_PUSH_SERVER_URL as string | undefined;
+    const keyedProxyUrl = corsProxyIoUrl(icsUrl);
     const publicProxyUrls = [
+        ...(keyedProxyUrl ? [keyedProxyUrl] : []),
         `https://api.codetabs.com/v1/proxy/?quest=${icsUrl}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(icsUrl)}`,
     ];
@@ -321,6 +325,19 @@ async function loadCalendarICS(): Promise<string | null> {
         }
     }
 
+    // Every route failing usually means the proxies are down rather than a
+    // one-off blip, so it's remembered briefly: re-running the whole race on
+    // each call (spending a keyed proxy's quota every time) wouldn't get a
+    // different answer.
+    const COOLDOWN_KEY = 'mora_agenda_ics_cooldown_until';
+    const COOLDOWN_MS = 30 * 60 * 1000;
+    try {
+        const until = Number(localStorage.getItem(COOLDOWN_KEY));
+        if (Number.isFinite(until) && now < until) return staleText;
+    } catch {
+        // Storage blocked — just attempt the fetch.
+    }
+
     let text = '';
     if (ownWorker) {
         try {
@@ -340,6 +357,13 @@ async function loadCalendarICS(): Promise<string | null> {
             // running to its own timeout.
             for (const controller of controllers) controller.abort();
         }
+    }
+
+    try {
+        if (text) localStorage.removeItem(COOLDOWN_KEY);
+        else localStorage.setItem(COOLDOWN_KEY, String(now + COOLDOWN_MS));
+    } catch {
+        // ignore storage errors (private browsing, quota)
     }
 
     if (!text) return staleText;

@@ -1,3 +1,4 @@
+import { corsProxyIoUrl } from "@/lib/corsProxy";
 import { formatISODate } from "@/lib/format";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 
@@ -110,6 +111,31 @@ function pruneCache(): void {
     }
 }
 
+// A failed Vatican scrape is remembered for a few hours so that every app
+// open doesn't re-run the whole proxy race — two sequential lookups, each
+// spending a keyed proxy's quota — while the source or the proxies are
+// down. Only the nicer title is skipped; the WP fallback still runs, so the
+// intention itself still shows.
+const VATICAN_COOLDOWN_KEY = 'mora_vatican_theme_cooldown_until';
+const VATICAN_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
+function vaticanLookupOnCooldown(): boolean {
+    try {
+        const until = Number(localStorage.getItem(VATICAN_COOLDOWN_KEY));
+        return Number.isFinite(until) && Date.now() < until;
+    } catch {
+        return false;
+    }
+}
+
+function startVaticanCooldown(): void {
+    try {
+        localStorage.setItem(VATICAN_COOLDOWN_KEY, String(Date.now() + VATICAN_COOLDOWN_MS));
+    } catch {
+        // ignore storage errors (private browsing, quota)
+    }
+}
+
 // vatican.va sends no CORS headers, so it's fetched through the same public
 // proxy chain src/lib/liturgy.ts already uses for liturgia.pt's calendar.
 // Each one is prone to going down or sitting on a dead connection on its
@@ -120,7 +146,9 @@ function pruneCache(): void {
 const PROXY_TIMEOUT_MS = 8000;
 
 async function fetchTextViaProxy(url: string): Promise<string | null> {
+    const keyedProxyUrl = corsProxyIoUrl(url);
     const candidateUrls = [
+        ...(keyedProxyUrl ? [keyedProxyUrl] : []),
         `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     ];
@@ -155,20 +183,48 @@ const ITALIAN_MONTHS = [
     'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
 ];
 
+// The document's <title> tag reads like "Mensagem em vídeo … – Agosto de
+// 2026: Pela evangelização na cidade" — only the segment after the last
+// colon is the actual theme.
+function themeFromTitle(rawTitle: string): string | null {
+    const fullTitle = stripHtml(rawTitle);
+    const segments = fullTitle.split(': ');
+    const theme = segments.length > 1 ? segments[segments.length - 1].trim() : fullTitle;
+    return theme || null;
+}
+
 /**
  * vatican.va's own short theme for the month (e.g. "Pela evangelização na
  * cidade") — the WP source above only carries the full "Rezemos para que..."
  * paragraph, never this shorter official phrasing. The document URL embeds
  * an unpredictable publish day, so it's discovered from the PT prayers index
- * rather than guessed; the theme itself lives in the document's <title> tag
- * ("Mensagem em vídeo … – Agosto de 2026: Pela evangelização na cidade").
+ * rather than guessed; the theme itself lives in the document's <title> tag.
+ *
+ * Tries the mORA push Worker first (when deployed and configured) — it
+ * scrapes vatican.va server-side, under our own control — then falls back to
+ * scraping through public CORS proxies, which are prone to being down.
  */
 async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: string } | null> {
+    const italianMonth = ITALIAN_MONTHS[now.getMonth()];
+    const ownWorker = import.meta.env.VITE_PUSH_SERVER_URL as string | undefined;
+
+    if (ownWorker) {
+        try {
+            const res = await fetch(`${ownWorker}/vatican-theme?month=${italianMonth}`);
+            if (res.ok) {
+                const data = await res.json();
+                const theme = typeof data.title === 'string' ? themeFromTitle(data.title) : null;
+                if (theme && typeof data.url === 'string') return { title: theme, url: data.url };
+            }
+        } catch {
+            // fall through to the public-proxy scrape
+        }
+    }
+
     const indexUrl = 'https://www.vatican.va/content/leo-xiv/pt/prayers.html';
     const indexHtml = await fetchTextViaProxy(indexUrl);
     if (!indexHtml) return null;
 
-    const italianMonth = ITALIAN_MONTHS[now.getMonth()];
     const linkMatch = indexHtml.match(
         new RegExp(`href="(/content/leo-xiv/pt/prayers/documents/\\d{8}-popesprayer-${italianMonth}\\.html)"`)
     );
@@ -180,9 +236,7 @@ async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: 
     const titleMatch = docHtml.match(/<title>([^<]*)<\/title>/i);
     if (!titleMatch) return null;
 
-    const fullTitle = stripHtml(titleMatch[1]);
-    const segments = fullTitle.split(': ');
-    const theme = segments.length > 1 ? segments[segments.length - 1].trim() : fullTitle;
+    const theme = themeFromTitle(titleMatch[1]);
     if (!theme) return null;
     return { title: theme, url: docUrl };
 }
@@ -280,15 +334,19 @@ export async function fetchMonthlyIntention(now: Date = new Date()): Promise<Int
     // vatican.va's own short theme is the better title, but it goes through a
     // proxy chain that can be down — the WP source below is CORS-open and
     // reliable, so it's the fallback when the scrape doesn't pan out.
-    try {
-        const vatican = await fetchVaticanThemeTitle(now);
-        if (vatican) {
-            const intention: Intention = { title: vatican.title, sourceLabel: 'Vaticano', sourceUrl: vatican.url };
-            writeCache(`month_${monthKey}`, intention);
-            return intention;
+    if (!vaticanLookupOnCooldown()) {
+        try {
+            const vatican = await fetchVaticanThemeTitle(now);
+            if (vatican) {
+                const intention: Intention = { title: vatican.title, sourceLabel: 'Vaticano', sourceUrl: vatican.url };
+                writeCache(`month_${monthKey}`, intention);
+                return intention;
+            }
+            startVaticanCooldown();
+        } catch (e) {
+            console.warn('Failed to fetch Vatican theme title, falling back to WP source:', e);
+            startVaticanCooldown();
         }
-    } catch (e) {
-        console.warn('Failed to fetch Vatican theme title, falling back to WP source:', e);
     }
 
     try {
