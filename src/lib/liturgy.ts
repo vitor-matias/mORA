@@ -283,39 +283,53 @@ async function loadCalendarICS(): Promise<string | null> {
     const icsUrl = 'https://www.liturgia.pt/agenda/agenda.ics';
 
     // liturgia.pt doesn't send CORS headers. The mORA push Worker (when
-    // deployed and configured) proxies the feed under our own control;
-    // otherwise fall back to public CORS proxies, which occasionally go
-    // down — hence trying several in order until one returns a calendar.
+    // deployed and configured) proxies the feed under our own control, so
+    // it's tried first; the public CORS proxies below are each individually
+    // prone to going down or sitting on a dead connection, so they're raced
+    // in parallel rather than tried one at a time — a slow/dead one would
+    // otherwise burn its whole timeout before the next one even starts.
     const ownWorker = import.meta.env.VITE_PUSH_SERVER_URL as string | undefined;
-    const candidateUrls = [
-        ...(ownWorker ? [`${ownWorker}/ics`] : []),
+    const publicProxyUrls = [
         `https://api.codetabs.com/v1/proxy/?quest=${icsUrl}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(icsUrl)}`,
     ];
 
-    let text = '';
     const PROXY_TIMEOUT_MS = 8000;
-    for (const url of candidateUrls) {
+    async function fetchIcsFrom(url: string): Promise<string> {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
         try {
             const response = await fetch(url, { signal: controller.signal });
-            if (!response.ok) continue;
-
+            if (!response.ok) throw new Error(`proxy responded ${response.status}`);
             const body = await response.text();
-            if (!body.includes('BEGIN:VEVENT')) continue; // not a usable calendar
-
+            if (!body.includes('BEGIN:VEVENT')) throw new Error('not a usable calendar');
             // Remove ICS line folding (\r\n followed by a space)
-            text = body.replace(/\r?\n /g, '');
-            break;
+            return body.replace(/\r?\n /g, '');
         } catch (e) {
             if (e instanceof DOMException && e.name === 'AbortError') {
                 console.warn('ICS fetch timed out, trying next route');
             } else {
                 console.warn('ICS fetch failed, trying next route:', e);
             }
+            throw e;
         } finally {
             clearTimeout(timer);
+        }
+    }
+
+    let text = '';
+    if (ownWorker) {
+        try {
+            text = await fetchIcsFrom(`${ownWorker}/ics`);
+        } catch {
+            // fall through to the public proxies
+        }
+    }
+    if (!text) {
+        try {
+            text = await Promise.any(publicProxyUrls.map(fetchIcsFrom));
+        } catch {
+            // every public proxy failed too
         }
     }
 

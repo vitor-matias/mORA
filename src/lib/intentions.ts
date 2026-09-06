@@ -112,6 +112,11 @@ function pruneCache(): void {
 
 // vatican.va sends no CORS headers, so it's fetched through the same public
 // proxy chain src/lib/liturgy.ts already uses for liturgia.pt's calendar.
+// Each one is prone to going down or sitting on a dead connection on its
+// own, so they're raced in parallel rather than tried one at a time — a
+// slow/dead one would otherwise burn its whole timeout before the next one
+// even starts, which for this call happens twice in a row (index page, then
+// document page) and was compounding into tens of seconds of "loading".
 const PROXY_TIMEOUT_MS = 8000;
 
 async function fetchTextViaProxy(url: string): Promise<string | null> {
@@ -119,21 +124,24 @@ async function fetchTextViaProxy(url: string): Promise<string | null> {
         `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     ];
-    for (const proxyUrl of candidateUrls) {
+    const attempts = candidateUrls.map(async (proxyUrl) => {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
         try {
             const response = await fetch(proxyUrl, { signal: controller.signal });
-            if (!response.ok) continue;
+            if (!response.ok) throw new Error(`proxy responded ${response.status}`);
             const text = await response.text();
-            if (text) return text;
-        } catch {
-            // try the next proxy
+            if (!text) throw new Error('empty response');
+            return text;
         } finally {
             clearTimeout(timer);
         }
+    });
+    try {
+        return await Promise.any(attempts);
+    } catch {
+        return null;
     }
-    return null;
 }
 
 const ITALIAN_MONTHS = [
