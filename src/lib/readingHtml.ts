@@ -120,6 +120,46 @@ function readingDisplayLabel(label: string): string {
 }
 
 /**
+ * Rebuilds a paragraph's first line as "<strong>LABEL</strong> reference"
+ * when that line opens with a section label but the markup doesn't say so.
+ *
+ * The header pass below keys off a leading <strong>/<b> holding the whole
+ * label, and upstream doesn't always oblige: some days carry no emphasis at
+ * all, others cut the bold across the label ("<strong>SALMO</strong>
+ * RESPONSORIAL Salmo 94 (95)"). Those sections used to fall through as body
+ * text — no TOC chip, no refrain box, the psalm printed as a wall of prose.
+ *
+ * Only an ALL-CAPS label counts, which is how the missal prints its headers;
+ * that keeps the Gospel's own attribution line ("Evangelho de Nosso Senhor
+ * Jesus Cristo…") and a bare "Aleluia." refrain out of the header pass.
+ */
+function normalizeSectionLabel(doc: Document, p: Element): void {
+    const firstEl = p.children[0];
+    if ((firstEl?.tagName === 'STRONG' || firstEl?.tagName === 'B')
+        && SECTION_LABEL_RE.test(firstEl.textContent?.trim() ?? '')) return;
+
+    // The first line is everything up to the paragraph's first <br>.
+    const lineNodes: ChildNode[] = [];
+    for (const node of Array.from(p.childNodes)) {
+        if (node.nodeName === 'BR') break;
+        lineNodes.push(node);
+    }
+
+    const line = normalizeLine(lineNodes.map((n) => n.textContent ?? '').join(''));
+    const match = line.match(SECTION_LABEL_RE);
+    if (!match || match[0] !== match[0].toUpperCase()) return;
+
+    // Flatten the line: the label into its own <strong>, the scripture
+    // reference after it as plain text for the header pass to wrap.
+    lineNodes.forEach((n) => p.removeChild(n));
+    const rest = line.slice(match[0].length);
+    if (rest) p.prepend(doc.createTextNode(rest));
+    const label = doc.createElement('strong');
+    label.textContent = match[0];
+    p.prepend(label);
+}
+
+/**
  * Adds semantic CSS classes and anchor IDs to the reading HTML so the
  * stylesheet renders proper typographic hierarchy and the TOC can navigate:
  *
@@ -162,6 +202,8 @@ function enrichReadingTypography(doc: Document): void {
 
     // ── Pass 2: section headers, source lines ────────────────────────────
     doc.querySelectorAll('p').forEach((p) => {
+        normalizeSectionLabel(doc, p);
+
         const firstEl = p.children[0] as HTMLElement | undefined;
         const label = firstEl?.textContent?.trim() ?? '';
 
@@ -417,7 +459,13 @@ function enrichReadingTypography(doc: Document): void {
  * missal, prayers and all.
  */
 export function extractReadings(html: string): string {
-    const start = html.search(/<p>\s*<(?:b|strong)>LEITURA I\b/i);
+    // … and on days that carry no emphasis at all, not even that. A bare
+    // label only opens the slice when it is ALL-CAPS, as the missal prints
+    // its headers — "Leitura I" in prose must not pass for one.
+    const start = earliestIndex(
+        html.search(/<p>\s*<(?:b|strong)>LEITURA I\b/i),
+        html.search(/<p>\s*LEITURA I\b/),
+    );
     if (start === -1) return html;
 
     // What follows the Gospel is the offertory and on: stop at whichever
@@ -429,10 +477,23 @@ export function extractReadings(html: string): string {
     );
     const end = endMatch !== -1 ? start + endMatch : html.length;
 
-    return html.slice(start, end).replace(
-        /<p>\s*<(b|strong)>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/\1>[\s\S]*?(?=<p>\s*<(b|strong)>EVANGELHO<\/\2>)/i,
-        ''
-    );
+    return html.slice(start, end)
+        .replace(
+            /<p>\s*<(b|strong)>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/\1>[\s\S]*?(?=<p>\s*(?:<(?:b|strong)>\s*)?EVANGELHO\b)/i,
+            ''
+        )
+        // Same verse on a day that marks up neither label (ALL-CAPS only,
+        // so a psalm's own "Aleluia." refrain can't swallow the Gospel).
+        .replace(
+            /<p>\s*(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)\b[\s\S]*?(?=<p>\s*(?:<(?:b|strong)>\s*)?EVANGELHO\b)/,
+            ''
+        );
+}
+
+/** The first of several match positions, or -1 when none matched. */
+function earliestIndex(...positions: number[]): number {
+    const found = positions.filter((i) => i !== -1);
+    return found.length > 0 ? Math.min(...found) : -1;
 }
 
 export function enrichReadingHtml(html: string): string {
