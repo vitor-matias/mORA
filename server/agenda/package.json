@@ -6,8 +6,8 @@
   "description": "Mirrors the Portuguese liturgical calendar onto Nostr, once a day. No server.",
   "scripts": {
     "keygen": "node keygen.js",
-    "publish-agenda": "node publish.js",
-    "dry-run": "node publish.js --dry-run"
+    "publish-agenda": "node --experimental-strip-types publish.js",
+    "dry-run": "node --experimental-strip-types publish.js --dry-run"
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",

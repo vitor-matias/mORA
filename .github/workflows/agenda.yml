@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
           if [ "$FORCE" = "true" ]; then
-            node publish.js --force
+            node --experimental-strip-types publish.js --force
           else
-            node publish.js
+            node --experimental-strip-types publish.js
           fi
