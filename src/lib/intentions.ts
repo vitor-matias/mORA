@@ -1,3 +1,4 @@
+import { fetchVaticanTheme } from "@/lib/agendaNostr";
 import { formatISODate } from "@/lib/format";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 
@@ -110,81 +111,28 @@ function pruneCache(): void {
     }
 }
 
-// vatican.va sends no CORS headers, so it's fetched through the same public
-// proxy chain src/lib/liturgy.ts already uses for liturgia.pt's calendar.
-// Each one is prone to going down or sitting on a dead connection on its
-// own, so they're raced in parallel rather than tried one at a time — a
-// slow/dead one would otherwise burn its whole timeout before the next one
-// even starts, which for this call happens twice in a row (index page, then
-// document page) and was compounding into tens of seconds of "loading".
-const PROXY_TIMEOUT_MS = 8000;
-
-async function fetchTextViaProxy(url: string): Promise<string | null> {
-    const candidateUrls = [
-        `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    ];
-    const controllers = candidateUrls.map(() => new AbortController());
-    const attempts = candidateUrls.map(async (proxyUrl, i) => {
-        const controller = controllers[i];
-        const timer = setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
-        try {
-            const response = await fetch(proxyUrl, { signal: controller.signal });
-            if (!response.ok) throw new Error(`proxy responded ${response.status}`);
-            const text = await response.text();
-            if (!text) throw new Error('empty response');
-            return text;
-        } finally {
-            clearTimeout(timer);
-        }
-    });
-    try {
-        return await Promise.any(attempts);
-    } catch {
-        return null;
-    } finally {
-        // Cancel whichever attempts lost the race (or are still in flight
-        // when all of them fail) instead of leaving them running to their
-        // own timeout.
-        for (const controller of controllers) controller.abort();
-    }
-}
-
-const ITALIAN_MONTHS = [
-    'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
-    'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre',
-];
-
-/**
- * vatican.va's own short theme for the month (e.g. "Pela evangelização na
- * cidade") — the WP source above only carries the full "Rezemos para que..."
- * paragraph, never this shorter official phrasing. The document URL embeds
- * an unpredictable publish day, so it's discovered from the PT prayers index
- * rather than guessed; the theme itself lives in the document's <title> tag
- * ("Mensagem em vídeo … – Agosto de 2026: Pela evangelização na cidade").
- */
-async function fetchVaticanThemeTitle(now: Date): Promise<{ title: string; url: string } | null> {
-    const indexUrl = 'https://www.vatican.va/content/leo-xiv/pt/prayers.html';
-    const indexHtml = await fetchTextViaProxy(indexUrl);
-    if (!indexHtml) return null;
-
-    const italianMonth = ITALIAN_MONTHS[now.getMonth()];
-    const linkMatch = indexHtml.match(
-        new RegExp(`href="(/content/leo-xiv/pt/prayers/documents/\\d{8}-popesprayer-${italianMonth}\\.html)"`)
-    );
-    if (!linkMatch) return null;
-    const docUrl = `https://www.vatican.va${linkMatch[1]}`;
-
-    const docHtml = await fetchTextViaProxy(docUrl);
-    if (!docHtml) return null;
-    const titleMatch = docHtml.match(/<title>([^<]*)<\/title>/i);
-    if (!titleMatch) return null;
-
-    const fullTitle = stripHtml(titleMatch[1]);
+// vatican.va's own short theme for the month (e.g. "Pelo cuidado com a
+// água") — the WP source below only carries the full "Rezemos para que..."
+// paragraph, never this shorter official phrasing.
+//
+// vatican.va sends no CORS headers, so the browser can't read it directly.
+// It used to be scraped through public CORS proxies, which all eventually
+// died; now the scrape happens server-side in the publisher (server/agenda)
+// and the result is read off the relays like the calendar.
+// The document's <title> reads like "Mensagem em vídeo ... - Setembro 2026:
+// Pelo cuidado com a água" — only the part after the last colon is the theme.
+function themeFromTitle(rawTitle: string): string | null {
+    const fullTitle = stripHtml(rawTitle);
     const segments = fullTitle.split(': ');
     const theme = segments.length > 1 ? segments[segments.length - 1].trim() : fullTitle;
-    if (!theme) return null;
-    return { title: theme, url: docUrl };
+    return theme || null;
+}
+
+async function fetchVaticanThemeTitle(monthKey: string): Promise<{ title: string; url: string } | null> {
+    const published = await fetchVaticanTheme(monthKey);
+    if (!published) return null;
+    const theme = themeFromTitle(published.title);
+    return theme ? { title: theme, url: published.url } : null;
 }
 
 async function fetchLatestPost(postType: string): Promise<{ title: string; content: string; url: string; monthKey: string; slug: string } | null> {
@@ -277,11 +225,11 @@ export async function fetchMonthlyIntention(now: Date = new Date()): Promise<Int
     const cached = readCache(`month_${monthKey}`);
     if (cached) return cached;
 
-    // vatican.va's own short theme is the better title, but it goes through a
-    // proxy chain that can be down — the WP source below is CORS-open and
-    // reliable, so it's the fallback when the scrape doesn't pan out.
+    // vatican.va's own short theme is the better title, but it depends on the
+    // publisher having mirrored this month yet — the WP source below is
+    // CORS-open and needs nobody, so it stays the fallback.
     try {
-        const vatican = await fetchVaticanThemeTitle(now);
+        const vatican = await fetchVaticanThemeTitle(monthKey);
         if (vatican) {
             const intention: Intention = { title: vatican.title, sourceLabel: 'Vaticano', sourceUrl: vatican.url };
             writeCache(`month_${monthKey}`, intention);

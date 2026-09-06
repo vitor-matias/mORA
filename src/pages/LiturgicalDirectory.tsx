@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, BookOpen, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { fetchLiturgicalCalendarMap } from "@/lib/liturgy";
+import { fetchLiturgicalDays } from "@/lib/liturgy";
 import type { LiturgicalDayInfo } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useAppStore } from "@/store/app";
@@ -25,23 +25,6 @@ export default function LiturgicalDirectory() {
     const [loading, setLoading] = useState(true);
     const [retryToken, setRetryToken] = useState(0);
 
-    useEffect(() => {
-        let cancelled = false;
-        fetchLiturgicalCalendarMap().then((map) => {
-            if (cancelled) return;
-            setCalendar(map);
-            setLoading(false);
-        });
-        return () => { cancelled = true; };
-    }, [retryToken]);
-
-    // Loading starts true and is re-armed by the retry button, never inside
-    // the effect (avoids a cascading render).
-    const retry = () => {
-        setLoading(true);
-        setRetryToken((t) => t + 1);
-    };
-
     // The 42 cells (6 weeks) covering the viewed month, Monday-first.
     const cells = useMemo(() => {
         const start = new Date(viewMonth);
@@ -52,6 +35,36 @@ export default function LiturgicalDirectory() {
             return { date: d, dateStr: formatISODate(d), inMonth: d.getMonth() === viewMonth.getMonth() };
         });
     }, [viewMonth]);
+
+    // Exactly the cells on screen get asked for — one query per month
+    // viewed, not a year up front.
+    const visibleDates = useMemo(() => cells.map((c) => c.dateStr), [cells]);
+
+    useEffect(() => {
+        let cancelled = false;
+        fetchLiturgicalDays(visibleDates).then((days) => {
+            if (cancelled) return;
+            // Nothing came back: leave `calendar` as it was, so a failed first
+            // load still shows the retry card, and a failed *later* month
+            // doesn't blank out what is already on screen.
+            if (days.size > 0) {
+                setCalendar((prev) => {
+                    const merged = prev ? new Map(prev) : new Map<string, LiturgicalDayInfo>();
+                    for (const [dateStr, info] of days) merged.set(dateStr, info);
+                    return merged;
+                });
+            }
+            setLoading(false);
+        });
+        return () => { cancelled = true; };
+    }, [visibleDates, retryToken]);
+
+    // Loading starts true and is re-armed by the retry button, never inside
+    // the effect (avoids a cascading render).
+    const retry = () => {
+        setLoading(true);
+        setRetryToken((t) => t + 1);
+    };
 
     const changeMonth = (delta: number) => {
         setViewMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));

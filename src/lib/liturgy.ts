@@ -1,3 +1,5 @@
+import { fetchAgendaDays } from "@/lib/agendaNostr";
+
 export interface LiturgyHourVerse {
     id: string;
     text: string;
@@ -243,198 +245,139 @@ export async function preloadUpcomingLiturgy(days = 5): Promise<void> {
     }
 }
 
-export type LiturgicalColor = 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa';
+// The liturgical day info now arrives already parsed, one Nostr event per
+// day (see src/lib/agendaNostr.ts). The types and the ICS parsing they came
+// from live in src/lib/icsCalendar.ts, which the publisher shares.
+export type { LiturgicalColor, LiturgicalDayInfo } from '@/lib/icsCalendar';
 
-export type LiturgicalDayInfo = {
-    color: LiturgicalColor;
-    dayName: string;
-    description: string;
-};
+// ── Day cache ────────────────────────────────────────────────────────────
+//
+// Cached per day, because that is the unit that arrives and the unit the app
+// asks for.
+//
+// There is no expiry on a day that has already happened: the entry for 15
+// January 2026 *is* 15 January 2026, and ageing it out would only mean
+// fetching the same bytes again to learn the same thing. Only days still in
+// the future are re-checked, and only occasionally, because those are the
+// only ones the Secretariado can still issue a correction for.
+const DAY_CACHE_PREFIX = 'mora_agenda_d_';
 
-/** Fetches (or reads from cache) the raw liturgia.pt ICS text, unfolded. */
-async function loadCalendarICS(): Promise<string | null> {
-    const CACHE_KEY = 'mora_agenda_ics_v4';
-    const CACHE_DAYS = 90;
-    const now = Date.now();
+/** How long a *future* day's copy is trusted before it's checked again. */
+const FUTURE_RECHECK_DAYS = 7;
 
-    // An expired cache is kept around as a last resort: the feed is
-    // published for the whole year, so stale beats nothing when every
-    // fetch route is down.
-    let staleText: string | null = null;
-    let cached: string | null = null;
+/** Cached days before this many days ago are dropped, purely to bound storage. */
+const KEEP_PAST_DAYS = 400;
+
+type CachedDay = { at: number; info: LiturgicalDayInfoValue };
+type LiturgicalDayInfoValue = import('@/lib/icsCalendar').LiturgicalDayInfo;
+
+function readDayCache(dateStr: string, todayStr: string): { info: LiturgicalDayInfoValue; fresh: boolean } | null {
     try {
-        cached = localStorage.getItem(CACHE_KEY);
+        const raw = localStorage.getItem(DAY_CACHE_PREFIX + dateStr);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as CachedDay;
+        if (!parsed?.info?.color) return null;
+        // Past and present are settled; only the future is worth re-asking.
+        const settled = dateStr <= todayStr;
+        const ageDays = (Date.now() - parsed.at) / (1000 * 60 * 60 * 24);
+        return { info: parsed.info, fresh: settled || ageDays < FUTURE_RECHECK_DAYS };
     } catch {
-        // Storage blocked (e.g. private browsing) — go straight to network.
+        // Storage blocked (e.g. private browsing), or a corrupt entry.
+        return null;
     }
-    if (cached) {
-        try {
-            const parsed = JSON.parse(cached);
-            const ageDays = (now - parsed.timestamp) / (1000 * 60 * 60 * 24);
-            if (parsed.text && parsed.text.includes('BEGIN:VEVENT')) {
-                if (ageDays < CACHE_DAYS) return parsed.text;
-                staleText = parsed.text;
-            }
-        } catch (e) {
-            console.warn('Failed to parse cached ICS:', e);
-        }
-    }
+}
 
-    const icsUrl = 'https://www.liturgia.pt/agenda/agenda.ics';
-
-    // liturgia.pt doesn't send CORS headers. The mORA push Worker (when
-    // deployed and configured) proxies the feed under our own control, so
-    // it's tried first; the public CORS proxies below are each individually
-    // prone to going down or sitting on a dead connection, so they're raced
-    // in parallel rather than tried one at a time — a slow/dead one would
-    // otherwise burn its whole timeout before the next one even starts.
-    const ownWorker = import.meta.env.VITE_PUSH_SERVER_URL as string | undefined;
-    const publicProxyUrls = [
-        `https://api.codetabs.com/v1/proxy/?quest=${icsUrl}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(icsUrl)}`,
-    ];
-
-    const PROXY_TIMEOUT_MS = 8000;
-    // `controller` is owned by the caller so a losing candidate can be
-    // cancelled once the race is decided; `timedOut` distinguishes that
-    // caller-triggered abort (nothing to log — the candidate never got a
-    // chance to fail on its own) from this fetch's own timeout firing.
-    async function fetchIcsFrom(url: string, controller: AbortController): Promise<string> {
-        let timedOut = false;
-        const timer = setTimeout(() => { timedOut = true; controller.abort(); }, PROXY_TIMEOUT_MS);
-        try {
-            const response = await fetch(url, { signal: controller.signal });
-            if (!response.ok) throw new Error(`proxy responded ${response.status}`);
-            const body = await response.text();
-            if (!body.includes('BEGIN:VEVENT')) throw new Error('not a usable calendar');
-            // Remove ICS line folding (\r\n followed by a space)
-            return body.replace(/\r?\n /g, '');
-        } catch (e) {
-            if (e instanceof DOMException && e.name === 'AbortError') {
-                if (timedOut) console.warn('ICS fetch timed out, trying next route');
-            } else {
-                console.warn('ICS fetch failed, trying next route:', e);
-            }
-            throw e;
-        } finally {
-            clearTimeout(timer);
-        }
-    }
-
-    let text = '';
-    if (ownWorker) {
-        try {
-            text = await fetchIcsFrom(`${ownWorker}/ics`, new AbortController());
-        } catch {
-            // fall through to the public proxies
-        }
-    }
-    if (!text) {
-        const controllers = publicProxyUrls.map(() => new AbortController());
-        try {
-            text = await Promise.any(publicProxyUrls.map((url, i) => fetchIcsFrom(url, controllers[i])));
-        } catch {
-            // every public proxy failed too
-        } finally {
-            // Cancel whichever candidate lost the race instead of leaving it
-            // running to its own timeout.
-            for (const controller of controllers) controller.abort();
-        }
-    }
-
-    if (!text) return staleText;
-
+function writeDayCache(dateStr: string, info: LiturgicalDayInfoValue): void {
     try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: now, text }));
-    } catch (e) {
-        console.warn('Failed to cache ICS text:', e);
+        localStorage.setItem(DAY_CACHE_PREFIX + dateStr, JSON.stringify({ at: Date.now(), info }));
+    } catch {
+        // Out of quota is the likely one. Drop the old days and try once more
+        // before giving up — losing the cache entirely would mean re-reading
+        // the relays on every single navigation.
+        pruneDayCache();
+        try {
+            localStorage.setItem(DAY_CACHE_PREFIX + dateStr, JSON.stringify({ at: Date.now(), info }));
+        } catch {
+            // ignore storage errors (private browsing, still out of quota)
+        }
     }
-    return text;
 }
 
-/** Extracts a day's info from one unfolded VEVENT block, or null if no color is derivable. */
-function parseVEventInfo(event: string): { dateStr: string; info: LiturgicalDayInfo } | null {
-    const dtMatch = event.match(/DTSTART(?:;VALUE=DATE)?:(\d{4})(\d{2})(\d{2})/);
-    if (!dtMatch) return null;
-    const dateStr = `${dtMatch[1]}-${dtMatch[2]}-${dtMatch[3]}`;
-
-    const descMatch = event.match(/\r?\nDESCRIPTION:(.*?)(?=\r?\n[A-Z-]+[;:]|$)/s);
-    const summaryMatch = event.match(/\r?\nSUMMARY:(.*?)(?=\r?\n[A-Z-]+[;:]|$)/s);
-
-    let color: LiturgicalColor | undefined;
-    let dayName = summaryMatch ? summaryMatch[1].trim() : '';
-    let description = '';
-
-    // Clean up ICS escaped characters using split/join (avoids regex escaping issues)
-    const bs = String.fromCharCode(92); // backslash character
-    dayName = dayName.split(bs + 'n').join(' ').split(bs + ',').join(',').split(bs + ';').join(';');
-
-    if (descMatch) {
-        const rawDesc = descMatch[1].trim();
-        description = rawDesc.split(bs + 'n').join('\n').split(bs + ',').join(',').split(bs + ';').join(';');
-
-        const descLower = rawDesc.toLowerCase();
-        // Pick the color that appears first — descriptions can mention
-        // secondary colors in diocesan notes that would mask the primary.
-        const colorCandidates: Array<[LiturgicalColor, number]> = (
-            [
-                ['verde', descLower.indexOf('verde')],
-                ['roxo', descLower.indexOf('roxo')],
-                ['branco', descLower.indexOf('branco')],
-                ['vermelho', descLower.indexOf('vermelho')],
-                ['rosa', descLower.indexOf('rosa')],
-            ] as Array<[LiturgicalColor, number]>
-        ).filter(([, i]) => i !== -1).sort(([, a], [, b]) => a - b);
-        if (colorCandidates.length > 0) color = colorCandidates[0][0];
+function pruneDayCache(): void {
+    try {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - KEEP_PAST_DAYS);
+        const oldest = formatLocalDate(cutoff);
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (!key || !key.startsWith(DAY_CACHE_PREFIX)) continue;
+            if (key.slice(DAY_CACHE_PREFIX.length) < oldest) localStorage.removeItem(key);
+        }
+    } catch {
+        // ignore storage access errors
     }
-
-    // Fall back to inferring color from the day name when the
-    // ICS description doesn't spell out the color explicitly.
-    if (!color && dayName) {
-        const nameLower = dayName.toLowerCase();
-        if (nameLower.includes('mártir') || nameLower.includes('martir')) color = 'vermelho';
-        else if (nameLower.includes('quaresma') || nameLower.includes('advento')) color = 'roxo';
-        else if (nameLower.includes('solenidade') || nameLower.includes('assunção') || nameLower.includes('natal') || nameLower.includes('páscoa')) color = 'branco';
-    }
-
-    if (!color) return null;
-    return { dateStr, info: { color, dayName, description } };
 }
 
-// Parsed-calendar memo: the ICS text is stable for a session, so the full
-// date→info map is built once and shared by the calendar page and the
-// per-date lookups.
-let calendarMapPromise: Promise<Map<string, LiturgicalDayInfo> | null> | null = null;
+// Days already loaded this session, so paging the directory back and forth
+// costs nothing after the first visit and the per-date lookups share
+// whatever the directory has already pulled in.
+const dayMemo = new Map<string, LiturgicalDayInfoValue>();
 
 /**
- * The whole liturgical calendar as a map of YYYY-MM-DD → day info.
- * Returns null when the ICS can't be fetched at all (offline, proxies down).
+ * The given days (YYYY-MM-DD) of the liturgical calendar.
+ *
+ * Only the days asked for are fetched. That is the point of the per-day
+ * split: colouring today costs one ~700-byte event rather than the 366KB
+ * year the app used to pull through a proxy for the same answer.
+ *
+ * A day that can't be loaded is simply absent from the result; every caller
+ * renders "no info for this day" rather than failing.
  */
-export function fetchLiturgicalCalendarMap(): Promise<Map<string, LiturgicalDayInfo> | null> {
-    if (!calendarMapPromise) {
-        calendarMapPromise = (async () => {
-            try {
-                const text = await loadCalendarICS();
-                if (!text) return null;
-                const map = new Map<string, LiturgicalDayInfo>();
-                for (const event of text.split('BEGIN:VEVENT')) {
-                    const parsed = parseVEventInfo(event);
-                    // First event with a derivable color wins for each date.
-                    if (parsed && !map.has(parsed.dateStr)) map.set(parsed.dateStr, parsed.info);
-                }
-                return map;
-            } catch (error) {
-                console.error('Error parsing calendar:', error);
-                return null;
+export async function fetchLiturgicalDays(dates: string[]): Promise<Map<string, LiturgicalDayInfoValue>> {
+    const wanted = [...new Set(dates)];
+    const todayStr = formatLocalDate(new Date());
+    const days = new Map<string, LiturgicalDayInfoValue>();
+
+    const missing: string[] = [];
+    for (const dateStr of wanted) {
+        const remembered = dayMemo.get(dateStr);
+        if (remembered) {
+            days.set(dateStr, remembered);
+            continue;
+        }
+        const cached = readDayCache(dateStr, todayStr);
+        if (cached) {
+            // A stale future day is still shown; it's only also re-fetched.
+            days.set(dateStr, cached.info);
+            if (cached.fresh) {
+                dayMemo.set(dateStr, cached.info);
+                continue;
             }
-        })();
-        // A failed fetch shouldn't poison the session — allow a retry next call.
-        calendarMapPromise.then((map) => { if (!map) calendarMapPromise = null; });
+        }
+        missing.push(dateStr);
     }
-    return calendarMapPromise;
+
+    if (missing.length === 0) return days;
+
+    try {
+        // One query for every missing day, so a month of the directory is a
+        // single round trip rather than one per cell.
+        const fetched = await fetchAgendaDays(missing);
+        for (const [dateStr, info] of fetched) {
+            dayMemo.set(dateStr, info);
+            writeDayCache(dateStr, info);
+            days.set(dateStr, info);
+        }
+    } catch (error) {
+        // Offline, or no relay answered. Anything already cached above still
+        // shows; the rest simply has no info, and the next call tries again.
+        console.warn('Could not read the liturgical calendar from the relays:', error);
+    }
+
+    return days;
 }
 
-export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<LiturgicalDayInfo | null> {
-    const map = await fetchLiturgicalCalendarMap();
-    return map?.get(formatLocalDate(date)) ?? null;
+export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<LiturgicalDayInfoValue | null> {
+    const days = await fetchLiturgicalDays([formatLocalDate(date)]);
+    return days.get(formatLocalDate(date)) ?? null;
 }
