@@ -233,14 +233,10 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
     isFavourite: boolean;
     onToggleFavourite: () => void;
 }) {
-    const [done, setDone] = useState<'copied' | 'shared' | null>(null);
-    // Keyed by id: opening another prayer must not inherit the previous one's
-    // "Copiado" flash or its expanded Latin.
-    const [shownFor, setShownFor] = useState(prayer.id);
-    if (shownFor !== prayer.id) {
-        setShownFor(prayer.id);
-        setDone(null);
-    }
+    // The tick carries the prayer it was raised on, so opening another one
+    // simply doesn't show it — no resetting anything as the prop changes.
+    const [done, setDone] = useState<{ prayerId: string; what: 'copied' | 'shared' } | null>(null);
+    const ticked = done?.prayerId === prayer.id ? done.what : null;
 
     // One timer for both buttons, cleared before it is set again: sharing
     // right after copying must not have the older timer take the tick away
@@ -249,7 +245,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
     const flashTimer = useRef<number | undefined>(undefined);
     useEffect(() => () => window.clearTimeout(flashTimer.current), []);
     const flash = (what: 'copied' | 'shared') => {
-        setDone(what);
+        setDone({ prayerId: prayer.id, what });
         window.clearTimeout(flashTimer.current);
         flashTimer.current = window.setTimeout(() => setDone(null), 2000);
     };
@@ -321,22 +317,22 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                     <button
                         type="button"
                         onClick={copy}
-                        aria-label={done === 'copied' ? 'Oração copiada' : 'Copiar oração'}
+                        aria-label={ticked === 'copied' ? 'Oração copiada' : 'Copiar oração'}
                         className="p-2 rounded-full text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
-                        {done === 'copied' ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" /> : <Copy size={18} />}
+                        {ticked === 'copied' ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" /> : <Copy size={18} />}
                     </button>
                     <button
                         type="button"
                         onClick={share}
                         /* Named for what it does on this device: a share sheet
                            where there is one, a copied link where there isn't. */
-                        aria-label={done === 'shared'
+                        aria-label={ticked === 'shared'
                             ? (canShare ? 'Oração partilhada' : 'Ligação copiada')
                             : (canShare ? 'Partilhar oração' : 'Copiar ligação para a oração')}
                         className="p-2 rounded-full text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
-                        {done === 'shared'
+                        {ticked === 'shared'
                             ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" />
                             : canShare ? <Share2 size={18} /> : <Link2 size={18} />}
                     </button>
