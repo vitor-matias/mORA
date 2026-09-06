@@ -181,6 +181,42 @@ describe('the responsorial-psalm refrain', () => {
         expect(repeatsNote(doc)).toBeNull();
     });
 
+    it('lifts a refrain out of a header that carries no emphasis (2026-09-06)', () => {
+        const doc = render(
+            '<p>SALMO RESPONSORIAL Salmo 94 (95), 1-2.6-7.8-9 (R. cf. 8)<br />\n' +
+            'Refrão: Se hoje ouvirdes a voz do Senhor,<br />\n' +
+            'não fecheis os vossos corações.<br />\n' +
+            'Repete-se</p>\n' +
+            '<p>Vinde, exultemos de alegria no Senhor,<br />\n' +
+            'aclamemos a Deus, nosso Salvador. Refrão</p>'
+        );
+
+        const header = doc.querySelector('#salmo');
+        expect(header?.className).toBe('reading-section-header');
+        expect(header?.getAttribute('data-toc-label')).toBe('Salmo Responsorial');
+        expect(header?.querySelector('.reading-ref')?.textContent?.trim())
+            .toBe('Salmo 94 (95), 1-2.6-7.8-9 (R. cf. 8)');
+        expect(refrainLines(doc))
+            .toEqual(['℟ Se hoje ouvirdes a voz do Senhor, não fecheis os vossos corações.']);
+        expect(repeatsNote(doc)).toBe('Repete-se');
+        // the refrain lines are gone from the header, not doubled up in it
+        expect(header?.textContent).not.toContain('Refrão');
+        expect(Array.from(doc.querySelectorAll('.psalm-cue')).map((e) => e.textContent))
+            .toEqual(['℟ Refrão']);
+    });
+
+    it('reads a header whose bold is cut across the label', () => {
+        const doc = render(
+            '<p><strong>SALMO</strong> RESPONSORIAL Salmo 94 (95), 1-2 (R. cf. 8)<br />\n' +
+            'Refrão: Se hoje ouvirdes a voz do Senhor. Repete-se</p>'
+        );
+
+        expect(doc.querySelector('#salmo')?.querySelector('.reading-label')?.textContent)
+            .toBe('SALMO RESPONSORIAL');
+        expect(doc.querySelector('.reading-ref')?.textContent?.trim()).toBe('Salmo 94 (95), 1-2 (R. cf. 8)');
+        expect(refrainLines(doc)).toEqual(['℟ Se hoje ouvirdes a voz do Senhor.']);
+    });
+
     it('marks the "Refrão" cue closing each stanza', () => {
         const doc = render(
             '<p><strong>SALMO RESPONSORIAL</strong> Salmo 145 (146), 2abc (R.5a)<br />\n' +
@@ -209,6 +245,55 @@ describe('section headers', () => {
         expect(header?.className).toBe('reading-section-header');
         expect(header?.getAttribute('data-toc-label')).toBe('Salmo Responsorial');
         expect(refrainLines(doc)).toEqual(['℟ Jerusalém, louva o teu Senhor.', 'Ou: Aleluia.']);
+    });
+
+    it('picks up an unemphasized reading header, reference and all', () => {
+        const doc = render(
+            '<p>LEITURA II Rm 13, 8-10<br />\n«O amor é a plenitude da Lei»</p>\n' +
+            '<p>Leitura da Epístola do apóstolo São Paulo aos Romanos<br />\n' +
+            'Irmãos: A ninguém fiqueis a dever coisa alguma.<br />\n' +
+            'Palavra do Senhor.</p>'
+        );
+
+        expect(doc.querySelector('#leitura-ii')?.getAttribute('data-toc-label')).toBe('Leitura II');
+        expect(doc.querySelector('#leitura-ii .reading-ref')?.textContent?.trim()).toBe('Rm 13, 8-10');
+        expect(doc.querySelector('#leitura-ii .reading-title')?.textContent)
+            .toBe('«O amor é a plenitude da Lei»');
+        expect(doc.querySelector('.reading-source')?.textContent)
+            .toBe('Leitura da Epístola do apóstolo São Paulo aos Romanos');
+    });
+
+    it('keeps the fourth reading whole, numeral and all', () => {
+        // "IV" opens with the "I" of the shorter numerals: matched in the
+        // wrong order the header reads "LEITURA I" and its reference starts
+        // with the leftover "V".
+        const doc = render(
+            '<p>LEITURA IV Dan 3, 14-20<br />\n«Deus enviou o seu anjo»</p>\n' +
+            '<p><strong>LEITURA IV</strong> Dan 3, 14-20<br />\n«Deus enviou o seu anjo»</p>'
+        );
+
+        const headers = Array.from(doc.querySelectorAll('[data-toc-label]'));
+        expect(headers.map((h) => h.querySelector('.reading-label')?.textContent))
+            .toEqual(['LEITURA IV', 'LEITURA IV']);
+        expect(headers.map((h) => h.getAttribute('data-toc-label')))
+            .toEqual(['Leitura IV (Dan 3)', 'Leitura IV (Dan 3)']);
+        expect(headers.map((h) => h.querySelector('.reading-ref')?.textContent?.trim()))
+            .toEqual(['Dan 3, 14-20', 'Dan 3, 14-20']);
+    });
+
+    it('does not read the Gospel attribution as a header of its own', () => {
+        // "Evangelho de Nosso Senhor…" opens the body of every Gospel; only
+        // the ALL-CAPS label the missal prints is a section header.
+        const doc = render(
+            '<p><strong>EVANGELHO</strong> Mt 18, 15-20<br />\n«Se te ouvir, ganhaste o teu irmão»</p>\n' +
+            '<p>Evangelho de Nosso Senhor Jesus Cristo segundo São Mateus<br />\n' +
+            'Naquele tempo, disse Jesus aos seus discípulos:<br />\n' +
+            'Palavra da salvação.</p>'
+        );
+
+        expect(Array.from(doc.querySelectorAll('[data-toc-label]')).map((e) => e.id)).toEqual(['evangelho']);
+        expect(doc.querySelector('.reading-source')?.textContent)
+            .toBe('Evangelho de Nosso Senhor Jesus Cristo segundo São Mateus');
     });
 
     it('still treats a <b> Mass part as a prayer header', () => {
@@ -302,6 +387,58 @@ describe('extractReadings', () => {
 
         expect(extractReadings(html)).not.toContain('ALELUIA');
         expect(extractReadings(html)).toContain('EVANGELHO');
+    });
+
+    it('finds the readings when no label is marked up at all (2026-09-06)', () => {
+        const bareReadings = '<p>LEITURA I Ez 33, 7-9<br />\n«Se não falares ao pecador»</p>\n'
+            + '<p>EVANGELHO Mt 18, 15-20<br />\nPalavra da salvação.</p>\n';
+        const html = '<p><b>Antífona de entrada</b><br />\nOs pensamentos do Senhor.</p>\n'
+            + bareReadings
+            + '<p><b>Oração sobre as oblatas</b><br />\nSuba até Vós, Senhor.</p>';
+
+        expect(extractReadings(html)).toBe(bareReadings);
+    });
+
+    it('drops an unemphasized Alleluia verse too', () => {
+        const html = '<p>LEITURA I Ez 33, 7-9<br />\n«Se não falares ao pecador»</p>\n'
+            + '<p>ALELUIA 2 Cor 5, 19<br />\nRefrão: Aleluia. Repete-se</p>\n'
+            + '<p>EVANGELHO Mt 18, 15-20<br />\nPalavra da salvação.</p>\n';
+
+        expect(extractReadings(html)).not.toContain('ALELUIA');
+        expect(extractReadings(html)).toContain('EVANGELHO');
+    });
+
+    it('finds the readings when the bold is cut across the label', () => {
+        const splitReadings = '<p><strong>LEITURA</strong> I Dt 8, 2-3<br />\n«Deu-te o alimento»</p>\n'
+            + '<p><b>EVANGE</b>LHO Jo 6, 51<br />\nPalavra da salvação.</p>\n';
+        const html = '<p><b>Antífona de entrada</b><br />\nOs pensamentos do Senhor.</p>\n'
+            + splitReadings
+            + '<p><b>Oração sobre as oblatas</b><br />\nSuba até Vós, Senhor.</p>';
+
+        expect(extractReadings(html)).toBe(splitReadings);
+    });
+
+    it('drops the Alleluia verse whatever emphasis frames the labels', () => {
+        const html = '<p><strong>LEITURA I</strong> Dt 8, 2-3<br />\n«Deu-te o alimento»</p>\n'
+            + '<p><b>ALELUIA</b> Jo 6, 51<br />\nRefrão: Aleluia. Repete-se</p>\n'
+            + '<p>EVANGELHO Jo 6, 51<br />\nPalavra da salvação.</p>\n';
+
+        // the verse goes, and the readings around it keep their own markup
+        expect(extractReadings(html)).toBe(
+            '<p><strong>LEITURA I</strong> Dt 8, 2-3<br />\n«Deu-te o alimento»</p>\n'
+            + '<p>EVANGELHO Jo 6, 51<br />\nPalavra da salvação.</p>\n'
+        );
+    });
+
+    it('leaves a psalm refrain of "Aleluia" alone', () => {
+        // The bare-label pass is ALL-CAPS only, so a refrain that reads
+        // "Aleluia." can't swallow the psalm and the Gospel with it.
+        const html = '<p>LEITURA I Ez 33, 7-9<br />\n«Se não falares ao pecador»</p>\n'
+            + '<p>SALMO RESPONSORIAL Salmo 94 (95), 1-2<br />\nRefrão: Aleluia. Repete-se</p>\n'
+            + '<p>Aleluia. Repete-se</p>\n'
+            + '<p>EVANGELHO Mt 18, 15-20<br />\nPalavra da salvação.</p>\n';
+
+        expect(extractReadings(html)).toBe(html);
     });
 
     it('hands back the whole text when there is no reading to find', () => {
