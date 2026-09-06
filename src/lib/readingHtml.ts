@@ -13,8 +13,11 @@ import DOMPurify from "dompurify";
  * paragraph), so most of what follows is shape-tolerance.
  */
 
-// Labels that open a liturgical reading section.
-const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
+// Labels that open a liturgical reading section. "IV" comes before the
+// shorter numerals — tried the other way round it matches the "I" of a
+// "LEITURA IV" header — and the whole label ends on a word boundary, so
+// what the match spans is the label and nothing of the reference.
+const SECTION_LABEL_RE = /^(LEITURA\s+(IV|I{1,3})|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)\b/i;
 // Lines that close a reading ("Palavra do Senhor.", "Palavra da salvação.").
 const ENDING_RE = /^Palavra (do Senhor|da salvação|do Evangelho)/i;
 // First line of a reading body paragraph — the scripture source attribution.
@@ -450,50 +453,49 @@ function enrichReadingTypography(doc: Document): void {
 }
 
 /**
+ * The same markup with inline emphasis blanked out to spaces of equal length.
+ * A label upstream cut across tags ("<strong>LEITURA</strong> I") then reads
+ * as one string to match against, and — lengths being preserved — every index
+ * into it still points at the same place in the original.
+ */
+function withoutInlineEmphasis(html: string): string {
+    return html.replace(/<\/?(?:b|strong|em|i|span)\b[^>]*>/gi, (tag) => ' '.repeat(tag.length));
+}
+
+// The Alleluia verse, from its label to the Gospel header that closes it.
+// ALL-CAPS only, so a psalm whose refrain is "Aleluia." can't swallow the
+// rest of the psalm and the Gospel along with it.
+const ALLELUIA_RE = /<p>\s*(?:ALELUIA|ACLAMAÇÃO\s+ANTES\s+DO\s+EVANGELHO)\b[\s\S]*?(?=<p>\s*EVANGELHO\b)/;
+
+/**
  * Slices the readings out of a full missal text, dropping the prayers that
  * frame them and the Alleluia verse the reading view doesn't show.
  *
- * The section labels arrive in <b> on some solemnities and <strong> on most
- * days, so every marker here has to accept either — anchoring on <strong>
- * alone made these days miss the "LEITURA I" start and fall back to the whole
- * missal, prayers and all.
+ * The emphasis around the labels is upstream's whim — <b> on some solemnities,
+ * <strong> on most days, cut across the label or missing altogether — and
+ * anchoring on any one of those shapes made those days miss the "LEITURA I"
+ * start and fall back to the whole missal, prayers and all. So the markers
+ * below run against the emphasis-blanked copy, which has none of it.
  */
 export function extractReadings(html: string): string {
-    // … and on days that carry no emphasis at all, not even that. A bare
-    // label only opens the slice when it is ALL-CAPS, as the missal prints
-    // its headers — "Leitura I" in prose must not pass for one.
-    const start = earliestIndex(
-        html.search(/<p>\s*<(?:b|strong)>LEITURA I\b/i),
-        html.search(/<p>\s*LEITURA I\b/),
-    );
+    const flat = withoutInlineEmphasis(html);
+
+    const start = flat.search(/<p>\s*LEITURA\s+I\b/i);
     if (start === -1) return html;
 
     // What follows the Gospel is the offertory and on: stop at whichever
-    // marker comes first. The emphasis around them varies too (<b>, <strong>,
-    // <em>, or nothing at all), so none of it is required.
-    const postStart = html.slice(start);
-    const endMatch = postStart.search(
-        /<p>\s*(?:<(?:b|strong)>\s*)?(?:Oração sobre as oblatas|Prefácio|Credo)\b|<p>\s*(?:<em>\s*)?Diz-se o Credo/i
+    // marker comes first.
+    const endMatch = flat.slice(start).search(
+        /<p>\s*(?:Oração\s+sobre\s+as\s+oblatas|Prefácio|Credo)\b|<p>\s*Diz-se\s+o\s+Credo/i
     );
     const end = endMatch !== -1 ? start + endMatch : html.length;
 
-    return html.slice(start, end)
-        .replace(
-            /<p>\s*<(b|strong)>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/\1>[\s\S]*?(?=<p>\s*(?:<(?:b|strong)>\s*)?EVANGELHO\b)/i,
-            ''
-        )
-        // Same verse on a day that marks up neither label (ALL-CAPS only,
-        // so a psalm's own "Aleluia." refrain can't swallow the Gospel).
-        .replace(
-            /<p>\s*(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)\b[\s\S]*?(?=<p>\s*(?:<(?:b|strong)>\s*)?EVANGELHO\b)/,
-            ''
-        );
-}
-
-/** The first of several match positions, or -1 when none matched. */
-function earliestIndex(...positions: number[]): number {
-    const found = positions.filter((i) => i !== -1);
-    return found.length > 0 ? Math.min(...found) : -1;
+    // The Alleluia verse is found in the blanked copy and cut out of the
+    // original, which keeps its markup.
+    const readings = html.slice(start, end);
+    const alleluia = flat.slice(start, end).match(ALLELUIA_RE);
+    if (alleluia?.index === undefined) return readings;
+    return readings.slice(0, alleluia.index) + readings.slice(alleluia.index + alleluia[0].length);
 }
 
 export function enrichReadingHtml(html: string): string {

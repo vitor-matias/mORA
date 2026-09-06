@@ -263,6 +263,24 @@ describe('section headers', () => {
             .toBe('Leitura da Epístola do apóstolo São Paulo aos Romanos');
     });
 
+    it('keeps the fourth reading whole, numeral and all', () => {
+        // "IV" opens with the "I" of the shorter numerals: matched in the
+        // wrong order the header reads "LEITURA I" and its reference starts
+        // with the leftover "V".
+        const doc = render(
+            '<p>LEITURA IV Dan 3, 14-20<br />\n«Deus enviou o seu anjo»</p>\n' +
+            '<p><strong>LEITURA IV</strong> Dan 3, 14-20<br />\n«Deus enviou o seu anjo»</p>'
+        );
+
+        const headers = Array.from(doc.querySelectorAll('[data-toc-label]'));
+        expect(headers.map((h) => h.querySelector('.reading-label')?.textContent))
+            .toEqual(['LEITURA IV', 'LEITURA IV']);
+        expect(headers.map((h) => h.getAttribute('data-toc-label')))
+            .toEqual(['Leitura IV (Dan 3)', 'Leitura IV (Dan 3)']);
+        expect(headers.map((h) => h.querySelector('.reading-ref')?.textContent?.trim()))
+            .toEqual(['Dan 3, 14-20', 'Dan 3, 14-20']);
+    });
+
     it('does not read the Gospel attribution as a header of its own', () => {
         // "Evangelho de Nosso Senhor…" opens the body of every Gospel; only
         // the ALL-CAPS label the missal prints is a section header.
@@ -388,6 +406,28 @@ describe('extractReadings', () => {
 
         expect(extractReadings(html)).not.toContain('ALELUIA');
         expect(extractReadings(html)).toContain('EVANGELHO');
+    });
+
+    it('finds the readings when the bold is cut across the label', () => {
+        const splitReadings = '<p><strong>LEITURA</strong> I Dt 8, 2-3<br />\n«Deu-te o alimento»</p>\n'
+            + '<p><b>EVANGE</b>LHO Jo 6, 51<br />\nPalavra da salvação.</p>\n';
+        const html = '<p><b>Antífona de entrada</b><br />\nOs pensamentos do Senhor.</p>\n'
+            + splitReadings
+            + '<p><b>Oração sobre as oblatas</b><br />\nSuba até Vós, Senhor.</p>';
+
+        expect(extractReadings(html)).toBe(splitReadings);
+    });
+
+    it('drops the Alleluia verse whatever emphasis frames the labels', () => {
+        const html = '<p><strong>LEITURA I</strong> Dt 8, 2-3<br />\n«Deu-te o alimento»</p>\n'
+            + '<p><b>ALELUIA</b> Jo 6, 51<br />\nRefrão: Aleluia. Repete-se</p>\n'
+            + '<p>EVANGELHO Jo 6, 51<br />\nPalavra da salvação.</p>\n';
+
+        // the verse goes, and the readings around it keep their own markup
+        expect(extractReadings(html)).toBe(
+            '<p><strong>LEITURA I</strong> Dt 8, 2-3<br />\n«Deu-te o alimento»</p>\n'
+            + '<p>EVANGELHO Jo 6, 51<br />\nPalavra da salvação.</p>\n'
+        );
     });
 
     it('leaves a psalm refrain of "Aleluia" alone', () => {
