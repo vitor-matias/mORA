@@ -375,14 +375,21 @@ html[data-theme="rosa"] {
    .app-ambient (fixed to the viewport) and again by .app-bar so a stuck bar
    matches the page around it. Its stops are in viewport units, not the
    element's own height, so both paint the same gradient. Long tail: the fade
-   must not end near a card edge, or the terminus reads as a hairline. */
+   must not end near a card edge, or the terminus reads as a hairline.
+
+   Its tint and its strength at the very top of the page are named separately
+   because Layout's theme-color effect has to reproduce that first stop in
+   JS: the strip under the status bar is painted by the OS, not by us, so the
+   only way it can match the page is to hand the OS the same blend. */
 :root {
   --app-bg: 250 249 246;
   --surface-bg: 255 255 255;
+  --app-wash-tint: var(--liturgy-200);
+  --app-wash-top: 0.35;
   --app-wash: linear-gradient(to bottom,
-    rgb(var(--liturgy-200) / 0.35),
-    rgb(var(--liturgy-200) / 0.10) 30vh,
-    rgb(var(--liturgy-200) / 0) 70vh);
+    rgb(var(--app-wash-tint) / var(--app-wash-top)),
+    rgb(var(--app-wash-tint) / 0.10) 30vh,
+    rgb(var(--app-wash-tint) / 0) 70vh);
 
   --radius: 0.625rem;
   --background: 0 0% 100%;
@@ -421,10 +428,12 @@ html[data-theme="rosa"] {
 .dark {
   --app-bg: 18 18 18;
   --surface-bg: 27 27 30;
+  --app-wash-tint: var(--liturgy-900);
+  --app-wash-top: 0.25;
   --app-wash: linear-gradient(to bottom,
-    rgb(var(--liturgy-900) / 0.25),
-    rgb(var(--liturgy-900) / 0.08) 30vh,
-    rgb(var(--liturgy-900) / 0) 70vh);
+    rgb(var(--app-wash-tint) / var(--app-wash-top)),
+    rgb(var(--app-wash-tint) / 0.08) 30vh,
+    rgb(var(--app-wash-tint) / 0) 70vh);
 
   --background: 0 0% 7%;
   --foreground: 0 0% 97%;

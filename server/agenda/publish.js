@@ -17,7 +17,7 @@
 // the app already reads.
 //
 // One event per day, keyed on the date, because that is the unit the app
-// actually asks for: colouring today costs one ~700-byte event instead of
+// actually asks for: colouring today costs one ~1.5KB event instead of
 // pulling down the 366KB year the proxies used to serve for the same answer.
 //
 // Signs with PALAVRA_NSEC — the same identity that signs the daily puzzle,
@@ -252,7 +252,10 @@ export async function buildEntries(ics, theme, themeMonth) {
     for (const [date, info] of days) {
         entries.push({
             dTag: dayDTag(date),
-            // Exactly the shape the app renders, so it only has to JSON.parse.
+            // Exactly the shape the app renders — the prose and the sections
+            // parsed out of it — so the app only has to JSON.parse. Adding a
+            // field changes every day's content hash, which is what makes the
+            // next run republish the year without being asked to.
             content: JSON.stringify(info),
             tags: [['date', date]],
             date,

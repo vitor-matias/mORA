@@ -14,10 +14,9 @@ import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
-import { stripReadingLines } from "@/lib/dayInfo";
 
 export default function Home() {
-    const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
+    const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalSections, liturgicalColorDate } = useAppStore();
     const { profile, setProfile } = useAuthStore();
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
@@ -59,11 +58,8 @@ export default function Home() {
     // hasn't succeeded yet — only show it when it belongs to today.
     const infoIsToday = liturgicalColorDate === formatISODate(new Date());
     const todayDayName = infoIsToday ? liturgicalDayName : null;
-    // Without the readings list: this card says what day it is, and the
-    // references belong on the Missa page where they're actually read.
-    const todayDescription = infoIsToday && liturgicalDescription
-        ? stripReadingLines(liturgicalDescription)
-        : null;
+    const todayDescription = infoIsToday ? liturgicalDescription : null;
+    const todaySections = infoIsToday ? liturgicalSections : null;
 
     // The Palavra row carries its own state, the way the prayer rows carry
     // today's mystery and the current Hour — a daily game nobody is reminded
@@ -156,7 +152,17 @@ export default function Home() {
                 <h2 className="text-lg font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100 line-clamp-2">
                     {todayDayName || 'A liturgia de hoje'}
                 </h2>
-                {todayDescription && <DayDescription text={todayDescription} className="mt-2" />}
+                {/* hideReadings: this card says what day it is, and the
+                    references belong on the Missa page where they're read. */}
+                {todayDescription && (
+                    <DayDescription
+                        text={todayDescription}
+                        sections={todaySections}
+                        color={infoIsToday ? liturgicalColor : undefined}
+                        hideReadings
+                        className="mt-2"
+                    />
+                )}
                 {/* Full-width footer CTA — since the color label moved into
                     the title dot, a lone right-aligned pill floated oddly. */}
                 <Link

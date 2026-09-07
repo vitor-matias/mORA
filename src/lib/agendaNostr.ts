@@ -13,7 +13,8 @@
 import { pool } from '@/lib/pool';
 import { RELAY_QUERY_TIMEOUT_MS } from '@/lib/nostr';
 import { PUBLISHER_PUBKEY } from '@/lib/publisher';
-import type { LiturgicalColor, LiturgicalDayInfo } from '@/lib/icsCalendar';
+import { parseDaySections } from '@/lib/icsCalendar';
+import type { DaySection, LiturgicalColor, LiturgicalDayInfo } from '@/lib/icsCalendar';
 
 /** NIP-78 application data, addressable — one event per day. */
 const KIND_AGENDA = 30078;
@@ -27,6 +28,91 @@ const AGENDA_PUBLISHER = PUBLISHER_PUBKEY;
 const dayDTag = (date: string) => `mora-agenda:${date}`;
 const themeDTag = (month: string) => `mora-vatican-theme:${month}`;
 
+const SECTION_KINDS = ['celebration', 'office', 'mass', 'readings', 'notes', 'text'];
+
+/**
+ * Blank is not content.
+ *
+ * This matters more than a type check: `description` is only rendered when
+ * the sections beside it are rejected, so a section that passes validation
+ * and *then* renders as nothing takes the day down with it. One
+ * `{ kind: 'mass', text: '' }` off a relay was enough to blank a day whose
+ * prose was perfectly good.
+ */
+const isFilled = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
+
+const isStringList = (value: unknown): value is string[] =>
+    Array.isArray(value) && value.length > 0 && value.every(isFilled);
+
+/**
+ * One section, or null if it is not one. Every field the renderer reads is
+ * checked here, because a section that is half a section would reach the
+ * screen as a blank row rather than as the absent day it really is.
+ */
+function asSection(value: unknown): DaySection | null {
+    if (!value || typeof value !== 'object') return null;
+    const s = value as Record<string, unknown>;
+    if (typeof s.kind !== 'string' || !SECTION_KINDS.includes(s.kind)) return null;
+
+    if (s.kind === 'notes') return isStringList(s.items) ? { kind: 'notes', items: s.items } : null;
+    if (s.kind === 'readings') {
+        if (!Array.isArray(s.items) || s.items.length === 0) return null;
+        const items: { label?: string; ref: string }[] = [];
+        for (const item of s.items) {
+            if (!item || typeof item !== 'object') return null;
+            const { label, ref } = item as Record<string, unknown>;
+            if (!isFilled(ref)) return null;
+            if (label !== undefined && typeof label !== 'string') return null;
+            // A blank label is an absent one — that is the "ou …" line that
+            // continues the reading above it.
+            items.push(isFilled(label) ? { label, ref } : { ref });
+        }
+        return { kind: 'readings', items };
+    }
+
+    if (typeof s.text !== 'string') return null;
+
+    // A celebration may be a rank with no title of its own (Easter's
+    // "SOLENIDADE com oitava", under the day name), and an office may be a
+    // colour with no office text (a vigil's "Vermelho."). Either half will
+    // do; neither is not a section.
+    if (s.kind === 'celebration') {
+        if (s.rank !== undefined && typeof s.rank !== 'string') return null;
+        if (!isFilled(s.text) && !isFilled(s.rank)) return null;
+        return s.rank === undefined
+            ? { kind: 'celebration', text: s.text }
+            : { kind: 'celebration', text: s.text, rank: s.rank };
+    }
+    if (s.kind === 'office') {
+        if (s.colors !== undefined && typeof s.colors !== 'string') return null;
+        if (!isFilled(s.text) && !isFilled(s.colors)) return null;
+        return s.colors === undefined
+            ? { kind: 'office', text: s.text }
+            : { kind: 'office', text: s.text, colors: s.colors };
+    }
+    if (!isFilled(s.text)) return null;
+    return { kind: s.kind as 'mass' | 'text', text: s.text };
+}
+
+/**
+ * The classified description, or undefined so the caller parses it itself.
+ *
+ * Undefined rather than null on anything doubtful: `description` is published
+ * beside the sections and the same parser that produced them reads it, so a
+ * day whose sections don't survive this check still renders — it costs a
+ * parse, not the day. Dropping the day over its formatting would be worse.
+ */
+function asSections(value: unknown): DaySection[] | undefined {
+    if (!Array.isArray(value) || value.length === 0) return undefined;
+    const sections: DaySection[] = [];
+    for (const raw of value) {
+        const section = asSection(raw);
+        if (!section) return undefined;
+        sections.push(section);
+    }
+    return sections;
+}
+
 /** Relays hand back whatever they like; only a well-formed day is a day. */
 function asDayInfo(content: string): LiturgicalDayInfo | null {
     try {
@@ -34,7 +120,16 @@ function asDayInfo(content: string): LiturgicalDayInfo | null {
         if (!parsed || typeof parsed !== 'object') return null;
         if (!COLORS.includes(parsed.color as LiturgicalColor)) return null;
         if (typeof parsed.dayName !== 'string' || typeof parsed.description !== 'string') return null;
-        return { color: parsed.color as LiturgicalColor, dayName: parsed.dayName, description: parsed.description };
+        return {
+            color: parsed.color as LiturgicalColor,
+            dayName: parsed.dayName,
+            description: parsed.description,
+            // Events published before sections existed carry none. They are
+            // addressable, so they are replaced on the publisher's next run;
+            // until then the app parses them the same way the publisher will,
+            // rather than keeping a second way of reading a day around.
+            sections: asSections(parsed.sections) ?? parseDaySections(parsed.description),
+        };
     } catch {
         return null;
     }

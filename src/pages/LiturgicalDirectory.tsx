@@ -7,7 +7,7 @@ import type { LiturgicalDayInfo } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useAppStore } from "@/store/app";
 import { COLOR_DOTS } from "@/lib/dayInfo";
-import { LiturgicalColorDot } from "@/components/DayInfo";
+import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 
 const WEEKDAYS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']; // Monday-first, pt-PT
 
@@ -206,9 +206,12 @@ export default function LiturgicalDirectory() {
                             {selectedInfo.dayName}
                         </h2>
                         {selectedInfo.description && (
-                            <p className="mt-2 text-sm text-liturgy-800/80 dark:text-liturgy-200/70 whitespace-pre-line">
-                                {selectedInfo.description}
-                            </p>
+                            <DayDescription
+                                text={selectedInfo.description}
+                                sections={selectedInfo.sections}
+                                color={selectedInfo.color}
+                                className="mt-2"
+                            />
                         )}
                     </>
                 ) : calendar ? (
