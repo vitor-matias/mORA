@@ -52,16 +52,14 @@ const TOPIC = 'moraagenda';
 const RELAY_TIMEOUT_MS = 15_000;
 
 /**
- * How many events one run will send.
+ * Sent in batches this size, with a breath between them: a year is 365
+ * events, and firing them all at eight relays at once is how a publisher gets
+ * dropped. Politeness, not a limit — a run publishes everything missing.
  *
- * A year is 365 events, and firing all of them at eight relays at once is
- * how a publisher gets rate-limited or dropped. Steady state is zero or one
- * a day anyway; a cold start just fills itself in over a few runs, oldest
- * first, and the job runs daily.
+ * Capping a run instead was a mistake worth remembering: it left the calendar
+ * incomplete for days, and did not even buy what it was for, since the relays
+ * that rate-limit did so within the cap anyway.
  */
-const DEFAULT_MAX_PER_RUN = 150;
-
-/** Sent in batches this size, with a breath between them, for the same reason. */
 const BATCH_SIZE = 10;
 const BATCH_PAUSE_MS = 400;
 
@@ -77,6 +75,7 @@ const ITALIAN_MONTHS = [
 ];
 
 const hashOf = (text) => bytesToHex(sha256(utf8ToBytes(text)));
+const today = () => new Date().toISOString().slice(0, 10);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -250,12 +249,13 @@ export async function buildEntries(ics, theme, themeMonth) {
     const entries = [];
 
     const days = parseIcsToDays(ics);
-    for (const [date, info] of [...days].sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [date, info] of days) {
         entries.push({
             dTag: dayDTag(date),
             // Exactly the shape the app renders, so it only has to JSON.parse.
             content: JSON.stringify(info),
             tags: [['date', date]],
+            date,
         });
     }
 
@@ -264,6 +264,8 @@ export async function buildEntries(ics, theme, themeMonth) {
             dTag: themeDTag(themeMonth),
             content: JSON.stringify(theme),
             tags: [['month', themeMonth]],
+            // Sorts with today: it is this month's theme, wanted now.
+            date: today(),
         });
     }
 
@@ -273,9 +275,12 @@ export async function buildEntries(ics, theme, themeMonth) {
 async function main() {
     const dryRun = process.argv.includes('--dry-run');
     const force = process.argv.includes('--force');
+    // A run publishes everything that is missing. --max is an escape hatch
+    // for publishing by hand against a relay that is struggling, not
+    // something the scheduled job uses.
     const maxIndex = process.argv.indexOf('--max');
-    const maxPerRun = maxIndex === -1 ? DEFAULT_MAX_PER_RUN : Number(process.argv[maxIndex + 1]);
-    if (!Number.isFinite(maxPerRun) || maxPerRun < 1) {
+    const maxPerRun = maxIndex === -1 ? Infinity : Number(process.argv[maxIndex + 1]);
+    if (!(maxPerRun > 0)) {
         console.error('--max needs a positive number.');
         process.exit(1);
     }
@@ -329,12 +334,26 @@ async function main() {
         return;
     }
 
-    // Oldest first, so a cold start fills the year in reading order and the
-    // days people are most likely to open land in the first run.
-    const batch = stale.slice(0, maxPerRun);
+    // Today first, then forward, then back into the past.
+    //
+    // The order only shows when a run cannot finish — a relay refusing
+    // events, a job cancelled — but that is exactly when it matters: the home
+    // screen and the Mass ask for today, and the directory for the month
+    // around it. Publishing by date instead put a cold start's whole first
+    // run into January and left today missing, which is precisely how this
+    // went wrong the first time it ran for real.
+    const todayStr = today();
+    const ordered = [...stale].sort((a, b) => {
+        const aAhead = a.date >= todayStr;
+        const bAhead = b.date >= todayStr;
+        if (aAhead !== bAhead) return aAhead ? -1 : 1;
+        // Ahead: soonest first. Behind: most recent first.
+        return aAhead ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date);
+    });
+    const batch = ordered.slice(0, maxPerRun);
     console.log(
-        `${stale.length} entr${stale.length === 1 ? 'y' : 'ies'} changed`
-        + `${stale.length > batch.length ? `, publishing ${batch.length} this run` : ''}`
+        `${stale.length} entr${stale.length === 1 ? 'y' : 'ies'} to publish`
+        + `${stale.length > batch.length ? `, capped at ${batch.length} this run` : ''}`
         + `${dryRun ? ' (dry run, sending nothing)' : ''}`,
     );
 

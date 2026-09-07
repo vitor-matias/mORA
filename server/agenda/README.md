@@ -41,10 +41,14 @@ says.
 
 Each event carries a `hash` tag of its content. A run reads back what the
 relays already hold and publishes only what differs, so a normal day
-publishes **nothing**. Runs are capped (`--max`, default 150) and sent in
-small batches: a year is 365 events, and firing those at eight relays at once
-is how a publisher gets rate-limited. A cold start fills itself in over a few
-daily runs, oldest first.
+publishes **nothing**. A run publishes everything that is missing — a full
+year takes about twenty seconds — sent in small batches with a pause between
+them, since firing 365 events at eight relays at once is how a publisher gets
+dropped.
+
+Entries go out today first, then forward, then back into the past. That only
+shows when a run cannot finish, which is exactly when it matters: the home
+screen and the Mass ask for today, and the directory for the month around it.
 
 ## Deploy
 
@@ -56,7 +60,7 @@ signed them, so a key of its own would buy nothing but a second secret to set
 up and rotate, and a second pubkey to forget.
 
 Just run it once: Actions → "Publish Liturgical Calendar" → Run workflow. The
-first run publishes 150 days; the next daily runs fill in the rest.
+run publishes the whole year.
 
 If the key ever needs replacing, `server/palavra/keygen.js` generates the pair
 and both feeds move together.
