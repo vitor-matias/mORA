@@ -5,20 +5,23 @@ import { useAuthStore } from '@/store/auth';
 // Relays are shared infrastructure and neither payload changes faster than a
 // prayer takes — one pull a minute per device is plenty.
 const MIN_INTERVAL_MS = 60_000;
-// A settings edit is often one of several (the reading face, then the rosary
-// mode), so let the burst settle before publishing.
-const SETTINGS_DEBOUNCE_MS = 2_000;
+// A change here is often one of several — the reading face, then the rosary
+// mode; three prayers starred in a row — so let the burst settle before
+// publishing.
+const PUBLISH_DEBOUNCE_MS = 2_000;
 
 let lastSyncAt = 0;
 
 /**
  * Keeps this device in step with the others signed in under the same Nostr
- * identity: streaks (merged), the Palavra play log (merged), the
- * reader-level settings (last edit wins), and the cached profile (name,
- * avatar — always overwritten with whatever the relays currently have).
+ * identity: streaks (merged), the Palavra play log (merged), the starred
+ * prayers and hymns (merged entry by entry), the reader-level settings (last
+ * edit wins), and the cached profile (name, avatar — always overwritten with
+ * whatever the relays currently have).
  * Runs on app start, on sign-in, when the app returns to the foreground, and —
- * for settings — shortly after any local change. Screen-level preferences
- * (theme, text size, scroll speed) stay on the device that set them.
+ * for the settings and the favourites — shortly after any local change.
+ * Screen-level preferences (theme, text size, scroll speed) stay on the device
+ * that set them.
  */
 export function useNostrSync() {
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
@@ -30,7 +33,7 @@ export function useNostrSync() {
         // decrypt anything. Prayers still count locally; syncing resumes on
         // unlock, which re-runs this effect.
         //
-        // `shareStreaks` is not part of this guard: it governs the four syncs
+        // `shareStreaks` is not part of this guard: it governs the five syncs
         // below, not the public Palavra result, which has its own opt-in.
         if (!pubkey || isLocked) return;
 
@@ -39,9 +42,9 @@ export function useNostrSync() {
             if (!force && now - lastSyncAt < MIN_INTERVAL_MS) return;
             lastSyncAt = now;
             try {
-                const [{ syncStreaksWithNostr, syncSettingsWithNostr, fetchNostrProfile }, { syncPalavraWithNostr, publishMissingResults }] =
+                const [{ syncStreaksWithNostr, syncSettingsWithNostr, syncFavouritesWithNostr, fetchNostrProfile }, { syncPalavraWithNostr, publishMissingResults }] =
                     await Promise.all([import('@/lib/nostr'), import('@/lib/palavra/nostr')]);
-                // allSettled, not all: the four are independent, and a relay
+                // allSettled, not all: the five are independent, and a relay
                 // that fails one shouldn't abandon the others — nor release
                 // the throttle below and have every foreground retry all of
                 // them because one is consistently unhappy.
@@ -49,6 +52,7 @@ export function useNostrSync() {
                     ? [
                         ['streaks', syncStreaksWithNostr()],
                         ['settings', syncSettingsWithNostr()],
+                        ['favourites', syncFavouritesWithNostr()],
                         ['palavra', syncPalavraWithNostr()],
                         // Keeps the cached profile (name, avatar) from going
                         // stale when it's edited from another client — the
@@ -96,31 +100,50 @@ export function useNostrSync() {
         };
         document.addEventListener('visibilitychange', onVisibilityChange);
 
-        // Publish settings shortly after they change here, so the other
-        // devices see the edit without waiting for their next foreground.
-        let seenUpdatedAt = useAppStore.getState().settingsUpdatedAt;
-        let debounce: number | undefined;
-        const unsubscribe = useAppStore.subscribe((state) => {
-            if (state.settingsUpdatedAt === seenUpdatedAt) return;
-            seenUpdatedAt = state.settingsUpdatedAt;
-            // A pull that wins also moves settingsUpdatedAt. Publishing that
-            // back would put the same snapshot on the relays again on every
-            // foreground where the other device is ahead.
-            if (state.settingsFromRemote) return;
-            window.clearTimeout(debounce);
-            debounce = window.setTimeout(async () => {
+        // Publish what changes here shortly after it does, so the other
+        // devices see it without waiting for their next foreground. One timer
+        // per payload: starring a prayer while a settings publish is pending
+        // must not push the settings publish out (or cancel it).
+        const timers = new Map<'settings' | 'favourites', number>();
+        const publishSoon = (what: 'settings' | 'favourites') => {
+            window.clearTimeout(timers.get(what));
+            timers.set(what, window.setTimeout(async () => {
                 try {
-                    const { publishSettingsToNostr } = await import('@/lib/nostr');
-                    await publishSettingsToNostr();
+                    const nostr = await import('@/lib/nostr');
+                    await (what === 'settings'
+                        ? nostr.publishSettingsToNostr()
+                        : nostr.publishFavouritesToNostr());
                 } catch (error) {
-                    console.warn('Settings publish skipped:', error);
+                    console.warn(`${what} publish skipped:`, error);
                 }
-            }, SETTINGS_DEBOUNCE_MS);
+            }, PUBLISH_DEBOUNCE_MS));
+        };
+
+        const store = useAppStore.getState();
+        let seenUpdatedAt = store.settingsUpdatedAt;
+        let seenPrayers = store.prayerFavourites;
+        let seenChants = store.chantFavourites;
+        const unsubscribe = useAppStore.subscribe((state) => {
+            if (state.settingsUpdatedAt !== seenUpdatedAt) {
+                seenUpdatedAt = state.settingsUpdatedAt;
+                // A pull that wins also moves settingsUpdatedAt. Publishing
+                // that back would put the same snapshot on the relays again on
+                // every foreground where the other device is ahead.
+                if (!state.settingsFromRemote) publishSoon('settings');
+            }
+            // The logs are replaced wholesale on every toggle, so identity is
+            // the change — and a merge that pulled another device's stars in
+            // is not one this device has to send back.
+            if (state.prayerFavourites !== seenPrayers || state.chantFavourites !== seenChants) {
+                seenPrayers = state.prayerFavourites;
+                seenChants = state.chantFavourites;
+                if (!state.favouritesFromRemote) publishSoon('favourites');
+            }
         });
 
         return () => {
             document.removeEventListener('visibilitychange', onVisibilityChange);
-            window.clearTimeout(debounce);
+            timers.forEach((timer) => window.clearTimeout(timer));
             unsubscribe();
         };
     }, [pubkey, shareStreaks, isLocked]);

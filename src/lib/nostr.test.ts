@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { toProfileCard } from './nostr';
+import { starredIds, useAppStore } from '@/store/app';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -109,9 +110,21 @@ vi.mock('@/store/auth', () => ({
 }));
 // Stubbed where the signer is actually built: `getSigner` reads the login type
 // and hands the work to NUser, so this is the seam, not '@/lib/signer'.
+// Snapshots are NIP-44 encrypted to self before they leave the device, so the
+// signer has to offer it — stubbed as a visible prefix, which keeps what was
+// actually published readable in the assertions below.
+const SEALED = 'nip44:';
 vi.mock('@nostrify/react/login', () => ({
     NUser: {
-        fromNsecLogin: () => ({ signer: { signEvent: (t: unknown) => signEvent(t) } }),
+        fromNsecLogin: () => ({
+            signer: {
+                signEvent: (t: unknown) => signEvent(t),
+                nip44: {
+                    encrypt: async (_pubkey: string, plaintext: string) => SEALED + plaintext,
+                    decrypt: async (_pubkey: string, ciphertext: string) => ciphertext.slice(SEALED.length),
+                },
+            },
+        }),
     },
 }));
 
@@ -230,5 +243,120 @@ describe('publishNostrProfile', () => {
         await publishNostrProfile({ name: 'V' });
 
         expect(signedContent().lud16).toBe('new@x');
+    });
+});
+
+
+const D_FAVOURITES = 'mora-app-favourites';
+const NOW = Date.now();
+const DAY = 24 * 60 * 60 * 1000;
+
+/** The favourites snapshot the relays are holding for this identity. */
+function heldFavourites(payload: unknown) {
+    relayQuery.mockResolvedValue([{
+        id: 'f', pubkey: ME, kind: 30078, created_at: 1000,
+        tags: [['d', D_FAVOURITES]],
+        content: SEALED + JSON.stringify(payload), sig: 's',
+    }]);
+}
+
+/** The payload of the snapshot this device published, unsealed. */
+function publishedFavourites() {
+    const { content } = signEvent.mock.calls.at(-1)![0] as { content: string };
+    return JSON.parse(content.slice(SEALED.length)) as {
+        prayers: Record<string, { at: number; on: boolean }>;
+        chants: Record<string, { at: number; on: boolean }>;
+    };
+}
+
+describe('syncFavouritesWithNostr', () => {
+    beforeEach(() => {
+        relayQuery.mockReset().mockResolvedValue([]);
+        relayPublish.mockReset().mockResolvedValue(undefined);
+        signEvent.mockReset().mockImplementation(async (t: { content: string }) =>
+            ({ ...t, id: 'signed', pubkey: ME, sig: 'sig' }));
+        useAppStore.setState({
+            shareStreaks: true,
+            prayerFavourites: {},
+            chantFavourites: {},
+            favouritesFromRemote: false,
+        });
+    });
+
+    // The whole point of merging rather than letting one side win: an
+    // afternoon's starring on the phone must not delete the laptop's.
+    it('keeps both devices\' stars, and publishes the union back', async () => {
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - DAY, on: true } } });
+        heldFavourites({
+            prayers: { magnificat: { at: NOW - 2 * DAY, on: true } },
+            chants: { 'adeste-fideles': { at: NOW - DAY, on: true } },
+        });
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        const state = useAppStore.getState();
+        expect(starredIds(state.prayerFavourites)).toEqual(['angelus', 'magnificat']);
+        expect(starredIds(state.chantFavourites)).toEqual(['adeste-fideles']);
+        // Adopted from the relays, so the sync hook must not publish it again.
+        expect(state.favouritesFromRemote).toBe(true);
+        expect(starredIds(publishedFavourites().prayers)).toEqual(['angelus', 'magnificat']);
+    });
+
+    it('lets an unstar made on another device remove the star here', async () => {
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - 2 * DAY, on: true } } });
+        heldFavourites({ prayers: { angelus: { at: NOW - DAY, on: false } }, chants: {} });
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual([]);
+    });
+
+    // The tombstone has to travel, or the device that still holds the star
+    // would hand it straight back on its next sync.
+    it('publishes the unstar to relays that still show the star', async () => {
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - DAY, on: false } } });
+        heldFavourites({ prayers: { angelus: { at: NOW - 2 * DAY, on: true } }, chants: {} });
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(publishedFavourites().prayers.angelus).toEqual({ at: NOW - DAY, on: false });
+    });
+
+    it('writes nothing when the relays already hold what this device has', async () => {
+        const prayers = { angelus: { at: NOW - DAY, on: true } };
+        useAppStore.setState({ prayerFavourites: { ...prayers } });
+        heldFavourites({ prayers, chants: {} });
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(relayPublish).not.toHaveBeenCalled();
+    });
+
+    it('seeds the relays when this identity has never published favourites', async () => {
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - DAY, on: true } } });
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(starredIds(publishedFavourites().prayers)).toEqual(['angelus']);
+    });
+
+    // Syncing is opt-in: with the switch off, a shortlist never leaves the
+    // device and the relays are not even asked.
+    it('does nothing at all while cross-device sync is off', async () => {
+        useAppStore.setState({
+            shareStreaks: false,
+            prayerFavourites: { angelus: { at: NOW - DAY, on: true } },
+        });
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(relayQuery).not.toHaveBeenCalled();
+        expect(relayPublish).not.toHaveBeenCalled();
     });
 });

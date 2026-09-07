@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuthStore, localNsec, localPrivkeyHex } from "@/store/auth";
 import type { BunkerLogin } from "@/lib/signer";
-import { useAppStore, CONTENT_FONT_SCALE, SCROLL_LEVELS, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
+import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
 import { sharesResults, usePalavraStore } from "@/store/palavra";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Gauge, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
+import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import { QRCodeSVG } from "qrcode.react";
 import { fileToAvatarDataUrl } from "@/lib/image";
@@ -33,7 +33,7 @@ export default function Profile() {
     const nsec = useAuthStore(localNsec) ?? "";
     // The passkey vault predates the login record and speaks hex.
     const privkeyHex = useAuthStore(localPrivkeyHex);
-    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks, autoScrollSpeed, setAutoScrollSpeed } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
     const tPalavra = useTranslations().palavra;
     // Per identity: the toggle reflects and sets this pubkey's own choice,
     // so a second account on the same browser starts from its own answer.
@@ -544,33 +544,6 @@ export default function Profile() {
                         </div>
                     </div>
 
-                    {/* Auto-scroll Speed */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-3">
-                            <Gauge className="text-zinc-400" size={16} />
-                            <p className="text-sm font-medium">Velocidade do Auto-scroll</p>
-                        </div>
-                        {/* Seven levels now, so tighter than the other pickers
-                            to keep them on one row on a narrow phone. */}
-                        <div role="group" aria-label="Velocidade do Auto-scroll" className="flex gap-1">
-                            {SCROLL_LEVELS.map((level) => (
-                                <button
-                                    type="button"
-                                    key={level.label}
-                                    onClick={() => setAutoScrollSpeed(level.label)}
-                                    aria-pressed={autoScrollSpeed === level.label}
-                                    className={`flex-1 py-2 px-1.5 rounded-xl text-center transition-colors ${autoScrollSpeed === level.label
-                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
-                                        : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                                        }`}
-                                >
-                                    <span className="text-xs font-medium">{level.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                        <p className="text-xs text-zinc-500 mt-2">Velocidade da leitura automática na Missa e na Liturgia das Horas. Os botões +/− durante a leitura guardam-se aqui.</p>
-                    </div>
-
                     {/* Rosary Mode — segmented so both options are always visible */}
                     <div>
                         <p className="text-sm font-medium mb-3">{t.rosaryMode}</p>
@@ -920,15 +893,17 @@ export default function Profile() {
                         </div>
                     )}
 
-                    {/* Streak + settings sync — opt-in, encrypted before leaving the device.
-                        Only the reader-level preferences travel; the ones that answer to the
-                        screen (tema, tamanho do texto, velocidade) stay where they were set. */}
+                    {/* Streak + favourites + settings sync — opt-in, encrypted before leaving
+                        the device. Only the reader-level preferences travel; the ones that
+                        answer to the screen (tema, tamanho do texto, velocidade) stay where
+                        they were set. */}
                     <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
                             <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
                             <p className="text-xs text-zinc-500 mt-0.5">
-                                Guarda as suas sequências de oração e as preferências de leitura (tipo de letra, modo do terço)
-                                na rede, encriptadas — só os seus dispositivos as conseguem ler.
+                                Guarda as suas sequências de oração, as orações e cânticos favoritos e as
+                                preferências de leitura (tipo de letra, modo do terço)
+                                na rede, encriptados — só os seus dispositivos os conseguem ler.
                                 O tema, o tamanho do texto e a velocidade de leitura ficam neste dispositivo.
                                 O seu nome de perfil pode aparecer a outras pessoas na lista de quem rezou hoje.
                             </p>
