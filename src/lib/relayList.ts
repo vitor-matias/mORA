@@ -38,11 +38,31 @@ const MAX_RELAYS_PER_QUERY = 16;
 
 const cache = new Map<string, { relays: string[]; fetchedAt: number }>();
 
-/** Comparable form, so wss://Relay.example/ and wss://relay.example are one. */
-function normalizeRelayUrl(raw: string): string | null {
+/**
+ * Comparable form, so wss://Relay.example/ and wss://relay.example are one.
+ * Null for anything this app has no business dialling.
+ *
+ * `wss:` only. The app is served over HTTPS, and a browser will not open a
+ * plain `ws://` socket from an HTTPS page — it throws, before any connection
+ * is attempted, so there is nothing here to gain by keeping one in the set.
+ *
+ * There is quite a lot to lose. These URLs come out of other people's kind-
+ * 10002 lists, and people leave things in them: among the follows of one
+ * ordinary account, three advertised a `ws://` write relay, two of those on a
+ * private address left over from running a relay of their own — 127.0.0.1 and
+ * a 192.168 one. Those resolve on whichever machine reads the list, so
+ * dialling them points the reader's browser at the reader's own computer and
+ * home network rather than at anything the author meant to share.
+ *
+ * The local relay used while developing is unaffected: it arrives through
+ * VITE_NOSTR_RELAYS into RELAYS (see pool.ts) and never passes through here.
+ *
+ * Exported for the tests; everything else wants the two readers below.
+ */
+export function normalizeRelayUrl(raw: string): string | null {
     try {
         const url = new URL(raw);
-        if (url.protocol !== 'wss:' && url.protocol !== 'ws:') return null;
+        if (url.protocol !== 'wss:') return null;
         return `${url.protocol}//${url.host}${url.pathname.replace(/\/$/, '')}`;
     } catch {
         return null;
