@@ -115,32 +115,38 @@ export function Layout() {
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
 
-            // Status bar matches the top of the page — the day's wash over
-            // the page background, read from the stylesheet (with the .dark
-            // class we just toggled applied) rather than repeated here, so
-            // the bar can't drift from the page under it. It has to be
-            // recomputed whenever the day's colour changes, not only on a
-            // light/dark switch: browsing to another date repaints the page
-            // and the strip has to follow.
+            // Browser chrome matches the top of the page — the day's wash
+            // over the page background, read from the stylesheet (with the
+            // .dark class we just toggled applied) rather than repeated here,
+            // so it can't drift from the page under it. Recomputed whenever
+            // the day's colour changes, not only on a light/dark switch:
+            // browsing to another date repaints the page and the chrome
+            // should follow.
             //
-            // This is all the page can do for the bar, and on the installed
-            // Android app it is not enough: Chrome accepts this colour (its
-            // icon tint follows it) but on Android 15+ paints the bar through
-            // Window.setStatusBarColor, which the OS now ignores, so the strip
-            // shows whatever sits behind it — the manifest's light launch
-            // colour. Chrome's fix (WebAppShortEdgesCutoutMode) lets an
-            // installed app draw under the bar when the page opts in with
-            // viewport-fit=cover, which index.html does; until it ships,
-            // nothing written here moves that bar.
+            // This is for Safari's own tab tint and for Chrome on Android.
+            // It is not what colours the status bar of the app installed on
+            // iOS: that strip never read theme-color at all — iOS painted it
+            // from a sample of the page taken at launch and left it there,
+            // through day changes and this value tracking them exactly. The
+            // strip is now the page itself (apple-mobile-web-app-status-bar-
+            // style in index.html), which is the only way it follows.
+            //
+            // Android's installed app is the remaining gap: Chrome accepts
+            // this colour (its icon tint follows it) but on Android 15+ paints
+            // the bar through Window.setStatusBarColor, which the OS now
+            // ignores, so the strip shows whatever sits behind it — the
+            // manifest's light launch colour. Chrome's fix
+            // (WebAppShortEdgesCutoutMode) lets an installed app draw under
+            // the bar when the page opts in with viewport-fit=cover, which
+            // index.html does; until it ships, nothing written here moves
+            // that bar.
             const themeColor = pageTopColor(isDark);
-            // A fresh element each time, not a mutated one. A Home Screen web
-            // app on iOS reads theme-color when it launches and ignores a
-            // later change to the meta's content, so Claro/Escuro in Perfil,
-            // or the OS switching schemes, left the bar on the old colour
-            // until the next load. A newly inserted element is noticed. It
-            // goes in ahead of the old one, which is only then removed, so
-            // there is never a moment without a theme-color: the first in
-            // document order is the one that counts, and nothing falls back.
+            // A fresh element each time, not a mutated one: replacing the
+            // node is what reliably reaches whoever is watching for it, and
+            // it costs nothing. It goes in ahead of the old one, which is only
+            // then removed, so there is never a moment without a theme-color:
+            // the first in document order is the one that counts, and nothing
+            // falls back.
             const fresh = document.createElement('meta');
             fresh.setAttribute('name', 'theme-color');
             fresh.setAttribute('content', themeColor);
