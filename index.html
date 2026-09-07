@@ -7,14 +7,26 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <!-- viewport-fit=cover: the page draws under the system bars instead of
        being inset below them, and pads by env(safe-area-inset-*) to stay clear
-       of the clock, the gesture pill and any display cutout. This is the
-       opt-in the platforms want from the page: iOS already draws installed
-       apps edge-to-edge on it, and Chrome on Android is wiring the same for
-       installed web apps (WebAppShortEdgesCutoutMode) — until it ships, the
-       insets there are 0 and nothing changes. See the note above the
-       theme-color effect in Layout for why the status bar cannot be coloured
-       from the page alone on Android 15+. -->
+       of the clock, the gesture pill and any display cutout. Chrome on Android
+       is wiring the same for installed web apps (WebAppShortEdgesCutoutMode) —
+       until it ships, the insets there are 0 and nothing changes. See the note
+       above the theme-color effect in Layout for why the status bar cannot be
+       coloured from the page alone on Android 15+.
+
+       iOS needs the second opt-in below as well. Without it an installed app
+       is inset under the status bar, and iOS paints that strip itself from a
+       sample of the page taken at launch — and never again: browsing to
+       another day repainted the whole page and left the strip on the colour
+       the app had opened with, whatever theme-color said (iOS 26, in the
+       Simulator and on a phone). black-translucent hands the strip to the
+       page: it is the same wash as the rest of the screen, so it follows the
+       day by construction, env(safe-area-inset-top) becomes real and the
+       top padding everywhere finally does its job. The classic cost of this
+       value — white clock and icons whatever the page — is gone: iOS 26
+       picks the status bar's text colour from what is under it, black on the
+       light page and white on the dark one. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#FAF9F6" />
   <title>mORA</title>
   <script>
