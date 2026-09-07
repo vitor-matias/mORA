@@ -20,9 +20,10 @@
 // actually asks for: colouring today costs one ~700-byte event instead of
 // pulling down the 366KB year the proxies used to serve for the same answer.
 //
-// Needs AGENDA_NSEC — the publisher identity. Clients pin the matching pubkey
-// (VITE_AGENDA_PUBLISHER_PUBKEY) so nobody else's event can pose as the
-// calendar.
+// Signs with PALAVRA_NSEC — the same identity that signs the daily puzzle,
+// because one key signs everything mORA publishes. Clients pin the matching
+// pubkey (VITE_PALAVRA_PUBLISHER_PUBKEY) so nobody else's event can pose as
+// the calendar.
 
 import { pathToFileURL } from 'node:url';
 // The same relay list and the same parser the app uses, not copies of them: a
@@ -79,20 +80,17 @@ const hashOf = (text) => bytesToHex(sha256(utf8ToBytes(text)));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * The publisher identity.
+ * The publisher identity: the same key that signs Palavra.
  *
- * Falls back to the Palavra key, because reusing it is the sensible default
- * rather than a shortcut: both feeds are "mORA publishes something official",
- * one identity means one profile on the relays, and the events are told apart
- * by their `d` and `t` tags, never by who signed them. Setting AGENDA_NSEC
- * separates them again — worth doing only if you want to rotate one without
- * disturbing the other.
+ * One key signs everything mORA publishes. The feeds are told apart by their
+ * `d` and `t` tags, never by who signed them, so a key of its own would buy
+ * nothing but a second secret to set up, and a second pubkey for the app to
+ * pin — which, forgotten, would publish a calendar no client would read.
  */
 function loadSecretKey() {
-    const source = process.env.AGENDA_NSEC ? 'AGENDA_NSEC' : 'PALAVRA_NSEC';
-    const nsec = process.env.AGENDA_NSEC || process.env.PALAVRA_NSEC;
+    const nsec = process.env.PALAVRA_NSEC;
     if (!nsec) {
-        console.error('Neither AGENDA_NSEC nor PALAVRA_NSEC is set. Reuse the Palavra key, or run `npm run keygen`.');
+        console.error('PALAVRA_NSEC is not set. It is the same key that signs Palavra; see server/palavra.');
         process.exit(1);
     }
     let decoded;
@@ -101,14 +99,13 @@ function loadSecretKey() {
     } catch {
         // nip19.decode throws on anything that isn't valid bech32, and a typo
         // in a secret is the likeliest way to get here.
-        console.error(`${source} is not a valid nsec.`);
+        console.error('PALAVRA_NSEC is not a valid nsec.');
         process.exit(1);
     }
     if (decoded.type !== 'nsec') {
-        console.error(`${source} is not an nsec.`);
+        console.error('PALAVRA_NSEC is not an nsec.');
         process.exit(1);
     }
-    console.log(`Signing with ${source}`);
     return decoded.data;
 }
 
@@ -347,7 +344,7 @@ async function main() {
 }
 
 // Only when run directly: buildEntries is exported for the tests, and
-// unguarded top-level code would make merely importing it demand AGENDA_NSEC
+// unguarded top-level code would make merely importing it demand PALAVRA_NSEC
 // and then exit the process.
 // process.argv[1] is undefined under `node -e`, where pathToFileURL throws.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -21,28 +21,29 @@ const HEX64_RE = /^[0-9a-f]{64}$/i;
 const COLORS: LiturgicalColor[] = ['verde', 'roxo', 'vermelho', 'branco', 'rosa'];
 
 /**
- * Which key's calendar is *the* calendar.
+ * Which key's calendar is *the* calendar: the same identity that signs
+ * Palavra, because one key signs everything mORA publishes. The two feeds are
+ * told apart by their `d` and `t` tags, never by who signed them, so a second
+ * identity would buy nothing but a second secret to set up and rotate.
  *
- * Falls back to the Palavra publisher, because one identity signing both
- * feeds is the sensible default — the events are told apart by their `d` and
- * `t` tags, never by who signed them — and it means reusing that key needs no
- * second variable set anywhere. `VITE_AGENDA_PUBLISHER_PUBKEY` separates them
- * for anyone who publishes the calendar under its own key.
+ * Read from the environment here rather than imported from
+ * src/lib/palavra/api.ts, which exports the same pin: that module pulls in the
+ * game store and the puzzle logic behind it, and the liturgical colour is
+ * rendered by Layout on every page.
  */
-export function resolvePublisher(agenda: string | undefined, palavra: string | undefined): string {
-    const configured = (agenda?.trim() || palavra?.trim()) ?? '';
+export function resolvePublisher(configured: string | undefined): string {
+    const pubkey = configured?.trim() ?? '';
     // An npub or a truncated key is the easy mistake, and unchecked it fails
     // in the worst way: the pin never matches, so every day looks like
     // "nothing published" with nothing on screen to point at.
-    if (configured && !HEX64_RE.test(configured)) {
-        console.warn('The calendar publisher pubkey must be 64 hex characters, not an npub.');
+    if (pubkey && !HEX64_RE.test(pubkey)) {
+        console.warn('VITE_PALAVRA_PUBLISHER_PUBKEY must be 64 hex characters, not an npub.');
         return '';
     }
-    return configured.toLowerCase();
+    return pubkey.toLowerCase();
 }
 
 export const AGENDA_PUBLISHER = resolvePublisher(
-    import.meta.env.VITE_AGENDA_PUBLISHER_PUBKEY as string | undefined,
     import.meta.env.VITE_PALAVRA_PUBLISHER_PUBKEY as string | undefined,
 );
 

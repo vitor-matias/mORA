@@ -5,7 +5,6 @@
   "type": "module",
   "description": "Mirrors the Portuguese liturgical calendar onto Nostr, once a day. No server.",
   "scripts": {
-    "keygen": "node keygen.js",
     "publish-agenda": "node --experimental-strip-types publish.js",
     "dry-run": "node --experimental-strip-types publish.js --dry-run"
   },

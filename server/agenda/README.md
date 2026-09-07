@@ -48,48 +48,25 @@ daily runs, oldest first.
 
 ## Deploy
 
-**If Palavra is already publishing, there is nothing to set up.** The calendar
-signs with `PALAVRA_NSEC` and the app pins `VITE_PALAVRA_PUBLISHER_PUBKEY`,
-both of which already exist. Just run the workflow once: Actions → "Publish
-Liturgical Calendar" → Run workflow. The first run publishes 150 days; the
-next daily runs fill in the rest.
+**There is nothing to set up.** The calendar is signed by `PALAVRA_NSEC` and
+pinned by `VITE_PALAVRA_PUBLISHER_PUBKEY` — the same identity that signs the
+daily puzzle, both of which already exist. One key signs everything mORA
+publishes: the feeds are told apart by their `d` and `t` tags, never by who
+signed them, so a key of its own would buy nothing but a second secret to set
+up and rotate, and a second pubkey to forget.
 
-One identity signing both feeds is the sensible default rather than a
-shortcut: they are both "mORA publishes something official", it means one
-profile on the relays, and the events are told apart by their `d` and `t`
-tags, never by who signed them.
+Just run it once: Actions → "Publish Liturgical Calendar" → Run workflow. The
+first run publishes 150 days; the next daily runs fill in the rest.
 
-### Under its own key instead
-
-Worth doing only if you want to rotate the calendar without disturbing
-Palavra:
-
-1. **Generate the identity** (once):
-
-   ```bash
-   npm run keygen
-   ```
-
-2. **Set the secret**: `AGENDA_NSEC`, under Settings → Secrets and variables →
-   Actions → **Secrets**. It signs the calendar and must never reach the Pages
-   build.
-
-3. **Set the variable**: `VITE_AGENDA_PUBLISHER_PUBKEY` (the pubkey from step
-   1), under the same page → **Variables**. The app pins it, so a stranger's
-   event cannot pose as the calendar. This one *does* ship in the bundle, and
-   is meant to.
-
-Both take precedence over the Palavra pair when present. With neither key set
-the workflow fails loudly rather than publishing nothing quietly; with no
-pubkey pinned the app shows no liturgical colours or day names.
+If the key ever needs replacing, `server/palavra/keygen.js` generates the pair
+and both feeds move together.
 
 ## Locally
 
 ```bash
 npm install
-AGENDA_NSEC=nsec1... npm run dry-run    # works out what would go, sends nothing
-AGENDA_NSEC=nsec1... npm run publish-agenda
-# (or PALAVRA_NSEC=..., the same key the workflow falls back to)
+PALAVRA_NSEC=nsec1... npm run dry-run    # works out what would go, sends nothing
+PALAVRA_NSEC=nsec1... npm run publish-agenda
 ```
 
 `AGENDA_RELAYS` (comma-separated) overrides the relay list for pointing at a

@@ -11,7 +11,7 @@ const query = vi.fn();
 vi.mock('@/lib/pool', () => ({ pool: { query: (...args: unknown[]) => query(...args) } }));
 
 const PUBLISHER = 'a'.repeat(64);
-vi.stubEnv('VITE_AGENDA_PUBLISHER_PUBKEY', PUBLISHER);
+vi.stubEnv('VITE_PALAVRA_PUBLISHER_PUBKEY', PUBLISHER);
 
 const { fetchAgendaDays, fetchVaticanTheme, resolvePublisher } = await import('./agendaNostr');
 
@@ -31,27 +31,19 @@ const theme = (month: string, content: string) => event(`mora-vatican-theme:${mo
 beforeEach(() => query.mockReset());
 
 describe('resolvePublisher', () => {
-    const agenda = 'b'.repeat(64);
-    const palavra = 'c'.repeat(64);
-
-    it('reuses the Palavra identity when the calendar has no key of its own', () => {
-        // The default: one identity signs everything mORA publishes, so
-        // reusing that key needs no second variable set anywhere.
-        expect(resolvePublisher(undefined, palavra)).toBe(palavra);
-        expect(resolvePublisher('', palavra)).toBe(palavra);
-        expect(resolvePublisher('   ', palavra)).toBe(palavra);
-    });
-
-    it('prefers a calendar key when one is configured', () => {
-        expect(resolvePublisher(agenda, palavra)).toBe(agenda);
+    it('pins the configured key', () => {
+        const key = 'B'.repeat(64);
+        expect(resolvePublisher(key)).toBe(key.toLowerCase());
+        expect(resolvePublisher(`  ${key}  `)).toBe(key.toLowerCase());
     });
 
     it('refuses an npub rather than pinning something that can never match', () => {
-        expect(resolvePublisher('npub1abcdef', palavra)).toBe('');
+        expect(resolvePublisher('npub1abcdef')).toBe('');
     });
 
-    it('is empty when neither is set', () => {
-        expect(resolvePublisher(undefined, undefined)).toBe('');
+    it('is empty when nothing is configured', () => {
+        expect(resolvePublisher(undefined)).toBe('');
+        expect(resolvePublisher('')).toBe('');
     });
 });
 

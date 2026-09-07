@@ -64,7 +64,6 @@ jobs:
         run: npm run build
         env:
           VITE_PALAVRA_PUBLISHER_PUBKEY: ${{ vars.VITE_PALAVRA_PUBLISHER_PUBKEY }}
-          VITE_AGENDA_PUBLISHER_PUBKEY: ${{ vars.VITE_AGENDA_PUBLISHER_PUBKEY }}
           VITE_NOSTR_RELAYS: ${{ vars.VITE_NOSTR_RELAYS }}
           VITE_PUSH_SERVER_URL: ${{ vars.VITE_PUSH_SERVER_URL }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
