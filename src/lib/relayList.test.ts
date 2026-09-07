@@ -12,7 +12,11 @@ describe('normalizeRelayUrl', () => {
         expect(normalizeRelayUrl('wss://relay.example/nostr')).toBe('wss://relay.example/nostr');
     });
 
-    it('drops a query string and fragment, which a WebSocket URL may not carry', () => {
+    it('drops the query string and fragment, so one relay is never two entries', () => {
+        // Both go for the same reason the trailing slash does: this is the
+        // form relay URLs are compared and deduplicated in. A fragment is the
+        // one a WebSocket URL may not carry at all; a query string is legal
+        // and simply is not part of which relay this is.
         expect(normalizeRelayUrl('wss://relay.example/?x=1#y')).toBe('wss://relay.example');
     });
 
