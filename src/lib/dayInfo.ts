@@ -37,11 +37,20 @@ export function withoutReadings(sections: DaySection[]): DaySection[] {
     return sections.filter((section) => section.kind !== 'readings');
 }
 
-/** A section that would render as nothing: a colour-only office line, whose
-    colour the card already shows as a dot, or an empty title. */
+/**
+ * A section with nothing in it to render.
+ *
+ * A colour-only office line counts as filled: on seven days of 2026 it names
+ * the colour of an evening vigil, which differs from the day's own — 28 June
+ * keeps Ss. Pedro e Paulo in vermelho over a verde Sunday. Whether that
+ * colour is worth printing is the renderer's call (it isn't, when it only
+ * repeats the dot beside the date); dropping the section here took the
+ * decision away from it and lost the seven days that had something to say.
+ */
 export function isEmptySection(section: DaySection): boolean {
     if (section.kind === 'readings') return section.items.length === 0;
     if (section.kind === 'notes') return section.items.length === 0;
     if (section.kind === 'celebration') return !section.text && !section.rank;
+    if (section.kind === 'office') return !section.text && !section.colors;
     return !section.text;
 }

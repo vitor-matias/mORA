@@ -30,8 +30,19 @@ const themeDTag = (month: string) => `mora-vatican-theme:${month}`;
 
 const SECTION_KINDS = ['celebration', 'office', 'mass', 'readings', 'notes', 'text'];
 
+/**
+ * Blank is not content.
+ *
+ * This matters more than a type check: `description` is only rendered when
+ * the sections beside it are rejected, so a section that passes validation
+ * and *then* renders as nothing takes the day down with it. One
+ * `{ kind: 'mass', text: '' }` off a relay was enough to blank a day whose
+ * prose was perfectly good.
+ */
+const isFilled = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
+
 const isStringList = (value: unknown): value is string[] =>
-    Array.isArray(value) && value.length > 0 && value.every((item) => typeof item === 'string');
+    Array.isArray(value) && value.length > 0 && value.every(isFilled);
 
 /**
  * One section, or null if it is not one. Every field the renderer reads is
@@ -50,26 +61,36 @@ function asSection(value: unknown): DaySection | null {
         for (const item of s.items) {
             if (!item || typeof item !== 'object') return null;
             const { label, ref } = item as Record<string, unknown>;
-            if (typeof ref !== 'string') return null;
+            if (!isFilled(ref)) return null;
             if (label !== undefined && typeof label !== 'string') return null;
-            items.push(label === undefined ? { ref } : { label, ref });
+            // A blank label is an absent one — that is the "ou …" line that
+            // continues the reading above it.
+            items.push(isFilled(label) ? { label, ref } : { ref });
         }
         return { kind: 'readings', items };
     }
 
     if (typeof s.text !== 'string') return null;
+
+    // A celebration may be a rank with no title of its own (Easter's
+    // "SOLENIDADE com oitava", under the day name), and an office may be a
+    // colour with no office text (a vigil's "Vermelho."). Either half will
+    // do; neither is not a section.
     if (s.kind === 'celebration') {
         if (s.rank !== undefined && typeof s.rank !== 'string') return null;
+        if (!isFilled(s.text) && !isFilled(s.rank)) return null;
         return s.rank === undefined
             ? { kind: 'celebration', text: s.text }
             : { kind: 'celebration', text: s.text, rank: s.rank };
     }
     if (s.kind === 'office') {
         if (s.colors !== undefined && typeof s.colors !== 'string') return null;
+        if (!isFilled(s.text) && !isFilled(s.colors)) return null;
         return s.colors === undefined
             ? { kind: 'office', text: s.text }
             : { kind: 'office', text: s.text, colors: s.colors };
     }
+    if (!isFilled(s.text)) return null;
     return { kind: s.kind as 'mass' | 'text', text: s.text };
 }
 

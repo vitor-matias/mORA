@@ -58,6 +58,19 @@ describe('fetchAgendaDays', () => {
         expect((await fetchAgendaDays(['2026-05-14'])).get('2026-05-14')?.sections).toEqual(sections);
     });
 
+    it('keeps the halves of a section that stand on their own', async () => {
+        // A rank with no title of its own, and a vigil's colour with no
+        // office text: both are days the feed really writes that way.
+        const sections = [
+            { kind: 'celebration', text: '', rank: 'SOLENIDADE com oitava' },
+            { kind: 'office', text: '', colors: 'Vermelho' },
+        ];
+        query.mockResolvedValue([day('2026-04-05', JSON.stringify({
+            color: 'branco', dayName: 'Páscoa', description: 'Branco.', sections,
+        }))]);
+        expect((await fetchAgendaDays(['2026-04-05'])).get('2026-04-05')?.sections).toEqual(sections);
+    });
+
     it('falls back to the prose when the published sections are malformed', async () => {
         // The description is published beside them, and the same parser the
         // publisher ran reads it — so a day is never dropped, or blanked, over
@@ -72,6 +85,14 @@ describe('fetchAgendaDays', () => {
             [{ kind: 'readings', items: [{ label: 'L 1' }] }],
             [{ kind: 'notes', items: [{ not: 'a string' }] }],
             [{ kind: 'celebration', text: 'Dia', rank: 7 }],
+            // Blank content passes a type check and then renders as nothing,
+            // which would take the day's perfectly good prose down with it.
+            [{ kind: 'mass', text: '' }],
+            [{ kind: 'text', text: '   ' }],
+            [{ kind: 'notes', items: [''] }],
+            [{ kind: 'readings', items: [{ label: 'L 1', ref: '' }] }],
+            [{ kind: 'celebration', text: '' }],
+            [{ kind: 'office', text: '' }],
         ]) {
             query.mockResolvedValue([day2026(sections)]);
             const info = (await fetchAgendaDays(['2026-05-28'])).get('2026-05-28');

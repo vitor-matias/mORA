@@ -44,13 +44,20 @@ describe('withoutReadings', () => {
 });
 
 describe('isEmptySection', () => {
-    it('calls a colour-only office line empty', () => {
-        // Its colour is already on screen as the day's dot.
-        expect(isEmptySection({ kind: 'office', text: '', colors: 'Branco' })).toBe(true);
+    it('keeps a colour-only office line', () => {
+        // On seven days of 2026 it is a vigil's colour, and differs from the
+        // day's own — the renderer decides whether to print it, which it
+        // cannot do for a section dropped before it gets there.
+        expect(isEmptySection({ kind: 'office', text: '', colors: 'Vermelho' })).toBe(false);
+    });
+
+    it('calls an office line with neither colour nor text empty', () => {
+        expect(isEmptySection({ kind: 'office', text: '' })).toBe(true);
     });
 
     it('keeps a section with something to say', () => {
         expect(isEmptySection({ kind: 'office', text: 'Ofício da festa.', colors: 'Branco' })).toBe(false);
+        expect(isEmptySection({ kind: 'mass', text: '' })).toBe(true);
         expect(isEmptySection(celebration)).toBe(false);
         expect(isEmptySection(readings)).toBe(false);
     });
