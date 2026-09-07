@@ -203,6 +203,22 @@ export type FavouriteLog = Record<string, FavouriteEntry>;
 const MAX_FAVOURITE_ENTRIES = 500;
 const MAX_FAVOURITE_ID = 64;
 
+/** Keys that mean something to an object rather than naming a prayer.
+    Assigning `__proto__` on an object literal runs the inherited setter and
+    swaps that object's prototype instead of adding an entry — the entry then
+    isn't there, and the log is left a shape nothing expects. `constructor`
+    and `prototype` only shadow, but no catalogue id looks like any of the
+    three, so the honest answer to all of them is the same. */
+const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** Whether an id can be used as a key in a log. Ids reach here from a relay
+    snapshot and from persisted storage — neither is this code's own choice,
+    so both go through the same door. */
+function isUsableFavouriteId(id: unknown): id is string {
+    return typeof id === 'string' && id.length > 0
+        && id.length <= MAX_FAVOURITE_ID && !RESERVED_IDS.has(id);
+}
+
 /** The starred ids, newest first — what the Devocionário and the Cânticos
     render. Ties break on the id, so the order is stable rather than left to
     the order the object happened to be built in. */
@@ -228,8 +244,14 @@ export function toggleFavourite(log: FavouriteLog, id: string, now: number = Dat
 function capLog(log: FavouriteLog): FavouriteLog {
     const entries = Object.entries(log);
     if (entries.length <= MAX_FAVOURITE_ENTRIES) return log;
+    // Ties break on the id, as in starredIds. What survives a cap is
+    // published, so two devices holding the same entries in a different key
+    // order have to drop the same ones — otherwise each would keep restoring
+    // what the other had just cut.
     return Object.fromEntries(
-        entries.sort(([, a], [, b]) => b.at - a.at).slice(0, MAX_FAVOURITE_ENTRIES),
+        entries
+            .sort(([idA, a], [idB, b]) => (b.at - a.at) || (idA < idB ? -1 : 1))
+            .slice(0, MAX_FAVOURITE_ENTRIES),
     );
 }
 
@@ -241,7 +263,7 @@ export function sanitizeFavouriteLog(raw: unknown, now: number = Date.now()): Fa
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
     const log: FavouriteLog = {};
     for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
-        if (!id || id.length > MAX_FAVOURITE_ID) continue;
+        if (!isUsableFavouriteId(id)) continue;
         if (!value || typeof value !== 'object') continue;
         const { at, on } = value as FavouriteEntry;
         if (typeof on !== 'boolean') continue;
@@ -285,7 +307,7 @@ export function seedFavouriteLog(ids: unknown): FavouriteLog {
     if (!Array.isArray(ids)) return {};
     const log: FavouriteLog = {};
     ids.slice(0, MAX_FAVOURITE_ENTRIES).forEach((id, index) => {
-        if (typeof id === 'string' && id && id.length <= MAX_FAVOURITE_ID) {
+        if (isUsableFavouriteId(id)) {
             log[id] = { at: LEGACY_FAVOURITE_AT - index * 1000, on: true };
         }
     });

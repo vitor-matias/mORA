@@ -277,6 +277,42 @@ describe('sanitizeFavouriteLog', () => {
         expect(sanitizeFavouriteLog('angelus')).toEqual({});
     });
 
+    // A relay payload arrives through JSON.parse, which is the one way an own
+    // "__proto__" key gets onto an object. Assigning it back onto a log runs
+    // the inherited setter and swaps that log's prototype instead of adding
+    // the entry — the star silently isn't there, and the log is left a shape
+    // nothing downstream expects.
+    it('drops ids that would reshape the log rather than fill it', () => {
+        const raw = JSON.parse(`{
+            "__proto__": { "at": 1000, "on": true },
+            "constructor": { "at": 1000, "on": true },
+            "prototype": { "at": 1000, "on": true },
+            "angelus": { "at": 1000, "on": true }
+        }`);
+
+        const log = sanitizeFavouriteLog(raw, 2000);
+
+        expect(Object.keys(log)).toEqual(['angelus']);
+        expect(starredIds(log)).toEqual(['angelus']);
+        expect(Object.getPrototypeOf(log)).toBe(Object.prototype);
+    });
+
+    // What survives the cap is published, so two devices holding the same
+    // entries in a different key order have to drop the same ones — otherwise
+    // each keeps restoring what the other just cut.
+    it('drops the same entries whichever order the log was built in, when the times tie', () => {
+        const ids = Array.from({ length: 600 }, (_, i) => `p${String(i).padStart(3, '0')}`);
+        const tied = { at: at('2026-01-02T10:00:00Z'), on: true };
+        const entries = ids.map((id) => [id, tied] as const);
+        const now = at('2026-02-01T10:00:00Z');
+
+        const forward = Object.keys(sanitizeFavouriteLog(Object.fromEntries(entries), now));
+        const backward = Object.keys(sanitizeFavouriteLog(Object.fromEntries([...entries].reverse()), now));
+
+        expect(forward).toHaveLength(500);
+        expect([...forward].sort()).toEqual([...backward].sort());
+    });
+
     it('caps a log that could not have come from a catalogue of a few hundred prayers', () => {
         const huge = Object.fromEntries(
             Array.from({ length: 900 }, (_, i) => [`p${i}`, { at: at('2026-01-02T10:00:00Z') + i, on: true }]),
@@ -302,6 +338,13 @@ describe('seedFavouriteLog', () => {
         const seeded = seedFavouriteLog(['angelus']);
         const unstarredSince = { angelus: unstarred('2020-01-02T10:00:00Z') };
         expect(starredIds(mergeFavouriteLogs(seeded, unstarredSince))).toEqual([]);
+    });
+
+    it('skips the same reserved ids when seeding from persisted storage', () => {
+        const log = seedFavouriteLog(['__proto__', 'constructor', 'prototype', 'angelus']);
+
+        expect(starredIds(log)).toEqual(['angelus']);
+        expect(Object.getPrototypeOf(log)).toBe(Object.prototype);
     });
 
     it('has nothing to seed from a device that had never starred anything', () => {
