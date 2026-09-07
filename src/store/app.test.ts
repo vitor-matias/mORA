@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import {
+    favouriteLogsEqual,
     isCompleteSyncedSettings,
+    isStarred,
+    mergeFavouriteLogs,
     migrateScrollSpeed,
+    sanitizeFavouriteLog,
     sanitizeSyncedSettings,
     scrollLevelIndex,
     scrollSpeedAt,
+    seedFavouriteLog,
     settingsEqual,
+    starredIds,
+    toggleFavourite,
     useAppStore,
+    CLOCK_SKEW_TOLERANCE_MS,
     DEFAULT_SCROLL_SPEED,
     SCROLL_LEVELS,
+    type FavouriteLog,
     type SyncedSettings,
 } from './app.ts';
 
@@ -140,5 +149,184 @@ describe('autoScrollSpeed', () => {
         expect(useAppStore.getState().autoScrollSpeed).toBe('¼');
         useAppStore.getState().setAutoScrollSpeed('3');
         expect(useAppStore.getState().autoScrollSpeed).toBe('3');
+    });
+});
+
+
+// ── Favourites ───────────────────────────────────────────────────────────
+
+/** A log written the way the store writes one, with readable times. */
+const at = (iso: string) => Date.parse(iso);
+const starred = (iso: string) => ({ at: at(iso), on: true });
+const unstarred = (iso: string) => ({ at: at(iso), on: false });
+
+describe('starredIds', () => {
+    it('lists the starred ids newest first and leaves the tombstones out', () => {
+        expect(starredIds({
+            'salve-rainha': starred('2026-01-02T10:00:00Z'),
+            'angelus': unstarred('2026-01-03T10:00:00Z'),
+            'magnificat': starred('2026-01-04T10:00:00Z'),
+        })).toEqual(['magnificat', 'salve-rainha']);
+    });
+
+    it('breaks ties on the id, so the order never depends on how the log was built', () => {
+        const same = starred('2026-01-02T10:00:00Z');
+        expect(starredIds({ pai: same, ave: same, credo: same })).toEqual(['ave', 'credo', 'pai']);
+    });
+});
+
+describe('toggleFavourite', () => {
+    it('stars an id that was never starred, and unstars it again', () => {
+        const first = toggleFavourite({}, 'angelus', at('2026-01-02T10:00:00Z'));
+        expect(first).toEqual({ angelus: starred('2026-01-02T10:00:00Z') });
+        expect(isStarred(first, 'angelus')).toBe(true);
+
+        // The tombstone stays: it is what tells the other device the star was
+        // taken away rather than never having arrived.
+        const second = toggleFavourite(first, 'angelus', at('2026-01-03T10:00:00Z'));
+        expect(second).toEqual({ angelus: unstarred('2026-01-03T10:00:00Z') });
+        expect(isStarred(second, 'angelus')).toBe(false);
+    });
+
+    it('leaves the log it was given alone', () => {
+        const log: FavouriteLog = { angelus: starred('2026-01-02T10:00:00Z') };
+        toggleFavourite(log, 'angelus');
+        expect(log).toEqual({ angelus: starred('2026-01-02T10:00:00Z') });
+    });
+});
+
+describe('mergeFavouriteLogs', () => {
+    it('keeps what each device starred — neither list replaces the other', () => {
+        const phone = { angelus: starred('2026-01-02T10:00:00Z') };
+        const laptop = { magnificat: starred('2026-01-02T11:00:00Z') };
+        expect(starredIds(mergeFavouriteLogs(phone, laptop))).toEqual(['magnificat', 'angelus']);
+    });
+
+    it('lets a later unstar remove a star the other device still holds', () => {
+        const phone = { angelus: unstarred('2026-01-03T10:00:00Z') };
+        const laptop = { angelus: starred('2026-01-02T10:00:00Z') };
+        expect(starredIds(mergeFavouriteLogs(phone, laptop))).toEqual([]);
+        expect(starredIds(mergeFavouriteLogs(laptop, phone))).toEqual([]);
+    });
+
+    it('lets a later star bring back one the other device unstarred', () => {
+        const phone = { angelus: starred('2026-01-04T10:00:00Z') };
+        const laptop = { angelus: unstarred('2026-01-03T10:00:00Z') };
+        expect(starredIds(mergeFavouriteLogs(phone, laptop))).toEqual(['angelus']);
+    });
+
+    // A star that vanishes has to be noticed to be repaired; one that lingers
+    // is a single tap from gone.
+    it('keeps the star when the two toggles are stamped the same moment', () => {
+        const phone = { angelus: unstarred('2026-01-03T10:00:00Z') };
+        const laptop = { angelus: starred('2026-01-03T10:00:00Z') };
+        expect(starredIds(mergeFavouriteLogs(phone, laptop))).toEqual(['angelus']);
+        expect(starredIds(mergeFavouriteLogs(laptop, phone))).toEqual(['angelus']);
+    });
+
+    it('is idempotent, so a device that syncs twice publishes nothing the second time', () => {
+        const phone = { angelus: starred('2026-01-02T10:00:00Z') };
+        const laptop = { magnificat: starred('2026-01-02T11:00:00Z') };
+        const once = mergeFavouriteLogs(phone, laptop);
+        expect(favouriteLogsEqual(mergeFavouriteLogs(once, laptop), once)).toBe(true);
+    });
+});
+
+describe('favouriteLogsEqual', () => {
+    it('sees a differing entry, an extra one, and a missing one', () => {
+        const log = { angelus: starred('2026-01-02T10:00:00Z') };
+        expect(favouriteLogsEqual(log, { ...log })).toBe(true);
+        expect(favouriteLogsEqual(log, { angelus: unstarred('2026-01-02T10:00:00Z') })).toBe(false);
+        expect(favouriteLogsEqual(log, { angelus: starred('2026-01-03T10:00:00Z') })).toBe(false);
+        expect(favouriteLogsEqual(log, { ...log, credo: starred('2026-01-02T10:00:00Z') })).toBe(false);
+        expect(favouriteLogsEqual(log, {})).toBe(false);
+    });
+});
+
+describe('sanitizeFavouriteLog', () => {
+    it('keeps well-formed entries', () => {
+        const log = { angelus: starred('2026-01-02T10:00:00Z'), credo: unstarred('2026-01-03T10:00:00Z') };
+        expect(sanitizeFavouriteLog(log, at('2026-02-01T10:00:00Z'))).toEqual(log);
+    });
+
+    it('drops entries a relay could use to put the store in a state the UI cannot render', () => {
+        expect(sanitizeFavouriteLog({
+            good: starred('2026-01-02T10:00:00Z'),
+            missingFlag: { at: at('2026-01-02T10:00:00Z') },
+            missingTime: { on: true },
+            notAnEntry: 'yes',
+            infinite: { at: Infinity, on: true },
+            negative: { at: -1, on: true },
+        }, at('2026-02-01T10:00:00Z'))).toEqual({ good: starred('2026-01-02T10:00:00Z') });
+    });
+
+    // An entry stamped in the future would outrank every star and unstar made
+    // here afterwards, freezing that prayer's state for good.
+    it('refuses a timestamp beyond what a clock could plausibly be out by', () => {
+        const now = at('2026-02-01T10:00:00Z');
+        expect(sanitizeFavouriteLog({ soon: { at: now + CLOCK_SKEW_TOLERANCE_MS - 1, on: true } }, now))
+            .toEqual({ soon: { at: now + CLOCK_SKEW_TOLERANCE_MS - 1, on: true } });
+        expect(sanitizeFavouriteLog({ later: { at: now + CLOCK_SKEW_TOLERANCE_MS + 1, on: true } }, now))
+            .toEqual({});
+    });
+
+    it('treats anything that is not an object of entries as no snapshot at all', () => {
+        expect(sanitizeFavouriteLog(null)).toEqual({});
+        expect(sanitizeFavouriteLog(['angelus'])).toEqual({});
+        expect(sanitizeFavouriteLog('angelus')).toEqual({});
+    });
+
+    it('caps a log that could not have come from a catalogue of a few hundred prayers', () => {
+        const huge = Object.fromEntries(
+            Array.from({ length: 900 }, (_, i) => [`p${i}`, { at: at('2026-01-02T10:00:00Z') + i, on: true }]),
+        );
+        const kept = sanitizeFavouriteLog(huge, at('2026-02-01T10:00:00Z'));
+        expect(Object.keys(kept)).toHaveLength(500);
+        // The newest survive: p899 down to p400.
+        expect(kept.p899).toBeDefined();
+        expect(kept.p399).toBeUndefined();
+    });
+});
+
+describe('seedFavouriteLog', () => {
+    it('turns the pre-log array into stars, keeping its order', () => {
+        expect(starredIds(seedFavouriteLog(['magnificat', 'angelus', 'credo'])))
+            .toEqual(['magnificat', 'angelus', 'credo']);
+    });
+
+    // Two devices upgrading independently should end up holding both
+    // shortlists, so a seeded entry is never a tombstone and always loses to a
+    // real toggle made since.
+    it('stamps the seeds in the past, so any later toggle outranks them', () => {
+        const seeded = seedFavouriteLog(['angelus']);
+        const unstarredSince = { angelus: unstarred('2020-01-02T10:00:00Z') };
+        expect(starredIds(mergeFavouriteLogs(seeded, unstarredSince))).toEqual([]);
+    });
+
+    it('has nothing to seed from a device that had never starred anything', () => {
+        expect(seedFavouriteLog(undefined)).toEqual({});
+        expect(seedFavouriteLog([])).toEqual({});
+        expect(seedFavouriteLog(['', 42, 'angelus'])).toEqual({ angelus: expect.objectContaining({ on: true }) });
+    });
+});
+
+describe('favourites in the store', () => {
+    it('stars and unstars a prayer, and marks the change as this device\'s', () => {
+        useAppStore.getState().applyFavourites({}, {});
+        expect(useAppStore.getState().favouritesFromRemote).toBe(true);
+
+        useAppStore.getState().togglePrayerFavourite('angelus');
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual(['angelus']);
+        expect(useAppStore.getState().favouritesFromRemote).toBe(false);
+
+        useAppStore.getState().togglePrayerFavourite('angelus');
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual([]);
+    });
+
+    it('keeps the prayers and the hymns apart', () => {
+        useAppStore.getState().applyFavourites({}, {});
+        useAppStore.getState().toggleChantFavourite('adeste-fideles');
+        expect(starredIds(useAppStore.getState().chantFavourites)).toEqual(['adeste-fideles']);
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual([]);
     });
 });

@@ -920,15 +920,17 @@ export default function Profile() {
                         </div>
                     )}
 
-                    {/* Streak + settings sync — opt-in, encrypted before leaving the device.
-                        Only the reader-level preferences travel; the ones that answer to the
-                        screen (tema, tamanho do texto, velocidade) stay where they were set. */}
+                    {/* Streak + favourites + settings sync — opt-in, encrypted before leaving
+                        the device. Only the reader-level preferences travel; the ones that
+                        answer to the screen (tema, tamanho do texto, velocidade) stay where
+                        they were set. */}
                     <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
                             <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
                             <p className="text-xs text-zinc-500 mt-0.5">
-                                Guarda as suas sequências de oração e as preferências de leitura (tipo de letra, modo do terço)
-                                na rede, encriptadas — só os seus dispositivos as conseguem ler.
+                                Guarda as suas sequências de oração, as orações e cânticos favoritos e as
+                                preferências de leitura (tipo de letra, modo do terço)
+                                na rede, encriptados — só os seus dispositivos os conseguem ler.
                                 O tema, o tamanho do texto e a velocidade de leitura ficam neste dispositivo.
                                 O seu nome de perfil pode aparecer a outras pessoas na lista de quem rezou hoje.
                             </p>

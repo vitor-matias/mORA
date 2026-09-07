@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight, Share2, Link2 } from "lucide-react";
+import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight, Share2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PrayerText } from "@/components/PrayerText";
-import { useAppStore } from "@/store/app";
+import { starredIds, useAppStore } from "@/store/app";
 import {
     PRAYERS,
     PRAYER_CATEGORIES,
@@ -41,8 +41,11 @@ export default function Devocionario() {
     const [query, setQuery] = useState('');
     const [filter, setFilter] = useState<Filter>(null);
 
-    const favourites = useAppStore((s) => s.favouritePrayers);
+    const favouriteLog = useAppStore((s) => s.prayerFavourites);
     const toggleFavourite = useAppStore((s) => s.togglePrayerFavourite);
+    // The log is keyed by id and carries when each was starred; the list it
+    // is read as — newest first — is what everything below renders from.
+    const favourites = useMemo(() => starredIds(favouriteLog), [favouriteLog]);
 
     const results = useMemo(() => {
         if (filter !== FAVOURITES) return searchPrayers(query, filter);
@@ -235,54 +238,47 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
 }) {
     // The tick carries the prayer it was raised on, so opening another one
     // simply doesn't show it — no resetting anything as the prop changes.
-    const [done, setDone] = useState<{ prayerId: string; what: 'copied' | 'shared' } | null>(null);
-    const ticked = done?.prayerId === prayer.id ? done.what : null;
+    const [donePrayerId, setDonePrayerId] = useState<string | null>(null);
+    const ticked = donePrayerId === prayer.id;
 
-    // One timer for both buttons, cleared before it is set again: sharing
-    // right after copying must not have the older timer take the tick away
-    // from the newer one. It also routinely outlives the view — handing the
-    // prayer to another app is the last thing done here.
+    // Cleared before it is set again, and on the way out: handing the prayer
+    // to another app is routinely the last thing done in this view.
     const flashTimer = useRef<number | undefined>(undefined);
     useEffect(() => () => window.clearTimeout(flashTimer.current), []);
-    const flash = (what: 'copied' | 'shared') => {
-        setDone({ prayerId: prayer.id, what });
+    const flash = () => {
+        setDonePrayerId(prayer.id);
         window.clearTimeout(flashTimer.current);
-        flashTimer.current = window.setTimeout(() => setDone(null), 2000);
+        flashTimer.current = window.setTimeout(() => setDonePrayerId(null), 2000);
     };
 
     // Read once: the icon has to match what the button will actually do, and
     // `navigator.share` doesn't appear or vanish mid-session.
     const canShare = typeof navigator !== 'undefined' && Boolean(navigator.share);
 
-    const copy = async () => {
-        try {
-            // With the link under it: pasted text carries no field to hold one,
-            // and a prayer that lands in a chat with no way back to the book
-            // is where it stops.
-            await navigator.clipboard.writeText(prayerWithLink(prayer));
-            flash('copied');
-        } catch {
-            // Clipboard permission denied or unavailable — the text is on
-            // screen and selectable, so there is nothing to recover from.
-        }
-    };
-
     /**
-     * The system share sheet where there is one, the link on the clipboard
-     * where there isn't.
+     * Passing the prayer on: the system share sheet where there is one, the
+     * clipboard where there isn't.
      *
-     * A prayer is passed on more often than it is filed away — "send me that
-     * one" — and the sheet puts it in the chat it is asked for in, in one
-     * step. It carries the prayer itself as well as the link, so whoever
-     * receives it can pray it without installing anything; the link is there
-     * for when they want the rest of the book.
+     * One button, because both roads end in the same place. A prayer is passed
+     * on more often than it is filed away — "send me that one" — and the sheet
+     * puts it in the chat it was asked for in, in one step. Where there is no
+     * sheet (mostly desktop) the same thing goes on the clipboard, and pasting
+     * it into that chat is the one step more.
+     *
+     * Either way it carries the prayer itself *and* the link: whoever receives
+     * it can pray it without installing anything, and still has the way back
+     * to the rest of the book. Pasted text has no field to hold a link, so on
+     * the clipboard the link has to be part of the text.
      */
     const share = async () => {
-        const url = prayerUrl(prayer);
         if (canShare) {
             try {
-                await navigator.share({ title: prayer.title, text: prayerAsText(prayer), url });
-                flash('shared');
+                await navigator.share({
+                    title: prayer.title,
+                    text: prayerAsText(prayer),
+                    url: prayerUrl(prayer),
+                });
+                flash();
             } catch (error) {
                 // Dismissing the sheet rejects with AbortError. That is a
                 // decision, not a failure — and falling back to the clipboard
@@ -292,15 +288,12 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
             }
             return;
         }
-        // Mostly desktop. The whole prayer, link and all, is already the
-        // button next door — this one puts the bare link on the clipboard,
-        // for a chat that wants a pointer rather than forty lines of ladainha.
         try {
-            await navigator.clipboard.writeText(url);
-            flash('shared');
+            await navigator.clipboard.writeText(prayerWithLink(prayer));
+            flash();
         } catch {
-            // As with the copy above: nothing to recover from, and the link
-            // is in the address bar.
+            // Clipboard permission denied or unavailable — the text is on
+            // screen and selectable, so there is nothing to recover from.
         }
     };
 
@@ -316,25 +309,17 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                 <div className="flex items-center gap-1 shrink-0 -mt-1">
                     <button
                         type="button"
-                        onClick={copy}
-                        aria-label={ticked === 'copied' ? 'Oração copiada' : 'Copiar oração'}
-                        className="p-2 rounded-full text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                    >
-                        {ticked === 'copied' ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" /> : <Copy size={18} />}
-                    </button>
-                    <button
-                        type="button"
                         onClick={share}
                         /* Named for what it does on this device: a share sheet
-                           where there is one, a copied link where there isn't. */
-                        aria-label={ticked === 'shared'
-                            ? (canShare ? 'Oração partilhada' : 'Ligação copiada')
-                            : (canShare ? 'Partilhar oração' : 'Copiar ligação para a oração')}
+                           where there is one, a copy where there isn't. */
+                        aria-label={ticked
+                            ? (canShare ? 'Oração partilhada' : 'Oração copiada')
+                            : (canShare ? 'Partilhar oração' : 'Copiar oração')}
                         className="p-2 rounded-full text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
-                        {ticked === 'shared'
+                        {ticked
                             ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" />
-                            : canShare ? <Share2 size={18} /> : <Link2 size={18} />}
+                            : canShare ? <Share2 size={18} /> : <Copy size={18} />}
                     </button>
                     <button
                         type="button"

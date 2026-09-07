@@ -4,7 +4,8 @@ import { pool, RELAYS } from '@/lib/pool';
 import { useAuthStore, currentPubkey } from '@/store/auth';
 import {
     useAppStore, mergeStreaks, streaksEqual, emptyStreaks, sanitizeSyncedSettings, settingsEqual,
-    isCompleteSyncedSettings,
+    isCompleteSyncedSettings, sanitizeFavouriteLog, mergeFavouriteLogs, favouriteLogsEqual,
+    CLOCK_SKEW_TOLERANCE_MS,
     type Streaks, type SyncedSettings,
 } from '@/store/app';
 
@@ -21,6 +22,7 @@ export const KIND_APP_STATE = 30078;
 // side by side under one identity without overwriting each other.
 const D_STREAK = 'mora-app-streak';
 const D_SETTINGS = 'mora-app-settings';
+const D_FAVOURITES = 'mora-app-favourites';
 
 // Replaceable-event queries wait for every relay to EOSE, which an
 // unresponsive one never sends — so without a ceiling a single dead relay
@@ -144,13 +146,10 @@ export async function queryComplete(
     };
 }
 
-// Devices don't agree on the clock to the second; allow a little slack before
-// calling a settings timestamp impossible.
-const CLOCK_SKEW_TOLERANCE_MS = 5 * 60 * 1000;
-
 // One sync of each kind at a time; overlapping callers await the same run.
 let inFlightStreakSync: Promise<void> | null = null;
 let inFlightSettingsSync: Promise<void> | null = null;
+let inFlightFavouritesSync: Promise<void> | null = null;
 
 export interface NostrProfile {
     name?: string;
@@ -566,6 +565,63 @@ async function doSyncStreaks(): Promise<void> {
     // publishStreakToNostr reads the store, so it picks up the merge above.
     if (!remote || !streaksEqual(merged, mergeStreaks(emptyStreaks(), remote))) {
         await publishStreakToNostr();
+    }
+}
+
+export async function publishFavouritesToNostr() {
+    const pubkey = currentPubkey();
+    const { prayerFavourites, chantFavourites, shareStreaks } = useAppStore.getState();
+    if (!pubkey || !shareStreaks) return;
+
+    await publishSnapshot(
+        D_FAVOURITES,
+        { prayers: prayerFavourites, chants: chantFavourites },
+        'favourites',
+    );
+}
+
+/**
+ * Pulls the prayers and hymns this identity has starred elsewhere, merges them
+ * into this device's shortlists, and republishes if this device knows anything
+ * the relays didn't.
+ *
+ * Merged rather than last-write-wins, like the streaks and unlike the
+ * settings: two devices each hold a partial list, and each entry carries when
+ * it was starred or unstarred so the two can be folded together instead of one
+ * afternoon's stars replacing the other's. See mergeFavouriteLogs.
+ */
+export function syncFavouritesWithNostr(): Promise<void> {
+    inFlightFavouritesSync ??= doSyncFavourites().finally(() => { inFlightFavouritesSync = null; });
+    return inFlightFavouritesSync;
+}
+
+async function doSyncFavourites(): Promise<void> {
+    const pubkey = currentPubkey();
+    if (!pubkey || !useAppStore.getState().shareStreaks) return;
+
+    const snapshot = await fetchSnapshot(pubkey, D_FAVOURITES);
+    const remotePrayers = sanitizeFavouriteLog(snapshot?.payload.prayers);
+    const remoteChants = sanitizeFavouriteLog(snapshot?.payload.chants);
+
+    // Read the store after the round trip, not before: a prayer may have been
+    // starred while the query was in flight.
+    const state = useAppStore.getState();
+    const prayers = mergeFavouriteLogs(state.prayerFavourites, remotePrayers);
+    const chants = mergeFavouriteLogs(state.chantFavourites, remoteChants);
+
+    if (!favouriteLogsEqual(prayers, state.prayerFavourites)
+        || !favouriteLogsEqual(chants, state.chantFavourites)) {
+        state.applyFavourites(prayers, chants);
+    }
+
+    // Seed the relays on first sync, and push whatever they were missing —
+    // including the tombstones, which is how an unstar here reaches the device
+    // that still has the star. publishFavouritesToNostr reads the store, so it
+    // picks up the merge above.
+    if (!snapshot
+        || !favouriteLogsEqual(prayers, remotePrayers)
+        || !favouriteLogsEqual(chants, remoteChants)) {
+        await publishFavouritesToNostr();
     }
 }
 
