@@ -467,6 +467,41 @@ interface AppState {
     setAutoScrollSpeed: (speed: AutoScrollSpeed) => void;
 }
 
+/** The shape this build persists. Bumping it runs `migrateAppState` on every
+    device holding an older one — and on any holding a newer one, which is the
+    less obvious half. */
+const PERSIST_VERSION = 3;
+
+/**
+ * Reads state persisted by a different version of this build.
+ *
+ * Zustand runs this whenever the stored version *differs* from
+ * PERSIST_VERSION, which is not the same as "is older": a build rolled back
+ * (or a PWA still serving a cached bundle) meets state written by the newer
+ * one, and arrives here with a version above its own. So each step below has
+ * to say which versions it is for, rather than assuming it is only ever
+ * catching up.
+ */
+export function migrateAppState(persisted: unknown, version: number): AppState {
+    // The two arrays v3 replaced. Pulled out of the spread as well as read, so
+    // an upgraded device stops carrying a shortlist nothing reads any more.
+    const { favouritePrayers, favouriteChants, ...state } = (persisted ?? {}) as Partial<AppState> & {
+        favouritePrayers?: unknown;
+        favouriteChants?: unknown;
+    };
+    // Only a device coming from before v3 has arrays to seed from. Seeding
+    // unconditionally would hand a rolled-back build an empty shortlist and
+    // delete the logs it already had — and would do the same to everyone the
+    // day this version is bumped to 4 for something unrelated.
+    const beforeLogs = version < 3;
+    return {
+        ...state,
+        autoScrollSpeed: migrateScrollSpeed(state.autoScrollSpeed, version),
+        prayerFavourites: beforeLogs ? seedFavouriteLog(favouritePrayers) : state.prayerFavourites ?? {},
+        chantFavourites: beforeLogs ? seedFavouriteLog(favouriteChants) : state.chantFavourites ?? {},
+    } as AppState;
+}
+
 export const useAppStore = create<AppState>()(
     persist(
         (set) => ({
@@ -596,22 +631,8 @@ export const useAppStore = create<AppState>()(
             // autoScrollSpeed as an index into it — see migrateScrollSpeed.
             // v3 turned the two favourites arrays into logs — see
             // seedFavouriteLog.
-            version: 3,
-            migrate: (persisted, version) => {
-                // The two arrays v3 replaced. Pulled out of the spread as well
-                // as read, so an upgraded device stops carrying a shortlist
-                // nothing reads any more.
-                const { favouritePrayers, favouriteChants, ...state } = (persisted ?? {}) as Partial<AppState> & {
-                    favouritePrayers?: unknown;
-                    favouriteChants?: unknown;
-                };
-                return {
-                    ...state,
-                    autoScrollSpeed: migrateScrollSpeed(state.autoScrollSpeed, version),
-                    prayerFavourites: seedFavouriteLog(favouritePrayers),
-                    chantFavourites: seedFavouriteLog(favouriteChants),
-                } as AppState;
-            },
+            version: PERSIST_VERSION,
+            migrate: migrateAppState,
         }
     )
 );

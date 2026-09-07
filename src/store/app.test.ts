@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     favouriteLogsEqual,
     isCompleteSyncedSettings,
+    migrateAppState,
     isStarred,
     mergeFavouriteLogs,
     migrateScrollSpeed,
@@ -328,5 +329,43 @@ describe('favourites in the store', () => {
         useAppStore.getState().toggleChantFavourite('adeste-fideles');
         expect(starredIds(useAppStore.getState().chantFavourites)).toEqual(['adeste-fideles']);
         expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual([]);
+    });
+});
+
+describe('migrateAppState', () => {
+    it('seeds the logs from the arrays a build before v3 persisted, keeping their order', () => {
+        const migrated = migrateAppState({
+            favouritePrayers: ['magnificat', 'angelus'],
+            favouriteChants: ['adeste-fideles'],
+        }, 2);
+
+        expect(starredIds(migrated.prayerFavourites)).toEqual(['magnificat', 'angelus']);
+        expect(starredIds(migrated.chantFavourites)).toEqual(['adeste-fideles']);
+        // Nothing reads them any more, so an upgraded device stops carrying them.
+        expect('favouritePrayers' in migrated).toBe(false);
+        expect('favouriteChants' in migrated).toBe(false);
+    });
+
+    // migrate runs whenever the stored version *differs*, so a build rolled
+    // back (or a PWA still serving a cached bundle) lands here with a version
+    // above its own — and seeding from arrays that are long gone would delete
+    // the shortlist it was handed.
+    it('keeps the logs a later build persisted, rather than seeding over them', () => {
+        const prayers = { angelus: { at: Date.now(), on: true } };
+        const migrated = migrateAppState({ prayerFavourites: prayers, chantFavourites: {} }, 4);
+
+        expect(migrated.prayerFavourites).toEqual(prayers);
+        expect(migrated.chantFavourites).toEqual({});
+    });
+
+    it('leaves a device that never starred anything with empty logs, not undefined', () => {
+        expect(migrateAppState({}, 2).prayerFavourites).toEqual({});
+        expect(migrateAppState({}, 4).chantFavourites).toEqual({});
+        expect(migrateAppState(null, 2).prayerFavourites).toEqual({});
+    });
+
+    it('still resolves a scroll speed persisted as an index into an older scale', () => {
+        expect(migrateAppState({ autoScrollSpeed: 0 }, 0).autoScrollSpeed).toBe('½');
+        expect(migrateAppState({ autoScrollSpeed: 0 }, 1).autoScrollSpeed).toBe('¼');
     });
 });
