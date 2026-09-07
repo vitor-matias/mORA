@@ -147,20 +147,29 @@ async function fetchVaticanTheme(month) {
 
 // ── Relays ───────────────────────────────────────────────────────────────
 
-/** What this publisher already has on one relay: d tag → content hash. */
+/**
+ * What this publisher already has on one relay: d tag → content hash.
+ *
+ * `complete` says whether the relay actually finished answering (EOSE) as
+ * opposed to timing out or dropping the connection. The difference matters:
+ * a relay that answers "I have nothing" is a relay that needs everything,
+ * while one that never answered says nothing about what it holds. Both hand
+ * back an empty map, so without this flag they are indistinguishable — and a
+ * newly added, still-empty relay would be quietly skipped forever.
+ */
 function publishedHashesOn(url, pubkey) {
     return new Promise((resolve) => {
         const found = new Map();
         let settled = false;
-        const finish = () => {
+        const finish = (complete) => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             try { socket.close(); } catch { /* already closing */ }
-            resolve(found);
+            resolve({ hashes: found, complete });
         };
         const socket = new WebSocket(url);
-        const timer = setTimeout(finish, RELAY_TIMEOUT_MS);
+        const timer = setTimeout(() => finish(false), RELAY_TIMEOUT_MS);
         // A year of days plus the themes, with room to spare. Relays cap
         // `limit` themselves; whatever comes back is treated as "what this
         // relay has", and anything missing simply gets republished.
@@ -179,11 +188,11 @@ function publishedHashesOn(url, pubkey) {
                         ?? (typeof msg[2]?.content === 'string' ? hashOf(msg[2].content) : null);
                     if (d && hash) found.set(d, hash);
                 }
-                if (msg[0] === 'EOSE') finish();
+                if (msg[0] === 'EOSE') finish(true);
             } catch { /* not for us */ }
         });
-        socket.on('error', finish);
-        socket.on('close', finish);
+        socket.on('error', () => finish(false));
+        socket.on('close', () => finish(false));
     });
 }
 
@@ -298,8 +307,10 @@ async function main() {
 
     const perRelay = force
         ? []
-        : await Promise.all(RELAYS.map(async (url) => [url, await publishedHashesOn(url, pubkey)]));
-    const answered = perRelay.filter(([, hashes]) => hashes.size > 0);
+        : await Promise.all(RELAYS.map((url) => publishedHashesOn(url, pubkey)));
+    // "Answered" means finished answering, empty-handed or not — a relay with
+    // nothing on it is precisely the one that needs everything.
+    const answered = perRelay.filter(({ complete }) => complete);
 
     const stale = entries.filter((entry) => {
         if (force) return true;
@@ -310,7 +321,7 @@ async function main() {
         // Republish unless every relay that answered already has this exact
         // content — otherwise a relay that dropped an event, or one added to
         // the list later, would never be filled in.
-        return !answered.every(([, hashes]) => hashes.get(entry.dTag) === hash);
+        return !answered.every(({ hashes }) => hashes.get(entry.dTag) === hash);
     });
 
     if (stale.length === 0) {

@@ -340,8 +340,13 @@ export async function fetchLiturgicalDays(dates: string[]): Promise<Map<string, 
 
     const missing: string[] = [];
     for (const dateStr of wanted) {
+        // Only a settled day short-circuits here. A future day carries an
+        // age in the cache and is re-checked once a week; letting the memo
+        // answer for it would pin it for the life of the tab — and this app
+        // is installed to a home screen and left open for days, so that is a
+        // correction nobody would see until they happened to reload.
         const remembered = dayMemo.get(dateStr);
-        if (remembered) {
+        if (remembered && dateStr <= todayStr) {
             days.set(dateStr, remembered);
             continue;
         }

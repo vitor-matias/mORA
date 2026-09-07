@@ -17,6 +17,27 @@ export type LiturgicalDayInfo = {
     description: string;
 };
 
+/**
+ * Decode RFC 5545 TEXT escaping: `\\n` and `\\N` are newlines, and `\\\\`, `\\,`
+ * and `\\;` are the literal characters.
+ *
+ * One pass, not a chain of replacements: decoding `\\n` first and `\\\\` after
+ * would read the pair in `\\\\n` as an escaped newline and swallow the
+ * backslash that was escaping it. liturgia.pt's feed happens to contain no
+ * backslashes at all today, so nothing currently depends on that ordering —
+ * which is exactly why it would be a quiet thing to get wrong later.
+ *
+ * `newline` is what `\\n` becomes: a heading flattens it to a space, while a
+ * description keeps the line break.
+ */
+function unescapeIcsText(value: string, newline: string): string {
+    return value.replace(/\\(.)/g, (_match, escaped: string) => {
+        if (escaped === 'n' || escaped === 'N') return newline;
+        // Anything else escaped stands for itself — including the backslash.
+        return escaped;
+    });
+}
+
 /** Extracts a day's info from one unfolded VEVENT block, or null if no color is derivable. */
 export function parseVEventInfo(event: string): { dateStr: string; info: LiturgicalDayInfo } | null {
     const dtMatch = event.match(/DTSTART(?:;VALUE=DATE)?:(\d{4})(\d{2})(\d{2})/);
@@ -30,13 +51,13 @@ export function parseVEventInfo(event: string): { dateStr: string; info: Liturgi
     let dayName = summaryMatch ? summaryMatch[1].trim() : '';
     let description = '';
 
-    // Clean up ICS escaped characters using split/join (avoids regex escaping issues)
-    const bs = String.fromCharCode(92); // backslash character
-    dayName = dayName.split(bs + 'n').join(' ').split(bs + ',').join(',').split(bs + ';').join(';');
+    // A day name is a heading, so its newlines flatten to spaces; the
+    // description keeps them.
+    dayName = unescapeIcsText(dayName, ' ');
 
     if (descMatch) {
         const rawDesc = descMatch[1].trim();
-        description = rawDesc.split(bs + 'n').join('\n').split(bs + ',').join(',').split(bs + ';').join(';');
+        description = unescapeIcsText(rawDesc, '\n');
 
         const descLower = rawDesc.toLowerCase();
         // Pick the color that appears first — descriptions can mention

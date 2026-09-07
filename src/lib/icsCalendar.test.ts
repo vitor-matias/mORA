@@ -41,6 +41,33 @@ describe('parseVEventInfo', () => {
         expect(parsed?.info.description).toBe('Roxo – Quaresma.\nL 1: Gn 9, 8-15; Sl 24');
     });
 
+    it('flattens newlines in the day name but keeps them in the description', () => {
+        // The name is a heading; a line break in it would break the layout.
+        const parsed = parseVEventInfo(
+            '\nDTSTART;VALUE=DATE:20260301\nSUMMARY:Domingo\\nda Quaresma\nDESCRIPTION:Roxo.\\nSegunda linha.\n',
+        );
+        expect(parsed?.info.dayName).toBe('Domingo da Quaresma');
+        expect(parsed?.info.description).toBe('Roxo.\nSegunda linha.');
+    });
+
+    it('decodes an escaped backslash without mistaking it for a newline', () => {
+        // RFC 5545 allows \\ for a literal backslash. Decoding \n before \\
+        // would read the pair in \\n as an escaped newline and swallow the
+        // backslash escaping it. liturgia.pt sends no backslashes today, so
+        // this guards a trap rather than a live bug.
+        const parsed = parseVEventInfo(
+            '\nDTSTART;VALUE=DATE:20260301\nSUMMARY:Dia\nDESCRIPTION:Verde – a\\\\nb\n',
+        );
+        expect(parsed?.info.description).toBe('Verde – a\\nb');
+    });
+
+    it('treats \\N as a newline too, as the spec allows', () => {
+        const parsed = parseVEventInfo(
+            '\nDTSTART;VALUE=DATE:20260301\nSUMMARY:Dia\nDESCRIPTION:Verde – a\\NB\n',
+        );
+        expect(parsed?.info.description).toBe('Verde – a\nB');
+    });
+
     it('skips a block with no derivable colour', () => {
         expect(parseVEventInfo('\nDTSTART;VALUE=DATE:20260101\nSUMMARY:Dia\nDESCRIPTION:Nada.\n')).toBeNull();
     });
