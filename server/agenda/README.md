@@ -30,14 +30,24 @@ server-side where CORS is not a thing. That job is this one
 One addressable event (NIP-78, kind `30078`) per day:
 
 - `d` tag `mora-agenda:2026-05-28`, `date` tag `2026-05-28`
-- content is the day as the app renders it — `{ color, dayName, description }`
+- content is the day as the app renders it —
+  `{ color, dayName, description, sections }`
 - plus `mora-vatican-theme:2026-09` for the month's theme
 
-A day is ~700 bytes, so colouring today costs one small event instead of the
+`description` is liturgia.pt's prose, unchanged. `sections` is that same prose
+classified — `celebration` (with its `rank`), `office`, `mass`, `readings`,
+`notes`, and `text` for anything that fits none of them — in the order it was
+written, and losslessly: every non-blank line lands in exactly one section.
+The app renders those fields rather than working the prose over with regexes
+on every device, which is how five days of the year (Easter among them) used
+to hide their readings behind a "Ver mais".
+
+A day is ~1.5KB, so colouring today costs one small event instead of the
 366KB year the proxies used to serve for the same answer. Parsing is shared
 with the app (`src/lib/icsCalendar.ts`, imported directly — Node strips the
 types) so the publisher can never disagree with the reader about what a day
-says.
+says — and the app parses `description` itself for any day still published
+without sections, using that same function.
 
 Each event carries a `hash` tag of its content. A run reads back what the
 relays already hold and publishes only what differs, so a normal day

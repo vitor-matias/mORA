@@ -37,8 +37,47 @@ describe('fetchAgendaDays', () => {
         }))]);
         const days = await fetchAgendaDays(['2026-05-28']);
         expect(days.get('2026-05-28')).toEqual({
-            color: 'verde', dayName: 'Quinta-feira', description: 'Ofício da féria.',
+            color: 'verde',
+            dayName: 'Quinta-feira',
+            description: 'Ofício da féria.',
+            // Published before sections existed, so they are parsed here.
+            sections: [{ kind: 'office', text: 'Ofício da féria.' }],
         });
+    });
+
+    it('returns the sections the publisher classified', async () => {
+        const sections = [
+            { kind: 'celebration', text: 'S. Matias, apóstolo', rank: 'FESTA' },
+            { kind: 'office', text: 'Ofício da festa.', colors: 'Vermelho' },
+            { kind: 'readings', items: [{ label: 'Ev', ref: 'Jo 15, 9-17' }, { ref: 'ou Jo 15, 1-8' }] },
+            { kind: 'notes', items: ['Proibidas as Missas de defuntos.'] },
+        ];
+        query.mockResolvedValue([day('2026-05-14', JSON.stringify({
+            color: 'vermelho', dayName: 'Quinta-feira', description: 'S. Matias, apóstolo – FESTA', sections,
+        }))]);
+        expect((await fetchAgendaDays(['2026-05-14'])).get('2026-05-14')?.sections).toEqual(sections);
+    });
+
+    it('falls back to the prose when the published sections are malformed', async () => {
+        // The description is published beside them, and the same parser the
+        // publisher ran reads it — so a day is never dropped, or blanked, over
+        // the formatting half of it.
+        const day2026 = (sections: unknown) => day('2026-05-28', JSON.stringify({
+            color: 'verde', dayName: 'Quinta-feira', description: 'Ofício da féria.', sections,
+        }));
+        for (const sections of [
+            'not an array',
+            [{ kind: 'sermon', text: 'unknown kind' }],
+            [{ kind: 'mass' }],
+            [{ kind: 'readings', items: [{ label: 'L 1' }] }],
+            [{ kind: 'notes', items: [{ not: 'a string' }] }],
+            [{ kind: 'celebration', text: 'Dia', rank: 7 }],
+        ]) {
+            query.mockResolvedValue([day2026(sections)]);
+            const info = (await fetchAgendaDays(['2026-05-28'])).get('2026-05-28');
+            expect(info?.description).toBe('Ofício da féria.');
+            expect(info?.sections).toEqual([{ kind: 'office', text: 'Ofício da féria.' }]);
+        }
     });
 
     it('ignores a day whose colour is not a liturgical colour', async () => {

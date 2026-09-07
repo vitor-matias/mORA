@@ -327,6 +327,7 @@ export default function Liturgy() {
             color={dayInfo?.color}
             title={dayInfo?.dayName ?? liturgy.saintOfDay}
             description={dayInfo?.description}
+            sections={dayInfo?.sections}
         />
     );
 

@@ -1,4 +1,4 @@
-import type { LiturgicalColor } from "@/lib/liturgy";
+import type { DaySection, LiturgicalColor } from "@/lib/icsCalendar";
 
 // Fixed swatches per liturgical color — used wherever a specific day's color
 // must render independently of the app-wide `data-theme` palette (calendar
@@ -11,33 +11,37 @@ export const COLOR_DOTS: Record<LiturgicalColor, { bg: string; label: string }> 
     rosa: { bg: '#ec4899', label: 'Rosa' },
 };
 
-// Scripture reference lines: "L 1: Jr 18, 1-6", "Ev: Mt 13, 47-53", a
-// tab-separated "L 2<TAB>Heb 11, 8" and the standalone "Sl 103 (104), …"
-// continuations. The digit is what tells "L 1:" from a word starting with L.
-const READING_LINE_RE = /^(L\s*\d+\s*[:\t]|Ev\s*[:\t]|Sl\s+\d)/i;
-
-/** The day description without its readings list — for cards that say which
-    day it is rather than what is read at Mass. */
-export function stripReadingLines(text: string): string {
-    return text
-        .split('\n')
-        .filter((line) => !READING_LINE_RE.test(line.trim()))
-        .join('\n')
-        .trim();
+/**
+ * The day split into what it opens with and what stays behind "Ver mais".
+ *
+ * Notes go last however high up the feed wrote them. This is the whole point
+ * of splitting on kind rather than on position: the prose fallback cuts at
+ * the first "*" line, which on Easter Sunday sits above the Vigil's readings
+ * and so collapsed eight of them along with the remarks. Five days of 2026
+ * read that way — including Easter, Pentecost and Corpus Christi's Sunday.
+ */
+export function splitSections(sections: DaySection[]): { main: DaySection[]; notes: string[] } {
+    const main: DaySection[] = [];
+    const notes: string[] = [];
+    for (const section of sections) {
+        if (section.kind === 'notes') notes.push(...section.items);
+        else main.push(section);
+    }
+    return { main, notes };
 }
 
-/**
- * Splits a liturgical-calendar day description into the part shown by
- * default — celebration, office notes and the day's readings — and the
- * trailing remarks (lines starting with "*": diocesan and religious-order
- * notes, Mass prohibitions) that stay collapsed until expanded.
- */
-export function splitDayDescription(text: string): { main: string; notes: string | null } {
-    const lines = text.split('\n');
-    const idx = lines.findIndex((l) => l.trim().startsWith('*'));
-    if (idx <= 0) return { main: text.trim(), notes: null };
-    return {
-        main: lines.slice(0, idx).join('\n').trim(),
-        notes: lines.slice(idx).join('\n').trim() || null,
-    };
+/** The same, without the scripture references — for cards that say which day
+    it is rather than what is read at Mass (Home, and the Missa page, which
+    has the readings themselves right underneath). */
+export function withoutReadings(sections: DaySection[]): DaySection[] {
+    return sections.filter((section) => section.kind !== 'readings');
+}
+
+/** A section that would render as nothing: a colour-only office line, whose
+    colour the card already shows as a dot, or an empty title. */
+export function isEmptySection(section: DaySection): boolean {
+    if (section.kind === 'readings') return section.items.length === 0;
+    if (section.kind === 'notes') return section.items.length === 0;
+    if (section.kind === 'celebration') return !section.text && !section.rank;
+    return !section.text;
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { RosaryBeadMode } from '@/lib/rosary';
+import type { DaySection, LiturgicalDayInfo } from '@/lib/icsCalendar';
 import { daysApart, formatISODate } from '@/lib/format';
 
 export interface StreakData {
@@ -311,8 +312,14 @@ interface AppState {
     liturgicalColor: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa';
     liturgicalDayName: string | null;
     liturgicalDescription: string | null;
+    /** The description as the publisher classified it. Null for a day
+        published before sections existed — render `liturgicalDescription`. */
+    liturgicalSections: DaySection[] | null;
     liturgicalColorDate: string | null;
-    setLiturgicalColor: (color: 'verde' | 'roxo' | 'vermelho' | 'branco' | 'rosa', date: string, dayName: string | null, description: string | null) => void;
+    /** Today's day info, whole: the fields travel together and are read
+        together, and four positional arguments of the same type were one
+        transposition away from a day that says the wrong thing. */
+    setLiturgicalDay: (date: string, info: LiturgicalDayInfo) => void;
     // Page-level theme override while browsing another day's liturgy
     // (e.g. Missa on a past/future date). Never persisted — a stale override
     // must not outlive the page that set it.
@@ -377,8 +384,15 @@ export const useAppStore = create<AppState>()(
             liturgicalColor: 'verde',
             liturgicalDayName: null,
             liturgicalDescription: null,
+            liturgicalSections: null,
             liturgicalColorDate: null,
-            setLiturgicalColor: (liturgicalColor, liturgicalColorDate, liturgicalDayName, liturgicalDescription) => set({ liturgicalColor, liturgicalColorDate, liturgicalDayName, liturgicalDescription }),
+            setLiturgicalDay: (liturgicalColorDate, info) => set({
+                liturgicalColor: info.color,
+                liturgicalColorDate,
+                liturgicalDayName: info.dayName,
+                liturgicalDescription: info.description,
+                liturgicalSections: info.sections ?? null,
+            }),
             liturgicalColorOverride: null,
             setLiturgicalColorOverride: (liturgicalColorOverride) => set({ liturgicalColorOverride }),
             fontSize: 'medium',
