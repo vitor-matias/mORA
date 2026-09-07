@@ -12,40 +12,17 @@
 
 import { pool } from '@/lib/pool';
 import { RELAY_QUERY_TIMEOUT_MS } from '@/lib/nostr';
+import { PUBLISHER_PUBKEY } from '@/lib/publisher';
 import type { LiturgicalColor, LiturgicalDayInfo } from '@/lib/icsCalendar';
 
 /** NIP-78 application data, addressable — one event per day. */
 const KIND_AGENDA = 30078;
 
-const HEX64_RE = /^[0-9a-f]{64}$/i;
 const COLORS: LiturgicalColor[] = ['verde', 'roxo', 'vermelho', 'branco', 'rosa'];
 
-/**
- * Which key's calendar is *the* calendar: the same identity that signs
- * Palavra, because one key signs everything mORA publishes. The two feeds are
- * told apart by their `d` and `t` tags, never by who signed them, so a second
- * identity would buy nothing but a second secret to set up and rotate.
- *
- * Read from the environment here rather than imported from
- * src/lib/palavra/api.ts, which exports the same pin: that module pulls in the
- * game store and the puzzle logic behind it, and the liturgical colour is
- * rendered by Layout on every page.
- */
-export function resolvePublisher(configured: string | undefined): string {
-    const pubkey = configured?.trim() ?? '';
-    // An npub or a truncated key is the easy mistake, and unchecked it fails
-    // in the worst way: the pin never matches, so every day looks like
-    // "nothing published" with nothing on screen to point at.
-    if (pubkey && !HEX64_RE.test(pubkey)) {
-        console.warn('VITE_PALAVRA_PUBLISHER_PUBKEY must be 64 hex characters, not an npub.');
-        return '';
-    }
-    return pubkey.toLowerCase();
-}
-
-export const AGENDA_PUBLISHER = resolvePublisher(
-    import.meta.env.VITE_PALAVRA_PUBLISHER_PUBKEY as string | undefined,
-);
+// The same pin the puzzle reads — one identity signs everything mORA
+// publishes, resolved once in src/lib/publisher.ts.
+const AGENDA_PUBLISHER = PUBLISHER_PUBKEY;
 
 const dayDTag = (date: string) => `mora-agenda:${date}`;
 const themeDTag = (month: string) => `mora-vatican-theme:${month}`;

@@ -13,7 +13,7 @@ vi.mock('@/lib/pool', () => ({ pool: { query: (...args: unknown[]) => query(...a
 const PUBLISHER = 'a'.repeat(64);
 vi.stubEnv('VITE_PALAVRA_PUBLISHER_PUBKEY', PUBLISHER);
 
-const { fetchAgendaDays, fetchVaticanTheme, resolvePublisher } = await import('./agendaNostr');
+const { fetchAgendaDays, fetchVaticanTheme } = await import('./agendaNostr');
 
 const event = (dTag: string, content: string, extraTag: string[]): NostrEvent => ({
     id: '0'.repeat(64),
@@ -29,23 +29,6 @@ const day = (date: string, content: string) => event(`mora-agenda:${date}`, cont
 const theme = (month: string, content: string) => event(`mora-vatican-theme:${month}`, content, ['month', month]);
 
 beforeEach(() => query.mockReset());
-
-describe('resolvePublisher', () => {
-    it('pins the configured key', () => {
-        const key = 'B'.repeat(64);
-        expect(resolvePublisher(key)).toBe(key.toLowerCase());
-        expect(resolvePublisher(`  ${key}  `)).toBe(key.toLowerCase());
-    });
-
-    it('refuses an npub rather than pinning something that can never match', () => {
-        expect(resolvePublisher('npub1abcdef')).toBe('');
-    });
-
-    it('is empty when nothing is configured', () => {
-        expect(resolvePublisher(undefined)).toBe('');
-        expect(resolvePublisher('')).toBe('');
-    });
-});
 
 describe('fetchAgendaDays', () => {
     it('returns the published day', async () => {

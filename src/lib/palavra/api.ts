@@ -18,6 +18,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { verifyEvent } from 'nostr-tools/pure';
 import { pool } from '@/lib/pool';
 import { RELAY_QUERY_TIMEOUT_MS } from '@/lib/nostr';
+import { PUBLISHER_PUBKEY } from '@/lib/publisher';
 import { usePalavraStore } from '@/store/palavra';
 import {
     MAX_WORD_LENGTH,
@@ -31,39 +32,26 @@ import { deobfuscateAnswer, matchesAnswerHash, normalizeWord } from './game';
 const KIND_PUZZLE = 30078;
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// The answer hash, not a pubkey — same shape, unrelated concern, so it
+// keeps its own copy rather than borrowing the pin's.
 const HEX64_RE = /^[0-9a-f]{64}$/i;
-
-const CONFIGURED_PUBLISHER = (import.meta.env.VITE_PALAVRA_PUBLISHER_PUBKEY as string | undefined)?.trim() ?? '';
-
-// An npub or a truncated key is the easy mistake here, and left unchecked it
-// fails in the worst way: the pin never matches, so every single day looks
-// like "no puzzle published" with nothing to point at. Falling back to the
-// mock at least keeps the game playable and says on screen that it's a demo.
-const PUBLISHER = !CONFIGURED_PUBLISHER || HEX64_RE.test(CONFIGURED_PUBLISHER)
-    ? CONFIGURED_PUBLISHER.toLowerCase()
-    : '';
-
-if (CONFIGURED_PUBLISHER && !PUBLISHER) {
-    console.warn(
-        'VITE_PALAVRA_PUBLISHER_PUBKEY must be 64 hex characters, not an npub. Falling back to the demo puzzles.',
-    );
-}
 
 /** True while the game is running against the built-in mock. The UI says so
     rather than passing a demo puzzle off as the real one. */
-export const PALAVRA_IS_MOCK = !PUBLISHER;
+export const PALAVRA_IS_MOCK = !PUBLISHER_PUBKEY;
 
 /**
  * The key whose puzzles are *the* puzzles, and whose badges are the real ones.
  *
- * Exported for badges.ts, which has the same reason to pin it that this file
- * does: a NIP-58 award is only worth anything because a known issuer signed
- * it, and an award is just an event — anyone can publish one naming
- * themselves. Filtering on this key is the whole difference between a badge
- * and a self-assigned label. Empty in demo mode, where there is nothing to
- * trust and nothing is shown.
+ * The same pin the liturgical calendar reads, resolved once in
+ * src/lib/publisher.ts. Re-exported under this name for badges.ts, which has
+ * the same reason to pin it that this file does: a NIP-58 award is only worth
+ * anything because a known issuer signed it, and an award is just an event —
+ * anyone can publish one naming themselves. Filtering on this key is the whole
+ * difference between a badge and a self-assigned label. Empty in demo mode,
+ * where there is nothing to trust and nothing is shown.
  */
-export const PALAVRA_PUBLISHER = PUBLISHER;
+export const PALAVRA_PUBLISHER = PUBLISHER_PUBKEY;
 
 export function puzzleDTag(date: string): string {
     return `mora-palavra-p:${date}`;
@@ -174,7 +162,7 @@ export async function fetchDailyChallenge(date: string): Promise<DailyChallenge>
     // Tagged with where it came from: a demo puzzle cached under a real date
     // must not survive a publisher being configured, or that day would keep
     // showing an invented verse and score against the wrong answer.
-    const source = PUBLISHER || 'mock';
+    const source = PALAVRA_PUBLISHER || 'mock';
     const { challenges, challengeSource } = usePalavraStore.getState();
     const cached = challengeSource === source ? challenges[date] : undefined;
     if (cached) return cached;
@@ -193,7 +181,7 @@ async function fetchFreshChallenge(date: string): Promise<DailyChallenge> {
     let events: NostrEvent[];
     try {
         events = await pool.query(
-            [{ kinds: [KIND_PUZZLE], authors: [PUBLISHER], '#d': [puzzleDTag(date)], limit: 1 }],
+            [{ kinds: [KIND_PUZZLE], authors: [PALAVRA_PUBLISHER], '#d': [puzzleDTag(date)], limit: 1 }],
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
     } catch (error) {
@@ -205,7 +193,7 @@ async function fetchFreshChallenge(date: string): Promise<DailyChallenge> {
     // the signature here is what actually enforces it. A hostile relay is free
     // to answer with whatever it likes, and the pinned publisher is the only
     // thing standing between that and a forged puzzle.
-    const event = events.find((candidate) => candidate.pubkey === PUBLISHER && verifyEvent(candidate));
+    const event = events.find((candidate) => candidate.pubkey === PALAVRA_PUBLISHER && verifyEvent(candidate));
     if (!event) throw new Error('Ainda não há desafio para este dia.');
 
     let payload: unknown;
