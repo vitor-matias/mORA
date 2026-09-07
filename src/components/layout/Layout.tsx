@@ -11,16 +11,37 @@ import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
 import { ChunkBoundary } from "@/components/ChunkBoundary";
 
+// The colour the page paints at its very top edge: the day's liturgical
+// wash (--app-wash's first stop) over the page background. The strip under
+// the status bar is drawn by the OS from theme-color rather than by us, so
+// this blend is the only way it can match the page beneath it. Both halves
+// are read from the stylesheet — index.css owns the numbers.
+function pageTopColor(isDark: boolean): string {
+    const css = getComputedStyle(document.documentElement);
+    const channels = (name: string) => {
+        const parts = css.getPropertyValue(name).trim().split(/[\s,]+/).map(Number);
+        return parts.length === 3 && parts.every((n) => Number.isFinite(n)) ? parts : null;
+    };
+    const bg = channels('--app-bg');
+    const tint = channels('--app-wash-tint');
+    const alpha = Number(css.getPropertyValue('--app-wash-top'));
+    // Stylesheet not applied yet — the untinted background is the best guess.
+    if (!bg) return isDark ? '#121212' : '#FAF9F6';
+    if (!tint || !Number.isFinite(alpha)) return `rgb(${bg.join(' ')})`;
+    const mixed = bg.map((b, i) => Math.round(alpha * tint[i] + (1 - alpha) * b));
+    return `rgb(${mixed.join(' ')})`;
+}
+
 // Today's liturgical color/day info for the store (app theme + Home's day
 // card). Module scope so it runs both at mount and on day rollover.
 async function refreshLiturgicalColor(): Promise<void> {
     const today = new Date();
     // Local date, matching how consumers (Home) compare it
     const dateStr = formatISODate(today);
-    const { setLiturgicalColor } = useAppStore.getState();
+    const { setLiturgicalDay } = useAppStore.getState();
     const dayInfo = await fetchLiturgicalColorFromCalendar(today);
     if (dayInfo) {
-        setLiturgicalColor(dayInfo.color, dateStr, dayInfo.dayName, dayInfo.description);
+        setLiturgicalDay(dateStr, dayInfo);
     }
 }
 
@@ -82,14 +103,25 @@ export function Layout() {
     useEffect(() => {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
+        // The day's palette first: everything below reads the liturgical
+        // variables it switches, so setting it afterwards would leave the
+        // status bar a day behind the page every time the date changed.
+        // A page browsing another day's liturgy may temporarily override
+        // today's color (e.g. Missa on a past/future date).
+        document.documentElement.setAttribute('data-theme', liturgicalColorOverride ?? liturgicalColor);
+
         // Applies the dark class + mobile system/status-bar colour. Factored out
         // so the initial run and the OS-theme listener stay consistent.
         const applyDarkMode = (isDark: boolean) => {
             document.documentElement.classList.toggle('dark', isDark);
 
-            // Status bar matches the page background. Read --app-bg (set by the
-            // .dark class we just toggled) rather than repeating the literals,
-            // so the bar can't drift from the page under it.
+            // Status bar matches the top of the page — the day's wash over
+            // the page background, read from the stylesheet (with the .dark
+            // class we just toggled applied) rather than repeated here, so
+            // the bar can't drift from the page under it. It has to be
+            // recomputed whenever the day's colour changes, not only on a
+            // light/dark switch: browsing to another date repaints the page
+            // and the strip has to follow.
             //
             // This is all the page can do for the bar, and on the installed
             // Android app it is not enough: Chrome accepts this colour (its
@@ -100,12 +132,7 @@ export function Layout() {
             // installed app draw under the bar when the page opts in with
             // viewport-fit=cover, which index.html does; until it ships,
             // nothing written here moves that bar.
-            const appBg = getComputedStyle(document.documentElement)
-                .getPropertyValue('--app-bg')
-                .trim();
-            const themeColor = appBg
-                ? `rgb(${appBg})`
-                : (isDark ? '#121212' : '#FAF9F6'); // stylesheet not applied yet
+            const themeColor = pageTopColor(isDark);
             // A fresh element each time, not a mutated one. A Home Screen web
             // app on iOS reads theme-color when it launches and ignores a
             // later change to the meta's content, so Claro/Escuro in Perfil,
@@ -134,10 +161,6 @@ export function Layout() {
         if (theme === 'system') {
             mq.addEventListener('change', onSchemeChange);
         }
-
-        // A page browsing another day's liturgy may temporarily override
-        // today's color (e.g. Missa on a past/future date).
-        document.documentElement.setAttribute('data-theme', liturgicalColorOverride ?? liturgicalColor);
 
         // Font size — set as CSS variables so only content (prayer/reading)
         // areas pick it up, not the UI chrome.
