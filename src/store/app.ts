@@ -120,7 +120,9 @@ export function streaksEqual(a: Streaks, b: Streaks): boolean {
 // the screen rather than the person — a size that reads well on a phone is
 // cramped on a desktop, "dark" is a judgement about the room the device is in,
 // and the scroll speed is in px/s, so the same number crawls on a tall screen
-// and races on a short one. Also excluded: notificationTime and hourReminders
+// and races on a short one. The speed is not even asked for in the settings:
+// it is set while reading and remembered from there.
+// Also excluded: notificationTime and hourReminders
 // (a reminder is a property of the device meant to buzz, and syncing them
 // would fire the same notification on every signed-in device), pushSubscribed
 // and shareStreaks (device-level by design), and session/cache state.
@@ -323,8 +325,11 @@ export type FontFamily = 'system' | 'serif' | 'sans';
 // fractions below it are literally that fraction of it — meditative crawls
 // for a slow, prayed reading. Above 1 the steps widen faster than the label
 // suggests, which is how they read on a phone.
-// Lives here (like CONTENT_FONT_SCALE) because the Missa and Liturgia das
-// Horas pages and the Profile speed picker all render from it.
+// Lives here (like CONTENT_FONT_SCALE) because the Missa and the Liturgia das
+// Horas both render the scale their +/- controls step along. There is no
+// picker in the settings: the speed is chosen while reading, where the pace
+// can actually be judged, and the last one used is what the next reading
+// starts at.
 const BASE_PPS = 22;
 
 export const SCROLL_LEVELS = [
@@ -342,7 +347,7 @@ export const SCROLL_LEVELS = [
     stored index would quietly mean a slower pace every time one did. */
 export type AutoScrollSpeed = typeof SCROLL_LEVELS[number]['label'];
 
-/** Where a reader who has never touched the setting starts. */
+/** Where a reader who has never touched the +/- controls starts. */
 export const DEFAULT_SCROLL_SPEED: AutoScrollSpeed = '2';
 
 const SCROLL_LABELS: readonly AutoScrollSpeed[] = SCROLL_LEVELS.map((level) => level.label);
