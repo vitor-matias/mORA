@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight, Share2 } from "lucide-react";
+import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight, Share, Share2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PrayerText } from "@/components/PrayerText";
 import { starredIds, useAppStore } from "@/store/app";
@@ -16,6 +16,7 @@ import {
     type Prayer,
     type PrayerCategoryId,
 } from "@/lib/devotional";
+import { isIOS } from "@/lib/platform";
 
 /** "Favoritas" behaves like a category chip but is not one — it filters by the
     reader's own list rather than by where a prayer belongs in the book. */
@@ -254,6 +255,9 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
     // Read once: the icon has to match what the button will actually do, and
     // `navigator.share` doesn't appear or vanish mid-session.
     const canShare = typeof navigator !== 'undefined' && Boolean(navigator.share);
+    // lucide's `Share2` is the Android/network-nodes glyph; iOS's own share
+    // sheet is the box-with-an-arrow, so match whichever OS is asking.
+    const ShareIcon = isIOS() ? Share : Share2;
 
     /**
      * Passing the prayer on: the system share sheet where there is one, the
@@ -319,7 +323,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                     >
                         {ticked
                             ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" />
-                            : canShare ? <Share2 size={18} /> : <Copy size={18} />}
+                            : canShare ? <ShareIcon size={18} /> : <Copy size={18} />}
                     </button>
                     <button
                         type="button"
