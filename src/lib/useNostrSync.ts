@@ -12,6 +12,25 @@ const PUBLISH_DEBOUNCE_MS = 2_000;
 
 let lastSyncAt = 0;
 
+// The running hook's pull, for callers outside it. Null while nobody is
+// signed in (or the key is locked), which is exactly when there is nothing to
+// pull.
+let pullNow: ((force?: boolean) => Promise<void>) | null = null;
+
+/**
+ * Pull now, past the throttle, if an identity is signed in.
+ *
+ * For the screens that show what another device did: the Palavra board is
+ * opened *to see* today's result, and a device that was already in the
+ * foreground when the other one finished has had no foreground since to
+ * trigger a pull — the result would sit on the relays until the app was put
+ * away and brought back. Each sync shares one in-flight run, so a pull
+ * already under way is joined rather than repeated.
+ */
+export function syncNostrNow(): void {
+    void pullNow?.(true);
+}
+
 /**
  * Keeps this device in step with the others signed in under the same Nostr
  * identity: streaks (merged), the Palavra play log (merged), the starred
@@ -91,6 +110,8 @@ export function useNostrSync() {
             }
         };
 
+        pullNow = pull;
+
         // Signing in (or switching identity) syncs immediately; the throttle
         // only guards the repeat visits below.
         pull(true);
@@ -142,6 +163,7 @@ export function useNostrSync() {
         });
 
         return () => {
+            if (pullNow === pull) pullNow = null;
             document.removeEventListener('visibilitychange', onVisibilityChange);
             timers.forEach((timer) => window.clearTimeout(timer));
             unsubscribe();

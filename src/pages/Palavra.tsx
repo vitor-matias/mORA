@@ -26,6 +26,7 @@ import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
+import { syncNostrNow } from '@/lib/useNostrSync';
 import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
@@ -103,6 +104,13 @@ export default function Palavra() {
         setShowHowToPlay(false);
         markTutorialSeen();
     }, [markTutorialSeen]);
+
+    // Opening the board is the moment to find out what this identity did
+    // elsewhere: a game finished on the phone should be on the laptop's board
+    // when it is looked at, not after the laptop's next trip to the
+    // background. The store updates through the merge, so a result that
+    // arrives lands on the screen without anything else here noticing.
+    useEffect(() => { syncNostrNow(); }, []);
 
     const isArchive = viewDate !== today;
 
