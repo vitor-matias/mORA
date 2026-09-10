@@ -7,7 +7,7 @@
 // because a read that no relay had answered was taken as "the relays are
 // empty", and this device's log was published over the other's.
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatUTCDate } from '@/lib/format';
 import { useAppStore } from '@/store/app';
 import type { PalavraPlays } from '@/store/palavra';
@@ -91,6 +91,8 @@ beforeEach(() => {
     useAppStore.setState({ shareStreaks: true });
     usePalavraStore.setState({ plays: {}, sharing: {} });
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 describe('syncPalavraWithNostr', () => {
     it('brings a game finished on another device onto this one', async () => {
