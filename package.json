@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
-    "@nostrify/nostrify": "^0.54.0",
-    "@nostrify/react": "^0.6.4",
+    "@nostrify/nostrify": "^0.55.1",
+    "@nostrify/react": "^0.6.8",
     "@types/dompurify": "^3.0.5",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
