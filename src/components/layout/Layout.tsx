@@ -10,12 +10,13 @@ import { useBadgeAwards } from "@/lib/palavra/useBadgeAwards";
 import { BadgeAward } from "@/components/palavra/BadgeAward";
 import { TabBar } from "./TabBar";
 import { ChunkBoundary } from "@/components/ChunkBoundary";
+import { LAUNCH_COLOR } from "@/lib/launchColor";
+import { androidPlatformMajor, drawsUnderStatusBar, statusBarColor } from "@/lib/statusBar";
 
 // The colour the page paints at its very top edge: the day's liturgical
-// wash (--app-wash's first stop) over the page background. The strip under
-// the status bar is drawn by the OS from theme-color rather than by us, so
-// this blend is the only way it can match the page beneath it. Both halves
-// are read from the stylesheet — index.css owns the numbers.
+// wash (--app-wash's first stop) over the page background — what any browser
+// chrome that follows theme-color should match. Both halves are read from
+// the stylesheet; index.css owns the numbers.
 function pageTopColor(isDark: boolean): string {
     const css = getComputedStyle(document.documentElement);
     const channels = (name: string) => {
@@ -31,6 +32,11 @@ function pageTopColor(isDark: boolean): string {
     const mixed = bg.map((b, i) => Math.round(alpha * tint[i] + (1 - alpha) * b));
     return `rgb(${mixed.join(' ')})`;
 }
+
+// The Android major version, once Client Hints have answered. Null until
+// then (and everywhere else), which statusBarColor reads as "publish the
+// page colour"; the theme effect re-applies the colour when the answer lands.
+let androidMajor: number | null = null;
 
 // Today's liturgical color/day info for the store (app theme + Home's day
 // card). Module scope so it runs both at mount and on day rollover.
@@ -132,15 +138,24 @@ export function Layout() {
             // style in index.html), which is the only way it follows.
             //
             // Android's installed app is the remaining gap: Chrome accepts
-            // this colour (its icon tint follows it) but on Android 15+ paints
-            // the bar through Window.setStatusBarColor, which the OS now
-            // ignores, so the strip shows whatever sits behind it — the
-            // manifest's light launch colour. Chrome's fix
-            // (WebAppShortEdgesCutoutMode) lets an installed app draw under
-            // the bar when the page opts in with viewport-fit=cover, which
-            // index.html does; until it ships, nothing written here moves
-            // that bar.
-            const themeColor = pageTopColor(isDark);
+            // this colour (its icon tint follows it) but on Android 15+ asks
+            // the OS to paint it through Window.setStatusBarColor, which the
+            // OS now ignores, so the strip shows whatever sits behind it —
+            // the manifest's launch colour. Nothing written here moves that
+            // strip. The icons Chrome draws on it do follow the colour we
+            // publish, though, and publishing the dark page colour there put
+            // white icons on a near-white strip: no clock in dark mode.
+            // statusBarColor publishes the strip's real colour in that one
+            // case, so the icons read, and returns to the page colour the
+            // moment the page draws under the bar (Chrome's
+            // WebAppShortEdgesCutoutMode, when it ships).
+            const themeColor = statusBarColor({
+                pageTop: pageTopColor(isDark),
+                launchColor: LAUNCH_COLOR,
+                drawsUnderBar: drawsUnderStatusBar(),
+                standalone: window.matchMedia('(display-mode: standalone)').matches,
+                androidMajor,
+            });
             // A fresh element each time, not a mutated one: replacing the
             // node is what reliably reaches whoever is watching for it, and
             // it costs nothing. It goes in ahead of the old one, which is only
@@ -161,6 +176,15 @@ export function Layout() {
 
         const resolveIsDark = () => theme === 'dark' || (theme === 'system' && mq.matches);
         applyDarkMode(resolveIsDark());
+
+        // Client Hints answer after the first paint. Apply again when they
+        // do, unless this effect has already been torn down — a later run
+        // will read the cached answer synchronously.
+        let live = true;
+        androidPlatformMajor().then((major) => {
+            androidMajor = major;
+            if (live) applyDarkMode(resolveIsDark());
+        });
 
         // When following the system, react live to OS appearance changes.
         const onSchemeChange = () => applyDarkMode(resolveIsDark());
@@ -187,6 +211,7 @@ export function Layout() {
         document.documentElement.style.setProperty('--content-font-family', familyMap[fontFamily] || 'inherit');
 
         return () => {
+            live = false;
             mq.removeEventListener('change', onSchemeChange);
         };
     }, [theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily]);

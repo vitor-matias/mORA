@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
+import { LAUNCH_COLOR } from './src/lib/launchColor'
 
 // https://vite.dev/config/
 export default defineConfig(({ command }) => ({
@@ -21,8 +22,8 @@ export default defineConfig(({ command }) => ({
         name: 'mORA — Oração diária',
         short_name: 'mORA',
         description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
-        theme_color: '#FAF9F6',
-        background_color: '#FAF9F6',
+        theme_color: LAUNCH_COLOR,
+        background_color: LAUNCH_COLOR,
         // Both purposes, deliberately. Without a `maskable` entry Android
         // cannot crop the icon to the launcher's shape, so it shrinks the
         // `any` one onto a white circle instead — the artwork ends up a small
