@@ -535,7 +535,11 @@ export default function Palavra() {
             selectedDateStr={viewDate}
             isToday={!isArchive}
             onChangeDay={shiftDay}
-            onSelectDate={(date) => goToDate(formatUTCDate(date))}
+            // The picked string, not the Date beside it. Puzzle days are UTC
+            // days, and converting a local-midnight Date back to one lands on
+            // the day before east of Greenwich — which put a Lisbon player on
+            // Sunday every time they picked Monday, today included.
+            onSelectDate={(_date, iso) => goToDate(iso)}
             // No future puzzles exist: the publisher refuses to publish ahead,
             // so tomorrow would only ever load as "no puzzle for this day".
             maxDateStr={today}
