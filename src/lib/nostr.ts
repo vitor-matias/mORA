@@ -441,38 +441,55 @@ async function decryptFromSelf(ciphertext: string): Promise<string | null> {
     return signer.nip44.decrypt(pubkey, ciphertext);
 }
 
-/** The newest snapshot this identity published under `dTag`, decrypted, or
-    null if there is none (or it can't be read). */
-export async function fetchSnapshot(
-    pubkey: string,
-    dTag: string,
-): Promise<{ payload: Record<string, unknown>; createdAt: number } | null> {
+/**
+ * A snapshot read. `snapshot` is the newest version the relays sent (null if
+ * none did); `complete` is whether a majority of relays finished answering, so
+ * that null means "nothing there" and not "nobody answered yet". A sync must
+ * only publish over the relays from a complete read — otherwise an empty read
+ * seeds them with this device's log and buries what another device just wrote.
+ */
+export interface SnapshotRead {
+    snapshot: { payload: Record<string, unknown>; createdAt: number } | null;
+    complete: boolean;
+}
+
+const UNKNOWN: SnapshotRead = { snapshot: null, complete: false };
+
+export async function fetchSnapshot(pubkey: string, dTag: string): Promise<SnapshotRead> {
     let events: NostrEvent[];
+    let answered: number;
+    let asked: number;
     try {
-        // Relays each hold their own copy of an addressable event and can lag;
-        // the pool waits for them all (up to the deadline) and hands back only
-        // the newest, so there is nothing to reconcile here.
-        events = await pool.query([{
+        // queryComplete rather than pool.query: the latter aborts the slower
+        // relays a second after the first EOSE and cannot say who answered.
+        ({ events, answered, asked } = await queryComplete([{
             kinds: [KIND_APP_STATE],
             authors: [pubkey],
             '#d': [dTag],
-        }], { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) });
+            limit: 1,
+        }], { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) }));
     } catch (error) {
         console.warn(`Could not fetch ${dTag} from Nostr relays.`, error);
-        return null;
+        return UNKNOWN;
     }
-    const [newest] = events;
-    if (!newest) return null;
+
+    const complete = answered * 2 > asked;
+    if (!complete) {
+        console.warn(`Only ${answered} of ${asked} relays answered for ${dTag}; treating it as unknown.`);
+    }
+
+    const newest = newestEvent(matching(events, { kind: KIND_APP_STATE, author: pubkey, dTag }));
+    if (!newest) return { snapshot: null, complete };
 
     try {
         const plaintext = await decryptFromSelf(newest.content);
-        if (!plaintext) return null;
+        if (!plaintext) return UNKNOWN;
         const payload = JSON.parse(plaintext) as Record<string, unknown>;
-        if (!payload || typeof payload !== 'object') return null;
-        return { payload, createdAt: newest.created_at };
+        if (!payload || typeof payload !== 'object') return UNKNOWN;
+        return { snapshot: { payload, createdAt: newest.created_at }, complete };
     } catch (error) {
         console.warn(`Could not read the ${dTag} snapshot from Nostr.`, error);
-        return null;
+        return UNKNOWN;
     }
 }
 
@@ -549,7 +566,7 @@ async function doSyncStreaks(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
-    const snapshot = await fetchSnapshot(pubkey, D_STREAK);
+    const { snapshot, complete } = await fetchSnapshot(pubkey, D_STREAK);
     // A payload whose `streaks` is not an object is no snapshot at all —
     // treating it as one would suppress the re-seed below.
     const raw = snapshot?.payload.streaks;
@@ -563,7 +580,8 @@ async function doSyncStreaks(): Promise<void> {
 
     // Seed the relays on first sync, and push whatever they were missing.
     // publishStreakToNostr reads the store, so it picks up the merge above.
-    if (!remote || !streaksEqual(merged, mergeStreaks(emptyStreaks(), remote))) {
+    // Only from a complete read — see SnapshotRead.
+    if (complete && (!remote || !streaksEqual(merged, mergeStreaks(emptyStreaks(), remote)))) {
         await publishStreakToNostr();
     }
 }
@@ -599,7 +617,7 @@ async function doSyncFavourites(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
-    const snapshot = await fetchSnapshot(pubkey, D_FAVOURITES);
+    const { snapshot, complete } = await fetchSnapshot(pubkey, D_FAVOURITES);
     const remotePrayers = sanitizeFavouriteLog(snapshot?.payload.prayers);
     const remoteChants = sanitizeFavouriteLog(snapshot?.payload.chants);
 
@@ -617,10 +635,10 @@ async function doSyncFavourites(): Promise<void> {
     // Seed the relays on first sync, and push whatever they were missing —
     // including the tombstones, which is how an unstar here reaches the device
     // that still has the star. publishFavouritesToNostr reads the store, so it
-    // picks up the merge above.
-    if (!snapshot
+    // picks up the merge above. Only from a complete read — see SnapshotRead.
+    if (complete && (!snapshot
         || !favouriteLogsEqual(prayers, remotePrayers)
-        || !favouriteLogsEqual(chants, remoteChants)) {
+        || !favouriteLogsEqual(chants, remoteChants))) {
         await publishFavouritesToNostr();
     }
 }
@@ -639,7 +657,7 @@ async function doSyncSettings(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
-    const snapshot = await fetchSnapshot(pubkey, D_SETTINGS);
+    const { snapshot, complete } = await fetchSnapshot(pubkey, D_SETTINGS);
     const state = useAppStore.getState();
     // Last-write-wins means the timestamp decides everything, so an impossible
     // one has to be discarded rather than compared: Infinity or a year-3000
@@ -672,8 +690,9 @@ async function doSyncSettings(): Promise<void> {
         return;
     }
     // This device edited last (or the relays have nothing usable) — publish,
-    // but not if the two already agree, so a plain app start writes nothing.
-    if (!snapshot || !usable || !settingsEqual(localSettings, remoteSettings)) {
+    // but not if the two already agree, so a plain app start writes nothing,
+    // and only from a complete read — see SnapshotRead.
+    if (complete && (!snapshot || !usable || !settingsEqual(localSettings, remoteSettings))) {
         await publishSettingsToNostr();
     }
 }

@@ -95,12 +95,30 @@ const relayQuery = vi.fn();
 const relayPublish = vi.fn();
 const signEvent = vi.fn();
 
+// Hoisted alongside the mock factory below, which reads them.
+const { silentRelays, TEST_RELAYS } = vi.hoisted(() => ({
+    /** Relays that never finish answering: no events, no EOSE — what a dead
+        relay, or one still connecting when the deadline lands, looks like. */
+    silentRelays: new Set<string>(),
+    TEST_RELAYS: ['wss://one.test', 'wss://two.test'],
+}));
+
+// Snapshots are read relay by relay (queryComplete), so each relay answers
+// with whatever `relayQuery` holds and then says it is done — unless it has
+// been silenced above.
 vi.mock('@/lib/pool', () => ({
     pool: {
         query: (...args: unknown[]) => relayQuery(...args),
         event: (...args: unknown[]) => relayPublish(...args),
+        relay: (url: string) => ({
+            async *req(...args: unknown[]) {
+                if (silentRelays.has(url)) return;
+                for (const event of await relayQuery(...args)) yield ['EVENT', 'sub', event];
+                yield ['EOSE', 'sub'];
+            },
+        }),
     },
-    RELAYS: [],
+    RELAYS: TEST_RELAYS,
 }));
 vi.mock('@/store/auth', () => ({
     currentPubkey: () => ME,
@@ -271,6 +289,7 @@ function publishedFavourites() {
 
 describe('syncFavouritesWithNostr', () => {
     beforeEach(() => {
+        silentRelays.clear();
         relayQuery.mockReset().mockResolvedValue([]);
         relayPublish.mockReset().mockResolvedValue(undefined);
         signEvent.mockReset().mockImplementation(async (t: { content: string }) =>
@@ -343,6 +362,37 @@ describe('syncFavouritesWithNostr', () => {
         await syncFavouritesWithNostr();
 
         expect(starredIds(publishedFavourites().prayers)).toEqual(['angelus']);
+    });
+
+    // "Nothing came back" and "nobody answered" used to look the same, and the
+    // seed above then ran on a read no relay had finished — publishing this
+    // device's list over the one the other device had just put there.
+    it('leaves the relays alone when they did not answer', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - DAY, on: true } } });
+        for (const url of TEST_RELAYS) silentRelays.add(url);
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(relayPublish).not.toHaveBeenCalled();
+        // This device's own stars are untouched by a read that said nothing.
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual(['angelus']);
+    });
+
+    // Half the relays is not a majority. What the answering half sent is
+    // still merged in, though: a union loses nothing.
+    it('merges what arrived but does not publish when only half the relays answered', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - DAY, on: true } } });
+        heldFavourites({ prayers: { magnificat: { at: NOW - 2 * DAY, on: true } }, chants: {} });
+        silentRelays.add(TEST_RELAYS[0]);
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual(['angelus', 'magnificat']);
+        expect(relayPublish).not.toHaveBeenCalled();
     });
 
     // Syncing is opt-in: with the switch off, a shortlist never leaves the

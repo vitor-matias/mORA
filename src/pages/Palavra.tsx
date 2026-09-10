@@ -26,6 +26,7 @@ import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
+import { syncNostrNow } from '@/lib/useNostrSync';
 import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
@@ -103,6 +104,9 @@ export default function Palavra() {
         setShowHowToPlay(false);
         markTutorialSeen();
     }, [markTutorialSeen]);
+
+    // A game finished on another device should be here when the board opens.
+    useEffect(() => { syncNostrNow(); }, []);
 
     const isArchive = viewDate !== today;
 

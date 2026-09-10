@@ -12,6 +12,14 @@ const PUBLISH_DEBOUNCE_MS = 2_000;
 
 let lastSyncAt = 0;
 
+// The running hook's pull, for the Palavra board to call when it opens.
+let pullNow: ((force?: boolean) => Promise<void>) | null = null;
+
+/** Pull now, past the throttle, if an identity is signed in. */
+export function syncNostrNow(): void {
+    void pullNow?.(true);
+}
+
 /**
  * Keeps this device in step with the others signed in under the same Nostr
  * identity: streaks (merged), the Palavra play log (merged), the starred
@@ -91,6 +99,8 @@ export function useNostrSync() {
             }
         };
 
+        pullNow = pull;
+
         // Signing in (or switching identity) syncs immediately; the throttle
         // only guards the repeat visits below.
         pull(true);
@@ -142,6 +152,7 @@ export function useNostrSync() {
         });
 
         return () => {
+            if (pullNow === pull) pullNow = null;
             document.removeEventListener('visibilitychange', onVisibilityChange);
             timers.forEach((timer) => window.clearTimeout(timer));
             unsubscribe();

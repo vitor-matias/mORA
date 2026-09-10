@@ -4,8 +4,8 @@
 // server/palavra/README.md exactly, so switching to real puzzles is a
 // matter of setting the env var.
 //
-import { sha256 } from '@noble/hashes/sha2';
-import { utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { answerHash, normalizeWord, obfuscateAnswer } from './game';
 import { BLANK_MARKER, type DailyChallenge } from './types';
 
