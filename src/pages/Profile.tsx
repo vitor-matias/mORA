@@ -901,11 +901,8 @@ export default function Profile() {
                         <div>
                             <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
                             <p className="text-xs text-zinc-500 mt-0.5">
-                                Guarda as suas sequências de oração, as orações e cânticos favoritos e as
-                                preferências de leitura (tipo de letra, modo do terço)
-                                na rede, encriptados — só os seus dispositivos os conseguem ler.
-                                O tema, o tamanho do texto e a velocidade de leitura ficam neste dispositivo.
-                                O seu nome de perfil pode aparecer a outras pessoas na lista de quem rezou hoje.
+                                Guarda sequências, favoritos e preferências de leitura na rede, encriptados —
+                                só os seus dispositivos os conseguem ler. O seu nome pode aparecer na lista de quem rezou hoje.
                             </p>
                         </div>
                         <button
