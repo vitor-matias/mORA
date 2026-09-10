@@ -109,15 +109,7 @@ async function doSync(): Promise<void> {
     // Seed the relays on first sync, and push whatever they were missing.
     // Comparing the merge against the remote alone tells us whether this
     // device is adding anything they don't already have.
-    //
-    // Only from a read the relays actually answered. A read that came back
-    // empty because no relay had spoken yet used to fall into `!remote` and
-    // seed them with this device's log — replacing the snapshot the other
-    // device published when its game ended. That game then existed nowhere
-    // but on the device that played it, until that device foregrounded and
-    // put it back, and this one foregrounded again to pick it up; with both
-    // reads racing the same relays, a result could take hours to cross. The
-    // merge above still folds in whatever did arrive: a union loses nothing.
+    // Only from a complete read — see SnapshotRead in lib/nostr.ts.
     if (complete && (!remote || !playsEqual(merged, mergePalavraPlays({}, remote)))) {
         await publishPalavraStateToNostr();
     }

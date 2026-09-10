@@ -105,11 +105,7 @@ export default function Palavra() {
         markTutorialSeen();
     }, [markTutorialSeen]);
 
-    // Opening the board is the moment to find out what this identity did
-    // elsewhere: a game finished on the phone should be on the laptop's board
-    // when it is looked at, not after the laptop's next trip to the
-    // background. The store updates through the merge, so a result that
-    // arrives lands on the screen without anything else here noticing.
+    // A game finished on another device should be here when the board opens.
     useEffect(() => { syncNostrNow(); }, []);
 
     const isArchive = viewDate !== today;

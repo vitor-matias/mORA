@@ -442,24 +442,11 @@ async function decryptFromSelf(ciphertext: string): Promise<string | null> {
 }
 
 /**
- * What a snapshot read came back with.
- *
- * `snapshot` is the newest version the relays sent, decrypted — or null when
- * none of them sent one. `complete` says whether that null can be believed:
- * whether a majority of the relays finished answering, so that "nothing came
- * back" means "there is nothing" rather than "nobody had spoken yet".
- *
- * The two have to be told apart, because every sync republishes over what it
- * read. A device that reads nothing and takes that as "the relays are empty"
- * seeds them with its own log, which replaces the version another device just
- * published — and the game played there is gone from the relays until that
- * device happens to sync again. That was the shape of results taking hours to
- * reach a second device: not a slow network, but the two devices overwriting
- * each other's snapshot on every foreground.
- *
- * A snapshot that came back but could not be read (the signer failed to
- * decrypt it, or it was not JSON) is reported the same way as no answer:
- * unknown, so nothing is written over it.
+ * A snapshot read. `snapshot` is the newest version the relays sent (null if
+ * none did); `complete` is whether a majority of relays finished answering, so
+ * that null means "nothing there" and not "nobody answered yet". A sync must
+ * only publish over the relays from a complete read — otherwise an empty read
+ * seeds them with this device's log and buries what another device just wrote.
  */
 export interface SnapshotRead {
     snapshot: { payload: Record<string, unknown>; createdAt: number } | null;
@@ -468,19 +455,13 @@ export interface SnapshotRead {
 
 const UNKNOWN: SnapshotRead = { snapshot: null, complete: false };
 
-/** The newest snapshot this identity published under `dTag`, decrypted, and
-    whether the relays answered well enough for its absence to mean anything. */
 export async function fetchSnapshot(pubkey: string, dTag: string): Promise<SnapshotRead> {
     let events: NostrEvent[];
     let answered: number;
     let asked: number;
     try {
-        // Not `pool.query`: it gives the slower relays one second after the
-        // *first* EOSE before aborting them, and swallows the abort, so a
-        // relay that never received this snapshot ends the read before the
-        // one holding it has answered — and the result looks like "nothing
-        // published". queryComplete waits for every relay up to the deadline
-        // and says how many actually finished.
+        // queryComplete rather than pool.query: the latter aborts the slower
+        // relays a second after the first EOSE and cannot say who answered.
         ({ events, answered, asked } = await queryComplete([{
             kinds: [KIND_APP_STATE],
             authors: [pubkey],
@@ -492,22 +473,11 @@ export async function fetchSnapshot(pubkey: string, dTag: string): Promise<Snaps
         return UNKNOWN;
     }
 
-    // A majority rather than every relay, as the contact list and the badge
-    // list already do: insisting on all of them would let one chronically
-    // dead relay stop every device from ever publishing its log.
     const complete = answered * 2 > asked;
     if (!complete) {
-        console.warn(
-            `Only ${answered} of ${asked} relays finished answering for ${dTag}, `
-            + 'so what they hold is unknown rather than empty.',
-        );
+        console.warn(`Only ${answered} of ${asked} relays answered for ${dTag}; treating it as unknown.`);
     }
 
-    // Every candidate is kept, including those from relays that never
-    // finished — the one holding the current version may be exactly the one
-    // that died mid-send. Checked against the filter locally rather than on
-    // the relay's word, and the newest wins on the same rule every reader
-    // uses, so two relays disagreeing does not come down to which was quicker.
     const newest = newestEvent(matching(events, { kind: KIND_APP_STATE, author: pubkey, dTag }));
     if (!newest) return { snapshot: null, complete };
 
@@ -610,11 +580,7 @@ async function doSyncStreaks(): Promise<void> {
 
     // Seed the relays on first sync, and push whatever they were missing.
     // publishStreakToNostr reads the store, so it picks up the merge above.
-    //
-    // Only from a read the relays actually answered. Written from one they
-    // did not, this device's log replaces whatever the others hold — see
-    // SnapshotRead. The merge above still stands: folding in what did arrive
-    // loses nothing.
+    // Only from a complete read — see SnapshotRead.
     if (complete && (!remote || !streaksEqual(merged, mergeStreaks(emptyStreaks(), remote)))) {
         await publishStreakToNostr();
     }
@@ -669,9 +635,7 @@ async function doSyncFavourites(): Promise<void> {
     // Seed the relays on first sync, and push whatever they were missing —
     // including the tombstones, which is how an unstar here reaches the device
     // that still has the star. publishFavouritesToNostr reads the store, so it
-    // picks up the merge above.
-    //
-    // Only from a read the relays actually answered — see SnapshotRead.
+    // picks up the merge above. Only from a complete read — see SnapshotRead.
     if (complete && (!snapshot
         || !favouriteLogsEqual(prayers, remotePrayers)
         || !favouriteLogsEqual(chants, remoteChants))) {
@@ -727,9 +691,7 @@ async function doSyncSettings(): Promise<void> {
     }
     // This device edited last (or the relays have nothing usable) — publish,
     // but not if the two already agree, so a plain app start writes nothing,
-    // and not from a read the relays never answered: last-write-wins is
-    // decided by created_at on the relays, so an edit published over an
-    // unread newer one would bury it — see SnapshotRead.
+    // and only from a complete read — see SnapshotRead.
     if (complete && (!snapshot || !usable || !settingsEqual(localSettings, remoteSettings))) {
         await publishSettingsToNostr();
     }
