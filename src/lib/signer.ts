@@ -4,7 +4,7 @@ import {
     type NLoginType, type NostrConnectParams,
 } from '@nostrify/react/login';
 import { getPublicKey } from 'nostr-tools';
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js';
 import { pool } from '@/lib/pool';
 
 /**
@@ -370,7 +370,7 @@ export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> 
         return await NLogin.fromBunker(uri, pool);
     } catch (error) {
         if (error instanceof Error && /invalid bunker uri|no relay/i.test(error.message)) {
-            throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
+            throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.', { cause: error });
         }
         throw mapSignerError(
             error,

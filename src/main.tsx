@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components -- the entry file is
+   never hot-replaced, and the lazy routes below are not exports. */
 import { StrictMode, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter, Routes, Route } from "react-router-dom"

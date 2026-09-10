@@ -4,8 +4,8 @@
 // the scoring can be pinned down in unit tests (game.test.ts) — it is the one
 // part of the feature a subtle bug would silently corrupt for everybody.
 
-import { sha256 } from '@noble/hashes/sha2';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 import type { Mark } from './types';
 
 /**
