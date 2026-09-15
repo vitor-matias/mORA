@@ -156,7 +156,11 @@ function normalizeSectionLabel(doc: Document, p: Element): void {
 
     const line = normalizeLine(lineNodes.map((n) => n.textContent ?? '').join(''));
     const match = line.match(SECTION_LABEL_RE);
-    if (!match || match[0] !== match[0].toUpperCase()) return;
+    if (!match) return;
+    // The Sequence is the one label allowed in mixed case: where it is
+    // optional (Our Lady of Sorrows) the missal prints it as an italic
+    // rubric, "Sequência", and no body line ever opens with that word.
+    if (match[0] !== match[0].toUpperCase() && !SEQUENCE_RE.test(match[0])) return;
 
     // Flatten the line: the label into its own <strong>, the scripture
     // reference after it as plain text for the header pass to wrap.
@@ -551,7 +555,20 @@ export function enrichReadingHtml(html: string): string {
     const safe = DOMPurify.sanitize(html);
     const doc = new DOMParser().parseFromString(safe, 'text/html');
 
+    // An optional Sequence arrives italic from its label to its last stanza,
+    // which is the shape a commentary has. Nothing between that label and
+    // the next section is a commentary, so the fold below skips the span.
+    let inSequence = false;
     doc.querySelectorAll('p').forEach((p) => {
+        const text = normalizeLine(p.textContent ?? '');
+        if (SEQUENCE_RE.test(text)) {
+            inSequence = true;
+            return;
+        }
+        const section = text.match(SECTION_LABEL_RE);
+        if (section && section[0] === section[0].toUpperCase()) inSequence = false;
+        if (inSequence) return;
+
         const directText = Array.from(p.childNodes)
             .filter((n) => n.nodeType === Node.TEXT_NODE)
             .map((n) => n.textContent || '')

@@ -399,6 +399,59 @@ describe('section headers', () => {
         expect(header?.nextElementSibling?.textContent).toContain('Vinde, ó Santo Espírito,');
     });
 
+    it('keeps an optional Sequence printed in italics out of the commentary fold', () => {
+        // Our Lady of Sorrows: the Stabat Mater is ad libitum, and the missal
+        // sets optional parts in italics, label and stanzas alike — exactly
+        // the shape a folded-away commentary has.
+        const doc = render(
+            '<p><strong>SALMO RESPONSORIAL</strong> Salmo 30 (31), 2-3a (R. 17b)<br />\n' +
+            'Refrão: Salvai-me, Senhor, pela vossa misericórdia. Repete-se</p>\n' +
+            '<p><em>Sequência (facultativa)</em></p>\n' +
+            '<p><em>Estava a Mãe dolorosa</em><br />\n<em>junto da cruz, lacrimosa,</em><br />\n' +
+            '<em>vendo o Filho que pendia.</em></p>\n' +
+            '<p><em>Sua alma agoniada,</em><br />\n<em>triste e amargurada,</em><br />\n' +
+            '<em>uma espada traspassava.</em></p>\n' +
+            '<p><strong>ALELUIA</strong><br />\nRefrão: Aleluia. Repete-se<br />\n' +
+            '<em>Feliz a Virgem Maria.</em></p>\n' +
+            '<p><strong>EVANGELHO</strong> Jo 19, 25-27<br />\n«Eis o teu filho»</p>'
+        );
+
+        const header = doc.querySelector('#sequencia');
+        expect(header?.className).toBe('reading-section-header');
+        expect(header?.getAttribute('data-toc-label')).toBe('Sequência');
+        expect(header?.querySelector('.reading-ref')?.textContent).toBe('(facultativa)');
+        // the stanzas stay in view, not behind a "Comentário" toggle
+        expect(doc.querySelector('.reading-commentary')).toBeNull();
+        expect(header?.nextElementSibling?.textContent).toContain('Estava a Mãe dolorosa');
+        expect(Array.from(doc.querySelectorAll('[data-toc-label]')).map((e) => e.id))
+            .toEqual(['salmo', 'sequencia', 'aleluia', 'evangelho']);
+    });
+
+    it('still folds a commentary that follows the Sequence section', () => {
+        const doc = render(
+            '<p><em>Sequência</em><br />\n<em>Estava a Mãe dolorosa.</em></p>\n' +
+            '<p><strong>EVANGELHO</strong> Jo 19, 25-27<br />\n«Eis o teu filho»</p>\n' +
+            '<p><em>O evangelista mostra-nos Maria junto da cruz.</em></p>'
+        );
+
+        expect(doc.querySelector('#sequencia')?.nextElementSibling?.textContent)
+            .toContain('Estava a Mãe dolorosa.');
+        expect(doc.querySelector('.reading-commentary .commentary-body')?.textContent)
+            .toBe('O evangelista mostra-nos Maria junto da cruz.');
+    });
+
+    it('reads a mixed-case Sequence label with no markup at all', () => {
+        const doc = render(
+            '<p>Sequência (ad libitum)<br />\nEstava a Mãe dolorosa<br />\njunto da cruz, lacrimosa.</p>'
+        );
+
+        const header = doc.querySelector('#sequencia');
+        expect(header?.querySelector('.reading-label')?.textContent).toBe('Sequência');
+        expect(header?.querySelector('.reading-ref')?.textContent).toBe('(ad libitum)');
+        expect(header?.nextElementSibling?.innerHTML)
+            .toBe('\nEstava a Mãe dolorosa<br>\njunto da cruz, lacrimosa.');
+    });
+
     it('leaves a Sequence header alone when the hymn has its own paragraph', () => {
         const doc = render(
             '<p><strong>SEQUÊNCIA</strong></p>\n' +
