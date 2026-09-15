@@ -123,6 +123,41 @@
     border-bottom-color: rgb(255 255 255 / 0.1);
   }
 
+  /* Top padding of the collapsed PageHeader: 0.75rem under the safe-area
+     inset, so the title row sits right beneath the status bar.
+
+     Not in the app installed on iOS. From iOS 27 the system lays a
+     progressive blur over the top of a black-translucent web app — full
+     across the status bar, fading out over the 35pt or so beneath it —
+     and it is not the page's to switch off: an opaque bar, a plain colour,
+     a fixed element covering the strip, blur on a pseudo-element instead
+     of the bar, none of them changed it (iOS 27.0 Simulator, 2026-09-15).
+     At 0.75rem the collapsed title's glyphs stand 16–36pt below the status
+     bar, inside that fade, and come out smeared the moment the page
+     scrolls; the resting title, 40pt down, is clear of it. So the bar
+     keeps the resting padding — 2.5rem, 3rem from lg, the same pair
+     PageHeader's resting branch uses — and collapses only the title and
+     the orb, and the title stays legible. The same rule reaches iOS 26,
+     where the page still draws under the status bar and there is no
+     blur, at the cost of a taller bar there. -webkit-touch-callout is
+     iOS WebKit's alone; display-mode keeps Safari's own tab, with its
+     own bars, out. */
+  .app-bar-collapsed {
+    padding-top: calc(0.75rem + env(safe-area-inset-top));
+  }
+  @supports (-webkit-touch-callout: none) {
+    @media (display-mode: standalone) {
+      .app-bar-collapsed {
+        padding-top: calc(2.5rem + env(safe-area-inset-top));
+      }
+    }
+    @media (display-mode: standalone) and (min-width: 1024px) {
+      .app-bar-collapsed {
+        padding-top: calc(3rem + env(safe-area-inset-top));
+      }
+    }
+  }
+
   /* Foot of a guided prayer page — the rail the back/advance buttons stick
      to, so the button that turns the bead is under the thumb at every step
      however long the prayer runs (the Salve Rainha and the mystery

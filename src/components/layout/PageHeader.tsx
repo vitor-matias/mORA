@@ -104,9 +104,11 @@ export function PageHeader({
                     // header starts at the screen edge and its padding keeps
                     // the title clear of the clock. Stuck and collapsed, the
                     // frosted bar then covers that strip too, rather than
-                    // letting content scroll past under the clock.
+                    // letting content scroll past under the clock. The
+                    // collapsed padding is a class of its own because the
+                    // installed iOS app needs more of it (see index.css).
                     collapsed
-                        ? 'app-bar app-bar-scrolled pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3'
+                        ? 'app-bar app-bar-scrolled app-bar-collapsed pb-3'
                         : 'pt-[calc(2.5rem+env(safe-area-inset-top))] pb-4 lg:pt-[calc(3rem+env(safe-area-inset-top))] lg:pb-5'
                 }`
             }>
