@@ -144,6 +144,54 @@
     background: rgb(var(--app-bg) / 0.85);
   }
 
+  /* Ground under the floating tab bar, below xl — the page's last stretch,
+     fading to the colour of the system bar beneath it.
+
+     On an installed app on Android the strip under the page (the gesture
+     bar, or the three buttons) is painted by Chrome, not by us: plain black
+     when theme-color is dark, plain white when it is light — the page's own
+     colour never reaches it, and no meta sets it. The top of the page is
+     seamless because it paints the same blend the OS does under the clock
+     (see Layout's theme-color effect); this is the same idea the other way
+     round. The page's foot fades to the colour Chrome will paint, so a card
+     scrolling out under the tabs runs into the strip with no edge — and
+     the tabs float over a ground of their own instead of over the reading.
+
+     Only where such a strip exists. It stands where the page is not drawn,
+     and env(safe-area-inset-bottom) is 0 there. Where the page does draw
+     under the system bar (iOS with black-translucent; Chrome once its
+     edge-to-edge for installed apps ships, which viewport-fit=cover in
+     index.html opts into) the inset is real, the page itself is what shows
+     through the bar, and this would only dim the gesture area: max()
+     collapses it to nothing at the first pixel of inset. Its height is the
+     clearance content keeps for the bar (Layout's 5.5rem), so the fade
+     spans exactly what the bar occupies.
+
+     And only for the installed app, which is where that black or white
+     strip is painted (the same display-mode test Profile and Palavra use).
+     In a browser tab the strip under the page is Chrome's own toolbar
+     colour, and a narrow desktop window has nothing under it at all: in
+     both, a fade to pure black or white would be a vignette matching
+     nothing. */
+  .bottom-bar-ground {
+    display: none;
+  }
+  @media (display-mode: standalone) {
+    .bottom-bar-ground {
+      display: block;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: max(0px, calc(5.5rem - env(safe-area-inset-bottom, 0px) * 1000));
+      pointer-events: none;
+      background: linear-gradient(to bottom, rgb(255 255 255 / 0), rgb(255 255 255));
+    }
+    .dark .bottom-bar-ground {
+      background: linear-gradient(to bottom, rgb(0 0 0 / 0), rgb(0 0 0));
+    }
+  }
+
   /* Responsorial-psalm refrain — the line the congregation answers with,
      lifted out of the section title by enrichReadingTypography. */
   .psalm-refrain {
