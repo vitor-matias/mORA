@@ -165,18 +165,31 @@
      through the bar, and this would only dim the gesture area: max()
      collapses it to nothing at the first pixel of inset. Its height is the
      clearance content keeps for the bar (Layout's 5.5rem), so the fade
-     spans exactly what the bar occupies. */
+     spans exactly what the bar occupies.
+
+     And only for the installed app, which is where that black or white
+     strip is painted (the same display-mode test Profile and Palavra use).
+     In a browser tab the strip under the page is Chrome's own toolbar
+     colour, and a narrow desktop window has nothing under it at all: in
+     both, a fade to pure black or white would be a vignette matching
+     nothing. */
   .bottom-bar-ground {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: max(0px, calc(5.5rem - env(safe-area-inset-bottom, 0px) * 1000));
-    pointer-events: none;
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0), rgb(255 255 255));
+    display: none;
   }
-  .dark .bottom-bar-ground {
-    background: linear-gradient(to bottom, rgb(0 0 0 / 0), rgb(0 0 0));
+  @media (display-mode: standalone) {
+    .bottom-bar-ground {
+      display: block;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: max(0px, calc(5.5rem - env(safe-area-inset-bottom, 0px) * 1000));
+      pointer-events: none;
+      background: linear-gradient(to bottom, rgb(255 255 255 / 0), rgb(255 255 255));
+    }
+    .dark .bottom-bar-ground {
+      background: linear-gradient(to bottom, rgb(0 0 0 / 0), rgb(0 0 0));
+    }
   }
 
   /* Responsorial-psalm refrain — the line the congregation answers with,
