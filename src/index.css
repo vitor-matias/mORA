@@ -148,14 +148,23 @@
      fading to the colour of the system bar beneath it.
 
      On an installed app on Android the strip under the page (the gesture
-     bar, or the three buttons) is painted by Chrome, not by us: plain black
-     when theme-color is dark, plain white when it is light — the page's own
-     colour never reaches it, and no meta sets it. The top of the page is
-     seamless because it paints the same blend the OS does under the clock
-     (see Layout's theme-color effect); this is the same idea the other way
-     round. The page's foot fades to the colour Chrome will paint, so a card
-     scrolling out under the tabs runs into the strip with no edge — and
-     the tabs float over a ground of their own instead of over the reading.
+     bar, or the three buttons) is painted by Chrome, not by us, and the
+     page's own colour never reaches it: no meta sets it, and theme-color
+     does not move it. Seen on a Pixel with the phone in dark mode, the
+     strip is plain black under the app's dark theme and under its light
+     theme alike; others report the opposite colour when the app's theme
+     and the phone's differ. What fits every observation is that Chrome
+     takes the colour from the phone's own dark-mode setting — black on a
+     dark phone, white on a light one — whatever the page is doing. So the
+     endpoint follows prefers-color-scheme, which is that setting, rather
+     than the .dark class, which is the app's theme and can differ from it.
+
+     The top of the page is seamless because it paints the same blend the
+     OS does under the clock (see Layout's theme-color effect); this is
+     the same idea the other way round. The page's foot fades to the
+     colour Chrome will paint, so a card scrolling out under the tabs runs
+     into the strip with no edge — and the tabs float over a ground of
+     their own instead of over the reading.
 
      Only where such a strip exists. It stands where the page is not drawn,
      and env(safe-area-inset-bottom) is 0 there. Where the page does draw
@@ -167,12 +176,11 @@
      clearance content keeps for the bar (Layout's 5.5rem), so the fade
      spans exactly what the bar occupies.
 
-     And only for the installed app, which is where that black or white
-     strip is painted (the same display-mode test Profile and Palavra use).
-     In a browser tab the strip under the page is Chrome's own toolbar
-     colour, and a narrow desktop window has nothing under it at all: in
-     both, a fade to pure black or white would be a vignette matching
-     nothing. */
+     And only for the installed app, which is where that strip is painted
+     (the same display-mode test Profile and Palavra use). In a browser tab
+     the strip under the page is Chrome's own toolbar colour, and a narrow
+     desktop window has nothing under it at all: in both, a fade to pure
+     black or white would be a vignette matching nothing. */
   .bottom-bar-ground {
     display: none;
   }
@@ -187,7 +195,9 @@
       pointer-events: none;
       background: linear-gradient(to bottom, rgb(255 255 255 / 0), rgb(255 255 255));
     }
-    .dark .bottom-bar-ground {
+  }
+  @media (display-mode: standalone) and (prefers-color-scheme: dark) {
+    .bottom-bar-ground {
       background: linear-gradient(to bottom, rgb(0 0 0 / 0), rgb(0 0 0));
     }
   }
