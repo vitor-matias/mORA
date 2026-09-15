@@ -182,12 +182,19 @@ function normalizeSectionLabel(doc: Document, p: Element): void {
  * reference's place under the label.
  */
 function splitSequenceHeader(doc: Document, p: Element, labelEl: Element): void {
+    // The rubric may share the label's bold ("<strong>SEQUÊNCIA (ad
+    // libitum)</strong>"): only the label itself belongs in the pill.
+    const labelText = normalizeLine(labelEl.textContent ?? '');
+    const labelMatch = labelText.match(SEQUENCE_RE);
+    const inlineRubric = labelMatch ? labelText.slice(labelMatch[0].length) : '';
+    if (labelMatch && inlineRubric.trim()) labelEl.textContent = labelMatch[0];
+
     const nodes = Array.from(p.childNodes).filter((n) => n !== labelEl);
     const brIdx = nodes.findIndex((n) => n.nodeName === 'BR');
     const lineNodes = brIdx === -1 ? nodes : nodes.slice(0, brIdx);
     const hymnNodes = brIdx === -1 ? [] : nodes.slice(brIdx + 1);
 
-    const rubric = normalizeLine(lineNodes.map((n) => n.textContent ?? '').join(''));
+    const rubric = normalizeLine([inlineRubric, ...lineNodes.map((n) => n.textContent ?? '')].join(' '));
     lineNodes.forEach((n) => p.removeChild(n));
     if (brIdx !== -1) p.removeChild(nodes[brIdx]);
     if (rubric) {
@@ -514,7 +521,10 @@ function withoutInlineEmphasis(html: string): string {
 // rest of the psalm and the Gospel along with it. A Sequence also closes
 // it: the missal prints the hymn before the Alleluia, but should upstream
 // ever order them the other way round the hymn must not go with the verse.
-const ALLELUIA_RE = /<p>\s*(?:ALELUIA|ACLAMAÇÃO\s+ANTES\s+DO\s+EVANGELHO)\b[\s\S]*?(?=<p>\s*(?:EVANGELHO|SEQU[EÊ]NCIA)\b)/;
+// That one boundary is case-insensitive, spelt out letter by letter, since
+// an optional Sequence is labelled "Sequência" (see SEQUENCE_RE) and the
+// rest of the pattern must stay ALL-CAPS.
+const ALLELUIA_RE = /<p>\s*(?:ALELUIA|ACLAMAÇÃO\s+ANTES\s+DO\s+EVANGELHO)\b[\s\S]*?(?=<p>\s*(?:EVANGELHO|[Ss][Ee][Qq][Uu][EeÊê][Nn][Cc][Ii][Aa])\b)/;
 
 /**
  * Slices the readings out of a full missal text, dropping the prayers that

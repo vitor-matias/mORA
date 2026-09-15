@@ -388,6 +388,20 @@ describe('section headers', () => {
             .toBe('\nEstava a Mãe dolorosa<br>\njunto da cruz, lacrimosa.');
     });
 
+    it('lifts a rubric out of the Sequence label when it shares the bold', () => {
+        const doc = render(
+            '<p><strong>SEQUÊNCIA (ad libitum)</strong><br />\n' +
+            'Estava a Mãe dolorosa<br />\njunto da cruz, lacrimosa.</p>'
+        );
+
+        const header = doc.querySelector('#sequencia');
+        expect(header?.querySelector('.reading-label')?.textContent).toBe('SEQUÊNCIA');
+        expect(header?.querySelector('.reading-ref')?.textContent).toBe('(ad libitum)');
+        expect(header?.getAttribute('data-toc-label')).toBe('Sequência');
+        expect(header?.nextElementSibling?.innerHTML)
+            .toBe('\nEstava a Mãe dolorosa<br>\njunto da cruz, lacrimosa.');
+    });
+
     it('reads a Sequence label that carries no emphasis, accent or not', () => {
         const doc = render(
             '<p>SEQUENCIA<br />\nVinde, ó Santo Espírito,<br />\nvinde, Amor ardente.</p>'
@@ -591,6 +605,20 @@ describe('extractReadings', () => {
         const result = extractReadings(html);
         expect(result).not.toContain('ALELUIA');
         expect(result).toContain('SEQUÊNCIA');
+        expect(result).toContain('EVANGELHO');
+    });
+
+    it('does not drop an optional, mixed-case Sequence after the Alleluia either', () => {
+        const html = '<p><strong>LEITURA I</strong> Hebr 5, 7-9<br />\n«Aprendeu a obediência»</p>\n'
+            + '<p><strong>ALELUIA</strong><br />\nRefrão: Aleluia. Repete-se</p>\n'
+            + '<p><em>Sequência (facultativa)</em></p>\n'
+            + '<p><em>Estava a Mãe dolorosa</em><br />\n<em>junto da cruz, lacrimosa.</em></p>\n'
+            + '<p><strong>EVANGELHO</strong> Jo 19, 25-27<br />\nPalavra da salvação.</p>\n';
+
+        const result = extractReadings(html);
+        expect(result).not.toContain('ALELUIA');
+        expect(result).toContain('Sequência (facultativa)');
+        expect(result).toContain('Estava a Mãe dolorosa');
         expect(result).toContain('EVANGELHO');
     });
 
