@@ -237,7 +237,7 @@ R. Ut digni efficiámur promissiónibus Christi.`,
 e a vós, irmãos,
 que pequei muitas vezes
 por pensamentos e palavras, actos e omissões,
-por minha culpa, minha tão grande culpa.
+por minha culpa, minha culpa, minha tão grande culpa.
 
 E peço à Virgem Maria,
 aos Anjos e Santos,
