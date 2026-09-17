@@ -94,16 +94,6 @@ export function TabBar() {
 
     return (
         <>
-            {/* The bar's ground: fades the page's foot to the colour of the
-                system bar under it (see .bottom-bar-ground). It comes and
-                goes with the bar — when the bar stands down the page owns
-                the strip, keyboard or prayer buttons included. */}
-            <div
-                aria-hidden="true"
-                className={`xl:hidden bottom-bar-ground z-30 transition-opacity duration-300 ease-out ${
-                    hide ? 'opacity-0' : 'opacity-100'
-                }`}
-            />
             <nav
                 aria-label="Navegação principal"
                 aria-hidden={hide}
