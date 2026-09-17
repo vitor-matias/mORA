@@ -9,7 +9,7 @@ import { useAppStore } from "@/store/app";
 import { COLOR_DOTS } from "@/lib/dayInfo";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 
-const WEEKDAYS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D']; // Monday-first, pt-PT
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; // Sunday-first, pt-PT
 
 function firstOfMonth(d: Date): Date {
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -25,10 +25,10 @@ export default function LiturgicalDirectory() {
     const [loading, setLoading] = useState(true);
     const [retryToken, setRetryToken] = useState(0);
 
-    // The 42 cells (6 weeks) covering the viewed month, Monday-first.
+    // The 42 cells (6 weeks) covering the viewed month, Sunday-first.
     const cells = useMemo(() => {
         const start = new Date(viewMonth);
-        start.setDate(1 - ((viewMonth.getDay() + 6) % 7));
+        start.setDate(1 - viewMonth.getDay());
         return Array.from({ length: 42 }, (_, i) => {
             const d = new Date(start);
             d.setDate(start.getDate() + i);
