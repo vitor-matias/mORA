@@ -219,6 +219,9 @@ o meu coração e inteiramente todo o meu ser.
 
 E porque assim sou todo vosso, ó incomparável Mãe,
 guardai-me e defendei-me como coisa e propriedade vossa.
+
+Lembrai-vos que vos pertenço, terna Mãe, Senhora nossa.
+Ah, guardai-me e defendei-me como coisa própria vossa.
 Amen.`,
     },
     {
