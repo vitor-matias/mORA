@@ -11,7 +11,7 @@ export const COMUNS: Prayer[] = [
         note: 'Abre e fecha toda a oração cristã.',
         aka: ['Signum Crucis', 'Em nome do Pai'],
         text: `Pelo sinal da Santa Cruz,
-livre-nos Deus, Nosso Senhor,
+livrai-nos Deus, Nosso Senhor,
 dos nossos inimigos.
 
 Em nome do Pai e do Filho
@@ -258,13 +258,13 @@ oráre pro me ad Dóminum Deum nostrum.`,
         category: 'comuns',
         note: 'Rezado na confissão e ao fim do dia.',
         aka: ['Contrição', 'Meu Deus, porque sois infinitamente bom'],
-        text: `Meu Deus, porque sois infinitamente bom,
-eu Vos amo de todo o meu coração,
-pesa-me ter-Vos ofendido,
+        text: `Meu Deus, porque sois infinitamente bom
+e Vos amo de todo o meu coração,
+pesa-me de Vos ter ofendido
 e, com o auxílio da vossa divina graça,
 proponho firmemente emendar-me
-e nunca mais Vos tornar a ofender;
-peço e espero o perdão das minhas culpas
+e nunca mais Vos tornar a ofender.
+Peço e espero o perdão das minhas culpas
 pela vossa infinita misericórdia.
 Amen.`,
     },
@@ -335,7 +335,7 @@ Amen.`,
 meu zeloso guardador,
 pois que a ti me confiou a piedade divina,
 hoje e sempre
-me governa, rege, guarda e ilumina.
+me rege, guarda, governa e ilumina.
 Amen.`,
         latin: `Ángele Dei, qui custos es mei,
 me, tibi commíssum pietáte supérna,
