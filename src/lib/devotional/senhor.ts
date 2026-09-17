@@ -78,7 +78,7 @@ Mas, como agora não Vos posso receber sacramentalmente,
 vinde, pelo menos espiritualmente, ao meu coração.
 Como se já Vos tivesse recebido,
 abraço-Vos e me uno todo a Vós.
-Não permitais, Senhor, que nunca me separe de Vós.
+Não permitais que jamais me separe de Vós.
 Amen.`,
     },
     {
@@ -425,7 +425,16 @@ compar sit laudátio.
 Amen.
 
 V. Panem de cælo præstitísti eis.
-R. Omne delectaméntum in se habéntem.`,
+R. Omne delectaméntum in se habéntem.
+
+Orémus:
+Deus, qui nobis sub sacraménto mirábili
+passiónis tuæ memóriam reliquísti:
+tríbue, quǽsumus, ita nos Córporis et Sánguinis tui
+sacra mystéria venerári,
+ut redemptiónis tuæ fructum in nobis iúgiter sentiámus.
+Qui vivis et regnas in sǽcula sæculórum.
+R. Amen.`,
     },
     {
         id: 'ladainha-do-sagrado-coracao',
