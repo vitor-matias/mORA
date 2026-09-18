@@ -5,13 +5,7 @@ import type { PlayerRef } from './Player';
 import { BadgeItem } from './BadgeItem';
 import { shortPubkey } from './playerLabel';
 import { useTranslations } from '@/lib/i18n';
-
-// Disabled controls excluded: the follow button is disabled while loading,
-// saving, or already following, and a disabled button cannot take focus — so
-// picking it as the trap's first or last element made Tab call focus() on
-// something that ignores it, and focus escaped the dialog.
-const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), '
-    + 'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { Sheet, type SheetHandle } from '@/components/Sheet';
 
 type FollowState = 'loading' | 'following' | 'not-following' | 'unknown' | 'failed';
 
@@ -32,18 +26,11 @@ export function PlayerSheet({ player, you, onClose }: {
     onClose: () => void;
 }) {
     const t = useTranslations().palavra;
-    const dialogRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
     const [badges, setBadges] = useState<EarnedBadge[] | null>(null);
     const [follows, setFollows] = useState<FollowState>('loading');
 
     const isYou = you === player.pubkey;
-
-    useEffect(() => {
-        const previouslyFocused = document.activeElement as HTMLElement | null;
-        closeRef.current?.focus();
-        return () => previouslyFocused?.focus();
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -113,129 +100,101 @@ export function PlayerSheet({ player, you, onClose }: {
         void import('@/lib/follows').then(({ queueFollow }) => queueFollow(you, player.pubkey));
     };
 
-    const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-        // stopPropagation for the same reason HowToPlay does it: Palavra has a
-        // page-level key listener that would read a bare letter as a guess.
-        event.stopPropagation();
-        if (event.key === 'Escape') { onClose(); return; }
-        if (event.key !== 'Tab') return;
-        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-        if (!focusable || focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-        }
-    };
-
+    // Focus, Escape, the Tab trap and the keystrokes Palavra must not see
+    // are Sheet's.
+    const sheet = useRef<SheetHandle>(null);
+    const close = () => sheet.current?.close();
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in"
-            onClick={onClose}
-        >
-            <div
-                ref={dialogRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="palavra-player-title"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={onDialogKeyDown}
-                className="surface rounded-3xl p-6 max-w-sm w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5 animate-in zoom-in-95"
-            >
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Avatar player={player} />
-                        <h2 id="palavra-player-title" className="text-lg font-bold page-title truncate">
-                            {player.name || shortPubkey(player.pubkey)}
-                        </h2>
-                    </div>
-                    <button
-                        ref={closeRef}
-                        type="button"
-                        onClick={onClose}
-                        aria-label={t.playerClose}
-                        className="shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
-                    >
-                        <X size={20} />
-                    </button>
+        <Sheet ref={sheet} onClose={onClose} labelledBy="palavra-player-title" initialFocus={closeRef} className="space-y-5">
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Avatar player={player} />
+                    <h2 id="palavra-player-title" className="text-lg font-bold page-title truncate">
+                        {player.name || shortPubkey(player.pubkey)}
+                    </h2>
                 </div>
+                <button
+                    ref={closeRef}
+                    type="button"
+                    onClick={close}
+                    aria-label={t.playerClose}
+                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                >
+                    <X size={20} />
+                </button>
+            </div>
 
-                <section className="space-y-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                        {t.badgesTitle}
-                    </h3>
-                    {badges === null && (
-                        <p className="flex items-center gap-2 text-sm text-zinc-500 py-2">
-                            <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-                            {t.badgesLoading}
-                        </p>
-                    )}
-                    {badges?.length === 0 && (
-                        <p className="text-sm text-zinc-500 py-2">
-                            {isYou ? t.badgesNoneYours : t.badgesNone}
-                        </p>
-                    )}
-                    {badges !== null && badges.length > 0 && (
-                        <ul className="space-y-2">
-                            {badges.map((badge) => <BadgeItem key={badge.coord} badge={badge} />)}
-                        </ul>
-                    )}
-                </section>
-
-                {!isYou && you && (
-                    <button
-                        type="button"
-                        onClick={onFollow}
-                        // Tappable while the preflight read is still out.
-                        //
-                        // It used to be disabled during 'loading', which made
-                        // the button dead for as long as that read took — and
-                        // it waits on every relay, so one that never answers
-                        // costs the whole timeout. With a relay currently
-                        // timing out that was twelve seconds of a greyed-out
-                        // button, which is indistinguishable from broken.
-                        //
-                        // Nothing is risked by allowing the tap: follow() does
-                        // its own read and is the one that decides, refusing
-                        // outright if the list can't be seen. The preflight
-                        // only ever chooses a label.
-                        disabled={follows === 'following'}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors disabled:opacity-60 disabled:hover:bg-liturgy-500/10"
-                    >
-                        {follows === 'following'
-                            ? <UserCheck size={15} aria-hidden="true" />
-                            : <UserPlus size={15} aria-hidden="true" />}
-                        {/* 'failed' is the only state that reports a failure,
-                            and it is only reached once the queue has run out of
-                            attempts. Everything else — including 'unknown', the
-                            preflight not coming back — reads as "Seguir", since
-                            the queue takes its own read and may well succeed
-                            where the preflight didn't. */}
-                        {follows === 'following' ? t.followingAlready
-                            : follows === 'failed' ? t.followFailed
-                                : t.followToDuel}
-                    </button>
-                )}
-
-                {/* The reason to follow, said once under the button rather than
-                    inside it. Duels are the payoff and nothing else in the app
-                    explains where opponents come from. */}
-                {!isYou && you && follows !== 'following' && (
-                    <p className="flex items-start gap-1.5 text-xs text-zinc-500 -mt-2">
-                        <Swords size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
-                        {t.followWhy}
+            <section className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                    {t.badgesTitle}
+                </h3>
+                {badges === null && (
+                    <p className="flex items-center gap-2 text-sm text-zinc-500 py-2">
+                        <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+                        {t.badgesLoading}
                     </p>
                 )}
-
-                {!you && (
-                    <p className="text-xs text-zinc-500">{t.signInFollow}</p>
+                {badges?.length === 0 && (
+                    <p className="text-sm text-zinc-500 py-2">
+                        {isYou ? t.badgesNoneYours : t.badgesNone}
+                    </p>
                 )}
-            </div>
-        </div>
+                {badges !== null && badges.length > 0 && (
+                    <ul className="space-y-2">
+                        {badges.map((badge) => <BadgeItem key={badge.coord} badge={badge} />)}
+                    </ul>
+                )}
+            </section>
+
+            {!isYou && you && (
+                <button
+                    type="button"
+                    onClick={onFollow}
+                    // Tappable while the preflight read is still out.
+                    //
+                    // It used to be disabled during 'loading', which made
+                    // the button dead for as long as that read took — and
+                    // it waits on every relay, so one that never answers
+                    // costs the whole timeout. With a relay currently
+                    // timing out that was twelve seconds of a greyed-out
+                    // button, which is indistinguishable from broken.
+                    //
+                    // Nothing is risked by allowing the tap: follow() does
+                    // its own read and is the one that decides, refusing
+                    // outright if the list can't be seen. The preflight
+                    // only ever chooses a label.
+                    disabled={follows === 'following'}
+                    className="pressable w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 disabled:opacity-60 disabled:hover:bg-liturgy-500/10"
+                >
+                    {follows === 'following'
+                        ? <UserCheck size={15} aria-hidden="true" />
+                        : <UserPlus size={15} aria-hidden="true" />}
+                    {/* 'failed' is the only state that reports a failure,
+                        and it is only reached once the queue has run out of
+                        attempts. Everything else — including 'unknown', the
+                        preflight not coming back — reads as "Seguir", since
+                        the queue takes its own read and may well succeed
+                        where the preflight didn't. */}
+                    {follows === 'following' ? t.followingAlready
+                        : follows === 'failed' ? t.followFailed
+                            : t.followToDuel}
+                </button>
+            )}
+
+            {/* The reason to follow, said once under the button rather than
+                inside it. Duels are the payoff and nothing else in the app
+                explains where opponents come from. */}
+            {!isYou && you && follows !== 'following' && (
+                <p className="flex items-start gap-1.5 text-xs text-zinc-500 -mt-2">
+                    <Swords size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                    {t.followWhy}
+                </p>
+            )}
+
+            {!you && (
+                <p className="text-xs text-zinc-500">{t.signInFollow}</p>
+            )}
+        </Sheet>
     );
 }
 

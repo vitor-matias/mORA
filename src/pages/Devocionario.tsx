@@ -133,7 +133,7 @@ export default function Devocionario() {
                     {showSuggestion && (
                         <Link
                             to={`/devocionario/${suggestion.id}`}
-                            className="block surface surface-accent rounded-2xl px-4 py-3 transition-all active:scale-[0.99]"
+                            className="block surface surface-accent rounded-2xl px-4 py-3 pressable pressable-card"
                         >
                             <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
                                 Sugestão de hoje
@@ -166,7 +166,7 @@ export default function Devocionario() {
                                     <Link
                                         to={`/devocionario/${entry.id}`}
                                         aria-current={entry.id === prayer?.id ? 'true' : undefined}
-                                        className={`group flex items-center gap-3 px-4 py-3 surface rounded-2xl transition-all active:scale-[0.99] ${
+                                        className={`group flex items-center gap-3 px-4 py-3 surface rounded-2xl pressable pressable-card ${
                                             entry.id === prayer?.id ? 'surface-accent' : ''
                                         }`}
                                     >
@@ -351,7 +351,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
             {prayer.chapletId && (
                 <Link
                     to={`/coroas/${prayer.chapletId}`}
-                    className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                    className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 pressable"
                 >
                     Rezar conta a conta <ArrowRight size={15} aria-hidden="true" />
                 </Link>

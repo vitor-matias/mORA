@@ -40,8 +40,8 @@ export function Keyboard({
     // scrolling on a laptop screen.
     const t = useTranslations().palavra;
     const keyBase = 'flex items-center justify-center rounded-lg font-semibold '
-        + 'h-[clamp(2.25rem,5.6vh,3.5rem)] text-sm sm:text-base select-none transition-colors '
-        + 'disabled:opacity-50 active:scale-95';
+        + 'h-[clamp(2.25rem,5.6vh,3.5rem)] text-sm sm:text-base select-none pressable pressable-small '
+        + 'disabled:opacity-50';
     const plainKey = 'bg-zinc-200 dark:bg-zinc-700 text-zinc-800 dark:text-zinc-100 '
         + 'hover:bg-zinc-300 dark:hover:bg-zinc-600';
 

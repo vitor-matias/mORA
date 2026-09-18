@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { House, BookOpen, Clock, User } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
+import { createSpring, prefersReducedMotion, type Spring } from "@/lib/motion";
 
 const tabs = [
     { to: "/", label: "Início", icon: House, end: true },
@@ -12,12 +13,19 @@ const tabs = [
     { to: "/perfil", label: "Perfil", icon: User, end: false },
 ];
 
+/** How far down the floating bar goes to be fully off the screen. */
+function hiddenOffset(nav: HTMLElement): number {
+    return nav.offsetHeight + (parseFloat(getComputedStyle(nav).bottom) || 0) + 24;
+}
+
 /**
  * Main navigation, in two forms by viewport:
  *
  * Below xl — a floating bottom bar that gets out of the way while praying:
  * it slides off on sustained downward scroll (including the slow autoscroll)
- * and returns on scroll-up or near the top of the page. During an active
+ * and returns on scroll-up or near the top of the page. The slide is a
+ * spring, so a change of mind mid-slide turns it around from where it is,
+ * at the speed it has, instead of restarting a fixed curve. During an active
  * rosary session it stays hidden — the step card and Continuar deserve the
  * whole screen, and it removes the accidental-exit risk right under the big
  * button. A page can ask for the same treatment by setting `bottomBarYielded`
@@ -92,27 +100,73 @@ export function TabBar() {
     // clipped and a mistap away from leaving the game.
     const hide = hidden || inRosarySession || bottomBarYielded;
 
+    // The slide is driven straight onto the element — no re-render per
+    // frame. Hidden means clear of the screen: the bar's own height plus the
+    // gap and safe-area inset it floats above, plus its shadow. (The old
+    // translate-y-[150%] was a fraction of the bar alone, which left its top
+    // edge showing over a 34px home-indicator inset.)
+    const navRef = useRef<HTMLElement>(null);
+    const spring = useRef<Spring | null>(null);
+    useLayoutEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return;
+        const render = (y: number) => {
+            const extent = hiddenOffset(nav) || 1;
+            const progress = Math.min(1, Math.max(0, y / extent));
+            // Reduced motion: the same timing as a fade in place, not a slide.
+            if (prefersReducedMotion()) {
+                nav.style.transform = '';
+                nav.style.opacity = String(1 - progress);
+            } else {
+                nav.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+                nav.style.opacity = '';
+            }
+            nav.style.visibility = progress >= 1 ? 'hidden' : '';
+            nav.style.pointerEvents = progress > 0.5 ? 'none' : '';
+        };
+        spring.current = createSpring(0, render);
+        return () => spring.current?.stop();
+    }, []);
+    // First paint jumps straight to the right state (a page opened mid-rosary
+    // starts with the bar away); every change after that animates.
+    const firstHide = useRef(true);
+    useLayoutEffect(() => {
+        const s = spring.current;
+        const nav = navRef.current;
+        if (!s || !nav) return;
+        const target = hide ? hiddenOffset(nav) : 0;
+        if (firstHide.current) {
+            firstHide.current = false;
+            s.set(target);
+        } else {
+            s.to(target);
+        }
+    }, [hide]);
+
     return (
         <>
             <nav
+                ref={navRef}
                 aria-label="Navegação principal"
                 aria-hidden={hide}
-                className={`xl:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 transition-transform duration-300 ease-out ${
-                    hide ? 'translate-y-[150%]' : 'translate-y-0'
-                }`}
+                className="xl:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40"
             >
-                <div className="max-w-md lg:max-w-xl mx-auto flex surface rounded-3xl px-1">
+                <div className="max-w-md lg:max-w-xl mx-auto flex floating-bar rounded-3xl px-1">
                     {tabs.map(({ to, label, icon: Icon, end }) => (
                         <NavLink
                             key={to}
                             to={to}
                             end={end}
                             tabIndex={hide ? -1 : undefined}
+                            // Inactive labels at zinc-500/400 rather than
+                            // 400/500: on a translucent bar the small type
+                            // needs the extra contrast (zinc-400 on white was
+                            // 2.6:1).
                             className={({ isActive }) =>
-                                `flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-[3.5rem] text-[0.65rem] font-medium transition-colors ${
+                                `pressable pressable-small flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-[3.5rem] text-[0.65rem] font-medium ${
                                     isActive
                                         ? 'text-liturgy-700 dark:text-liturgy-400'
-                                        : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
+                                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                                 }`
                             }
                         >
@@ -156,7 +210,7 @@ export function TabBar() {
                                 to={to}
                                 end={end}
                                 className={({ isActive }) =>
-                                    `flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                                    `pressable flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
                                         isActive
                                             ? 'text-liturgy-700 dark:text-liturgy-300 bg-liturgy-500/10 dark:bg-liturgy-500/15'
                                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'

@@ -235,7 +235,7 @@ export default function LiturgicalDirectory() {
                 <button
                     type="button"
                     onClick={() => navigate(`/liturgia?date=${selected}`)}
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                    className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 pressable"
                 >
                     <BookOpen size={16} aria-hidden="true" /> Ver leituras da Missa
                 </button>

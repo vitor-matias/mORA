@@ -25,7 +25,7 @@ export function LiturgicalColorDot({ color, className = '' }: { color: Liturgica
     reads as one, where "– FESTA" trailing the title reads as part of it. */
 function RankBadge({ rank }: { rank: string }) {
     return (
-        <span className="inline-block rounded-md bg-liturgy-100 dark:bg-liturgy-900/60 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-liturgy-700 dark:text-liturgy-300 align-middle">
+        <span className="inline-block rounded-md bg-liturgy-100 dark:bg-liturgy-900/60 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-300 align-middle">
             {rank}
         </span>
     );
