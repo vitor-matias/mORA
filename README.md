@@ -7,7 +7,7 @@ A Catholic companion app (PWA) for daily prayer in European Portuguese. mORA bri
 - **Liturgia das Horas** — the Liturgy of the Hours (Office of Readings, Lauds, Daytime Prayer, Vespers, Compline), defaulting to the canonical hour for the current time of day.
 - **Palavra Bíblica do Dia** — a daily scripture word game: a verse with one word hidden, guessed Wordle-style in six tries, with a leaderboard, head-to-head duels and unlisted leagues carried entirely on Nostr.
 
-It tracks prayer **streaks** and can optionally sync them and your profile to the [Nostr](https://nostr.com/) network, so your identity and progress are portable and self-owned (NIP-07 extension, an `nsec`/hex key, or a locally-generated anonymous key).
+It tracks prayer **streaks** and can optionally sync them, your starred prayers and hymns, your reading preferences and your profile to the [Nostr](https://nostr.com/) network, so your identity and progress are portable and self-owned (NIP-07 extension, an `nsec`/hex key, or a locally-generated anonymous key).
 
 ## Data sources
 

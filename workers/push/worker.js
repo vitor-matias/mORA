@@ -139,23 +139,9 @@ export default {
         const url = new URL(request.url);
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
-        // Authoritative CORS proxy for the liturgia.pt calendar, so the app
-        // doesn't have to rely on rotating public proxies. Cached at the
-        // Cloudflare edge for 6 hours.
-        if (url.pathname === '/ics' && request.method === 'GET') {
-            try {
-                const res = await fetch('https://www.liturgia.pt/agenda/agenda.ics', {
-                    cf: { cacheTtl: 21600, cacheEverything: true },
-                });
-                if (!res.ok) return json(502, { error: 'calendar upstream unavailable' });
-                return new Response(await res.text(), {
-                    headers: { 'Content-Type': 'text/calendar; charset=utf-8', ...CORS },
-                });
-            } catch {
-                return json(502, { error: 'calendar upstream unavailable' });
-            }
-        }
-
+        // The calendar used to be proxied here too. It now reaches the app
+        // over Nostr instead (server/agenda), which needs no proxy and no
+        // deployed Worker — so this is back to being only about push.
         if (url.pathname !== '/subscriptions') return json(404, { error: 'not found' });
 
         let body;

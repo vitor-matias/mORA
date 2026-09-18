@@ -1,4 +1,4 @@
-import type { LiturgicalColor } from "@/lib/liturgy";
+import type { DaySection, LiturgicalColor } from "@/lib/icsCalendar";
 
 // Fixed swatches per liturgical color — used wherever a specific day's color
 // must render independently of the app-wide `data-theme` palette (calendar
@@ -11,33 +11,46 @@ export const COLOR_DOTS: Record<LiturgicalColor, { bg: string; label: string }> 
     rosa: { bg: '#ec4899', label: 'Rosa' },
 };
 
-// Scripture reference lines: "L 1: Jr 18, 1-6", "Ev: Mt 13, 47-53", a
-// tab-separated "L 2<TAB>Heb 11, 8" and the standalone "Sl 103 (104), …"
-// continuations. The digit is what tells "L 1:" from a word starting with L.
-const READING_LINE_RE = /^(L\s*\d+\s*[:\t]|Ev\s*[:\t]|Sl\s+\d)/i;
+/**
+ * The day split into what it opens with and what stays behind "Ver mais".
+ *
+ * Notes go last however high up the feed wrote them. This is the whole point
+ * of splitting on kind rather than on position: the prose fallback cuts at
+ * the first "*" line, which on Easter Sunday sits above the Vigil's readings
+ * and so collapsed eight of them along with the remarks. Five days of 2026
+ * read that way — including Easter, Pentecost and Corpus Christi's Sunday.
+ */
+export function splitSections(sections: DaySection[]): { main: DaySection[]; notes: string[] } {
+    const main: DaySection[] = [];
+    const notes: string[] = [];
+    for (const section of sections) {
+        if (section.kind === 'notes') notes.push(...section.items);
+        else main.push(section);
+    }
+    return { main, notes };
+}
 
-/** The day description without its readings list — for cards that say which
-    day it is rather than what is read at Mass. */
-export function stripReadingLines(text: string): string {
-    return text
-        .split('\n')
-        .filter((line) => !READING_LINE_RE.test(line.trim()))
-        .join('\n')
-        .trim();
+/** The same, without the scripture references — for cards that say which day
+    it is rather than what is read at Mass (Home, and the Missa page, which
+    has the readings themselves right underneath). */
+export function withoutReadings(sections: DaySection[]): DaySection[] {
+    return sections.filter((section) => section.kind !== 'readings');
 }
 
 /**
- * Splits a liturgical-calendar day description into the part shown by
- * default — celebration, office notes and the day's readings — and the
- * trailing remarks (lines starting with "*": diocesan and religious-order
- * notes, Mass prohibitions) that stay collapsed until expanded.
+ * A section with nothing in it to render.
+ *
+ * A colour-only office line counts as filled: on seven days of 2026 it names
+ * the colour of an evening vigil, which differs from the day's own — 28 June
+ * keeps Ss. Pedro e Paulo in vermelho over a verde Sunday. Whether that
+ * colour is worth printing is the renderer's call (it isn't, when it only
+ * repeats the dot beside the date); dropping the section here took the
+ * decision away from it and lost the seven days that had something to say.
  */
-export function splitDayDescription(text: string): { main: string; notes: string | null } {
-    const lines = text.split('\n');
-    const idx = lines.findIndex((l) => l.trim().startsWith('*'));
-    if (idx <= 0) return { main: text.trim(), notes: null };
-    return {
-        main: lines.slice(0, idx).join('\n').trim(),
-        notes: lines.slice(idx).join('\n').trim() || null,
-    };
+export function isEmptySection(section: DaySection): boolean {
+    if (section.kind === 'readings') return section.items.length === 0;
+    if (section.kind === 'notes') return section.items.length === 0;
+    if (section.kind === 'celebration') return !section.text && !section.rank;
+    if (section.kind === 'office') return !section.text && !section.colors;
+    return !section.text;
 }

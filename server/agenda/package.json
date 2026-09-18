@@ -1,0 +1,19 @@
+{
+  "name": "mora-agenda-publisher",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Mirrors the Portuguese liturgical calendar onto Nostr, once a day. No server.",
+  "scripts": {
+    "publish-agenda": "node --experimental-strip-types publish.js",
+    "dry-run": "node --experimental-strip-types publish.js --dry-run"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "nostr-tools": "^2.23.9",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

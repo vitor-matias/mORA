@@ -14,10 +14,9 @@ import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
-import { stripReadingLines } from "@/lib/dayInfo";
 
 export default function Home() {
-    const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalColorDate } = useAppStore();
+    const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalSections, liturgicalColorDate } = useAppStore();
     const { profile, setProfile } = useAuthStore();
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
@@ -59,11 +58,8 @@ export default function Home() {
     // hasn't succeeded yet — only show it when it belongs to today.
     const infoIsToday = liturgicalColorDate === formatISODate(new Date());
     const todayDayName = infoIsToday ? liturgicalDayName : null;
-    // Without the readings list: this card says what day it is, and the
-    // references belong on the Missa page where they're actually read.
-    const todayDescription = infoIsToday && liturgicalDescription
-        ? stripReadingLines(liturgicalDescription)
-        : null;
+    const todayDescription = infoIsToday ? liturgicalDescription : null;
+    const todaySections = infoIsToday ? liturgicalSections : null;
 
     // The Palavra row carries its own state, the way the prayer rows carry
     // today's mystery and the current Hour — a daily game nobody is reminded
@@ -114,8 +110,12 @@ export default function Home() {
         return () => { cancelled = true; };
     }, []);
 
+    // The root's top padding carries env(safe-area-inset-top): Home has no
+    // PageHeader to take it, and the page draws under the status bar (see the
+    // viewport meta in index.html). Not at xl, where the in-flow top bar
+    // already takes the inset (as PageHeader's xl variant also leaves it).
     return (
-        <div className="p-6 pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
+        <div className="p-6 pt-[calc(3rem+env(safe-area-inset-top))] xl:pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
                     <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
@@ -155,12 +155,22 @@ export default function Home() {
                 <h2 className="text-lg font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100 line-clamp-2">
                     {todayDayName || 'A liturgia de hoje'}
                 </h2>
-                {todayDescription && <DayDescription text={todayDescription} className="mt-2" />}
+                {/* hideReadings: this card says what day it is, and the
+                    references belong on the Missa page where they're read. */}
+                {todayDescription && (
+                    <DayDescription
+                        text={todayDescription}
+                        sections={todaySections}
+                        color={infoIsToday ? liturgicalColor : undefined}
+                        hideReadings
+                        className="mt-2"
+                    />
+                )}
                 {/* Full-width footer CTA — since the color label moved into
                     the title dot, a lone right-aligned pill floated oddly. */}
                 <Link
                     to="/liturgia-horas"
-                    className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                    className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 pressable"
                 >
                     Rezar agora <ArrowRight size={15} aria-hidden="true" />
                 </Link>
@@ -228,7 +238,7 @@ export default function Home() {
                             phone-style stack of full-width rows. */}
                         <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
                         {items.map((area) => {
-                            const cardClass = "group flex items-center gap-4 p-4 surface rounded-2xl transition-all active:scale-[0.99]";
+                            const cardClass = "pressable pressable-card group flex items-center gap-4 p-4 surface rounded-2xl";
                             const card = (
                                 <>
                                     <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">

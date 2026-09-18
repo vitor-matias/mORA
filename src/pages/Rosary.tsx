@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Check, PartyPopper, Undo2, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -8,6 +8,8 @@ import type { RosaryBeadMode } from "@/lib/rosary";
 import { useTranslations } from "@/lib/i18n";
 import { getMysteryForToday, generateRosarySequence, mysteries, MYSTERY_LABELS } from "@/lib/rosary";
 import { formatISODate } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
+import { Sheet, type SheetHandle } from "@/components/Sheet";
 
 export default function Rosary() {
     const navigate = useNavigate();
@@ -26,6 +28,7 @@ export default function Rosary() {
         return 0;
     });
     const [showFinish, setShowFinish] = useState(false);
+    const finishSheet = useRef<SheetHandle>(null);
 
     const sequence = useMemo(() => {
         return generateRosarySequence(todayMysteryClass, rosaryMode);
@@ -61,30 +64,38 @@ export default function Rosary() {
         }
     };
 
-    const handleNext = () => {
-        // Vibrate lightly on click if supported
-        if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-            window.navigator.vibrate(50);
-        }
+    // Which way the last step went, so the next card enters from that side.
+    // Null until the first step, and after a jump (restart, mode change),
+    // which has no side to come from.
+    const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
 
+    const handleNext = () => {
         if (currentStepIndex < sequence.length - 1) {
+            // A bead under the thumb; two when this closes a decade — the
+            // Glória (bead 11) is its last step.
+            haptic(sequence[currentStepIndex].beadIndex === 11 ? 'group' : 'bead');
+            setDirection('next');
             setCurrentStepIndex(prev => prev + 1);
         } else {
+            haptic('complete');
             handleFinishRosary();
         }
     };
 
     const handleBackStep = () => {
+        setDirection('prev');
         setCurrentStepIndex(prev => Math.max(0, prev - 1));
     };
 
     const handleRestart = () => {
+        setDirection(null);
         setCurrentStepIndex(0);
         setRosarySession(null);
     };
 
     const changeMode = (mode: RosaryBeadMode) => {
         setRosaryMode(mode);
+        setDirection(null);
         setCurrentStepIndex(0);
         setRosarySession(null);
     };
@@ -118,7 +129,7 @@ export default function Rosary() {
                         key={mode}
                         onClick={() => changeMode(mode)}
                         aria-pressed={rosaryMode === mode}
-                        className={`flex-1 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${rosaryMode === mode
+                        className={`pressable flex-1 px-2 py-2 rounded-lg text-sm font-medium ${rosaryMode === mode
                             ? 'surface text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                             }`}
@@ -145,7 +156,7 @@ export default function Rosary() {
                         type="button"
                         onClick={handleRestart}
                         aria-label="Recomeçar o terço"
-                        className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1.5 shrink-0"
+                        className="pressable flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 px-2 py-1.5 shrink-0"
                     >
                         <RotateCcw size={14} aria-hidden="true" />
                         Recomeçar
@@ -164,7 +175,7 @@ export default function Rosary() {
                                 key={m.id}
                                 className="surface rounded-3xl p-5"
                             >
-                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-3">
+                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-3">
                                     {m.mysteryNum}º Mistério
                                 </span>
                                 <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 leading-snug mb-2">
@@ -181,8 +192,8 @@ export default function Rosary() {
                     </div>
                     <button
                         type="button"
-                        onClick={handleFinishRosary}
-                        className="h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        onClick={() => { haptic('complete'); handleFinishRosary(); }}
+                        className="pressable h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3"
                     >
                         {t.finish} <Check size={24} />
                     </button>
@@ -195,19 +206,26 @@ export default function Rosary() {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext(); } }}
-                    className="surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none active:scale-[0.995] transition-transform"
+                    className="pressable pressable-card surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none"
                 >
-                    <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-4 self-start shrink-0">
-                        {currentStep.title}
-                    </span>
+                    {/* Keyed by step, so each bead's text enters afresh from
+                        the side it was turned towards (see .step-enter-*). */}
+                    <div
+                        key={currentStepIndex}
+                        className={`flex-1 flex flex-col ${direction ? `step-enter-${direction}` : ''}`}
+                    >
+                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
+                            {currentStep.title}
+                        </span>
 
-                    <div className="flex-1 flex flex-col justify-center overflow-y-auto">
-                        <p className={`content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line ${currentStep.type === 'misterio'
-                            ? 'italic font-medium'
-                            : 'font-medium'
-                            }`}>
-                            {currentStep.content}
-                        </p>
+                        <div className="flex-1 flex flex-col justify-center overflow-y-auto">
+                            <p className={`content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line ${currentStep.type === 'misterio'
+                                ? 'italic font-medium'
+                                : 'font-medium'
+                                }`}>
+                                {currentStep.content}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -236,7 +254,7 @@ export default function Rosary() {
                             {[...Array(12)].map((_, i) => (
                                 <div
                                     key={i}
-                                    className={`rounded-full transition-all duration-300 shrink-0 ${i === 0 || i === 11
+                                    className={`rounded-full transition-[background-color,border-color,transform,box-shadow] duration-300 shrink-0 ${i === 0 || i === 11
                                         ? 'h-5 w-5 border-2 border-current' // PN and Gloria
                                         : 'h-2.5 w-2.5' // Ave Marias
                                         } ${(currentStep.beadIndex !== undefined && i < currentStep.beadIndex)
@@ -261,7 +279,7 @@ export default function Rosary() {
                             type="button"
                             onClick={handleBackStep}
                             aria-label="Passo anterior"
-                            className="w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center transition-all active:scale-[0.96]"
+                            className="pressable w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center"
                         >
                             <Undo2 size={22} />
                         </button>
@@ -269,7 +287,7 @@ export default function Rosary() {
                     <button
                         type="button"
                         onClick={handleNext}
-                        className="flex-1 h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                        className="pressable flex-1 h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3"
                     >
                         {currentStepIndex === sequence.length - 1 ? (
                             <>{t.finish} <Check size={24} /></>
@@ -284,36 +302,42 @@ export default function Rosary() {
             </div>
             )}
 
-            {/* Finish Modal Overlay */}
+            {/* Finish — a centred alert that asks for its button: Amém is
+                the close, so the scrim does not dismiss it. */}
             {showFinish && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50 backdrop-blur-sm animate-in fade-in">
-                    <div className="surface rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in zoom-in-95">
-                        <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
-                            <PartyPopper size={32} />
-                        </div>
-                        <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Graças a Deus!</h2>
-                        <p className="text-zinc-500 text-sm leading-relaxed">
-                            Concluiu o Santo Terço de hoje. <br />
-                            Que Nossa Senhora interceda por si e pelos seus.
-                        </p>
-                        {isCompletedToday(streaks.rosary) && (
-                            <p className="text-sm font-semibold text-orange-500">
-                                🔥 {streaks.rosary.days} {streaks.rosary.days === 1 ? 'dia seguido' : 'dias seguidos'}
-                            </p>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowFinish(false);
-                                setCurrentStepIndex(0);
-                                navigate('/');
-                            }}
-                            className="w-full py-3 px-6 cta-primary rounded-xl font-semibold transition-all active:scale-[0.97] hover:opacity-90"
-                        >
-                            Amém
-                        </button>
+                <Sheet
+                    ref={finishSheet}
+                    variant="alert"
+                    dismissible={false}
+                    labelledBy="rosary-finish-title"
+                    className="text-center space-y-5 !p-8"
+                    onClose={() => {
+                        setShowFinish(false);
+                        setCurrentStepIndex(0);
+                        navigate('/');
+                    }}
+                >
+                    <div className="mx-auto h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center">
+                        <PartyPopper size={32} />
                     </div>
-                </div>
+                    <h2 id="rosary-finish-title" className="text-2xl font-bold text-zinc-900 dark:text-white">Graças a Deus!</h2>
+                    <p className="text-zinc-500 text-sm leading-relaxed">
+                        Concluiu o Santo Terço de hoje. <br />
+                        Que Nossa Senhora interceda por si e pelos seus.
+                    </p>
+                    {isCompletedToday(streaks.rosary) && (
+                        <p className="text-sm font-semibold text-orange-500">
+                            🔥 {streaks.rosary.days} {streaks.rosary.days === 1 ? 'dia seguido' : 'dias seguidos'}
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => finishSheet.current?.close()}
+                        className="pressable w-full py-3 px-6 cta-primary rounded-xl font-semibold"
+                    >
+                        Amém
+                    </button>
+                </Sheet>
             )}
             </div>
         </div>

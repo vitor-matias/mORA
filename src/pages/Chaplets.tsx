@@ -9,6 +9,7 @@ import { useAppStore } from "@/store/app";
 import type { ChapletMode } from "@/store/app";
 import { CHAPLETS, generateChapletSequence, getChaplet, beadsPerGroup } from "@/lib/chaplets";
 import type { Chaplet } from "@/lib/chaplets";
+import { haptic } from "@/lib/haptics";
 
 /**
  * Coroas e Terços — the chaplets that are not the Rosary, prayed the same
@@ -51,7 +52,7 @@ function ChapletChooser() {
                     <Link
                         key={chaplet.id}
                         to={`/coroas/${chaplet.id}`}
-                        className="group flex items-start gap-4 p-4 surface rounded-2xl transition-all active:scale-[0.99]"
+                        className="pressable pressable-card group flex items-start gap-4 p-4 surface rounded-2xl"
                     >
                         <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
                             <Rosary size={20} strokeWidth={2.2} aria-hidden="true" />
@@ -94,7 +95,7 @@ function ModePicker({ mode, onChange }: { mode: ChapletMode; onChange: (mode: Ch
                         key={value}
                         onClick={() => onChange(value)}
                         aria-pressed={mode === value}
-                        className={`flex-1 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        className={`pressable flex-1 px-2 py-2 rounded-lg text-sm font-medium ${
                             mode === value
                                 ? 'surface text-liturgy-700 dark:text-liturgy-400'
                                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
@@ -211,6 +212,9 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
 
     const sequence = useMemo(() => generateChapletSequence(chaplet), [chaplet]);
     const [stepIndex, setStepIndex] = useState(0);
+    // Which way the last step went, so the next card enters from that side;
+    // null after a jump (restart, mode change).
+    const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
 
     const step = sequence[Math.min(stepIndex, sequence.length - 1)];
     const atStart = stepIndex === 0;
@@ -231,13 +235,26 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
     // to advance to, and nothing to record.
     const next = () => {
         if (atEnd) return;
-        window.navigator?.vibrate?.(50);
+        // A bead under the thumb; two when this closes a group (the next step
+        // belongs to another one, or to the close); the long figure on
+        // arriving at the final prayer.
+        const leaving = sequence[stepIndex];
+        const arriving = sequence[stepIndex + 1];
+        haptic(stepIndex + 1 === sequence.length - 1 ? 'complete'
+            : leaving.beadIndex !== undefined && arriving.groupIndex !== leaving.groupIndex ? 'group'
+                : 'bead');
+        setDirection('next');
         setStepIndex((i) => i + 1);
+    };
+    const back = () => {
+        setDirection('prev');
+        setStepIndex((i) => Math.max(0, i - 1));
     };
 
     const totalBeads = beadsPerGroup(chaplet);
     const changeMode = (next: ChapletMode) => {
         setMode(next);
+        setDirection(null);
         setStepIndex(0);
     };
     const picker = <ModePicker mode={mode} onChange={changeMode} />;
@@ -252,8 +269,8 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                 {!atStart && (
                     <button
                         type="button"
-                        onClick={() => { setStepIndex(0); }}
-                        className="self-end flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors px-2 py-1.5 mb-2"
+                        onClick={() => { setDirection(null); setStepIndex(0); }}
+                        className="pressable self-end flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 px-2 py-1.5 mb-2"
                     >
                         <RotateCcw size={14} aria-hidden="true" />
                         Recomeçar
@@ -266,16 +283,20 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); next(); } }}
-                    className="surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none active:scale-[0.995] transition-transform"
+                    className="pressable pressable-card surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none"
                 >
-                    <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-wider rounded-xl mb-4 self-start shrink-0">
-                        {step.title}
-                    </span>
-                    <div className="flex-1 flex flex-col justify-center overflow-y-auto">
-                        <PrayerText
-                            text={step.content}
-                            className={`content-text text-zinc-800 dark:text-zinc-200 font-medium ${step.kind === 'anuncio' ? 'italic' : ''}`}
-                        />
+                    {/* Keyed by step, so each bead's text enters afresh from
+                        the side it was turned towards (see .step-enter-*). */}
+                    <div key={stepIndex} className={`flex-1 flex flex-col ${direction ? `step-enter-${direction}` : ''}`}>
+                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
+                            {step.title}
+                        </span>
+                        <div className="flex-1 flex flex-col justify-center overflow-y-auto">
+                            <PrayerText
+                                text={step.content}
+                                className={`content-text text-zinc-800 dark:text-zinc-200 font-medium ${step.kind === 'anuncio' ? 'italic' : ''}`}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -309,7 +330,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                                 return (
                                     <div
                                         key={i}
-                                        className={`rounded-full transition-all duration-300 shrink-0 ${
+                                        className={`rounded-full transition-[background-color,border-color,transform,box-shadow] duration-300 shrink-0 ${
                                             isMarker ? 'h-5 w-5 border-2 border-current' : 'h-2.5 w-2.5'
                                         } ${
                                             i < step.beadIndex!
@@ -332,9 +353,9 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                     {!atStart && (
                         <button
                             type="button"
-                            onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
+                            onClick={back}
                             aria-label="Passo anterior"
-                            className="w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center transition-all active:scale-[0.96]"
+                            className="pressable w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center"
                         >
                             <Undo2 size={22} />
                         </button>
@@ -343,7 +364,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                         <button
                             type="button"
                             onClick={next}
-                            className="flex-1 h-20 cta-primary rounded-2xl font-bold text-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                            className="pressable flex-1 h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3"
                         >
                             {atStart ? 'Começar' : 'Continuar'} <ChevronRight size={24} />
                         </button>

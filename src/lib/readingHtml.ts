@@ -13,8 +13,16 @@ import DOMPurify from "dompurify";
  * paragraph), so most of what follows is shape-tolerance.
  */
 
-// Labels that open a liturgical reading section.
-const SECTION_LABEL_RE = /^(LEITURA\s+(I{1,3}|IV)|SALMO RESPONSORIAL|EVANGELHO|ALELUIA|ACLAMAÇÃO)/i;
+// Labels that open a liturgical reading section. "IV" comes before the
+// shorter numerals — tried the other way round it matches the "I" of a
+// "LEITURA IV" header — and the whole label ends on a word boundary, so
+// what the match spans is the label and nothing of the reference.
+// The Sequence is the hymn a few solemnities sing between the second
+// reading and the Alleluia (Easter, Pentecost, Corpus Christi, and ad
+// libitum on Our Lady of Sorrows); the accent is optional because upstream
+// drops diacritics from a label now and then.
+const SECTION_LABEL_RE = /^(LEITURA\s+(IV|I{1,3})|SALMO RESPONSORIAL|SEQU[EÊ]NCIA|EVANGELHO|ALELUIA|ACLAMAÇÃO)\b/i;
+const SEQUENCE_RE = /^SEQU[EÊ]NCIA\b/i;
 // Lines that close a reading ("Palavra do Senhor.", "Palavra da salvação.").
 const ENDING_RE = /^Palavra (do Senhor|da salvação|do Evangelho)/i;
 // First line of a reading body paragraph — the scripture source attribution.
@@ -94,6 +102,7 @@ const SECTION_ID_MAP: Array<[RegExp, string]> = [
     [/^LEITURA\s+III/i,          'leitura-iii'], // before II — "III" also starts with "II"
     [/^LEITURA\s+II/i,           'leitura-ii'],
     [/^SALMO\s+RESPONSORIAL/i,   'salmo'],
+    [SEQUENCE_RE,                'sequencia'],
     [/^EVANGELHO/i,              'evangelho'],
 ];
 
@@ -117,6 +126,87 @@ function readingDisplayLabel(label: string): string {
         .split(/\s+/)
         .map((w) => (/^(i{1,3}|iv)$/i.test(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
         .join(' ');
+}
+
+/**
+ * Rebuilds a paragraph's first line as "<strong>LABEL</strong> reference"
+ * when that line opens with a section label but the markup doesn't say so.
+ *
+ * The header pass below keys off a leading <strong>/<b> holding the whole
+ * label, and upstream doesn't always oblige: some days carry no emphasis at
+ * all, others cut the bold across the label ("<strong>SALMO</strong>
+ * RESPONSORIAL Salmo 94 (95)"). Those sections used to fall through as body
+ * text — no TOC chip, no refrain box, the psalm printed as a wall of prose.
+ *
+ * Only an ALL-CAPS label counts, which is how the missal prints its headers;
+ * that keeps the Gospel's own attribution line ("Evangelho de Nosso Senhor
+ * Jesus Cristo…") and a bare "Aleluia." refrain out of the header pass.
+ */
+function normalizeSectionLabel(doc: Document, p: Element): void {
+    const firstEl = p.children[0];
+    if ((firstEl?.tagName === 'STRONG' || firstEl?.tagName === 'B')
+        && SECTION_LABEL_RE.test(firstEl.textContent?.trim() ?? '')) return;
+
+    // The first line is everything up to the paragraph's first <br>.
+    const lineNodes: ChildNode[] = [];
+    for (const node of Array.from(p.childNodes)) {
+        if (node.nodeName === 'BR') break;
+        lineNodes.push(node);
+    }
+
+    const line = normalizeLine(lineNodes.map((n) => n.textContent ?? '').join(''));
+    const match = line.match(SECTION_LABEL_RE);
+    if (!match) return;
+    // The Sequence is the one label allowed in mixed case: where it is
+    // optional (Our Lady of Sorrows) the missal prints it as an italic
+    // rubric, "Sequência", and no body line ever opens with that word.
+    if (match[0] !== match[0].toUpperCase() && !SEQUENCE_RE.test(match[0])) return;
+
+    // Flatten the line: the label into its own <strong>, the scripture
+    // reference after it as plain text for the header pass to wrap.
+    lineNodes.forEach((n) => p.removeChild(n));
+    const rest = line.slice(match[0].length);
+    if (rest) p.prepend(doc.createTextNode(rest));
+    const label = doc.createElement('strong');
+    label.textContent = match[0];
+    p.prepend(label);
+}
+
+/**
+ * Lays out a Sequence header. Unlike a reading, the Sequence has no
+ * scripture reference and no «title»: what shares the label's line is at most
+ * a rubric ("(ad libitum)"), and what follows the first <br> is the hymn
+ * itself, one verse per line. The title fold the other headers get would run
+ * every verse into a single italic line, so the hymn is handed back to a
+ * paragraph of its own, line breaks and all, and the rubric takes the
+ * reference's place under the label.
+ */
+function splitSequenceHeader(doc: Document, p: Element, labelEl: Element): void {
+    // The rubric may share the label's bold ("<strong>SEQUÊNCIA (ad
+    // libitum)</strong>"): only the label itself belongs in the pill.
+    const labelText = normalizeLine(labelEl.textContent ?? '');
+    const labelMatch = labelText.match(SEQUENCE_RE);
+    const inlineRubric = labelMatch ? labelText.slice(labelMatch[0].length) : '';
+    if (labelMatch && inlineRubric.trim()) labelEl.textContent = labelMatch[0];
+
+    const nodes = Array.from(p.childNodes).filter((n) => n !== labelEl);
+    const brIdx = nodes.findIndex((n) => n.nodeName === 'BR');
+    const lineNodes = brIdx === -1 ? nodes : nodes.slice(0, brIdx);
+    const hymnNodes = brIdx === -1 ? [] : nodes.slice(brIdx + 1);
+
+    const rubric = normalizeLine([inlineRubric, ...lineNodes.map((n) => n.textContent ?? '')].join(' '));
+    lineNodes.forEach((n) => p.removeChild(n));
+    if (brIdx !== -1) p.removeChild(nodes[brIdx]);
+    if (rubric) {
+        const span = doc.createElement('span');
+        span.className = 'reading-ref';
+        span.textContent = rubric;
+        p.appendChild(span);
+    }
+
+    const hymn = doc.createElement('p');
+    hymnNodes.forEach((n) => hymn.appendChild(n)); // moves them out of the header
+    if (hymn.textContent?.trim()) p.after(hymn);
 }
 
 /**
@@ -162,6 +252,8 @@ function enrichReadingTypography(doc: Document): void {
 
     // ── Pass 2: section headers, source lines ────────────────────────────
     doc.querySelectorAll('p').forEach((p) => {
+        normalizeSectionLabel(doc, p);
+
         const firstEl = p.children[0] as HTMLElement | undefined;
         const label = firstEl?.textContent?.trim() ?? '';
 
@@ -172,8 +264,15 @@ function enrichReadingTypography(doc: Document): void {
         if ((firstEl?.tagName === 'STRONG' || firstEl?.tagName === 'B') && SECTION_LABEL_RE.test(label)) {
             p.classList.add('reading-section-header');
             p.id = getSectionId(label);
-            p.setAttribute('data-toc-label', readingDisplayLabel(label));
+            // The Sequence chip reads "Sequência" whatever rubric upstream
+            // folds into its bold ("SEQUÊNCIA (ad libitum)").
+            p.setAttribute('data-toc-label', SEQUENCE_RE.test(label) ? 'Sequência' : readingDisplayLabel(label));
             firstEl.classList.add('reading-label');
+
+            if (SEQUENCE_RE.test(label)) {
+                splitSequenceHeader(doc, p, firstEl);
+                return;
+            }
 
             // Split the header at its <br>s: what precedes the first one is
             // the scripture reference, the rest are title lines (the <br>s
@@ -408,31 +507,56 @@ function enrichReadingTypography(doc: Document): void {
 }
 
 /**
+ * The same markup with inline emphasis blanked out to spaces of equal length.
+ * A label upstream cut across tags ("<strong>LEITURA</strong> I") then reads
+ * as one string to match against, and — lengths being preserved — every index
+ * into it still points at the same place in the original.
+ */
+function withoutInlineEmphasis(html: string): string {
+    return html.replace(/<\/?(?:b|strong|em|i|span)\b[^>]*>/gi, (tag) => ' '.repeat(tag.length));
+}
+
+// The Alleluia verse, from its label to the Gospel header that closes it.
+// ALL-CAPS only, so a psalm whose refrain is "Aleluia." can't swallow the
+// rest of the psalm and the Gospel along with it. A Sequence also closes
+// it: the missal prints the hymn before the Alleluia, but should upstream
+// ever order them the other way round the hymn must not go with the verse.
+// That one boundary is case-insensitive, spelt out letter by letter, since
+// an optional Sequence is labelled "Sequência" (see SEQUENCE_RE) and the
+// rest of the pattern must stay ALL-CAPS.
+const ALLELUIA_RE = /<p>\s*(?:ALELUIA|ACLAMAÇÃO\s+ANTES\s+DO\s+EVANGELHO)\b[\s\S]*?(?=<p>\s*(?:EVANGELHO|[Ss][Ee][Qq][Uu][EeÊê][Nn][Cc][Ii][Aa])\b)/;
+
+/**
  * Slices the readings out of a full missal text, dropping the prayers that
- * frame them and the Alleluia verse the reading view doesn't show.
+ * frame them and the Alleluia verse the reading view doesn't show. The
+ * Sequence stays: it is part of the Liturgy of the Word, read or sung in
+ * full, not a one-line acclamation.
  *
- * The section labels arrive in <b> on some solemnities and <strong> on most
- * days, so every marker here has to accept either — anchoring on <strong>
- * alone made these days miss the "LEITURA I" start and fall back to the whole
- * missal, prayers and all.
+ * The emphasis around the labels is upstream's whim — <b> on some solemnities,
+ * <strong> on most days, cut across the label or missing altogether — and
+ * anchoring on any one of those shapes made those days miss the "LEITURA I"
+ * start and fall back to the whole missal, prayers and all. So the markers
+ * below run against the emphasis-blanked copy, which has none of it.
  */
 export function extractReadings(html: string): string {
-    const start = html.search(/<p>\s*<(?:b|strong)>LEITURA I\b/i);
+    const flat = withoutInlineEmphasis(html);
+
+    const start = flat.search(/<p>\s*LEITURA\s+I\b/i);
     if (start === -1) return html;
 
     // What follows the Gospel is the offertory and on: stop at whichever
-    // marker comes first. The emphasis around them varies too (<b>, <strong>,
-    // <em>, or nothing at all), so none of it is required.
-    const postStart = html.slice(start);
-    const endMatch = postStart.search(
-        /<p>\s*(?:<(?:b|strong)>\s*)?(?:Oração sobre as oblatas|Prefácio|Credo)\b|<p>\s*(?:<em>\s*)?Diz-se o Credo/i
+    // marker comes first.
+    const endMatch = flat.slice(start).search(
+        /<p>\s*(?:Oração\s+sobre\s+as\s+oblatas|Prefácio|Credo)\b|<p>\s*Diz-se\s+o\s+Credo/i
     );
     const end = endMatch !== -1 ? start + endMatch : html.length;
 
-    return html.slice(start, end).replace(
-        /<p>\s*<(b|strong)>(?:ALELUIA|ACLAMAÇÃO ANTES DO EVANGELHO)<\/\1>[\s\S]*?(?=<p>\s*<(b|strong)>EVANGELHO<\/\2>)/i,
-        ''
-    );
+    // The Alleluia verse is found in the blanked copy and cut out of the
+    // original, which keeps its markup.
+    const readings = html.slice(start, end);
+    const alleluia = flat.slice(start, end).match(ALLELUIA_RE);
+    if (alleluia?.index === undefined) return readings;
+    return readings.slice(0, alleluia.index) + readings.slice(alleluia.index + alleluia[0].length);
 }
 
 export function enrichReadingHtml(html: string): string {
@@ -441,7 +565,20 @@ export function enrichReadingHtml(html: string): string {
     const safe = DOMPurify.sanitize(html);
     const doc = new DOMParser().parseFromString(safe, 'text/html');
 
+    // An optional Sequence arrives italic from its label to its last stanza,
+    // which is the shape a commentary has. Nothing between that label and
+    // the next section is a commentary, so the fold below skips the span.
+    let inSequence = false;
     doc.querySelectorAll('p').forEach((p) => {
+        const text = normalizeLine(p.textContent ?? '');
+        if (SEQUENCE_RE.test(text)) {
+            inSequence = true;
+            return;
+        }
+        const section = text.match(SECTION_LABEL_RE);
+        if (section && section[0] === section[0].toUpperCase()) inSequence = false;
+        if (inSequence) return;
+
         const directText = Array.from(p.childNodes)
             .filter((n) => n.nodeType === Node.TEXT_NODE)
             .map((n) => n.textContent || '')

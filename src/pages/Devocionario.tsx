@@ -1,19 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight } from "lucide-react";
+import { Search, Star, ChevronRight, X, Copy, Check, BookMarked, ArrowRight, Share, Share2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PrayerText } from "@/components/PrayerText";
-import { withVersicleGlyphs } from "@/lib/versicles";
-import { useAppStore } from "@/store/app";
+import { starredIds, useAppStore } from "@/store/app";
 import {
     PRAYERS,
     PRAYER_CATEGORIES,
     getPrayer,
+    prayerAsText,
     prayerOfTheDay,
+    prayerUrl,
+    prayerWithLink,
     searchPrayers,
     type Prayer,
     type PrayerCategoryId,
 } from "@/lib/devotional";
+import { isIOS } from "@/lib/platform";
 
 /** "Favoritas" behaves like a category chip but is not one — it filters by the
     reader's own list rather than by where a prayer belongs in the book. */
@@ -39,8 +42,11 @@ export default function Devocionario() {
     const [query, setQuery] = useState('');
     const [filter, setFilter] = useState<Filter>(null);
 
-    const favourites = useAppStore((s) => s.favouritePrayers);
+    const favouriteLog = useAppStore((s) => s.prayerFavourites);
     const toggleFavourite = useAppStore((s) => s.togglePrayerFavourite);
+    // The log is keyed by id and carries when each was starred; the list it
+    // is read as — newest first — is what everything below renders from.
+    const favourites = useMemo(() => starredIds(favouriteLog), [favouriteLog]);
 
     const results = useMemo(() => {
         if (filter !== FAVOURITES) return searchPrayers(query, filter);
@@ -127,7 +133,7 @@ export default function Devocionario() {
                     {showSuggestion && (
                         <Link
                             to={`/devocionario/${suggestion.id}`}
-                            className="block surface surface-accent rounded-2xl px-4 py-3 transition-all active:scale-[0.99]"
+                            className="block surface surface-accent rounded-2xl px-4 py-3 pressable pressable-card"
                         >
                             <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
                                 Sugestão de hoje
@@ -160,7 +166,7 @@ export default function Devocionario() {
                                     <Link
                                         to={`/devocionario/${entry.id}`}
                                         aria-current={entry.id === prayer?.id ? 'true' : undefined}
-                                        className={`group flex items-center gap-3 px-4 py-3 surface rounded-2xl transition-all active:scale-[0.99] ${
+                                        className={`group flex items-center gap-3 px-4 py-3 surface rounded-2xl pressable pressable-card ${
                                             entry.id === prayer?.id ? 'surface-accent' : ''
                                         }`}
                                     >
@@ -231,20 +237,64 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
     isFavourite: boolean;
     onToggleFavourite: () => void;
 }) {
-    const [copied, setCopied] = useState(false);
-    // Keyed by id: opening another prayer must not inherit the previous one's
-    // "Copiado" flash or its expanded Latin.
-    const [shownFor, setShownFor] = useState(prayer.id);
-    if (shownFor !== prayer.id) {
-        setShownFor(prayer.id);
-        setCopied(false);
-    }
+    // The tick carries the prayer it was raised on, so opening another one
+    // simply doesn't show it — no resetting anything as the prop changes.
+    const [donePrayerId, setDonePrayerId] = useState<string | null>(null);
+    const ticked = donePrayerId === prayer.id;
 
-    const copy = async () => {
+    // Cleared before it is set again, and on the way out: handing the prayer
+    // to another app is routinely the last thing done in this view.
+    const flashTimer = useRef<number | undefined>(undefined);
+    useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+    const flash = () => {
+        setDonePrayerId(prayer.id);
+        window.clearTimeout(flashTimer.current);
+        flashTimer.current = window.setTimeout(() => setDonePrayerId(null), 2000);
+    };
+
+    // Read once: the icon has to match what the button will actually do, and
+    // `navigator.share` doesn't appear or vanish mid-session.
+    const canShare = typeof navigator !== 'undefined' && Boolean(navigator.share);
+    // lucide's `Share2` is the Android/network-nodes glyph; iOS's own share
+    // sheet is the box-with-an-arrow, so match whichever OS is asking.
+    const ShareIcon = isIOS() ? Share : Share2;
+
+    /**
+     * Passing the prayer on: the system share sheet where there is one, the
+     * clipboard where there isn't.
+     *
+     * One button, because both roads end in the same place. A prayer is passed
+     * on more often than it is filed away — "send me that one" — and the sheet
+     * puts it in the chat it was asked for in, in one step. Where there is no
+     * sheet (mostly desktop) the same thing goes on the clipboard, and pasting
+     * it into that chat is the one step more.
+     *
+     * Either way it carries the prayer itself *and* the link: whoever receives
+     * it can pray it without installing anything, and still has the way back
+     * to the rest of the book. Pasted text has no field to hold a link, so on
+     * the clipboard the link has to be part of the text.
+     */
+    const share = async () => {
+        if (canShare) {
+            try {
+                await navigator.share({
+                    title: prayer.title,
+                    text: prayerAsText(prayer),
+                    url: prayerUrl(prayer),
+                });
+                flash();
+            } catch (error) {
+                // Dismissing the sheet rejects with AbortError. That is a
+                // decision, not a failure — and falling back to the clipboard
+                // would put the prayer there behind the reader's back.
+                if ((error as Error)?.name === 'AbortError') return;
+                console.warn('Could not share the prayer.', error);
+            }
+            return;
+        }
         try {
-            await navigator.clipboard.writeText(`${prayer.title}\n\n${withVersicleGlyphs(prayer.text)}`);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            await navigator.clipboard.writeText(prayerWithLink(prayer));
+            flash();
         } catch {
             // Clipboard permission denied or unavailable — the text is on
             // screen and selectable, so there is nothing to recover from.
@@ -263,11 +313,17 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                 <div className="flex items-center gap-1 shrink-0 -mt-1">
                     <button
                         type="button"
-                        onClick={copy}
-                        aria-label={copied ? 'Oração copiada' : 'Copiar oração'}
+                        onClick={share}
+                        /* Named for what it does on this device: a share sheet
+                           where there is one, a copy where there isn't. */
+                        aria-label={ticked
+                            ? (canShare ? 'Oração partilhada' : 'Oração copiada')
+                            : (canShare ? 'Partilhar oração' : 'Copiar oração')}
                         className="p-2 rounded-full text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
-                        {copied ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" /> : <Copy size={18} />}
+                        {ticked
+                            ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" />
+                            : canShare ? <ShareIcon size={18} /> : <Copy size={18} />}
                     </button>
                     <button
                         type="button"
@@ -295,7 +351,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
             {prayer.chapletId && (
                 <Link
                     to={`/coroas/${prayer.chapletId}`}
-                    className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                    className="mt-6 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 pressable"
                 >
                     Rezar conta a conta <ArrowRight size={15} aria-hidden="true" />
                 </Link>

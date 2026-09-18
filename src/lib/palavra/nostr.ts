@@ -88,7 +88,7 @@ async function doSync(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
 
-    const snapshot = await fetchSnapshot(pubkey, D_PALAVRA_STATE);
+    const { snapshot, complete } = await fetchSnapshot(pubkey, D_PALAVRA_STATE);
     const remote = snapshot?.payload.plays;
 
     // Adopted only when this device has no record of its own: a new phone
@@ -109,7 +109,8 @@ async function doSync(): Promise<void> {
     // Seed the relays on first sync, and push whatever they were missing.
     // Comparing the merge against the remote alone tells us whether this
     // device is adding anything they don't already have.
-    if (!remote || !playsEqual(merged, mergePalavraPlays({}, remote))) {
+    // Only from a complete read — see SnapshotRead in lib/nostr.ts.
+    if (complete && (!remote || !playsEqual(merged, mergePalavraPlays({}, remote)))) {
         await publishPalavraStateToNostr();
     }
 

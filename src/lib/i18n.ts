@@ -210,7 +210,7 @@ const translations = {
         homeSolved: (tries: number, max: number) => `Resolvida em ${tries}/${max}`,
         homeLost: "Hoje não acertou — nova palavra amanhã",
         shareToggle: "Participar nas classificações da Palavra",
-        shareToggleHelp: "Publica o resultado diário da Palavra Bíblica — quantas tentativas e em quanto tempo — de forma pública na rede Nostr, para aparecer nas classificações, nos duelos e nas ligas. A palavra e as tuas tentativas nunca são publicadas. Sem isto continuas a ver as classificações dos outros; apenas não apareces nelas.",
+        shareToggleHelp: "Publica o teu resultado diário (tentativas e tempo) na rede Nostr, para entrares nas classificações, duelos e ligas. A palavra e as tuas tentativas nunca são publicadas.",
 
         // The "Como jogar" explainer, shown once on first entry and
         // reachable afterwards from the header.

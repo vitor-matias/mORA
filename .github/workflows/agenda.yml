@@ -1,0 +1,74 @@
+name: Publish Liturgical Calendar
+
+# Mirrors liturgia.pt's calendar (and vatican.va's monthly prayer theme) onto
+# Nostr, one event per day, so the app can read them without a CORS proxy —
+# every public proxy this app relied on eventually died. See server/agenda.
+#
+# The feed is a whole year published up front and corrected occasionally, so
+# there is nothing to catch up on hour by hour: once a day is plenty, and a
+# run that finds nothing changed publishes nothing at all.
+on:
+  schedule:
+    - cron: '20 4 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Republish every day, even unchanged ones'
+        type: boolean
+        required: false
+        default: false
+
+# This job needs nothing from the repo but its own contents, and it holds the
+# signing key — so the token it runs with should be able to do as little as
+# possible if a dependency's lifecycle script ever gets at it.
+permissions:
+  contents: read
+
+concurrency:
+  group: agenda-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Don't leave the token in .git/config for later steps to find.
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: 'npm'
+          cache-dependency-path: server/agenda/package-lock.json
+
+      - name: Install
+        working-directory: server/agenda
+        run: npm ci
+
+      - name: Publish
+        working-directory: server/agenda
+        env:
+          # The one secret here: it signs the calendar, and clients pin the
+          # matching pubkey to tell the real calendar from an impersonator's.
+          # The same key that signs Palavra — one identity for everything mORA
+          # publishes, so there is nothing new to set up. Never goes near the
+          # Pages build.
+          PALAVRA_NSEC: ${{ secrets.PALAVRA_NSEC }}
+          AGENDA_RELAYS: ${{ vars.AGENDA_RELAYS }}
+          # Through env, never interpolated into `run`: `${{ inputs.force }}`
+          # is substituted before the shell parses the script, so a dispatch
+          # value containing a quote would execute as shell — in the one step
+          # that has PALAVRA_NSEC in its environment.
+          FORCE: ${{ inputs.force }}
+        run: |
+          if [ -z "$PALAVRA_NSEC" ]; then
+            echo "::error::PALAVRA_NSEC is not set. Add it under Settings → Secrets and variables → Actions → Secrets."
+            exit 1
+          fi
+          if [ "$FORCE" = "true" ]; then
+            node --experimental-strip-types publish.js --force
+          else
+            node --experimental-strip-types publish.js
+          fi

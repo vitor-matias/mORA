@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, Copy, Share2, X } from 'lucide-react';
+import { Check, Copy, Share, Share2, X } from 'lucide-react';
 import { nextUTCMidnight } from '@/lib/format';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { useTranslations } from '@/lib/i18n';
+import { isIOS } from '@/lib/platform';
 import type { PalavraStats } from '@/store/palavra';
 
 /**
@@ -81,6 +82,9 @@ export function ResultSheet({
     // Read once: the label has to match what the button will actually do,
     // and `navigator.share` doesn't appear or vanish mid-session.
     const canShare = typeof navigator !== 'undefined' && Boolean(navigator.share);
+    // lucide's `Share2` is the Android/network-nodes glyph; iOS's own share
+    // sheet is the box-with-an-arrow, so match whichever OS is asking.
+    const ShareIcon = isIOS() ? Share : Share2;
     const winRate = stats.plays > 0 ? Math.round((stats.wins / stats.plays) * 100) : 0;
     const best = Math.max(1, ...stats.distribution);
 
@@ -180,7 +184,7 @@ export function ResultSheet({
                                 <span className="w-3 text-zinc-500 tabular-nums">{i + 1}</span>
                                 <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded overflow-hidden">
                                     <div
-                                        className={`h-5 rounded flex items-center justify-end px-1.5 font-semibold text-white transition-all ${
+                                        className={`h-5 rounded flex items-center justify-end px-1.5 font-semibold text-white transition-[width] ${
                                             isThisGame ? 'palavra-tile-correct' : 'palavra-tile-absent'
                                         }`}
                                         // Always wide enough to show its own number, even at zero.
@@ -199,7 +203,7 @@ export function ResultSheet({
                 <button
                     type="button"
                     onClick={share}
-                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-4 py-3 transition-colors active:scale-[0.98]"
+                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold cta-primary rounded-xl px-4 py-3 pressable"
                 >
                     {shareState === 'shared'
                         ? <><Check size={16} aria-hidden="true" /> {t.shared}</>
@@ -211,7 +215,7 @@ export function ResultSheet({
                                    share sheet if the device has one, a copy
                                    if it doesn't. */
                                 : canShare
-                                    ? <><Share2 size={16} aria-hidden="true" /> {t.shareResult}</>
+                                    ? <><ShareIcon size={16} aria-hidden="true" /> {t.shareResult}</>
                                     : <><Copy size={16} aria-hidden="true" /> {t.copyResult}</>}
                 </button>
                 {actions}

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { X } from 'lucide-react';
+import { Sheet, type SheetHandle } from '@/components/Sheet';
 import type { Mark } from '@/lib/palavra/types';
 import { useTranslations } from '@/lib/i18n';
 
@@ -66,110 +67,65 @@ function ExampleRow({
     );
 }
 
-// Anything a11y-focusable inside the dialog — currently just the two
-// buttons, but written generically rather than hardcoded to them.
-const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
 /**
  * The "Como jogar" explainer. Shown once, the first time the game loads on a
  * device (see `seenTutorial` in the palavra store), and reachable afterwards
- * from the header's help button.
+ * from the header's help button. A bottom sheet on a phone — see Sheet for
+ * the focus trap, Escape, and the keystrokes it keeps from Palavra's
+ * page-level listener, which would otherwise read them as a guess.
  */
 export function HowToPlay({ onClose }: { onClose: () => void }) {
     const t = useTranslations().palavra;
-    const dialogRef = useRef<HTMLDivElement>(null);
     const closeRef = useRef<HTMLButtonElement>(null);
-
-    // Focus goes into the dialog on mount and back to whatever opened it
-    // (the help button, on a manual reopen) once it's gone — a plain
-    // component-local ref, since HowToPlay never needs to know who that was.
-    useEffect(() => {
-        const previouslyFocused = document.activeElement as HTMLElement | null;
-        closeRef.current?.focus();
-        return () => previouslyFocused?.focus();
-    }, []);
-
-    // Keeps the keyboard inside the dialog while it's open: Tab/Shift+Tab
-    // cycle between its two buttons instead of escaping to whatever sits
-    // behind the backdrop, and stopPropagation keeps every keystroke made
-    // here — including a bare letter or Enter — from ever reaching Palavra's
-    // page-level listener, which would otherwise read it as a guess.
-    const onDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-        event.stopPropagation();
-        if (event.key === 'Escape') { onClose(); return; }
-        if (event.key !== 'Tab') return;
-        const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-        if (!focusable || focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-        }
-    };
+    const sheet = useRef<SheetHandle>(null);
+    const close = () => sheet.current?.close();
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in"
-            onClick={onClose}
-        >
-            <div
-                ref={dialogRef}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="how-to-play-title"
-                onClick={(event) => event.stopPropagation()}
-                onKeyDown={onDialogKeyDown}
-                className="surface rounded-3xl p-6 max-w-sm w-full shadow-2xl max-h-[85vh] overflow-y-auto space-y-5 animate-in zoom-in-95"
-            >
-                <div className="flex items-start justify-between gap-4">
-                    <h2 id="how-to-play-title" className="text-xl font-bold page-title">
-                        {t.howToPlayTitle}
-                    </h2>
-                    <button
-                        ref={closeRef}
-                        type="button"
-                        onClick={onClose}
-                        aria-label={t.howToPlayClose}
-                        className="shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                    <p>{t.howToPlayIntro}</p>
-                    <p>{t.howToPlaySubmit}</p>
-                    <p>{t.howToPlayColors}</p>
-                </div>
-
-                <hr className="border-zinc-200 dark:border-zinc-800" />
-
-                <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-zinc-500">{t.howToPlayExamples}</h3>
-                    <ExampleRow word="TERRA" highlightIndex={0} mark="correct" caption={t.howToPlayExampleCorrect} />
-                    <ExampleRow word="SENHOR" highlightIndex={1} mark="present" caption={t.howToPlayExamplePresent} />
-                    <ExampleRow word="PROFETA" highlightIndex={2} mark="absent" caption={t.howToPlayExampleAbsent} />
-                </div>
-
-                <hr className="border-zinc-200 dark:border-zinc-800" />
-
-                <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                    <strong className="text-zinc-800 dark:text-zinc-100">{t.howToPlayDaily}</strong>
-                    {' '}{t.howToPlayReveal}
-                </p>
-
+        <Sheet ref={sheet} onClose={onClose} labelledBy="how-to-play-title" initialFocus={closeRef} className="space-y-5">
+            <div className="flex items-start justify-between gap-4">
+                <h2 id="how-to-play-title" className="text-xl font-bold page-title">
+                    {t.howToPlayTitle}
+                </h2>
                 <button
+                    ref={closeRef}
                     type="button"
-                    onClick={onClose}
-                    className="w-full cta-primary rounded-xl px-4 py-3 text-sm font-semibold transition-colors active:scale-[0.98]"
+                    onClick={close}
+                    aria-label={t.howToPlayClose}
+                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
-                    {t.howToPlayCta}
+                    <X size={20} />
                 </button>
             </div>
-        </div>
+
+            <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                <p>{t.howToPlayIntro}</p>
+                <p>{t.howToPlaySubmit}</p>
+                <p>{t.howToPlayColors}</p>
+            </div>
+
+            <hr className="border-zinc-200 dark:border-zinc-800" />
+
+            <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-zinc-500">{t.howToPlayExamples}</h3>
+                <ExampleRow word="TERRA" highlightIndex={0} mark="correct" caption={t.howToPlayExampleCorrect} />
+                <ExampleRow word="SENHOR" highlightIndex={1} mark="present" caption={t.howToPlayExamplePresent} />
+                <ExampleRow word="PROFETA" highlightIndex={2} mark="absent" caption={t.howToPlayExampleAbsent} />
+            </div>
+
+            <hr className="border-zinc-200 dark:border-zinc-800" />
+
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                <strong className="text-zinc-800 dark:text-zinc-100">{t.howToPlayDaily}</strong>
+                {' '}{t.howToPlayReveal}
+            </p>
+
+            <button
+                type="button"
+                onClick={close}
+                className="pressable w-full cta-primary rounded-xl px-4 py-3 text-sm font-semibold"
+            >
+                {t.howToPlayCta}
+            </button>
+        </Sheet>
     );
 }

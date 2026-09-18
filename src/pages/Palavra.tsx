@@ -26,6 +26,7 @@ import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
+import { syncNostrNow } from '@/lib/useNostrSync';
 import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
@@ -103,6 +104,9 @@ export default function Palavra() {
         setShowHowToPlay(false);
         markTutorialSeen();
     }, [markTutorialSeen]);
+
+    // A game finished on another device should be here when the board opens.
+    useEffect(() => { syncNostrNow(); }, []);
 
     const isArchive = viewDate !== today;
 
@@ -620,7 +624,7 @@ export default function Palavra() {
                         type="button"
                         onClick={() => setShowHowToPlay(true)}
                         aria-label={t.howToPlayTitle}
-                        className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-2"
+                        className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm shrink-0 p-2 pressable pressable-small"
                     >
                         <CircleHelp size={20} />
                     </button>

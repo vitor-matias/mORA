@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, BookMarked, Search, X, Star } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { useAppStore } from "@/store/app";
+import { isStarred, starredIds, useAppStore } from "@/store/app";
 import {
     CHANTS,
     CHANT_CATEGORIES,
@@ -34,7 +34,9 @@ type Filter = ChantCategoryId | typeof FAVOURITES | null;
 export default function Canticos() {
     const [filter, setFilter] = useState<Filter>(null);
     const [query, setQuery] = useState('');
-    const favourites = useAppStore((s) => s.favouriteChants);
+    const favouriteLog = useAppStore((s) => s.chantFavourites);
+    // Keyed by id on the way in, read back as a list — newest first.
+    const favourites = useMemo(() => starredIds(favouriteLog), [favouriteLog]);
 
     const inFavourites = filter === FAVOURITES;
     const categories = filter === null || inFavourites
@@ -204,7 +206,7 @@ function Sung({ text, muted = false }: { text: string; muted?: boolean }) {
 
 function ChantCard({ chant }: { chant: ResolvedChant }) {
     const [open, setOpen] = useState(false);
-    const isFavourite = useAppStore((s) => s.favouriteChants.includes(chant.id));
+    const isFavourite = useAppStore((s) => isStarred(s.chantFavourites, chant.id));
     const toggleFavourite = useAppStore((s) => s.toggleChantFavourite);
 
     return (
@@ -217,7 +219,7 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                     type="button"
                     onClick={() => setOpen((o) => !o)}
                     aria-expanded={open}
-                    className="flex-1 min-w-0 flex items-start gap-3 pl-5 py-4 text-left"
+                    className="pressable pressable-card flex-1 min-w-0 flex items-start gap-3 pl-5 py-4 text-left"
                 >
                     <div className="flex-1 min-w-0">
                         <h3 className="text-base font-bold leading-tight">{chant.title}</h3>

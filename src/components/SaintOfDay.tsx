@@ -52,7 +52,7 @@ export function SaintOfDayCard({ saint, className = '' }: { saint: SaintOfDay; c
                 onClick={() => setExpanded((v) => !v)}
                 aria-expanded={expanded}
                 disabled={!hasBody}
-                className="w-full flex items-start justify-between gap-2 p-4 text-left"
+                className="pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left"
             >
                 <span>
                     <span className="block text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">

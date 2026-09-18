@@ -207,17 +207,17 @@ rompe-se a dura prisão
 e, no auge do furacão,
 cede o mar embravecido.
 
-Todos os males humanos
-se moderam, se retiram;
-digam-no aqueles que o viram
-e digam-no os paduanos.
-
-Recupera-se o perdido…
-
 Pela sua intercessão
 foge a peste, o erro, a morte;
 o fraco torna-se forte
 e torna-se o enfermo são.
+
+Recupera-se o perdido…
+
+Todos os males humanos
+se moderam, se retiram;
+digam-no aqueles que o viram
+e digam-no os paduanos.
 
 Recupera-se o perdido…
 
