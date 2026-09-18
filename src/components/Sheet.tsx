@@ -18,6 +18,9 @@ const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]
 // Movement before a touch commits to dragging the sheet or scrolling it.
 const HYSTERESIS = 8;
 
+// From sm up a sheet is a centred card.
+const WIDE = '(min-width: 640px)';
+
 export interface SheetHandle {
     /** Animate out, then call onClose. */
     close(): void;
@@ -65,9 +68,16 @@ export function Sheet({
     className?: string;
     children: ReactNode;
 }) {
-    const [bottomSheet] = useState(
-        () => variant === 'sheet' && !window.matchMedia('(min-width: 640px)').matches
-    );
+    // Followed live, not read once: a phone rotated (or a window widened)
+    // past sm with a sheet open turns it into the centred card, and back.
+    const [narrow, setNarrow] = useState(() => !window.matchMedia(WIDE).matches);
+    useEffect(() => {
+        const mq = window.matchMedia(WIDE);
+        const onChange = () => setNarrow(!mq.matches);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
+    const bottomSheet = variant === 'sheet' && narrow;
     const scrimRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const bodyRef = useRef<HTMLDivElement>(null);
@@ -77,6 +87,10 @@ export function Sheet({
     // Set while the user's finger has moved the sheet, so Reduce Motion
     // renders what they are doing as movement rather than as a fade.
     const userMoved = useRef(false);
+    // The form last shown (null before the first), and whether an exit is
+    // under way — together they tell a layout switch from an opening.
+    const shownAs = useRef<boolean | null>(null);
+    const closing = useRef(false);
     const onCloseRef = useRef(onClose);
     useLayoutEffect(() => { onCloseRef.current = onClose; });
 
@@ -115,8 +129,21 @@ export function Sheet({
         };
         const s = createSpring(closedValue(), render);
         spring.current = s;
-        s.set(closedValue());
-        s.to(0, { config: SPRING_SMOOTH });
+        const switched = shownAs.current !== null && shownAs.current !== bottomSheet;
+        shownAs.current = bottomSheet;
+        if (!switched) {
+            // Opening (or StrictMode's second run of the same mount).
+            s.set(closedValue());
+            s.to(0, { config: SPRING_SMOOTH });
+        } else if (closing.current) {
+            // The layout changed mid-exit: the exit is what was asked for.
+            s.set(closedValue());
+            onCloseRef.current();
+        } else {
+            // The layout changed while open: stay open, in the new form,
+            // rather than play the entrance again.
+            s.set(0);
+        }
         return () => {
             observer.disconnect();
             s.stop();
@@ -129,6 +156,7 @@ export function Sheet({
     // last pixels while the dialog, invisible, still blocked the page.
     const exit = useCallback((velocity?: number) => {
         const closed = closedValue();
+        closing.current = true;
         spring.current?.to(closed + (bottomSheet ? 24 : 0.15), {
             velocity,
             config: SPRING_SMOOTH,
@@ -181,7 +209,10 @@ export function Sheet({
             if (!s) return;
             // A sheet still moving is caught where it is.
             const caught = s.animating;
-            if (caught) s.stop();
+            if (caught) {
+                s.stop();
+                closing.current = false;
+            }
             drag = { startX: x, startY: y, origin: s.value, decided: caught ? 'drag' : null, fromHandle };
             tracker.reset();
             tracker.add(y);
