@@ -104,7 +104,7 @@ export function PageHeader({
 
     const headerRef = useRef<HTMLElement>(null);
     const rowRef = useRef<HTMLDivElement>(null);
-    const orbRef = useRef<HTMLButtonElement>(null);
+    const orbRef = useRef<HTMLDivElement>(null);
     const blockRef = useRef<HTMLDivElement>(null);
     const titleRef = useRef<HTMLHeadingElement>(null);
     const subtitleRef = useRef<HTMLParagraphElement>(null);
@@ -256,16 +256,18 @@ export function PageHeader({
                     ref={rowRef}
                     className="pointer-events-auto max-w-5xl 2xl:max-w-6xl mx-auto px-6 flex items-center gap-4"
                 >
-                    <button
-                        ref={orbRef}
-                        type="button"
-                        aria-label="Voltar ao início"
-                        onClick={() => navigate(backTo)}
-                        style={collapsing ? ORB_STYLE : undefined}
-                        className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm shrink-0 p-2 transition-colors active:bg-zinc-200 dark:active:bg-zinc-700 [-webkit-tap-highlight-color:transparent]"
-                    >
-                        <ChevronRight className="rotate-180" size={24} />
-                    </button>
+                    {/* The scroll-driven shrink sits on this wrapper so the
+                        button's own transform stays free for the press. */}
+                    <div ref={orbRef} style={collapsing ? ORB_STYLE : undefined} className="shrink-0">
+                        <button
+                            type="button"
+                            aria-label="Voltar ao início"
+                            onClick={() => navigate(backTo)}
+                            className="pressable pressable-small block bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:bg-zinc-200 dark:active:bg-zinc-700 rounded-full shadow-sm p-2"
+                        >
+                            <ChevronRight className="rotate-180" size={24} />
+                        </button>
+                    </div>
                     <div ref={blockRef} className="min-w-0 flex-1">
                         <h1
                             ref={titleRef}

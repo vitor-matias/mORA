@@ -107,6 +107,7 @@ export function TabBar() {
     // edge showing over a 34px home-indicator inset.)
     const navRef = useRef<HTMLElement>(null);
     const spring = useRef<Spring | null>(null);
+    const hideRef = useRef(hide);
     useLayoutEffect(() => {
         const nav = navRef.current;
         if (!nav) return;
@@ -124,13 +125,25 @@ export function TabBar() {
             nav.style.visibility = progress >= 1 ? 'hidden' : '';
             nav.style.pointerEvents = progress > 0.5 ? 'none' : '';
         };
-        spring.current = createSpring(0, render);
-        return () => spring.current?.stop();
+        const s = createSpring(0, render);
+        spring.current = s;
+        // "Away" depends on the bar's size, and at xl the bar is display:none
+        // with no size at all — a target taken there left it half on screen
+        // once the window narrowed. Re-aim whenever it resizes.
+        const observer = new ResizeObserver(() => {
+            if (hideRef.current) s.set(hiddenOffset(nav));
+        });
+        observer.observe(nav);
+        return () => {
+            observer.disconnect();
+            s.stop();
+        };
     }, []);
     // First paint jumps straight to the right state (a page opened mid-rosary
     // starts with the bar away); every change after that animates.
     const firstHide = useRef(true);
     useLayoutEffect(() => {
+        hideRef.current = hide;
         const s = spring.current;
         const nav = navRef.current;
         if (!s || !nav) return;

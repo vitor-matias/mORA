@@ -480,7 +480,7 @@ export default function LiturgiaHoras() {
                 onClick={() => setChooserOpen(o => !o)}
                 aria-expanded={chooserOpen}
                 aria-haspopup="menu"
-                className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm transition-colors ${altActive
+                className={`pressable w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm ${altActive
                     ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-300 border border-liturgy-200 dark:border-liturgy-800'
                     : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
@@ -811,7 +811,7 @@ export default function LiturgiaHoras() {
                                                         isInvitatory ? (
                                                             <button
                                                                 onClick={toggleSection}
-                                                                className="w-full flex items-center justify-between text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2"
+                                                                className="pressable pressable-card w-full flex items-center justify-between text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2"
                                                             >
                                                                 {part.title}
                                                                 <ChevronRight className={`transition-transform ${!isCollapsed ? 'rotate-90' : ''}`} size={16} />
