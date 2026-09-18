@@ -50,8 +50,8 @@ export function ShareToNostr({
             disabled={state === 'sending' || state === 'sent'}
             className="w-full flex items-center justify-center gap-2 text-sm font-semibold rounded-xl px-4 py-3
                        bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200
-                       hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors
-                       active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
+                       hover:bg-zinc-200 dark:hover:bg-zinc-700 pressable
+                       disabled:opacity-60"
         >
             {state === 'sending' && <><Loader2 size={16} className="animate-spin" aria-hidden="true" /> {t.publishing}</>}
             {state === 'sent' && <><Check size={16} aria-hidden="true" /> {t.published}</>}

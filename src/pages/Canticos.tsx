@@ -219,7 +219,7 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                     type="button"
                     onClick={() => setOpen((o) => !o)}
                     aria-expanded={open}
-                    className="flex-1 min-w-0 flex items-start gap-3 pl-5 py-4 text-left"
+                    className="pressable pressable-card flex-1 min-w-0 flex items-start gap-3 pl-5 py-4 text-left"
                 >
                     <div className="flex-1 min-w-0">
                         <h3 className="text-base font-bold leading-tight">{chant.title}</h3>

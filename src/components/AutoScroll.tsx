@@ -10,7 +10,7 @@ export function AutoScrollButton({ scroll }: { scroll: AutoScroll }) {
             onClick={scroll.toggle}
             disabled={!scroll.isScrolling && scroll.atPageEnd}
             aria-label={scroll.isScrolling ? 'Parar auto-scroll' : 'Iniciar auto-scroll'}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors border w-full justify-center lg:justify-start disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`pressable flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap border w-full justify-center lg:justify-start disabled:opacity-40 disabled:cursor-not-allowed ${
                 scroll.isScrolling
                     ? 'bg-liturgy-100 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-300 border-liturgy-200 dark:border-liturgy-800'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-transparent hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -36,7 +36,7 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
                     type="button"
                     onClick={scroll.slower}
                     aria-label="Mais lento"
-                    className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
+                    className="pressable pressable-small text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2"
                 >
                     <Minus size={15} />
                 </button>
@@ -47,7 +47,7 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
                     type="button"
                     onClick={scroll.faster}
                     aria-label="Mais rápido"
-                    className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors p-2"
+                    className="pressable pressable-small text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2"
                 >
                     <Plus size={15} />
                 </button>
@@ -63,13 +63,13 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
             {scroll.isScrolling ? (
                 /* One cohesive pill: speed on the left, pause on the right.
                    Semi-transparent so text scrolling behind it stays
-                   readable. */
-                <div className="flex items-stretch h-12 rounded-full bg-zinc-900/60 dark:bg-zinc-800/60 backdrop-blur-md shadow-xl overflow-hidden">
+                   readable (solid under Reduce Transparency). */
+                <div className="glass-control flex items-stretch h-12 rounded-full shadow-xl overflow-hidden">
                     <button
                         type="button"
                         onClick={scroll.slower}
                         aria-label="Mais lento"
-                        className="pl-4 pr-2.5 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
+                        className="pressable pressable-small pl-4 pr-2.5 flex items-center text-zinc-300 hover:text-white active:text-white"
                     >
                         <Minus size={16} />
                     </button>
@@ -80,7 +80,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                         type="button"
                         onClick={scroll.faster}
                         aria-label="Mais rápido"
-                        className="pl-2.5 pr-3 flex items-center text-zinc-300 hover:text-white active:text-white transition-colors"
+                        className="pressable pressable-small pl-2.5 pr-3 flex items-center text-zinc-300 hover:text-white active:text-white"
                     >
                         <Plus size={16} />
                     </button>
@@ -89,7 +89,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                         type="button"
                         onClick={scroll.toggle}
                         aria-label="Parar auto-scroll"
-                        className="pl-3.5 pr-4 flex items-center text-white transition-colors"
+                        className="pressable pressable-small pl-3.5 pr-4 flex items-center text-white"
                     >
                         <Pause size={17} fill="currentColor" strokeWidth={0} />
                     </button>
@@ -100,7 +100,7 @@ export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
                     onClick={scroll.toggle}
                     disabled={scroll.atPageEnd}
                     aria-label="Iniciar auto-scroll"
-                    className="h-12 w-12 rounded-full shadow-xl flex items-center justify-center bg-zinc-900/60 dark:bg-zinc-100/70 backdrop-blur-md text-white dark:text-zinc-900 transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="pressable pressable-small glass-control glass-control-invert h-12 w-12 rounded-full shadow-xl flex items-center justify-center text-white dark:text-zinc-900 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                     <Play size={17} fill="currentColor" strokeWidth={0} className="translate-x-px" />
                 </button>

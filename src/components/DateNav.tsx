@@ -59,7 +59,7 @@ export function DateNav({
                 type="button"
                 onClick={() => onChangeDay(-1)}
                 aria-label="Dia anterior"
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                className="pressable pressable-small p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
                 <ChevronLeft size={18} />
             </button>
@@ -75,7 +75,7 @@ export function DateNav({
                             (input as HTMLInputElement).focus();
                         }
                     }}
-                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 pressable"
                 >
                     <Calendar size={15} className="text-liturgy-600 dark:text-liturgy-400 shrink-0" aria-hidden="true" />
                     <span className="truncate">
@@ -119,7 +119,7 @@ export function DateNav({
                 onClick={() => onChangeDay(1)}
                 aria-label="Dia seguinte"
                 disabled={atMax}
-                className="p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                className="pressable pressable-small p-2.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none"
             >
                 <ChevronRight size={18} />
             </button>

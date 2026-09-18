@@ -480,7 +480,7 @@ export default function LiturgiaHoras() {
                 onClick={() => setChooserOpen(o => !o)}
                 aria-expanded={chooserOpen}
                 aria-haspopup="menu"
-                className={`w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm transition-colors ${altActive
+                className={`pressable w-full flex items-center justify-center gap-2 py-2 px-4 rounded-2xl text-sm ${altActive
                     ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-300 border border-liturgy-200 dark:border-liturgy-800'
                     : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
                     }`}
@@ -620,7 +620,7 @@ export default function LiturgiaHoras() {
                                         key={moment.id}
                                         onClick={() => selectHour(moment.id)} aria-label={moment.label}
                                         aria-pressed={activeHour === moment.id}
-                                        className={`flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl transition-all ${activeHour === moment.id
+                                        className={`pressable pressable-small flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl ${activeHour === moment.id
                                             ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
                                             : 'surface text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
@@ -638,7 +638,7 @@ export default function LiturgiaHoras() {
                                         <button
                                             key={sub}
                                             onClick={() => selectSubHour(sub)}
-                                            className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-all ${activeSubHour === sub
+                                            className={`pressable flex-1 py-1.5 px-3 text-xs font-medium rounded-lg ${activeSubHour === sub
                                                 ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                                 : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                                 }`}
@@ -779,7 +779,7 @@ export default function LiturgiaHoras() {
                                             <span>Completas como no Domingo.</span>
                                         </div>
                                         <div className="space-y-3">
-                                            <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                            <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                 {sundayCompline.title}
                                             </h3>
                                             <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sundayCompline.html) }} />
@@ -811,13 +811,13 @@ export default function LiturgiaHoras() {
                                                         isInvitatory ? (
                                                             <button
                                                                 onClick={toggleSection}
-                                                                className="w-full flex items-center justify-between text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2"
+                                                                className="pressable pressable-card w-full flex items-center justify-between text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2"
                                                             >
                                                                 {part.title}
                                                                 <ChevronRight className={`transition-transform ${!isCollapsed ? 'rotate-90' : ''}`} size={16} />
                                                             </button>
                                                         ) : (
-                                                            <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                                            <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                                 {part.title}
                                                             </h3>
                                                         )
@@ -874,7 +874,7 @@ export default function LiturgiaHoras() {
                                                                                 }
                                                                             }
                                                                         }}
-                                                                        className="w-full py-3 px-4 text-sm font-bold shadow-lg shadow-liturgy-900/10 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 rounded-2xl flex items-center justify-center gap-2 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                                                        className="w-full py-3 px-4 text-sm font-bold shadow-lg shadow-liturgy-900/10 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 rounded-2xl flex items-center justify-center gap-2 pressable"
                                                                     >
                                                                         Ir para {displayParts.find(p => p.title !== 'Invitatório')?.title || 'seguinte'}
                                                                         <ChevronRight size={16} className="rotate-90" />
@@ -916,7 +916,7 @@ export default function LiturgiaHoras() {
                             </p>
                             <button
                                 onClick={() => setRetryToken(t => t + 1)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-sm font-semibold transition-colors active:scale-[0.97]"
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-sm font-semibold pressable"
                             >
                                 <RotateCcw size={15} aria-hidden="true" />
                                 Tentar novamente

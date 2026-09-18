@@ -354,7 +354,7 @@ export default function Liturgy() {
                             <button
                                 key={id}
                                 onClick={() => scrollToSection(id)}
-                                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                                className={`pressable pressable-small shrink-0 px-3 py-1.5 rounded-full text-xs font-medium ${
                                     activeSection === id
                                         ? 'bg-liturgy-100 dark:bg-liturgy-900/50 text-liturgy-700 dark:text-liturgy-300'
                                         : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
@@ -477,7 +477,7 @@ export default function Liturgy() {
                                 </p>
                                 <button
                                     onClick={() => setRetryToken(t => t + 1)}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-sm font-semibold transition-colors active:scale-[0.97]"
+                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 text-sm font-semibold pressable"
                                 >
                                     <RotateCcw size={15} aria-hidden="true" />
                                     Tentar novamente

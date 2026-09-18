@@ -25,7 +25,7 @@ export function LiturgicalColorDot({ color, className = '' }: { color: Liturgica
     reads as one, where "– FESTA" trailing the title reads as part of it. */
 function RankBadge({ rank }: { rank: string }) {
     return (
-        <span className="inline-block rounded-md bg-liturgy-100 dark:bg-liturgy-900/60 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-liturgy-700 dark:text-liturgy-300 align-middle">
+        <span className="inline-block rounded-md bg-liturgy-100 dark:bg-liturgy-900/60 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-300 align-middle">
             {rank}
         </span>
     );
@@ -167,7 +167,7 @@ export function DayCard({ dateLabel, color, title, description, sections, classN
                 onClick={() => setExpanded((v) => !v)}
                 aria-expanded={expanded}
                 disabled={!hasBody}
-                className="w-full flex items-start justify-between gap-2 p-4 text-left"
+                className="pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left"
             >
                 <span>
                     <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">

@@ -167,7 +167,7 @@ export default function Home() {
                     the title dot, a lone right-aligned pill floated oddly. */}
                 <Link
                     to="/liturgia-horas"
-                    className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 transition-colors active:scale-[0.98]"
+                    className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 pressable"
                 >
                     Rezar agora <ArrowRight size={15} aria-hidden="true" />
                 </Link>
@@ -238,7 +238,7 @@ export default function Home() {
                             <Link
                                 key={area.path}
                                 to={area.path}
-                                className="group flex items-center gap-4 p-4 surface rounded-2xl transition-all active:scale-[0.99]"
+                                className="pressable pressable-card group flex items-center gap-4 p-4 surface rounded-2xl"
                             >
                                 <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
                                     <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />

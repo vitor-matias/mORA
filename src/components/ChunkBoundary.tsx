@@ -34,7 +34,7 @@ export class ChunkBoundary extends Component<{ children: ReactNode }, { failed: 
                 <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="cta-primary rounded-xl px-5 py-2.5 text-sm font-semibold transition-colors active:scale-[0.98]"
+                    className="cta-primary rounded-xl px-5 py-2.5 text-sm font-semibold pressable"
                 >
                     Recarregar
                 </button>

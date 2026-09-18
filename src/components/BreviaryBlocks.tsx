@@ -114,7 +114,7 @@ export function BreviaryBlocks({ sections }: { sections: AssembledSection[] }) {
                         only in-content rubrics use the API's literal red. An
                         empty title renders blocks alone (spliced layouts). */}
                     {section.title && (
-                        <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                        <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
                             {section.title}
                         </h3>
                     )}

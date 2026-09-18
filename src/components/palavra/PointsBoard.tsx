@@ -150,7 +150,7 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                         <span className="w-7 shrink-0 flex justify-end">
                             <CalendarDays size={13} />
                         </span>
-                        <span className="w-9 shrink-0 text-right text-[11px] font-semibold uppercase tracking-wide">
+                        <span className="w-9 shrink-0 text-right text-[11px] font-semibold uppercase tracking-widest">
                             {t.pointsAbbr}
                         </span>
                     </div>

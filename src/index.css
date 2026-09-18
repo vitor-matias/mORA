@@ -123,8 +123,22 @@
     border-bottom-color: rgb(255 255 255 / 0.1);
   }
 
-  /* Top padding of the collapsed PageHeader: 0.75rem under the safe-area
-     inset, so the title row sits right beneath the status bar.
+  /* PageHeader below xl — a large title that collapses into a bar as the
+     page scrolls, the way iOS navigation bars do.
+
+     The header never changes height. It used to swap its padding and type
+     sizes at a scroll threshold, which shrank the page by ~43px in one step:
+     browsers with scroll anchoring hid the jump, but iOS Safari has none, so
+     the reading moved under the finger mid-drag. Now the collapse is split
+     between the scroll itself and transforms. The negative sticky `top`
+     lets the header ride up with the page by exactly the padding the
+     collapsed bar gives back, 1:1 with the finger and with no script
+     involved; PageHeader then scales the title and orb and draws the frosted
+     layer in step with the scroll offset (--collapse, 0 → 1). Nothing that
+     moves is a layout change.
+
+     --header-pt-collapsed is where the title row settles: 0.75rem under the
+     safe-area inset, right beneath the status bar.
 
      Not in the app installed on iOS. From iOS 27 the system lays a
      progressive blur over the top of a black-translucent web app — full
@@ -134,28 +148,118 @@
      of the bar, none of them changed it (iOS 27.0 Simulator, 2026-09-15).
      At 0.75rem the collapsed title's glyphs stand 16–36pt below the status
      bar, inside that fade, and come out smeared the moment the page
-     scrolls; the resting title, 40pt down, is clear of it. So the bar
-     keeps the resting padding — 2.5rem, 3rem from lg, the same pair
-     PageHeader's resting branch uses — and collapses only the title and
-     the orb, and the title stays legible. The same rule reaches iOS 26,
-     where the page still draws under the status bar and there is no
-     blur, at the cost of a taller bar there. -webkit-touch-callout is
-     iOS WebKit's alone; display-mode keeps Safari's own tab, with its
-     own bars, out. */
-  .app-bar-collapsed {
-    padding-top: calc(0.75rem + env(safe-area-inset-top));
+     scrolls; the resting title, 40pt down, is clear of it. So there the
+     row stays at its resting height — the header sticks at top 0 — and
+     only the title and the orb collapse, and the title stays legible. The
+     same rule reaches iOS 26, where the page still draws under the status
+     bar and there is no blur, at the cost of a taller bar there.
+     -webkit-touch-callout is iOS WebKit's alone; display-mode keeps
+     Safari's own tab, with its own bars, out.
+
+     pointer-events: the header's box stays its resting height while the
+     visible bar shrinks, so the strip below the bar would otherwise swallow
+     taps meant for the reading showing through it. The row and the
+     children opt back in. */
+  .page-header {
+    --header-pt: calc(2.5rem + env(safe-area-inset-top));
+    --header-pt-collapsed: calc(0.75rem + env(safe-area-inset-top));
+    position: sticky;
+    top: calc(var(--header-pt-collapsed) - var(--header-pt));
+    padding-top: var(--header-pt);
+    padding-bottom: 1rem;
+    pointer-events: none;
+  }
+  @media (min-width: 1024px) {
+    .page-header {
+      --header-pt: calc(3rem + env(safe-area-inset-top));
+      padding-bottom: 1.25rem;
+    }
   }
   @supports (-webkit-touch-callout: none) {
     @media (display-mode: standalone) {
-      .app-bar-collapsed {
-        padding-top: calc(2.5rem + env(safe-area-inset-top));
+      .page-header {
+        --header-pt-collapsed: var(--header-pt);
       }
     }
-    @media (display-mode: standalone) and (min-width: 1024px) {
-      .app-bar-collapsed {
-        padding-top: calc(3rem + env(safe-area-inset-top));
-      }
-    }
+  }
+
+  /* The floating tab bar — frosted, like every other layer the page scrolls
+     under (.app-bar, .action-rail). An opaque card here was the one floating
+     surface that cut the reading off rather than letting it pass beneath.
+     Denser than the top bar because its labels are small, and it is the
+     largest floating surface, so it carries the deeper (neutral) shadow. */
+  .floating-bar {
+    background: rgb(var(--surface-bg) / 0.8);
+    backdrop-filter: blur(24px) saturate(1.6);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    border: 1px solid rgb(24 24 27 / 0.08);
+    box-shadow: 0 10px 30px -12px rgb(24 24 27 / 0.2);
+  }
+  .dark .floating-bar {
+    border-color: rgb(255 255 255 / 0.08);
+    box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.7);
+  }
+
+  /* Small dark glass controls floating over the reading (the auto-scroll
+     pill). Named so reduced transparency can make them solid. */
+  .glass-control {
+    background: rgb(24 24 27 / 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .dark .glass-control { background: rgb(39 39 42 / 0.6); }
+  .dark .glass-control-invert { background: rgb(244 244 245 / 0.7); }
+
+  /* Dims the page behind a modal. Its opacity is driven by the sheet's
+     position, so dragging a sheet down lightens it as it goes. */
+  .scrim {
+    background: rgb(0 0 0 / 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Press feedback. One behaviour for everything tappable, answered on
+     touch-down: the control sinks at once (80ms) and eases back on release.
+     The scale is by size, because a fixed fraction is invisible on a large
+     card and violent on a small key — 0.97 for buttons and rows, 0.985 for
+     cards, 0.92 for icon buttons, tabs and keys.
+
+     transition-property is listed rather than `all`, and includes the
+     colours, so a .pressable never needs a transition utility beside it —
+     one would override this list and lose the transform. touch-action:
+     manipulation drops the double-tap-to-zoom wait; the tap highlight is
+     redundant once the control answers the press itself. */
+  .pressable {
+    --press-scale: 0.97;
+    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+    transition-duration: 150ms, 150ms, 150ms, 150ms, 150ms, 240ms;
+    transition-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pressable-card { --press-scale: 0.985; }
+  .pressable-small { --press-scale: 0.92; }
+  .pressable:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: scale(var(--press-scale));
+    transition-duration: 150ms, 150ms, 150ms, 150ms, 150ms, 80ms;
+  }
+
+  /* A guided prayer's next bead arrives from the side it was turned
+     towards — ahead from the right, back from the left — so forward and
+     back are told apart without reading the title. */
+  .step-enter-next { animation: step-enter-next 0.28s cubic-bezier(0.2, 0, 0, 1) both; }
+  .step-enter-prev { animation: step-enter-prev 0.28s cubic-bezier(0.2, 0, 0, 1) both; }
+  @keyframes step-enter-next {
+    from { opacity: 0; transform: translateX(14px); }
+  }
+  @keyframes step-enter-prev {
+    from { opacity: 0; transform: translateX(-14px); }
+  }
+  @keyframes step-fade {
+    from { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .step-enter-next, .step-enter-prev { animation-name: step-fade; }
   }
 
   /* Foot of a guided prayer page — the rail the back/advance buttons stick
@@ -311,6 +415,42 @@
   .animate-in, .animate-out {
     animation: none;
   }
+}
+
+/* Reduce Transparency: every frosted layer turns solid. The blur exists to
+   keep the page's context showing through; someone who asked for less
+   transparency is asking for the legibility back instead. The top bar keeps
+   the day's wash, over an opaque ground. Unlayered for the same reason as
+   the rule above. */
+@media (prefers-reduced-transparency: reduce) {
+  .app-bar, .action-rail, .floating-bar, .glass-control, .scrim {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .app-bar { background: var(--app-wash), rgb(var(--app-bg)); }
+  .action-rail { background: rgb(var(--app-bg)); }
+  .floating-bar { background: rgb(var(--surface-bg)); }
+  .glass-control { background: rgb(24 24 27); }
+  .dark .glass-control { background: rgb(39 39 42); }
+  .dark .glass-control-invert { background: rgb(244 244 245); }
+  .scrim { background: rgb(0 0 0 / 0.65); }
+}
+
+/* Increase Contrast: the hairlines that separate surfaces from the page are
+   drawn at 8–10% and all but vanish for someone who needs more. The lead
+   panel's liturgical edge is left as it is — it is already a colour. */
+@media (prefers-contrast: more) {
+  .surface:not(.surface-accent),
+  .floating-bar {
+    border-color: rgb(24 24 27 / 0.35);
+  }
+  .dark .surface:not(.surface-accent),
+  .dark .floating-bar {
+    border-color: rgb(255 255 255 / 0.35);
+  }
+  .floating-bar { background: rgb(var(--surface-bg)); }
+  .app-bar-scrolled { border-bottom-color: rgb(24 24 27 / 0.35); }
+  .dark .app-bar-scrolled { border-bottom-color: rgb(255 255 255 / 0.35); }
 }
 
 /* ------------------------------------------------------------------ */
@@ -613,7 +753,8 @@ html[data-theme="rosa"] {
   font-size: 0.6em;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  /* Small capitals take 0.1em everywhere in the app; 14px ones, 0.05em. */
+  letter-spacing: 0.1em;
   color: rgb(var(--liturgy-600));
   background: rgb(var(--liturgy-50));
   border: 1px solid rgb(var(--liturgy-200));
@@ -712,7 +853,7 @@ html[data-theme="rosa"] {
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   border-radius: 0.5rem;
   cursor: pointer;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
