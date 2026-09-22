@@ -845,7 +845,7 @@ export default function LiturgiaHoras() {
                                                                         [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2
                                                                         [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4
                                                                         [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
-                                                                        [&_em]:italic [&_em]:text-zinc-600 dark:[&_em]:text-zinc-400
+                                                                        [&_em]:italic
                                                                     "
                                                                         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(verse.text) }}
                                                                     />
