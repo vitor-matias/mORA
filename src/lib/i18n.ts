@@ -18,7 +18,7 @@ const translations = {
         intentionPopeLoading: "A carregar intenção do Papa…",
         rosaryTitle: "Santo Terço do Rosário",
         rosaryDesc: "Reze e medite os mistérios diários",
-        chapletsTitle: "Coroas e Terços",
+        chapletsTitle: "Terço e Coroas",
         chapletsDesc: "As devoções que se rezam nas contas",
         devotionalTitle: "Devocionário",
         // The day's suggested prayer is interpolated by the caller.

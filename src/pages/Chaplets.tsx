@@ -10,13 +10,16 @@ import type { ChapletMode } from "@/store/app";
 import { CHAPLETS, generateChapletSequence, getChaplet, beadsPerGroup } from "@/lib/chaplets";
 import type { Chaplet } from "@/lib/chaplets";
 import { haptic } from "@/lib/haptics";
+import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 
 /**
- * Coroas e Terços — the chaplets that are not the Rosary, prayed the same
+ * Terço e Coroas — the chaplets that are not the Rosary, prayed the same
  * way the Rosary page prays it: one bead per tap, so the phone does the
  * counting and the reader does the praying.
  *
- * `/coroas` lists them; `/coroas/:chapletId` walks one. The two share a route
+ * `/coroas` lists them, with the Rosary (its own page, `/terco`) first, so
+ * Home needs one row for everything prayed on beads; `/coroas/:chapletId`
+ * walks one. The two share a route
  * component only for the header; the player is its own component, keyed by
  * chaplet id so switching chaplets always starts from the first bead.
  */
@@ -27,7 +30,7 @@ export default function Chaplets() {
     return (
         <div className="flex-1 w-full flex flex-col">
             <PageHeader
-                title={chaplet ? chaplet.title : 'Coroas e Terços'}
+                title={chaplet ? chaplet.title : 'Terço e Coroas'}
                 subtitle={chaplet ? chaplet.shape : 'As devoções que se rezam nas contas'}
                 backTo={chaplet ? '/coroas' : '/'}
             />
@@ -48,10 +51,20 @@ function ChapletChooser() {
                 Cada coroa reza-se conta a conta, como o terço. Toca para avançar. A aplicação conta por ti.
             </p>
             <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4">
-                {CHAPLETS.map((chaplet) => (
+                {[
+                    {
+                        id: 'terco',
+                        to: '/terco',
+                        title: 'Santo Terço do Rosário',
+                        subtitle: `Hoje: Mistérios ${MYSTERY_LABELS[getMysteryForToday()]}`,
+                        duration: '≈ 20 minutos',
+                        shape: '5 dezenas',
+                    },
+                    ...CHAPLETS.map((chaplet) => ({ ...chaplet, to: `/coroas/${chaplet.id}` })),
+                ].map((chaplet) => (
                     <Link
                         key={chaplet.id}
-                        to={`/coroas/${chaplet.id}`}
+                        to={chaplet.to}
                         className="pressable pressable-card group flex items-start gap-4 p-4 surface rounded-2xl"
                     >
                         <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
