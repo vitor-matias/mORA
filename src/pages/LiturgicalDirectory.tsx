@@ -210,6 +210,7 @@ export default function LiturgicalDirectory() {
                                 text={selectedInfo.description}
                                 sections={selectedInfo.sections}
                                 color={selectedInfo.color}
+                                notesOpen
                                 className="mt-2"
                             />
                         )}

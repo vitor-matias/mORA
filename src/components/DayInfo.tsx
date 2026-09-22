@@ -103,13 +103,15 @@ function Section({ section, dayColor }: { section: DaySection; dayColor?: Liturg
 
 /**
  * The day as the publisher classified it, with the "*" remarks behind
- * "Ver mais" wherever the feed happened to put them.
+ * "Ver mais" wherever the feed happened to put them — or, with no `onToggle`,
+ * simply listed after the rest.
  */
 function SectionList({ sections, dayColor, expanded, onToggle }: {
     sections: DaySection[];
     dayColor?: LiturgicalColor;
     expanded: boolean;
-    onToggle: () => void;
+    /** Absent when the remarks are always shown: no toggle is rendered. */
+    onToggle?: () => void;
 }) {
     const { main, notes } = splitSections(sections);
     const visible = main.filter((section) => !isEmptySection(section));
@@ -130,13 +132,15 @@ function SectionList({ sections, dayColor, expanded, onToggle }: {
                             ))}
                         </ul>
                     )}
-                    <button
-                        type="button"
-                        onClick={onToggle}
-                        className="mt-1 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
-                    >
-                        {expanded ? '▴ Ver menos' : `▾ Ver mais (${notes.length})`}
-                    </button>
+                    {onToggle && (
+                        <button
+                            type="button"
+                            onClick={onToggle}
+                            className="mt-1 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
+                        >
+                            {expanded ? '▴ Ver menos' : `▾ Ver mais (${notes.length})`}
+                        </button>
+                    )}
                 </>
             )}
         </>
@@ -215,11 +219,13 @@ export function DayDescription({ text, sections, color, hideReadings = false, no
     color?: LiturgicalColor;
     /** For cards that say which day it is rather than what is read at Mass. */
     hideReadings?: boolean;
-    /** Start with the remarks already open (the card is the collapse). */
+    /** Always show the remarks, with no "Ver mais" to hide them behind: for
+        the day card (the card itself is the collapse) and the directory,
+        where the reader came for the whole entry. */
     notesOpen?: boolean;
     className?: string;
 }) {
-    const [expanded, setExpanded] = useState(notesOpen);
+    const [expanded, setExpanded] = useState(false);
     const resolved = useMemo(
         () => (sections && sections.length > 0 ? sections : parseDaySections(text)),
         [sections, text],
@@ -230,8 +236,8 @@ export function DayDescription({ text, sections, color, hideReadings = false, no
             <SectionList
                 sections={hideReadings ? withoutReadings(resolved) : resolved}
                 dayColor={color}
-                expanded={expanded}
-                onToggle={() => setExpanded((v) => !v)}
+                expanded={notesOpen || expanded}
+                onToggle={notesOpen ? undefined : () => setExpanded((v) => !v)}
             />
         </div>
     );
