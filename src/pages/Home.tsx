@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Crown, Music } from "lucide-react";
+import { BookOpen, Clock, User, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -82,12 +82,16 @@ export default function Home() {
     const prayerAreas = [
         { path: "/liturgia", label: t.liturgyTitle, context: anticipatingSunday ? "As leituras da missa de domingo" : "As leituras da missa de hoje", icon: BookOpen },
         { path: "/liturgia-horas", label: t.hoursTitle, context: `Agora: ${currentHour.label}`, icon: Clock },
-        { path: "/terco", label: t.rosaryTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Rosary },
-        { path: "/coroas", label: t.chapletsTitle, context: t.chapletsDesc, icon: Crown },
+        // One row for everything prayed on beads: the page it opens lists the
+        // Rosary first, then the other chaplets.
+        { path: "/coroas", label: t.chapletsTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Rosary },
         { path: "/devocionario", label: t.devotionalTitle, context: t.devotionalDesc(devotionalSuggestion.title), icon: BookMarked },
         { path: "/canticos", label: t.chantsTitle, context: t.chantsDesc, icon: Music },
     ];
-    const exploreAreas = [
+    // An entry with an `href` leaves the app: the Bíblia is read on the
+    // Capuchinhos' own site rather than carried here.
+    const exploreAreas: { path: string; href?: string; label: string; context: string; icon: typeof BookOpen }[] = [
+        { path: "/biblia", href: "https://biblia.capuchinhos.org/", label: "Bíblia Sagrada", context: "Tradução da Difusora Bíblica", icon: Book },
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];
@@ -234,12 +238,10 @@ export default function Home() {
                         {/* Desktop: tiles across the frame instead of a
                             phone-style stack of full-width rows. */}
                         <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
-                        {items.map((area) => (
-                            <Link
-                                key={area.path}
-                                to={area.path}
-                                className="pressable pressable-card group flex items-center gap-4 p-4 surface rounded-2xl"
-                            >
+                        {items.map((area) => {
+                            const href = 'href' in area ? area.href : undefined;
+                            const body = (
+                            <>
                                 <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
                                     <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
                                 </div>
@@ -247,9 +249,22 @@ export default function Home() {
                                     <h3 className="text-base font-bold leading-tight">{area.label}</h3>
                                     <p className="text-zinc-500 text-xs mt-0.5 truncate">{area.context}</p>
                                 </div>
-                                <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
-                            </Link>
-                        ))}
+                                {href
+                                    ? <ExternalLink size={16} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
+                                    : <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />}
+                            </>
+                            );
+                            const className = "pressable pressable-card group flex items-center gap-4 p-4 surface rounded-2xl";
+                            return href ? (
+                                <a key={area.path} href={href} target="_blank" rel="noopener noreferrer" className={className}>
+                                    {body}
+                                </a>
+                            ) : (
+                                <Link key={area.path} to={area.path} className={className}>
+                                    {body}
+                                </Link>
+                            );
+                        })}
                         </div>
                     </section>
                 ))}
