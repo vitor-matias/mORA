@@ -91,7 +91,7 @@ export default function Home() {
     // An entry with an `href` leaves the app: the Bíblia is read on the
     // Capuchinhos' own site rather than carried here.
     const exploreAreas: { path: string; href?: string; label: string; context: string; icon: typeof BookOpen }[] = [
-        { path: "/biblia", href: "https://biblia.capuchinhos.org/", label: "Bíblia Sagrada", context: "A Bíblia dos Capuchinhos", icon: Book },
+        { path: "/biblia", href: "https://biblia.capuchinhos.org/", label: "Bíblia Sagrada", context: "Tradução da Difusora Bíblica", icon: Book },
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];
