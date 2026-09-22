@@ -440,6 +440,32 @@ Santa Teresinha do Menino Jesus, rogai por nós.
 Amen.`,
     },
     {
+        id: 'oracao-do-abandono',
+        title: 'Oração do abandono',
+        category: 'santos',
+        note: 'De São Charles de Foucauld, nascida de uma meditação sobre Lc 23, 46.',
+        aka: ['Charles de Foucauld', 'Meu Pai, eu me abandono a Ti'],
+        text: `Meu Pai,
+eu me abandono a Ti,
+faz de mim o que quiseres.
+O que fizeres de mim,
+eu Te agradeço.
+
+Estou pronto para tudo, aceito tudo,
+desde que a tua vontade se faça em mim
+e em tudo o que Tu criaste,
+nada mais quero, meu Deus.
+
+Nas tuas mãos entrego a minha vida.
+Eu Ta dou, meu Deus,
+com todo o amor do meu coração,
+porque Te amo
+e é para mim uma necessidade de amor dar-me,
+entregar-me nas tuas mãos sem medida,
+com uma confiança infinita,
+porque Tu és meu Pai!`,
+    },
+    {
         id: 'rainha-santa-isabel',
         title: 'À Rainha Santa Isabel',
         category: 'santos',
