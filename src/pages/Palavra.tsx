@@ -442,7 +442,18 @@ export default function Palavra() {
         // Between two elements it is stable — shrink the board and both edges
         // move up together.
         const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
-        const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
+        // `<main>` carries its own bottom padding — the safe-area clearance
+        // Layout reserves under the keyboard (see Layout.tsx) — which sits
+        // below `window.innerHeight` in the box model but isn't part of it.
+        // Sizing against innerHeight alone ignored that padding, so the
+        // keyboard was allowed to grow right up to the visual bottom edge:
+        // the reserved clearance was still applied, but as page overflow
+        // below the fold instead of visible space above the gesture area,
+        // which is exactly what it was meant to prevent.
+        const mainPaddingBottom = parseFloat(
+            getComputedStyle(board.closest('main') ?? document.body).paddingBottom,
+        ) || 0;
+        const available = window.innerHeight - boardBox.top - below - mainPaddingBottom - BOARD_BREATHING_PX;
         const perTile = (available - gapPx() * (MAX_GUESSES - 1)) / MAX_GUESSES;
         // Floored, so a landscape phone gets a small board and a scroll rather
         // than one collapsed to nothing.

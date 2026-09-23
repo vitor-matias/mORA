@@ -212,14 +212,19 @@ export function Layout() {
                 moves to the top bar and only breathing room remains.
 
                 When a page has asked the bar to stand down, the clearance goes
-                with it and only the safe-area inset stays. Holding 5.5rem for
-                a bar that isn't drawn cost Palavra 88px it needed: measured at
-                412×915 (Pixel 8a) the page overflowed by 53px, which put the
-                keyboard's bottom row under the gesture pill. */}
+                with it and only the safe-area inset (plus a little breathing
+                room, the same margin StickyActions gives its own yielded
+                state) stays. Holding 5.5rem for a bar that isn't drawn cost
+                Palavra 88px it needed: measured at 412×915 (Pixel 8a) the page
+                overflowed by 53px, which put the keyboard's bottom row under
+                the gesture pill. The bare safe-area inset alone left the
+                keyboard's last row flush against the home indicator on a real
+                iPhone — reachable but close enough to misfire against the
+                edge-swipe gesture. */}
             <main
                 className={`relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col xl:pb-8 ${
                     bottomBarYielded
-                        ? 'pb-[env(safe-area-inset-bottom)]'
+                        ? 'pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
                         : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
                 }`}
             >
