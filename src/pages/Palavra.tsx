@@ -442,12 +442,33 @@ export default function Palavra() {
         // Between two elements it is stable — shrink the board and both edges
         // move up together.
         const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
-        const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
+        // `<main>` carries its own bottom padding — the safe-area clearance
+        // Layout reserves under the keyboard (see Layout.tsx) — which sits
+        // below `window.innerHeight` in the box model but isn't part of it.
+        // Sizing against innerHeight alone ignored that padding, so the
+        // keyboard was allowed to grow right up to the visual bottom edge:
+        // the reserved clearance was still applied, but as page overflow
+        // below the fold instead of visible space above the gesture area,
+        // which is exactly what it was meant to prevent.
+        const mainPaddingBottom = parseFloat(
+            getComputedStyle(board.closest('main') ?? document.body).paddingBottom,
+        ) || 0;
+        const available = window.innerHeight - boardBox.top - below - mainPaddingBottom - BOARD_BREATHING_PX;
         const perTile = (available - gapPx() * (MAX_GUESSES - 1)) / MAX_GUESSES;
         // Floored, so a landscape phone gets a small board and a scroll rather
         // than one collapsed to nothing.
         setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
     }, []);
+
+    // `bottomBarYielded` drives the padding `measure()` now reads (see the
+    // comment inside it), but that padding lives on Layout's `<main>`, one
+    // component up — nothing here re-renders when it changes on its own.
+    // Worse, `setBottomBarYielded` below fires from a plain effect, which
+    // commits *after* this layout effect on the very same pass, so the very
+    // first measurement always runs against the *previous* page's padding.
+    // Depending on the store value directly is what closes both gaps: it
+    // forces a remeasure once Layout has actually applied the new padding.
+    const bottomBarYielded = useAppStore((s) => s.bottomBarYielded);
 
     // Subscriptions, set up once per layout-changing state. `maxTilePx` is
     // deliberately *not* a dependency here: it changes on every settling pass,
@@ -473,7 +494,7 @@ export default function Palavra() {
             window.removeEventListener('resize', measure);
             observer.disconnect();
         };
-    }, [challenge, over, pageTab, measure]);
+    }, [challenge, over, pageTab, bottomBarYielded, measure]);
 
     // The settling pass, split from the subscriptions above so it costs a
     // measurement and nothing else. Applying a size changes the layout the
