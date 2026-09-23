@@ -321,6 +321,20 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 export type FontFamily = 'system' | 'serif' | 'sans';
 
+/** How much of the day's Mass the Missa page shows.
+      leituras — the readings alone
+      missal   — everything the API sends (the propers)
+      explicada   — the Ordinary walked through step by step, propers threaded in */
+export type MassMode = 'leituras' | 'missal' | 'explicada';
+
+const MASS_MODES: MassMode[] = ['leituras', 'missal', 'explicada'];
+
+/** Persisted values rehydrate unvalidated, and this one indexes into the
+    renderer — fall back to the default rather than render nothing. */
+export function clampMassMode(value: unknown): MassMode {
+    return MASS_MODES.includes(value as MassMode) ? (value as MassMode) : 'leituras';
+}
+
 // Autoscroll speed levels (px/s). 1 is the reference reading pace and the
 // fractions below it are literally that fraction of it — meditative crawls
 // for a slow, prayed reading. Above 1 the steps widen faster than the label
@@ -492,6 +506,8 @@ interface AppState {
     setFontFamily: (family: FontFamily) => void;
     autoScrollSpeed: AutoScrollSpeed;
     setAutoScrollSpeed: (speed: AutoScrollSpeed) => void;
+    massMode: MassMode;
+    setMassMode: (mode: MassMode) => void;
 }
 
 /** The shape this build persists. Bumping it runs `migrateAppState` on every
@@ -601,6 +617,10 @@ export const useAppStore = create<AppState>()(
             setFontFamily: (fontFamily) => set({ fontFamily, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
             autoScrollSpeed: DEFAULT_SCROLL_SPEED,
             setAutoScrollSpeed: (autoScrollSpeed) => set({ autoScrollSpeed }),
+            // Local-only, like theme and fontSize: which view of the Mass suits
+            // you is about where you are in learning it, not about the account.
+            massMode: 'leituras',
+            setMassMode: (massMode) => set({ massMode }),
             streaks: emptyStreaks(),
             incrementStreak: (item) => set((state) => {
                 const userToday = formatISODate(new Date());
