@@ -460,6 +460,16 @@ export default function Palavra() {
         setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
     }, []);
 
+    // `bottomBarYielded` drives the padding `measure()` now reads (see the
+    // comment inside it), but that padding lives on Layout's `<main>`, one
+    // component up — nothing here re-renders when it changes on its own.
+    // Worse, `setBottomBarYielded` below fires from a plain effect, which
+    // commits *after* this layout effect on the very same pass, so the very
+    // first measurement always runs against the *previous* page's padding.
+    // Depending on the store value directly is what closes both gaps: it
+    // forces a remeasure once Layout has actually applied the new padding.
+    const bottomBarYielded = useAppStore((s) => s.bottomBarYielded);
+
     // Subscriptions, set up once per layout-changing state. `maxTilePx` is
     // deliberately *not* a dependency here: it changes on every settling pass,
     // and re-running this would tear down and rebuild the resize listener and
@@ -484,7 +494,7 @@ export default function Palavra() {
             window.removeEventListener('resize', measure);
             observer.disconnect();
         };
-    }, [challenge, over, pageTab, measure]);
+    }, [challenge, over, pageTab, bottomBarYielded, measure]);
 
     // The settling pass, split from the subscriptions above so it costs a
     // measurement and nothing else. Applying a size changes the layout the
