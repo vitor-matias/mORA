@@ -70,8 +70,21 @@ function belongs(event: NostrEvent, month: string): boolean {
         && meetsPow(event.id);
 }
 
-/** Enough of an event's shape to be read without throwing. Storage is ours,
-    but it outlives builds and can be edited by hand. */
+/**
+ * Enough of an event's shape to be read without throwing. Storage is ours,
+ * but it outlives builds and can be edited by hand.
+ *
+ * Signatures are deliberately not checked again here. Everything written to
+ * storage was checked once already: NRelay1 runs verifyEvent on every event a
+ * relay sends, and the only other source is this device's own signed result.
+ * What remains is an entry edited in place, and the only things that can do
+ * that are this device's user or script already running in the page. Either
+ * one can rewrite the board itself, or the play log persisted beside this
+ * without any checking. The cache is never published and the badge job never
+ * reads it, so a forged entry reaches nobody but the person who forged it.
+ * Re-verifying up to MAX_PERSISTED Schnorr signatures on every cold start
+ * would cost a phone seconds to defend against that.
+ */
 function looksLikeEvent(value: unknown): value is NostrEvent {
     const event = value as NostrEvent | null;
     return typeof event === 'object' && event !== null
