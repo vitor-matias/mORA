@@ -2,7 +2,7 @@
 // published their result reading a board that didn't have them on it, because
 // the relay read after the publish didn't happen to reach a relay holding it.
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { formatUTCDate } from '@/lib/format';
 import { POW_MINIMUM } from './pow';
@@ -141,7 +141,15 @@ describe('the month cache', () => {
 });
 
 describe('the boards', () => {
-    const today = formatUTCDate(new Date());
+    // The clock pinned, Date only: these call the cache without a `now`, and a
+    // run straddling midnight UTC at a month's end would otherwise file the
+    // fixtures in one month and look for them in the next.
+    const today = formatUTCDate(NOW);
+    beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(NOW);
+    });
+    afterEach(() => { vi.useRealTimers(); });
 
     it('show your own published result when the relay read misses it', async () => {
         (await reload()).rememberResults([result({ date: today })]);
