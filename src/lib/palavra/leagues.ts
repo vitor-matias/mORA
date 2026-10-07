@@ -30,7 +30,7 @@ import {
 } from '@/lib/nostr';
 import { relaysForAuthors } from '@/lib/relayList';
 import { resultDTag } from './nostr';
-import { entriesFromEvents, rank, withNames } from './social';
+import { entriesFromEvents, rank, withNames, withRemembered } from './social';
 import type { LeaderboardEntry } from './types';
 
 /** NIP-51 follow set. */
@@ -305,7 +305,8 @@ export async function fetchLeagueStandings(coord: string, date: string): Promise
     }
 
     // Reuse the leaderboard's reader so a league ranks by exactly the same
-    // rules, proof-of-work gate included.
-    const rows = entriesFromEvents(events, date).sort(rank);
+    // rules, proof-of-work gate included — and the same cache, so a member's
+    // own result shows here as soon as it is out.
+    const rows = entriesFromEvents(withRemembered(events, [date], members), date).sort(rank);
     return withNames(rows);
 }

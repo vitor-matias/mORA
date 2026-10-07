@@ -33,6 +33,7 @@ import {
 } from './results';
 import { liveThrough, monthDays, tallyMonth, type DatedResult, type MonthlyEntry } from './scoring';
 import { DUEL_DAYS, type LeaderboardEntry } from './types';
+import { rememberResults, rememberedResults } from './resultCache';
 
 const KIND_CONTACTS = 3;
 
@@ -108,13 +109,27 @@ export async function withNames<T extends { pubkey: string }>(
 }
 
 /**
+ * A read's results together with what this device already holds for the same
+ * days — its own just-published result above all. See resultCache.ts.
+ *
+ * Resolved per author and day afterwards: the cache and the read can each
+ * hold a different version of the same result.
+ */
+export function withRemembered(events: NostrEvent[], days: string[], authors?: string[]): NostrEvent[] {
+    rememberResults(events);
+    return newestPerDay([...events, ...rememberedResults(days, authors)]);
+}
+
+/**
  * Today's ranking, from whoever this client can see.
  *
  * Addressable events mean one per author per day, and the pool resolves them
- * across relays, so there is nothing to deduplicate here.
+ * across relays — but not across the cache, which withRemembered does.
  */
 export async function fetchDailyLeaderboard(date: string, limit = 50): Promise<LeaderboardEntry[]> {
-    let events: NostrEvent[];
+    // A failed read still shows what the cache holds, rather than an empty
+    // board that reads as "nobody has played".
+    let events: NostrEvent[] = [];
     try {
         events = await pool.query(
             [{ kinds: [KIND_APP_STATE], '#d': [resultDTag(date)], '#t': [PALAVRA_TOPIC], limit: 200 }],
@@ -122,10 +137,9 @@ export async function fetchDailyLeaderboard(date: string, limit = 50): Promise<L
         );
     } catch (error) {
         console.warn('Could not load the Palavra leaderboard.', error);
-        return [];
     }
 
-    const rows = entriesFromEvents(events, date).sort(rank).slice(0, limit);
+    const rows = entriesFromEvents(withRemembered(events, [date]), date).sort(rank).slice(0, limit);
     return withNames(rows);
 }
 
@@ -281,15 +295,20 @@ export async function fetchMonthlyPoints(
     try {
         read = await fetchMonthEvents(days);
     } catch (error) {
+        // Still partial, and still worth showing whatever the cache holds —
+        // the same floor-not-a-count a short read gets.
         console.warn('Could not load the monthly ranking.', error);
-        return { entries: [], partial: true };
+        read = { events: [], partial: true };
     }
+    // `days` stops short of today while today is being held back, so the
+    // cache can't put today's column back in.
+    const events = withRemembered(read.events, days);
 
     // Day by day through the same reader the daily board uses, so a month is
     // scored on exactly the rows a single day would have shown — proof-of-work
     // gate, bounds checks and `d`/`date` agreement included.
     const results: DatedResult[] = days.flatMap((date) =>
-        entriesFromEvents(read.events, date).map((entry) => ({ ...entry, date })));
+        entriesFromEvents(events, date).map((entry) => ({ ...entry, date })));
 
     // Judged against the real end of the window, not against `days` — which
     // is only as far as this query chose to look. See liveThrough.
@@ -378,7 +397,7 @@ export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<Duel
 
     // pubkey → date → result
     const byAuthor = new Map<string, Map<string, LeaderboardEntry>>();
-    for (const event of events) {
+    for (const event of withRemembered(events, dates, authors)) {
         const date = tagValue(event, 'date');
         if (!date || !dates.includes(date)) continue;
         const [entry] = entriesFromEvents([event], date);
