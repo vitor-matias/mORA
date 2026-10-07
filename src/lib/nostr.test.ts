@@ -96,16 +96,19 @@ const relayPublish = vi.fn();
 const signEvent = vi.fn();
 
 // Hoisted alongside the mock factory below, which reads them.
-const { silentRelays, TEST_RELAYS } = vi.hoisted(() => ({
+const { silentRelays, closingRelays, TEST_RELAYS } = vi.hoisted(() => ({
     /** Relays that never finish answering: no events, no EOSE — what a dead
         relay, or one still connecting when the deadline lands, looks like. */
     silentRelays: new Set<string>(),
+    /** Relays that decline the subscription, keyed to the CLOSED reason they
+        give. */
+    closingRelays: new Map<string, string>(),
     TEST_RELAYS: ['wss://one.test', 'wss://two.test'],
 }));
 
 // Snapshots are read relay by relay (queryComplete), so each relay answers
 // with whatever `relayQuery` holds and then says it is done — unless it has
-// been silenced above.
+// been silenced or set to close above.
 vi.mock('@/lib/pool', () => ({
     pool: {
         query: (...args: unknown[]) => relayQuery(...args),
@@ -113,6 +116,11 @@ vi.mock('@/lib/pool', () => ({
         relay: (url: string) => ({
             async *req(...args: unknown[]) {
                 if (silentRelays.has(url)) return;
+                const reason = closingRelays.get(url);
+                if (reason !== undefined) {
+                    yield ['CLOSED', 'sub', reason];
+                    return;
+                }
                 for (const event of await relayQuery(...args)) yield ['EVENT', 'sub', event];
                 yield ['EOSE', 'sub'];
             },
@@ -287,9 +295,44 @@ function publishedFavourites() {
     };
 }
 
+describe('queryComplete', () => {
+    beforeEach(() => {
+        silentRelays.clear();
+        closingRelays.clear();
+        relayQuery.mockReset().mockResolvedValue([]);
+    });
+
+    const read = async () => {
+        const { queryComplete } = await import('./nostr');
+        return queryComplete([{ kinds: [30078], '#t': ['morapalavra'] }], {
+            signal: AbortSignal.timeout(1000),
+        });
+    };
+
+    // Ditto's own wording, from a REQ for every result of a day.
+    it.each([
+        'auth-required: auth-protected kinds require an authors or #p filter',
+        'restricted: auth-protected kinds require an authors or #p filter',
+    ])('counts a relay that closes with "%s" as refused, and still not as answered', async (reason) => {
+        closingRelays.set(TEST_RELAYS[1], reason);
+
+        expect(await read()).toMatchObject({ answered: 1, asked: 2, refused: 1 });
+    });
+
+    // These are outages. A reload may well get an answer out of them, so they
+    // have to stay in the count a board warns about.
+    it('does not count a failing relay as a refusal', async () => {
+        closingRelays.set(TEST_RELAYS[0], 'error: shutting down');
+        silentRelays.add(TEST_RELAYS[1]);
+
+        expect(await read()).toMatchObject({ answered: 0, asked: 2, refused: 0 });
+    });
+});
+
 describe('syncFavouritesWithNostr', () => {
     beforeEach(() => {
         silentRelays.clear();
+        closingRelays.clear();
         relayQuery.mockReset().mockResolvedValue([]);
         relayPublish.mockReset().mockResolvedValue(undefined);
         signEvent.mockReset().mockImplementation(async (t: { content: string }) =>
@@ -392,6 +435,20 @@ describe('syncFavouritesWithNostr', () => {
         await syncFavouritesWithNostr();
 
         expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual(['angelus', 'magnificat']);
+        expect(relayPublish).not.toHaveBeenCalled();
+    });
+
+    // A board can leave a refusing relay out of its count. A rewrite cannot:
+    // the relay that will not serve the snapshot may still be holding a newer
+    // one, and publishing over it would drop whatever that one had.
+    it('still counts a relay that refused by policy as not having answered', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        useAppStore.setState({ prayerFavourites: { angelus: { at: NOW - DAY, on: true } } });
+        closingRelays.set(TEST_RELAYS[0], 'auth-required: all authors or all #p tags must be authenticated');
+        const { syncFavouritesWithNostr } = await import('./nostr');
+
+        await syncFavouritesWithNostr();
+
         expect(relayPublish).not.toHaveBeenCalled();
     });
 

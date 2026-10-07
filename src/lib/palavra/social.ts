@@ -183,12 +183,19 @@ interface MonthEvents {
  * indistinguishable from a quiet month.
  */
 async function fetchMonthEvents(days: string[]): Promise<MonthEvents> {
-    const short = ({ answered, asked }: { answered: number; asked: number }) => {
-        if (answered === asked) return false;
-        console.warn(
-            `Only ${answered} of ${asked} relays finished answering the monthly read. `
-            + 'Any results only the others hold are missing, so the totals are a floor.',
-        );
+    const short = ({ answered, asked, refused }: { answered: number; asked: number; refused: number }) => {
+        // A relay that refused the filter by policy is not counted against the
+        // read. It refuses it on every load, so counting it would put the
+        // warning up permanently, and a warning that is always up says
+        // nothing. relay.ditto.pub did exactly that: it never serves kind
+        // 30078 to an unauthenticated reader. The exception is a read that
+        // every relay refused, because then nothing at all is behind it.
+        const servable = asked - refused;
+        if (servable > 0 && answered === servable) return false;
+        console.warn(servable === 0
+            ? 'Every relay refused the monthly read, so none of its results could be counted.'
+            : `Only ${answered} of ${servable} relays finished answering the monthly read. `
+                + 'Any results only the others hold are missing, so the totals are a floor.');
         return true;
     };
 

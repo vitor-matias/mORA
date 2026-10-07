@@ -1,5 +1,9 @@
 import defaultRelays from '@/relays.json';
-import { NPool, NRelay1, type NRelay } from '@nostrify/nostrify';
+import {
+    NPool, NRelay1,
+    type NostrFilter, type NostrRelayCLOSED, type NostrRelayEOSE, type NostrRelayEVENT, type NostrRelayMsg,
+    type NRelay,
+} from '@nostrify/nostrify';
 
 // The one list. server/palavra/publish.js reads the same file, because a
 // puzzle published only where the app doesn't look is a day with no puzzle for
@@ -45,6 +49,54 @@ const unopenableRelay: NRelay = {
 };
 
 /**
+ * NRelay1, except that `req` passes a CLOSED on instead of swallowing it.
+ *
+ * NRelay1's `req` is typed to yield CLOSED, but it doesn't. When a CLOSED
+ * arrives it just ends, and the relay's reason is lost with it. So a
+ * subscription the relay refused looks exactly like one that was cut off, and
+ * queryComplete needs to tell the two apart. relay.ditto.pub's
+ * `auth-required:` will come back on every load, while an `error:` may not.
+ *
+ * `receive` is the hook NRelay1 leaves open to subclasses, but it cannot tell
+ * which `req` call a CLOSED belongs to: the subscription id is made inside
+ * `req`. The REQ it went out with can tell. NRelay1 builds that REQ from the
+ * caller's own filter objects and lists it in `subscriptions` until the CLOSED
+ * is handled. So the message is filed under the first of those filters, where
+ * the `req` that sent them looks once NRelay1's own `req` has ended.
+ *
+ * If NRelay1 ever stops passing the caller's filters through, nothing is found
+ * and a CLOSED reads as it did before this class existed: as a relay that did
+ * not answer. That puts a warning up wrongly rather than taking one down.
+ */
+class ReasonedRelay extends NRelay1 {
+    private readonly closedWith = new WeakMap<NostrFilter, NostrRelayCLOSED>();
+
+    protected override receive(msg: NostrRelayMsg): void {
+        if (msg[0] === 'CLOSED') {
+            const first = this.subscriptions.find(([, id]) => id === msg[1])?.[2];
+            if (first) this.closedWith.set(first, msg);
+        }
+        super.receive(msg);
+    }
+
+    override async *req(
+        filters: NostrFilter[],
+        opts?: { signal?: AbortSignal },
+    ): AsyncGenerator<NostrRelayEVENT | NostrRelayEOSE | NostrRelayCLOSED> {
+        const [first] = filters;
+        // Cleared first, so an earlier CLOSED for the same filters is never
+        // mistaken for this subscription's.
+        if (first) this.closedWith.delete(first);
+        yield* super.req(filters, opts);
+        const closed = first && this.closedWith.get(first);
+        if (closed) {
+            this.closedWith.delete(first);
+            yield closed;
+        }
+    }
+}
+
+/**
  * A connection to one relay, or a stand-in when it cannot be opened at all.
  *
  * `new NRelay1(url)` builds its WebSocket in the constructor, and a browser
@@ -65,7 +117,7 @@ const unopenableRelay: NRelay = {
  */
 function openRelay(url: string): NRelay {
     try {
-        return new NRelay1(url);
+        return new ReasonedRelay(url);
     } catch (error) {
         console.warn(`Could not open ${url}, so it is being skipped for this session.`, error);
         return unopenableRelay;
