@@ -43,6 +43,7 @@ import {
 } from '@/store/palavra';
 import { MAX_GUESSES } from './types';
 import { meetsPow, minePalavraEvent } from './pow';
+import { rememberResults } from './resultCache';
 
 /** The private cross-device log. */
 export const D_PALAVRA_STATE = 'mora-palavra-state';
@@ -313,6 +314,11 @@ export async function publishPalavraResult(
             return false;
         }
         await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
+        // Straight into the boards' cache. `pool.event` returns on the first
+        // relay to accept, and the read that follows can easily be ended by
+        // others that haven't got it yet — this device knows the event exists,
+        // so its own board needn't wait to be told. See resultCache.ts.
+        rememberResults([event]);
         return true;
     } catch (error) {
         // Relays reject or go offline routinely, and the game is already

@@ -48,6 +48,7 @@ vi.mock('@/store/app', () => ({
 
 const { publishMissingResults } = await import('./nostr');
 const { usePalavraStore } = await import('@/store/palavra');
+const { rememberedResults } = await import('./resultCache');
 
 const day = (back: number) => formatUTCDate(new Date(Date.now() - back * 86_400_000));
 
@@ -78,6 +79,17 @@ describe('publishMissingResults', () => {
 
         expect(publishedTags()).toEqual([resultDTag(day(2))]);
         expect(usePalavraStore.getState().publishedResults[`${ME}:${day(2)}`]).toBe(true);
+    });
+
+    // The board's next relay read can be ended before it reaches a relay
+    // that took the event, so the player would not see themselves on it.
+    // The cache is how the board knows without asking — see resultCache.ts.
+    it('hands a published result straight to the boards', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+
+        await publishMissingResults(ME);
+
+        expect(rememberedResults([day(0)]).map((event) => event.pubkey)).toEqual([ME]);
     });
 
     it('leaves a day that is already published alone', async () => {
