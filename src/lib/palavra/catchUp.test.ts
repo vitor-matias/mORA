@@ -27,7 +27,13 @@ vi.mock('@/lib/pool', () => ({
     },
     RELAYS: [],
 }));
-vi.mock('@/store/auth', () => ({ currentPubkey: () => signedIn }));
+/** Whether the identity is a passkey key not yet unlocked this session. */
+let locked = false;
+
+vi.mock('@/store/auth', () => ({
+    currentPubkey: () => signedIn,
+    useAuthStore: { getState: () => ({ isLocked: locked }) },
+}));
 vi.mock('@/lib/nostr', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/nostr')>()),
     signNostrEvent: (template: unknown) => signEvent(template),
@@ -46,7 +52,7 @@ vi.mock('@/store/app', () => ({
     useAppStore: { getState: () => ({ shareStreaks: false }) },
 }));
 
-const { publishMissingResults } = await import('./nostr');
+const { publishMissingResults, publishPalavraResult } = await import('./nostr');
 const { usePalavraStore } = await import('@/store/palavra');
 const { rememberedResults } = await import('./resultCache');
 const { publishKey, setPublishState, usePublishStatus } = await import('./publishStatus');
@@ -67,6 +73,7 @@ describe('publishMissingResults', () => {
     beforeEach(() => {
         relayPublish.mockReset().mockResolvedValue(undefined);
         signedIn = ME;
+        locked = false;
         signEvent.mockReset().mockImplementation(async (t: object) =>
             ({ ...t, id: 'signed', pubkey: signedIn, sig: 'sig' }));
         usePalavraStore.setState({ plays: {}, publishedResults: {}, sharing: { [ME]: true } });
@@ -151,6 +158,34 @@ describe('publishMissingResults', () => {
         await publishMissingResults(ME);
 
         expect(relayPublish).not.toHaveBeenCalled();
+    });
+
+    // Two callers at once — the retry tapped twice, or the page's publish
+    // meeting a foreground catch-up — must not both mine and sign.
+    it('lets one attempt per result through at a time', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        const play = finished();
+
+        const results = await Promise.all([
+            publishPalavraResult(day(0), play),
+            publishPalavraResult(day(0), play),
+        ]);
+
+        expect(signEvent).toHaveBeenCalledTimes(1);
+        expect(results.filter(Boolean)).toHaveLength(1);
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${day(0)}`]).toBe(true);
+    });
+
+    // A locked passkey key has no signer: mining for it is wasted CPU, and
+    // the board asks for the unlock instead.
+    it('does not mine a result a locked key cannot sign', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        locked = true;
+
+        await publishMissingResults(ME);
+
+        expect(signEvent).not.toHaveBeenCalled();
+        expect(stateOf(day(0))).toBeUndefined();
     });
 
     it('leaves a day that is already published alone', async () => {

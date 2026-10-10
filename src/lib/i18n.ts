@@ -149,6 +149,8 @@ const translations = {
         resultUnpublished: "O teu resultado ainda não foi publicado, por isso os outros jogadores ainda não o veem.",
         resultRetry: "Tentar outra vez",
         resultPublishNow: "Publicar agora",
+        resultLocked: "A tua chave está bloqueada, por isso o teu resultado ainda não foi publicado e os outros jogadores ainda não o veem. Desbloqueia-a e ele é publicado a seguir.",
+        resultUnlock: "Desbloquear em Perfil",
         spoiler: "Termina o jogo de hoje para ver os resultados.",
         spoilerWhy: "As tentativas dos outros dão-te uma pista sobre a dificuldade da palavra.",
         signInHint: "Entra com uma identidade Nostr em Perfil.",

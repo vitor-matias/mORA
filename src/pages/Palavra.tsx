@@ -305,8 +305,11 @@ export default function Palavra() {
     const todayPublishState = usePublishStatus((s) =>
         (myPubkey ? s.byKey[publishKey(myPubkey, today)] : undefined));
     const remoteSigner = useAuthStore((s) => s.login?.type === 'bunker');
+    // A locked passkey key can't sign, so offering to publish would only
+    // turn into "failed". It is asked to unlock instead.
+    const locked = useAuthStore((s) => s.isLocked);
     const ownResult = finishedToday && sharing && !todayPublished
-        ? todayPublishState ?? 'unpublished'
+        ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
         : null;
 
     // The player's way round a publish that gave up — with a remote signer,

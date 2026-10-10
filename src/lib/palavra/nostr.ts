@@ -23,7 +23,7 @@
 import { pool } from '@/lib/pool';
 import { appUrl } from '@/lib/appUrl';
 import { formatUTCDate } from '@/lib/format';
-import { currentPubkey } from '@/store/auth';
+import { currentPubkey, useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import {
     KIND_APP_STATE,
@@ -197,10 +197,9 @@ async function doPublishMissingResults(pubkey: string): Promise<void> {
         // so without the marker the app would re-mine events the relays
         // already hold every time it comes back on screen.
         if (current.publishedResults[`${pubkey}:${date}`]) continue;
-        // Already being published, usually by the page that just finished
-        // it. A second attempt would mine the same proof of work and, with a
-        // remote signer, put a second approval request in front of the player.
-        if (usePublishStatus.getState().byKey[publishKey(pubkey, date)] === 'publishing') continue;
+        // A day already being published — usually by the page that just
+        // finished it — is turned away inside publishPalavraResult, which
+        // keeps one attempt per result whoever calls.
 
         try {
             // Counted on the return value, not on the absence of a throw.
@@ -249,6 +248,19 @@ export async function publishPalavraResult(
     }
     if (!sharesResults(usePalavraStore.getState(), pubkey)) return false;
     if (!isFinished(play)) return false;
+    // A passkey-protected key that hasn't been unlocked this session has no
+    // signer, so mining a proof of work for an event nothing can sign is
+    // seconds of a phone's CPU for nothing. The notice above the boards asks
+    // for the unlock instead, and unlocking re-runs the catch-up
+    // (useNostrSync), which publishes it then.
+    if (useAuthStore.getState().isLocked) return false;
+    // One attempt per result at a time: a retry tapped twice before its
+    // import landed, or the page's publish meeting a foreground catch-up,
+    // would otherwise each mine the same proof of work and, with a remote
+    // signer, put two approval requests in front of the player. The check
+    // and the mark below have no await between them, so two callers can't
+    // both get through; the one in flight sets the outcome for both.
+    if (usePublishStatus.getState().byKey[publishKey(pubkey, date)] === 'publishing') return false;
 
     // From here the player is owed an outcome they can see: the boards say
     // "publishing" or "not published" instead of leaving an empty board to
