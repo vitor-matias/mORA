@@ -274,6 +274,10 @@ export default function Palavra() {
         if (!challenge || scope !== 'daily') return;
         if (publishedFor.current === challenge.date) return;
         publishedFor.current = challenge.date;
+        // Whose game this is, decided now: the import below is an await, and
+        // an account switch in that window would otherwise publish it under
+        // whoever is signed in by the time it lands.
+        const pubkey = myPubkey ?? undefined;
 
         // The encrypted log (so other devices see this game) and, if the
         // player opted in, the public result the social views read.
@@ -290,12 +294,12 @@ export default function Palavra() {
             const record = usePalavraStore.getState().plays[challenge.date];
             await Promise.allSettled([
                 publishPalavraStateToNostr(),
-                record ? publishPalavraResult(challenge.date, record) : Promise.resolve(false),
+                record ? publishPalavraResult(challenge.date, record, pubkey) : Promise.resolve(false),
             ]);
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);
         }
-    }, [challenge, scope]);
+    }, [challenge, scope, myPubkey]);
 
     // Today's result, when it is finished, shared, and not out yet — what the
     // community panels say above the boards instead of letting an empty board
@@ -319,14 +323,16 @@ export default function Palavra() {
     // The result alone: the encrypted log rides the next sync.
     const retryResult = useCallback(async () => {
         const record = usePalavraStore.getState().plays[today];
-        if (!record) return;
+        // The identity the notice was shown for, pinned across the import's
+        // await — see reportResult.
+        if (!record || !myPubkey) return;
         try {
             const { publishPalavraResult } = await import('@/lib/palavra/nostr');
-            await publishPalavraResult(today, record);
+            await publishPalavraResult(today, record, myPubkey);
         } catch (error) {
             console.warn('Could not retry publishing the result.', error);
         }
-    }, [today]);
+    }, [today, myPubkey]);
 
     const onEnter = useCallback(() => {
         if (!challenge || !answer || readOnly) return;

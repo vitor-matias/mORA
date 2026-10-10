@@ -136,7 +136,34 @@ function withKnownNames<T extends { pubkey: string }>(rows: T[]): (T & ProfileCa
  */
 export function withRemembered(events: NostrEvent[], days: string[], authors?: string[]): NostrEvent[] {
     rememberResults(events);
-    return newestPerDay([...events, ...rememberedResults(days, authors)]);
+    const merged = newestPerDay([...events, ...rememberedResults(days, authors)]);
+    noteOwnPublished(merged);
+    return merged;
+}
+
+/**
+ * Mark this player's results published when a read shows them on the relays.
+ *
+ * The marker is device-local, and the play log syncs without it. So a game
+ * published from another device, or from this one before its storage was
+ * cleared, reads as unpublished here: the notice says nobody else can see it,
+ * and the catch-up mines and signs it again, which with a remote signer means
+ * a second approval request for a result already out. Seeing the signed event
+ * is exactly what the marker stands for, so seeing it sets it.
+ *
+ * Only for an event a board would show: one that fails the gate is not a
+ * published result in any sense the rest of the app recognises.
+ */
+function noteOwnPublished(events: NostrEvent[]): void {
+    const me = currentPubkey();
+    if (!me) return;
+    const { publishedResults, markResultPublished } = usePalavraStore.getState();
+    for (const event of events) {
+        if (event.pubkey !== me) continue;
+        const date = tagValue(event, 'date');
+        if (!date || publishedResults[`${me}:${date}`]) continue;
+        if (entriesFromEvents([event], date).length > 0) markResultPublished(me, date);
+    }
 }
 
 /**

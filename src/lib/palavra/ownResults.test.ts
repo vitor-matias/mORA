@@ -114,6 +114,29 @@ describe('your own game on the day board', () => {
         expect(rows.map(({ pubkey, tries }) => ({ pubkey, tries }))).toEqual([{ pubkey: ME, tries: 2 }]);
     });
 
+    // Published from another device: the play log syncs, the device-local
+    // marker doesn't. Without this the notice said nobody else could see it,
+    // and the catch-up signed it a second time.
+    it('marks your result published when a read shows it out there', async () => {
+        const { fetchDailyLeaderboard } = await setUp({ tries: 3 });
+        const { usePalavraStore } = await import('@/store/palavra');
+        relayRead.mockResolvedValueOnce([result({ tries: 3 })]);
+
+        await fetchDailyLeaderboard(TODAY);
+
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${TODAY}`]).toBe(true);
+    });
+
+    it('leaves the marker alone when the read only has others', async () => {
+        const { fetchDailyLeaderboard } = await setUp({ tries: 3 });
+        const { usePalavraStore } = await import('@/store/palavra');
+        relayRead.mockResolvedValueOnce([result({ pubkey: THEM })]);
+
+        await fetchDailyLeaderboard(TODAY);
+
+        expect(usePalavraStore.getState().publishedResults).toEqual({});
+    });
+
     it('stays off the board when you don\'t share results', async () => {
         const { fetchDailyLeaderboard } = await setUp({ sharing: false });
         expect(await fetchDailyLeaderboard(TODAY)).toEqual([]);
