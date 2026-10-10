@@ -61,9 +61,9 @@ export function Community({
         with today in it is today's guess counts summed. */
     finishedToday: boolean;
     /** Null unless this player has finished today's game, shares results,
-        and the result hasn't reached a relay yet. Every board below is built
-        from what the relays hold, so until then the player is missing from
-        all of them — and an empty board alone says "nobody has played". */
+        and the result hasn't reached a relay yet. The boards below already
+        show the game, read from this device (see ownResults in social.ts),
+        so this is what says that nobody else can see it yet. */
     ownResult: OwnResult | null;
     /** Signing goes through another app (NIP-46), which is both the usual
         reason a publish is slow and the usual reason it fails. */
@@ -187,8 +187,9 @@ export function Community({
 }
 
 /**
- * Says where this player's result is while it isn't on the boards yet, so the
- * empty board under it isn't left to imply nobody has played.
+ * Says where this player's result is while it is only on this device. The
+ * boards under it show the game already, so without this a player would take
+ * their own row as proof that everyone else can see it.
  *
  * A live region, because the state changes on its own — publishing turns into
  * failed a minute later when a remote signer never answers — and the retry
