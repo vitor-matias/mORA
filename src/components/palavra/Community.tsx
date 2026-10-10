@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { Trophy, Crown, Swords, Users } from 'lucide-react';
+import { Trophy, Crown, Swords, Users, Loader2 } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
+import type { PublishState } from '@/lib/palavra/publishStatus';
 import { Leaderboard } from './Leaderboard';
 import { PointsBoard } from './PointsBoard';
 import { Duels } from './Duels';
 import { Leagues } from './Leagues';
 
 type Tab = 'board' | 'month' | 'duels' | 'leagues';
+
+/** Where this player's own result stands, when it isn't out yet:
+    'unpublished' is finished and shared but with no attempt under way — a
+    reload after a failure, say, before the catch-up has started one. */
+export type OwnResult = PublishState | 'unpublished';
 
 const TAB_ICON: Record<Tab, typeof Trophy> = { board: Trophy, month: Crown, duels: Swords, leagues: Users };
 
@@ -26,6 +32,9 @@ export function Community({
     sharing,
     revealResults,
     finishedToday,
+    ownResult,
+    remoteSigner,
+    onRetryResult,
 }: {
     /** Changes when this player's own result reaches the relays. The panels
         stay mounted once opened, so nothing else would make them look again —
@@ -51,6 +60,15 @@ export function Community({
         every other one is scoped to the day being viewed, while a monthly total
         with today in it is today's guess counts summed. */
     finishedToday: boolean;
+    /** Null unless this player has finished today's game, shares results,
+        and the result hasn't reached a relay yet. Every board below is built
+        from what the relays hold, so until then the player is missing from
+        all of them — and an empty board alone says "nobody has played". */
+    ownResult: OwnResult | null;
+    /** Signing goes through another app (NIP-46), which is both the usual
+        reason a publish is slow and the usual reason it fails. */
+    remoteSigner: boolean;
+    onRetryResult: () => void;
 }) {
     const t = useTranslations().palavra;
     const [tab, setTab] = useState<Tab>('board');
@@ -117,6 +135,10 @@ export function Community({
                 </p>
             )}
 
+            {ownResult && (
+                <OwnResultNotice state={ownResult} remoteSigner={remoteSigner} onRetry={onRetryResult} />
+            )}
+
             {/* One panel element per tab, `hidden` when it isn't the active
                 one — which also takes it out of the accessibility tree, so a
                 screen reader sees exactly one panel. */}
@@ -161,6 +183,46 @@ export function Community({
                 </div>
             ))}
         </section>
+    );
+}
+
+/**
+ * Says where this player's result is while it isn't on the boards yet, so the
+ * empty board under it isn't left to imply nobody has played.
+ *
+ * A live region, because the state changes on its own — publishing turns into
+ * failed a minute later when a remote signer never answers — and the retry
+ * button only exists in the failed and unpublished states, so a second tap
+ * can't start a second attempt while one is out.
+ */
+function OwnResultNotice({ state, remoteSigner, onRetry }: {
+    state: OwnResult;
+    remoteSigner: boolean;
+    onRetry: () => void;
+}) {
+    const t = useTranslations().palavra;
+    if (state === 'publishing') {
+        return (
+            <p role="status" className="flex items-start gap-2 text-xs text-zinc-500 bg-zinc-500/5 rounded-xl px-3 py-2">
+                <Loader2 size={13} className="animate-spin shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{remoteSigner ? t.resultPublishingSigner : t.resultPublishing}</span>
+            </p>
+        );
+    }
+    return (
+        <div role="status" className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-xl px-3 py-2">
+            <p>
+                {state === 'failed' ? t.resultFailed : t.resultUnpublished}
+                {state === 'failed' && remoteSigner && <> {t.resultFailedSigner}</>}
+            </p>
+            <button
+                type="button"
+                onClick={onRetry}
+                className="mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors"
+            >
+                {state === 'failed' ? t.resultRetry : t.resultPublishNow}
+            </button>
+        </div>
     );
 }
 

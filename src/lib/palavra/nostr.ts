@@ -44,6 +44,7 @@ import {
 import { MAX_GUESSES } from './types';
 import { meetsPow, minePalavraEvent } from './pow';
 import { rememberResults } from './resultCache';
+import { publishKey, setPublishState, usePublishStatus } from './publishStatus';
 
 /** The private cross-device log. */
 export const D_PALAVRA_STATE = 'mora-palavra-state';
@@ -196,19 +197,19 @@ async function doPublishMissingResults(pubkey: string): Promise<void> {
         // so without the marker the app would re-mine events the relays
         // already hold every time it comes back on screen.
         if (current.publishedResults[`${pubkey}:${date}`]) continue;
+        // Already being published, usually by the page that just finished
+        // it. A second attempt would mine the same proof of work and, with a
+        // remote signer, put a second approval request in front of the player.
+        if (usePublishStatus.getState().byKey[publishKey(pubkey, date)] === 'publishing') continue;
 
         try {
-            // Marked on the return value, not on the absence of a throw.
+            // Counted on the return value, not on the absence of a throw.
             // `publishPalavraResult` swallows its own failures and returns
             // early on half a dozen paths — no signer, the proof of work lost,
             // the relay unreachable — so awaiting it says nothing about
-            // whether anything reached a relay. Marking a day done on that
-            // basis is what the marker exists to prevent: invisible for good,
-            // and retried never.
-            if (await publishPalavraResult(date, play, pubkey)) {
-                usePalavraStore.getState().markResultPublished(pubkey, date);
-                published++;
-            }
+            // whether anything reached a relay. It sets the marker itself,
+            // and only when one did.
+            if (await publishPalavraResult(date, play, pubkey)) published++;
         } catch (error) {
             // Never let one day fail the rest, or the caller this rides on —
             // the next foreground tries again.
@@ -249,6 +250,24 @@ export async function publishPalavraResult(
     if (!sharesResults(usePalavraStore.getState(), pubkey)) return false;
     if (!isFinished(play)) return false;
 
+    // From here the player is owed an outcome they can see: the boards say
+    // "publishing" or "not published" instead of leaving an empty board to
+    // speak for a publish that is still out or has given up. See
+    // publishStatus.ts.
+    //
+    // Recorded here rather than by each caller, so a publish from the page
+    // and one from the catch-up land the same way. The marker goes in before
+    // the in-flight state comes out, so nothing in between reads as "never
+    // tried".
+    setPublishState(pubkey, date, 'publishing');
+    const sent = await sendResult(date, play, pubkey);
+    if (sent) usePalavraStore.getState().markResultPublished(pubkey, date);
+    setPublishState(pubkey, date, sent ? null : 'failed');
+    return sent;
+}
+
+/** Mine, sign and send one result. True only once a relay has accepted it. */
+async function sendResult(date: string, play: PalavraPlay, pubkey: string): Promise<boolean> {
     const tags: string[][] = [
         ['d', resultDTag(date)],
         ['t', PALAVRA_TOPIC],
