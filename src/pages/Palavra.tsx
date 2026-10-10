@@ -21,12 +21,13 @@ import {
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
 import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '@/store/palavra';
-import { currentPubkey, useAuthStore } from '@/store/auth';
+import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
 import { syncNostrNow } from '@/lib/useNostrSync';
+import { publishKey, usePublishStatus } from '@/lib/palavra/publishStatus';
 import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
@@ -260,8 +261,9 @@ export default function Palavra() {
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
     const publishedFor = useRef<string | null>(null);
-    // Whether today's result has become published — however that happened,
-    // see the comment inside reportResult below — so the community panels
+    // Whether today's result has become published — however that happened:
+    // publishPalavraResult sets the flag itself, whether this page's attempt
+    // landed it or the foreground catch-up did — so the community panels
     // reload and the player sees themselves on the board. Read straight from
     // the store rather than a local counter bumped from one call site: that
     // was what left players invisible until a reload when this page's own
@@ -272,43 +274,65 @@ export default function Palavra() {
         if (!challenge || scope !== 'daily') return;
         if (publishedFor.current === challenge.date) return;
         publishedFor.current = challenge.date;
+        // Whose game this is, decided now: the import below is an await, and
+        // an account switch in that window would otherwise publish it under
+        // whoever is signed in by the time it lands.
+        const pubkey = myPubkey ?? undefined;
 
         // The encrypted log (so other devices see this game) and, if the
         // player opted in, the public result the social views read.
         // Best-effort and after the fact — the game is already recorded
         // locally, so nothing here can cost them the play.
+        //
+        // Nothing to mark here: publishPalavraResult sets the published flag
+        // itself, and only once a relay has taken the event, so a failed
+        // publish, a player who hasn't opted in, or an import that never
+        // loaded all leave the flag clear for the foreground catch-up to
+        // retry. allSettled because neither half should cost the other.
         try {
             const { publishPalavraStateToNostr, publishPalavraResult } = await import('@/lib/palavra/nostr');
             const record = usePalavraStore.getState().plays[challenge.date];
-            const [, published] = await Promise.allSettled([
+            await Promise.allSettled([
                 publishPalavraStateToNostr(),
-                record ? publishPalavraResult(challenge.date, record) : Promise.resolve(false),
+                record ? publishPalavraResult(challenge.date, record, pubkey) : Promise.resolve(false),
             ]);
-            // Only when the public result genuinely reached a relay. Marking
-            // unconditionally — which is what putting this after the try did —
-            // would tell the next foreground the result is already out there
-            // on a failed publish, an import that never loaded, or a player
-            // who hasn't opted into sharing — and it would never retry.
-            //
-            // `allSettled` is why the return value has to be read rather than
-            // the absence of a throw: it swallows a rejection into a settled
-            // entry, so awaiting it says nothing about what happened.
-            //
-            // Marked here rather than tracked in a local ref: the background
-            // sync (see publishTodaysResultIfMissing, which runs on every
-            // foreground) marks the same flag when *it* is the one that lands
-            // the publish — e.g. this attempt stalled on a slow relay and a
-            // later foreground succeeded instead. resultsVersion above reads
-            // this flag, so the board catches up either way, instead of only
-            // when this exact call succeeds.
-            if (published.status === 'fulfilled' && published.value === true) {
-                const pubkey = currentPubkey();
-                if (pubkey) usePalavraStore.getState().markResultPublished(pubkey, challenge.date);
-            }
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);
         }
-    }, [challenge, scope]);
+    }, [challenge, scope, myPubkey]);
+
+    // Today's result, when it is finished, shared, and not out yet — what the
+    // community panels say above the boards instead of letting an empty board
+    // imply nobody has played. See publishStatus.ts.
+    const todayPublished = usePalavraStore((s) =>
+        Boolean(myPubkey && s.publishedResults[`${myPubkey}:${today}`]));
+    const todayPublishState = usePublishStatus((s) =>
+        (myPubkey ? s.byKey[publishKey(myPubkey, today)] : undefined));
+    const remoteSigner = useAuthStore((s) => s.login?.type === 'bunker');
+    // A locked passkey key can't sign, so offering to publish would only
+    // turn into "failed". It is asked to unlock instead.
+    const locked = useAuthStore((s) => s.isLocked);
+    const ownResult = finishedToday && sharing && !todayPublished
+        ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
+        : null;
+
+    // The player's way round a publish that gave up — with a remote signer,
+    // usually because the signing app didn't answer in time. Without it the
+    // only retry was the next time the app came back to the foreground,
+    // which a player sitting on the board waiting for themselves never does.
+    // The result alone: the encrypted log rides the next sync.
+    const retryResult = useCallback(async () => {
+        const record = usePalavraStore.getState().plays[today];
+        // The identity the notice was shown for, pinned across the import's
+        // await — see reportResult.
+        if (!record || !myPubkey) return;
+        try {
+            const { publishPalavraResult } = await import('@/lib/palavra/nostr');
+            await publishPalavraResult(today, record, myPubkey);
+        } catch (error) {
+            console.warn('Could not retry publishing the result.', error);
+        }
+    }, [today, myPubkey]);
 
     const onEnter = useCallback(() => {
         if (!challenge || !answer || readOnly) return;
@@ -700,6 +724,12 @@ export default function Palavra() {
                                 // counts summed. `over` describes whichever day
                                 // is on screen; this describes today.
                                 finishedToday={finishedToday}
+                                // Only on today's board: the notice is about
+                                // the game just played, and on an archive day
+                                // it would read as being about that day.
+                                ownResult={viewDate === today ? ownResult : null}
+                                remoteSigner={remoteSigner}
+                                onRetryResult={retryResult}
                             />
                         </div>
                     )}

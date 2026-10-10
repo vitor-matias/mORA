@@ -17,6 +17,7 @@ import {
     fetchProfileCards,
     queryComplete,
     toProfileCard,
+    type ProfileCard,
 } from '@/lib/nostr';
 import { currentPubkey, useAuthStore } from '@/store/auth';
 import { relaysForAuthors } from '@/lib/relayList';
@@ -34,6 +35,7 @@ import {
 import { liveThrough, monthDays, tallyMonth, type DatedResult, type MonthlyEntry } from './scoring';
 import { DUEL_DAYS, type LeaderboardEntry } from './types';
 import { rememberResults, rememberedResults } from './resultCache';
+import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '@/store/palavra';
 
 const KIND_CONTACTS = 3;
 
@@ -105,7 +107,24 @@ export async function withNames<T extends { pubkey: string }>(
         }
     }
 
+    for (const [pubkey, card] of cards) knownCards.set(pubkey, card);
     return rows.map((row) => ({ ...row, ...(cards.get(row.pubkey) ?? {}) }));
+}
+
+/** Profile cards withNames has already resolved this session, so a board
+    drawn from local data can name its rows without asking the network. */
+const knownCards = new Map<string, ProfileCard>();
+
+/** withNames from what is already known: earlier lookups, and this device's
+    own profile for its own row. Anyone not yet looked up keeps a short key
+    until the read behind it brings the name. */
+function withKnownNames<T extends { pubkey: string }>(rows: T[]): (T & ProfileCard)[] {
+    const me = currentPubkey();
+    const own = me ? toProfileCard(useAuthStore.getState().profile) : null;
+    return rows.map((row) => ({
+        ...row,
+        ...(knownCards.get(row.pubkey) ?? (row.pubkey === me ? own : null) ?? {}),
+    }));
 }
 
 /**
@@ -117,7 +136,79 @@ export async function withNames<T extends { pubkey: string }>(
  */
 export function withRemembered(events: NostrEvent[], days: string[], authors?: string[]): NostrEvent[] {
     rememberResults(events);
-    return newestPerDay([...events, ...rememberedResults(days, authors)]);
+    const merged = newestPerDay([...events, ...rememberedResults(days, authors)]);
+    noteOwnPublished(merged);
+    return merged;
+}
+
+/**
+ * Mark this player's results published when a read shows them on the relays.
+ *
+ * The marker is device-local, and the play log syncs without it. So a game
+ * published from another device, or from this one before its storage was
+ * cleared, reads as unpublished here: the notice says nobody else can see it,
+ * and the catch-up mines and signs it again, which with a remote signer means
+ * a second approval request for a result already out. Seeing the signed event
+ * is exactly what the marker stands for, so seeing it sets it.
+ *
+ * Only for an event a board would show: one that fails the gate is not a
+ * published result in any sense the rest of the app recognises.
+ */
+function noteOwnPublished(events: NostrEvent[]): void {
+    const me = currentPubkey();
+    if (!me) return;
+    const { publishedResults, markResultPublished } = usePalavraStore.getState();
+    for (const event of events) {
+        if (event.pubkey !== me) continue;
+        const date = tagValue(event, 'date');
+        if (!date || publishedResults[`${me}:${date}`]) continue;
+        if (entriesFromEvents([event], date).length > 0) markResultPublished(me, date);
+    }
+}
+
+/**
+ * This player's own finished games for `days`, straight from the play log.
+ *
+ * Everything else on a board is read from relays, and a result only gets
+ * there once it is signed. With a remote signer that can be a minute away, or
+ * never if the signing app doesn't answer, and the player who has just
+ * finished is the one person certain to open the board in that gap. The cache
+ * can't cover it either: it holds signed events, and there isn't one yet. But
+ * the game itself is the one thing this device knows without asking anyone,
+ * so it goes on the player's own boards the moment it is finished, whatever
+ * the signer is doing. The notice above the boards says when nobody else can
+ * see it yet.
+ *
+ * Callers add these only for days the read and the cache came back without.
+ * Where the relays hold a copy, that copy is the one everyone else is ranked
+ * against, so it is the one shown. And only while sharing results: a player
+ * who opted out asked not to be ranked.
+ *
+ * The streak rides on today's game alone. It is the run as it stands now,
+ * which is what a result published today would declare, and it says nothing
+ * true about an earlier day.
+ */
+export function ownResults(days: readonly string[]): { date: string; entry: LeaderboardEntry }[] {
+    const pubkey = currentPubkey();
+    const state = usePalavraStore.getState();
+    if (!pubkey || !sharesResults(state, pubkey)) return [];
+    const today = formatUTCDate(new Date());
+    return days.flatMap((date) => {
+        const play = state.plays[date];
+        if (!play || !isFinished(play)) return [];
+        const entry: LeaderboardEntry = { pubkey, tries: play.guesses.length, solved: play.solved, ms: play.ms };
+        if (date === today) entry.streak = derivePalavraStats(state.plays).currentStreak;
+        return [{ date, entry }];
+    });
+}
+
+/** Rows with this player's own game added, when the read left it out. */
+export function withOwnRow(rows: LeaderboardEntry[], date: string, among?: readonly string[]): LeaderboardEntry[] {
+    const mine = ownResults([date])
+        .map(({ entry }) => entry)
+        .filter((entry) => (!among || among.includes(entry.pubkey))
+            && !rows.some((row) => row.pubkey === entry.pubkey));
+    return [...rows, ...mine];
 }
 
 /**
@@ -139,8 +230,25 @@ export async function fetchDailyLeaderboard(date: string, limit = 50): Promise<L
         console.warn('Could not load the Palavra leaderboard.', error);
     }
 
-    const rows = entriesFromEvents(withRemembered(events, [date]), date).sort(rank).slice(0, limit);
-    return withNames(rows);
+    return withNames(dayRows(withRemembered(events, [date]), date, limit));
+}
+
+function dayRows(events: NostrEvent[], date: string, limit: number): LeaderboardEntry[] {
+    return withOwnRow(entriesFromEvents(events, date), date).sort(rank).slice(0, limit);
+}
+
+/**
+ * The day's board from what this device already holds — the cache, and the
+ * player's own game — with no network at all.
+ *
+ * What the board draws while its relay read is out. That read waits up to a
+ * second after the first relay answers, and five when none do, and the
+ * player who has just finished shouldn't spend that time looking at a
+ * spinner where their own result could already be. Same rows and same
+ * ranking as fetchDailyLeaderboard, minus whatever only the network has.
+ */
+export function localDailyLeaderboard(date: string, limit = 50): LeaderboardEntry[] {
+    return withKnownNames(dayRows(newestPerDay(rememberedResults([date])), date, limit));
 }
 
 /** Days per filter in the monthly query, and how many events each may return.
@@ -295,7 +403,7 @@ export async function fetchMonthlyPoints(
     // Never past today either: the rest of the month has no puzzles yet, and
     // asking for them spends filter room on days nobody could have played.
     const today = formatUTCDate(new Date());
-    const days = monthDays(month, notAfter && notAfter < today ? notAfter : today);
+    const days = monthWindow(month, notAfter);
     if (days.length === 0) return { entries: [], partial: false };
 
     let read: MonthEvents;
@@ -311,16 +419,42 @@ export async function fetchMonthlyPoints(
     // cache can't put today's column back in.
     const events = withRemembered(read.events, days);
 
+    // Judged against the real end of the window, not against `days` — which
+    // is only as far as this query chose to look. See liveThrough.
+    const entries = await withNames(tallyMonth(monthResults(events, days), liveThrough(month, today), limit));
+    return { entries, partial: read.partial };
+}
+
+/** The days a monthly read covers: the month, never past today, and never
+    past `notAfter` when the caller is holding today back. */
+function monthWindow(month: string, notAfter?: string): string[] {
+    const today = formatUTCDate(new Date());
+    return monthDays(month, notAfter && notAfter < today ? notAfter : today);
+}
+
+function monthResults(events: NostrEvent[], days: string[]): DatedResult[] {
     // Day by day through the same reader the daily board uses, so a month is
     // scored on exactly the rows a single day would have shown — proof-of-work
     // gate, bounds checks and `d`/`date` agreement included.
     const results: DatedResult[] = days.flatMap((date) =>
         entriesFromEvents(events, date).map((entry) => ({ ...entry, date })));
+    // The player's own games the relays didn't give back — today's above all,
+    // while the signer is still deciding. See ownResults.
+    const held = new Set(results.map((result) => `${result.pubkey}:${result.date}`));
+    for (const { date, entry } of ownResults(days)) {
+        if (!held.has(`${entry.pubkey}:${date}`)) results.push({ ...entry, date });
+    }
+    return results;
+}
 
-    // Judged against the real end of the window, not against `days` — which
-    // is only as far as this query chose to look. See liveThrough.
-    const entries = await withNames(tallyMonth(results, liveThrough(month, today), limit));
-    return { entries, partial: read.partial };
+/** The month's board from what this device already holds, with no network —
+    what PointsBoard draws while its read is out. See localDailyLeaderboard. */
+export function localMonthlyPoints(month: string, notAfter?: string, limit = 50): MonthlyEntry[] {
+    const days = monthWindow(month, notAfter);
+    if (days.length === 0) return [];
+    const events = newestPerDay(rememberedResults(days));
+    const today = formatUTCDate(new Date());
+    return withKnownNames(tallyMonth(monthResults(events, days), liveThrough(month, today), limit));
 }
 
 /** The pubkeys this identity follows, from their kind-3 contact list. */
@@ -411,6 +545,14 @@ export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<Duel
         if (!entry) continue;
         if (!byAuthor.has(event.pubkey)) byAuthor.set(event.pubkey, new Map());
         byAuthor.get(event.pubkey)!.set(date, entry);
+    }
+    // This player's side of each duel day, when the relays don't have it yet.
+    // See ownResults.
+    for (const { date, entry } of ownResults(dates)) {
+        if (entry.pubkey !== pubkey) continue;
+        if (!byAuthor.has(pubkey)) byAuthor.set(pubkey, new Map());
+        const mine = byAuthor.get(pubkey)!;
+        if (!mine.has(date)) mine.set(date, entry);
     }
 
     return withNames(duelRecords(pubkey, follows, byAuthor));

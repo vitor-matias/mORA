@@ -27,7 +27,13 @@ vi.mock('@/lib/pool', () => ({
     },
     RELAYS: [],
 }));
-vi.mock('@/store/auth', () => ({ currentPubkey: () => signedIn }));
+/** Whether the identity is a passkey key not yet unlocked this session. */
+let locked = false;
+
+vi.mock('@/store/auth', () => ({
+    currentPubkey: () => signedIn,
+    useAuthStore: { getState: () => ({ isLocked: locked }) },
+}));
 vi.mock('@/lib/nostr', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/nostr')>()),
     signNostrEvent: (template: unknown) => signEvent(template),
@@ -46,9 +52,12 @@ vi.mock('@/store/app', () => ({
     useAppStore: { getState: () => ({ shareStreaks: false }) },
 }));
 
-const { publishMissingResults } = await import('./nostr');
+const { publishMissingResults, publishPalavraResult } = await import('./nostr');
 const { usePalavraStore } = await import('@/store/palavra');
 const { rememberedResults } = await import('./resultCache');
+const { publishKey, setPublishState, usePublishStatus } = await import('./publishStatus');
+
+const stateOf = (date: string) => usePublishStatus.getState().byKey[publishKey(ME, date)];
 
 const day = (back: number) => formatUTCDate(new Date(Date.now() - back * 86_400_000));
 
@@ -64,9 +73,11 @@ describe('publishMissingResults', () => {
     beforeEach(() => {
         relayPublish.mockReset().mockResolvedValue(undefined);
         signedIn = ME;
+        locked = false;
         signEvent.mockReset().mockImplementation(async (t: object) =>
             ({ ...t, id: 'signed', pubkey: signedIn, sig: 'sig' }));
         usePalavraStore.setState({ plays: {}, publishedResults: {}, sharing: { [ME]: true } });
+        usePublishStatus.setState({ byKey: {} });
     });
 
     // The bug this exists for: a game finished late in the UTC day whose
@@ -90,6 +101,91 @@ describe('publishMissingResults', () => {
         await publishMissingResults(ME);
 
         expect(rememberedResults([day(0)]).map((event) => event.pubkey)).toEqual([ME]);
+    });
+
+    // The bug these exist for: a remote signer that never answered left the
+    // player on a board with nobody on it, and nothing on screen to say their
+    // own result had failed rather than not been tried.
+    it('says a publish is under way while the signer decides', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        let approve: (() => void) | undefined;
+        signEvent.mockImplementationOnce((t: object) => new Promise((resolve) => {
+            approve = () => resolve({ ...t, id: 'signed', pubkey: ME, sig: 'sig' });
+        }));
+
+        const pass = publishMissingResults(ME);
+        try {
+            await vi.waitFor(() => expect(signEvent).toHaveBeenCalled());
+            expect(stateOf(day(0))).toBe('publishing');
+        } finally {
+            // Always, or a failure here leaves the pass in flight and every
+            // later case in the file waits on it.
+            approve?.();
+            await pass;
+        }
+        expect(stateOf(day(0))).toBeUndefined();
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${day(0)}`]).toBe(true);
+    });
+
+    it('says a publish failed when the signer never answers', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        signEvent.mockRejectedValueOnce(new Error('O assinador não respondeu.'));
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await publishMissingResults(ME);
+
+        expect(stateOf(day(0))).toBe('failed');
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${day(0)}`]).toBeUndefined();
+    });
+
+    it('clears a failure once a retry lands', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        setPublishState(ME, day(0), 'failed');
+
+        await publishMissingResults(ME);
+
+        expect(stateOf(day(0))).toBeUndefined();
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${day(0)}`]).toBe(true);
+    });
+
+    // Usually the page's own attempt, made the moment the board was finished.
+    // A second would mine the same proof of work and, with a remote signer,
+    // put a second approval request in front of the player.
+    it('leaves a day already being published to the attempt in flight', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        setPublishState(ME, day(0), 'publishing');
+
+        await publishMissingResults(ME);
+
+        expect(relayPublish).not.toHaveBeenCalled();
+    });
+
+    // Two callers at once — the retry tapped twice, or the page's publish
+    // meeting a foreground catch-up — must not both mine and sign.
+    it('lets one attempt per result through at a time', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        const play = finished();
+
+        const results = await Promise.all([
+            publishPalavraResult(day(0), play),
+            publishPalavraResult(day(0), play),
+        ]);
+
+        expect(signEvent).toHaveBeenCalledTimes(1);
+        expect(results.filter(Boolean)).toHaveLength(1);
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${day(0)}`]).toBe(true);
+    });
+
+    // A locked passkey key has no signer: mining for it is wasted CPU, and
+    // the board asks for the unlock instead.
+    it('does not mine a result a locked key cannot sign', async () => {
+        usePalavraStore.setState({ plays: { [day(0)]: finished() } });
+        locked = true;
+
+        await publishMissingResults(ME);
+
+        expect(signEvent).not.toHaveBeenCalled();
+        expect(stateOf(day(0))).toBeUndefined();
     });
 
     it('leaves a day that is already published alone', async () => {
