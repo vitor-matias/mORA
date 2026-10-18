@@ -18,6 +18,18 @@ import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
 export default function Home() {
     const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalSections, liturgicalColorDate } = useAppStore();
     const { profile, setProfile } = useAuthStore();
+    // Installed to the home screen (Android WebAPK / iOS standalone), an
+    // external link opened with target="_blank" does not reach the system
+    // browser: it lands in a boxed-in in-app view with no way back but
+    // closing it. A same-window navigation instead has the OS hand the page to
+    // the real browser. Only inside the installed app, though — in a browser
+    // tab, target="_blank" is what keeps mORA open behind the new one. Same
+    // check and reasoning as the Palavra reference link, which goes to the
+    // same site.
+    const isInstalledApp = typeof window !== 'undefined' && (
+        window.matchMedia?.('(display-mode: standalone)').matches
+        || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+    );
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const t = useTranslations().home;
     const tPalavra = useTranslations().palavra;
@@ -256,8 +268,22 @@ export default function Home() {
                             );
                             const className = "pressable pressable-card group flex items-center gap-4 p-4 surface rounded-2xl";
                             return href ? (
-                                <a key={area.path} href={href} target="_blank" rel="noopener noreferrer" className={className}>
+                                <a
+                                    key={area.path}
+                                    href={href}
+                                    {...(isInstalledApp
+                                        ? { rel: 'noreferrer' }
+                                        : { target: '_blank', rel: 'noopener noreferrer' })}
+                                    className={className}
+                                >
                                     {body}
+                                    {/* The ExternalLink icon is decorative, so say it in
+                                        words too — and say what actually happens, which
+                                        differs: a new tab in the browser, a hand-off to
+                                        the browser from the installed app. */}
+                                    <span className="sr-only">
+                                        {isInstalledApp ? '(abre no navegador)' : '(abre noutro separador)'}
+                                    </span>
                                 </a>
                             ) : (
                                 <Link key={area.path} to={area.path} className={className}>
