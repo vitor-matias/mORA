@@ -89,5 +89,11 @@ export interface LeaderboardEntry {
     Here rather than in social.ts because the copy that names this window has
     to read it, and social.ts is loaded lazily — importing the constant from
     there would pull the pool and nostr-tools into the main bundle to get one
-    number. */
-export const DUEL_DAYS = 30;
+    number.
+
+    Ninety days, so a rivalry keeps its history for a season rather than
+    forgetting a match a month later. Older than about three weeks, results
+    survive on only a few relays (primal and nos.lol prune them; nostr.mom,
+    wisp.talk and damus keep them), which is why fetchDuels reads the window
+    in month-sized filters rather than one. */
+export const DUEL_DAYS = 90;
