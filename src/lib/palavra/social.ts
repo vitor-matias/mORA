@@ -9,7 +9,7 @@
 // write relays. For the open daily board it cannot — nobody knows who to look
 // for until the events come back.
 
-import type { NostrEvent } from '@nostrify/nostrify';
+import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { pool } from '@/lib/pool';
 import {
     KIND_APP_STATE,
@@ -367,8 +367,8 @@ async function fetchMonthEvents(days: string[]): Promise<MonthEvents> {
  *
  * Summed from the results themselves, not from a number anyone declared. That
  * is the whole reason the season is a calendar month: a month is at most
- * thirty-one addressable day keys, which is the same order as the query duels
- * already run, so the total can be *computed* from signed events rather than
+ * thirty-one addressable day keys, the same order as each of the duel read's
+ * filters, so the total can be *computed* from signed events rather than
  * claimed in one. Nothing here needs the sampling defence the streak board
  * needed, because there is no claim to refute — the points are arithmetic over
  * events the relays either hold or don't.
@@ -505,7 +505,8 @@ export function recentDates(days: number, from = new Date()): string[] {
 }
 
 /**
- * Head-to-head over the last month against everyone this identity follows.
+ * Head-to-head over the last DUEL_DAYS days against everyone this identity
+ * follows.
  *
  * Only days *both* played count. Someone who plays daily would otherwise rack
  * up wins against a friend who plays twice a month purely by showing up, which
@@ -527,20 +528,21 @@ export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<Duel
 
     let events: NostrEvent[];
     try {
-        events = await pool.query(
-            [{ kinds: [KIND_APP_STATE], authors, '#d': dates.map(resultDTag) }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS), relays },
-        );
+        events = await pool.query(duelFilters(authors, dates), {
+            signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS),
+            relays,
+        });
     } catch (error) {
         console.warn('Could not load duel results.', error);
         return [];
     }
 
     // pubkey → date → result
+    const inWindow = new Set(dates);
     const byAuthor = new Map<string, Map<string, LeaderboardEntry>>();
     for (const event of withRemembered(events, dates, authors)) {
         const date = tagValue(event, 'date');
-        if (!date || !dates.includes(date)) continue;
+        if (!date || !inWindow.has(date)) continue;
         const [entry] = entriesFromEvents([event], date);
         if (!entry) continue;
         if (!byAuthor.has(event.pubkey)) byAuthor.set(event.pubkey, new Map());
@@ -556,6 +558,22 @@ export async function fetchDuels(pubkey: string, days = DUEL_DAYS): Promise<Duel
     }
 
     return withNames(duelRecords(pubkey, follows, byAuthor));
+}
+
+/** Days per filter in the duel read. A relay that caps a filter's results
+    (500 is a common default) keeps the newest, so one filter over the whole
+    window would lose its oldest weeks first, the very history the window is
+    that long to keep, and only once enough people play to reach the cap. A
+    filter per month can only ever lose part of that month. */
+const DUEL_CHUNK_DAYS = 30;
+
+/** The duel read, one filter per DUEL_CHUNK_DAYS. */
+export function duelFilters(authors: string[], dates: string[]): NostrFilter[] {
+    return inGroupsOf(dates, DUEL_CHUNK_DAYS).map((group) => ({
+        kinds: [KIND_APP_STATE],
+        authors,
+        '#d': group.map(resultDTag),
+    }));
 }
 
 /**
