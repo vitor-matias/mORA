@@ -24,6 +24,9 @@ import { pool, RELAYS } from '@/lib/pool';
 import { currentPubkey } from '@/store/auth';
 import {
     KIND_APP_STATE,
+    matching,
+    newestEvent,
+    queryComplete,
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
     signNostrEvent,
@@ -119,10 +122,18 @@ export function parseInvite(invite: string): string | null {
  */
 async function readMyLeagueCoords(pubkey: string): Promise<string[] | null> {
     try {
-        const [event] = await pool.query(
+        // queryComplete, not pool.query: the pool never throws — a timeout
+        // comes back as an empty answer — so the catch below never saw a
+        // failed read, and "no leagues" was written over the real list.
+        const { events, answered, asked } = await queryComplete(
             [{ kinds: [KIND_APP_STATE], authors: [pubkey], '#d': [D_MY_LEAGUES], limit: 1 }],
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
+        if (answered * 2 <= asked) {
+            console.warn(`Only ${answered} of ${asked} relays answered for league memberships; treating them as unknown.`);
+            return null;
+        }
+        const event = newestEvent(matching(events, { kind: KIND_APP_STATE, author: pubkey, dTag: D_MY_LEAGUES }));
         if (!event) return [];
         return event.tags
             .filter((tag) => tag[0] === 'a' && parseCoord(tag[1] ?? ''))

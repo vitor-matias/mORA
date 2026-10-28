@@ -23,7 +23,7 @@ import { pathToFileURL } from 'node:url';
 import DEFAULT_RELAYS from '../../src/relays.json' with { type: 'json' };
 
 import WebSocket from 'ws';
-import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
+import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
 import { sha256 } from '@noble/hashes/sha2';
 import { utf8ToBytes } from '@noble/hashes/utils';
@@ -174,6 +174,19 @@ function loadSecretKey() {
     return decoded.data;
 }
 
+/**
+ * The puzzle date an event from a relay proves is published, or null.
+ *
+ * Checked here, not taken on the relay's word: this socket is raw, so nothing
+ * else verifies what comes back. One hostile or buggy relay answering with an
+ * unsigned event tagged today would otherwise mark the day as done, and it
+ * would then be published nowhere.
+ */
+export function publishedDate(event, pubkey) {
+    if (!event || event.kind !== KIND || event.pubkey !== pubkey || !verifyEvent(event)) return null;
+    return event.tags?.find((t) => t[0] === 'date')?.[1] ?? null;
+}
+
 /** Which puzzle dates this publisher already has on a relay. */
 function publishedDatesOn(url, pubkey, since) {
     return new Promise((resolve) => {
@@ -195,7 +208,7 @@ function publishedDatesOn(url, pubkey, since) {
             try {
                 const msg = JSON.parse(raw.toString());
                 if (msg[0] === 'EVENT') {
-                    const date = msg[2]?.tags?.find((t) => t[0] === 'date')?.[1];
+                    const date = publishedDate(msg[2], pubkey);
                     if (date) found.add(date);
                 }
                 if (msg[0] === 'EOSE') finish();

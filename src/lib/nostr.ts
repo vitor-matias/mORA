@@ -239,17 +239,18 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 async function fetchRawProfile(
     pubkey: string,
 ): Promise<{ content: Record<string, unknown> } | null> {
-    let events: NostrEvent[];
-    try {
-        events = await pool.query(
-            [{ kinds: [0], authors: [pubkey], limit: 1 }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
-        );
-    } catch (error) {
-        console.warn('Could not read the current profile.', error);
+    // queryComplete, not pool.query: the pool never throws — a timeout comes
+    // back as an empty answer — so a failed read used to look like "no
+    // profile yet" and the edits were published alone.
+    const { events, answered, asked } = await queryComplete(
+        [{ kinds: [0], authors: [pubkey], limit: 1 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    if (answered * 2 <= asked) {
+        console.warn(`Only ${answered} of ${asked} relays answered for the profile; refusing to replace it.`);
         return null;
     }
-    const newest = events.sort((a, b) => b.created_at - a.created_at)[0];
+    const newest = newestEvent(matching(events, { kind: 0, author: pubkey }));
     if (!newest) return { content: {} };
     try {
         const parsed = JSON.parse(newest.content) as unknown;

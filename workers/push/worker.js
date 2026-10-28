@@ -29,6 +29,11 @@ const DELIVERY_WINDOW_MIN = 15;
 // Rosary reminder + the five canonical Hours, with room to spare.
 const MAX_TIMES_PER_SUBSCRIPTION = 12;
 
+// Real values are ~200 / ~90 / ~25 characters. Capped so one anonymous POST
+// can't store a record big enough to stall the cron for everyone after it.
+const MAX_ENDPOINT_LENGTH = 1024;
+const MAX_KEY_LENGTH = 256;
+
 // Known Web Push service hosts. Restricting endpoints to these prevents the
 // worker from being abused as a credentialed requester to arbitrary servers
 // (SSRF) or as an oracle for VAPID JWTs with attacker-chosen `aud` values.
@@ -67,6 +72,22 @@ const b64url = (bytes) =>
     btoa(String.fromCharCode(...new Uint8Array(bytes)))
         .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
+// Imported once per tick, not once per push.
+let signingKey;
+function vapidKey(env) {
+    signingKey ??= crypto.subtle.importKey(
+        'jwk',
+        JSON.parse(env.VAPID_PRIVATE_KEY_JWK),
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        false,
+        ['sign']
+    ).catch((error) => {
+        signingKey = undefined;
+        throw error;
+    });
+    return signingKey;
+}
+
 async function vapidHeaders(endpoint, env) {
     const { origin } = new URL(endpoint);
     const encoder = new TextEncoder();
@@ -78,13 +99,7 @@ async function vapidHeaders(endpoint, env) {
         sub: env.VAPID_SUBJECT,
     })));
 
-    const key = await crypto.subtle.importKey(
-        'jwk',
-        JSON.parse(env.VAPID_PRIVATE_KEY_JWK),
-        { name: 'ECDSA', namedCurve: 'P-256' },
-        false,
-        ['sign']
-    );
+    const key = await vapidKey(env);
     // WebCrypto ECDSA signatures are already the raw r||s form JWT wants.
     const signature = await crypto.subtle.sign(
         { name: 'ECDSA', hash: 'SHA-256' },
@@ -118,6 +133,94 @@ function previousDate(isoDate) {
     const d = new Date(`${isoDate}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() - 1);
     return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Writes a record with its schedule copied into KV metadata, which `list()`
+ * returns for free: a tick can then see who is due without a `get` per user.
+ */
+function putRecord(env, key, { subscription, tz, times, lastSent }) {
+    return env.SUBSCRIPTIONS.put(
+        key,
+        JSON.stringify({ subscription, tz, times, lastSent }),
+        { metadata: { tz, times, lastSent } },
+    );
+}
+
+/** The times in `times` due now and not yet sent, each with the local date its send mark belongs to. */
+function dueTimes({ tz, times, lastSent }, now) {
+    const local = localParts(tz, now);
+    if (!local) return [];
+    const due = [];
+    for (const time of times) {
+        if (typeof time !== 'string') continue;
+        const [h, m] = time.split(':').map(Number);
+        const target = h * 60 + m;
+
+        // Completas sits near midnight, so the delivery window has to wrap: a
+        // 23:55 reminder is still due at 00:05. It belongs to the previous
+        // local date — key the send mark that way, or tonight's send looks
+        // already done.
+        let delta = local.minutes - target;
+        let dueDate = local.date;
+        if (delta < 0 && delta + 1440 < DELIVERY_WINDOW_MIN) {
+            delta += 1440;
+            dueDate = previousDate(local.date);
+        }
+        if (delta < 0 || delta >= DELIVERY_WINDOW_MIN) continue;
+        if (lastSent[time] === dueDate) continue;
+        due.push({ time, dueDate });
+    }
+    return due;
+}
+
+/** Old records carry a single `time`/`lastSentDate`; read them as a one-entry schedule. */
+function schedule(rec) {
+    return {
+        tz: rec.tz,
+        times: Array.isArray(rec.times) ? rec.times : [rec.time],
+        lastSent: rec.lastSent ?? (rec.lastSentDate ? { [rec.time]: rec.lastSentDate } : {}),
+    };
+}
+
+/** Sends whatever is due for one subscription and records the send marks. */
+async function deliver(env, key, meta, now) {
+    // Records written before the schedule moved into metadata have none: the
+    // first tick reads them in full and rewrites them in the current shape.
+    if (meta && dueTimes(meta, now).length === 0) return;
+
+    const raw = await env.SUBSCRIPTIONS.get(key);
+    if (!raw) return;
+    let rec;
+    try {
+        rec = JSON.parse(raw);
+    } catch {
+        await env.SUBSCRIPTIONS.delete(key);
+        return;
+    }
+    const { tz, times, lastSent } = schedule(rec);
+    const due = dueTimes({ tz, times, lastSent }, now);
+
+    let dirty = !meta;
+    for (const { time, dueDate } of due) {
+        const outcome = await sendPush(rec.subscription, env);
+        if (outcome === 'gone') {
+            await env.SUBSCRIPTIONS.delete(key);
+            return;
+        }
+        if (outcome === 'sent') {
+            lastSent[time] = dueDate;
+            dirty = true;
+        }
+        // 'failed' → retried on the next cron tick within the window
+    }
+    if (!dirty) return;
+    // Drop marks for times no longer scheduled, so the map can't grow without
+    // bound as the user edits reminders.
+    for (const t of Object.keys(lastSent)) {
+        if (!times.includes(t)) delete lastSent[t];
+    }
+    await putRecord(env, key, { subscription: rec.subscription, tz, times, lastSent });
 }
 
 function localParts(tz, now) {
@@ -158,10 +261,13 @@ export default {
             // Hour); `time` is the pre-Hours single-reminder field, still
             // accepted so an older app build keeps working.
             const wanted = Array.isArray(times) ? times : [time];
+            const p256dh = subscription?.keys?.p256dh;
+            const auth = subscription?.keys?.auth;
             if (
-                typeof endpoint !== 'string' || !isAllowedPushEndpoint(endpoint) ||
-                typeof subscription?.keys?.p256dh !== 'string' ||
-                typeof subscription?.keys?.auth !== 'string' ||
+                typeof endpoint !== 'string' || endpoint.length > MAX_ENDPOINT_LENGTH ||
+                !isAllowedPushEndpoint(endpoint) ||
+                typeof p256dh !== 'string' || p256dh.length > MAX_KEY_LENGTH ||
+                typeof auth !== 'string' || auth.length > MAX_KEY_LENGTH ||
                 wanted.length === 0 || wanted.length > MAX_TIMES_PER_SUBSCRIPTION ||
                 !wanted.every((t) => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) ||
                 typeof tz !== 'string' || tz.length > 64 || !localParts(tz, new Date())
@@ -190,10 +296,12 @@ export default {
                 }
             }
 
-            await env.SUBSCRIPTIONS.put(
-                key,
-                JSON.stringify({ subscription, times: scheduled, tz, lastSent })
-            );
+            // Only the fields a push needs: anything else in the body is
+            // the client's to send, not ours to store.
+            await putRecord(env, key, {
+                subscription: { endpoint, keys: { p256dh, auth } },
+                tz, times: scheduled, lastSent,
+            });
             // The count is the app's proof that this Worker understands
             // `times` — an older one stores only `time` and omits this, which
             // is how the app knows to keep its in-app fallback running.
@@ -210,9 +318,8 @@ export default {
         return json(405, { error: 'method not allowed' });
     },
 
-    // Full KV scan per tick — fine at personal-use scale. If this ever
-    // serves many users, partition keys by delivery-time bucket so each
-    // tick only lists the buckets due now.
+    // Each tick lists the keys with their schedule in metadata and reads in
+    // full only the records with a reminder due right now.
     async scheduled(_event, env, ctx) {
         ctx.waitUntil((async () => {
             const now = new Date();
@@ -220,72 +327,13 @@ export default {
             do {
                 const page = await env.SUBSCRIPTIONS.list({ cursor });
                 cursor = page.list_complete ? undefined : page.cursor;
-
-                for (const { name: key } of page.keys) {
-                    const raw = await env.SUBSCRIPTIONS.get(key);
-                    if (!raw) continue;
-                    let rec;
+                for (const { name: key, metadata } of page.keys) {
+                    // One bad record must not cost everyone listed after it
+                    // their reminder.
                     try {
-                        rec = JSON.parse(raw);
-                    } catch {
-                        // A corrupt record must not abort the whole run.
-                        await env.SUBSCRIPTIONS.delete(key);
-                        continue;
-                    }
-
-                    const local = localParts(rec.tz, now);
-                    if (!local) continue;
-
-                    // Records written before per-Hour reminders carry a single
-                    // `time`/`lastSentDate`; read them as a one-entry schedule
-                    // and write them back in the current shape below.
-                    const times = Array.isArray(rec.times) ? rec.times : [rec.time];
-                    const lastSent = rec.lastSent
-                        ?? (rec.lastSentDate ? { [rec.time]: rec.lastSentDate } : {});
-
-                    let dirty = false;
-                    let dropped = false;
-                    for (const time of times) {
-                        if (typeof time !== 'string') continue;
-
-                        const [h, m] = time.split(':').map(Number);
-                        const target = h * 60 + m;
-
-                        // Completas sits near midnight, so the delivery window
-                        // has to wrap: a 23:55 reminder is still due at 00:05.
-                        // It belongs to the previous local date — key the send
-                        // mark that way, or tonight's send looks already done.
-                        let delta = local.minutes - target;
-                        let dueDate = local.date;
-                        if (delta < 0 && delta + 1440 < DELIVERY_WINDOW_MIN) {
-                            delta += 1440;
-                            dueDate = previousDate(local.date);
-                        }
-                        if (delta < 0 || delta >= DELIVERY_WINDOW_MIN) continue;
-                        if (lastSent[time] === dueDate) continue;
-
-                        const outcome = await sendPush(rec.subscription, env);
-                        if (outcome === 'gone') {
-                            await env.SUBSCRIPTIONS.delete(key);
-                            dropped = true;
-                            break;
-                        }
-                        if (outcome === 'sent') {
-                            lastSent[time] = dueDate;
-                            dirty = true;
-                        }
-                        // 'failed' → retried on the next cron tick within the window
-                    }
-
-                    if (!dropped && dirty) {
-                        // Drop marks for times no longer scheduled, so the map
-                        // can't grow without bound as the user edits reminders.
-                        for (const t of Object.keys(lastSent)) {
-                            if (!times.includes(t)) delete lastSent[t];
-                        }
-                        await env.SUBSCRIPTIONS.put(key, JSON.stringify({
-                            subscription: rec.subscription, tz: rec.tz, times, lastSent,
-                        }));
+                        await deliver(env, key, metadata, now);
+                    } catch (error) {
+                        console.error(`Reminder delivery failed for ${key}:`, error);
                     }
                 }
             } while (cursor);
