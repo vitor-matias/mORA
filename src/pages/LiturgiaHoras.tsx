@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronDown, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
@@ -203,7 +204,18 @@ export default function LiturgiaHoras() {
             return next;
         });
     };
-    const [userActiveHour, setUserActiveHour] = useState<string | null>(null);
+    // A tapped reminder opens "?hora=<id>&n=<nonce>"; each tap, even for the
+    // same Hour, replaces whatever the user picked since (adjusting state
+    // while rendering, per the React docs).
+    const [searchParams] = useSearchParams();
+    const hourParam = searchParams.get('hora');
+    const tapKey = searchParams.toString();
+    const [seenTapKey, setSeenTapKey] = useState(tapKey);
+    const [userActiveHour, setUserActiveHour] = useState<string | null>(hourParam);
+    if (tapKey !== seenTapKey) {
+        setSeenTapKey(tapKey);
+        setUserActiveHour(hourParam);
+    }
     const [userActiveSubHour, setUserActiveSubHour] = useState<string | null>(null);
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set([]));
 

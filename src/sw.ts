@@ -9,7 +9,7 @@ declare let self: ServiceWorkerGlobalScope & {
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
-import { readReminderSchedule, matchReminder } from '@/lib/reminderSchedule';
+import { readReminderSchedule, matchReminder, reminderRoute } from '@/lib/reminderSchedule';
 
 self.skipWaiting();
 clientsClaim();
@@ -36,17 +36,30 @@ self.addEventListener('push', (event) => {
             badge: 'pwa-192x192.png',
             // Per-reminder tag, so an Hour never collapses onto another one.
             tag: entry ? `mora-reminder-${entry.time}` : 'mora-daily-reminder',
+            data: { url: entry?.url },
         });
     })());
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    // Routing is hash-based, so a route is "./#/path".
+    const route: unknown = event.notification.data?.url;
+    const target = typeof route === 'string' && route.startsWith('/') ? `./#${reminderRoute(route)}` : './';
     event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        // Controlled windows only: navigate() rejects for the rest.
+        self.clients.matchAll({ type: 'window' }).then(async (clients) => {
             const existing = clients.find((c) => 'focus' in c);
-            if (existing) return existing.focus();
-            return self.clients.openWindow('./');
+            if (!existing) return self.clients.openWindow(target);
+            try {
+                await existing.focus();
+                // No route (generic notification): leave the page the user is on.
+                if (target === './') return;
+                // A hash-only change does not reload the page.
+                await existing.navigate(new URL(target, self.registration.scope).href);
+            } catch {
+                await self.clients.openWindow(target);
+            }
         })
     );
 });

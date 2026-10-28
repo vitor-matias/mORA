@@ -176,7 +176,7 @@ export default function Rosary() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                 {rosaryMode === 'beginner'
                     ? 'Todas as orações, conta a conta.'
-                    : 'Os cinco mistérios numa só página — reza as contas ao teu ritmo.'}
+                    : 'Os cinco mistérios numa só página, para rezares as contas ao teu ritmo.'}
             </p>
         </div>
     );
