@@ -366,6 +366,9 @@ export default function LiturgiaHoras() {
     // spinner/error page can't count; when the whole text fits the viewport,
     // a dwell timer counts instead — the streak must stay earnable there.
     const autoCompletedRef = useRef(false);
+    // The Hour the last run watched. Switching to another one while parked at
+    // the bottom of the last must not count it unread.
+    const watchedHourRef = useRef<string | null>(null);
     useEffect(() => {
         // Browsing another day's office doesn't earn today's streak.
         if (loading || !liturgy || !activeHour || hourPrayedToday || !isToday) return;
@@ -376,9 +379,19 @@ export default function LiturgiaHoras() {
             autoCompletedRef.current = true;
             markAsPrayed(activeHour);
         };
-        const onScroll = () => {
+        const atEnd = () => {
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (maxScroll > 0 && window.scrollY >= maxScroll - 2) complete();
+            return maxScroll > 0 && window.scrollY >= maxScroll - 2;
+        };
+        // Armed at once unless the Hour just changed, so scroll restoration
+        // landing at the end still counts. After a switch the reader has to
+        // have been somewhere other than the end first.
+        const switched = watchedHourRef.current !== null && watchedHourRef.current !== activeHour;
+        watchedHourRef.current = activeHour;
+        let armed = !switched || !atEnd();
+        const onScroll = () => {
+            if (!atEnd()) armed = true;
+            else if (armed) complete();
         };
         const dwellTimer = window.setTimeout(() => {
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;

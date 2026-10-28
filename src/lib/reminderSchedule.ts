@@ -83,6 +83,41 @@ export function reminderRoute(url: string, now = Date.now()): string {
     return `${url}${url.includes('?') ? '&' : '?'}n=${now}`;
 }
 
+/** "<date it fell due> <key>": a 23:55 reminder seen at 00:05 belongs to yesterday. */
+export function reminderMark(entry: ReminderEntry, now: Date): string {
+    const [h, m] = entry.time.split(':').map(Number);
+    const due = new Date(now);
+    if (now.getHours() * 60 + now.getMinutes() < h * 60 + m) due.setDate(due.getDate() - 1);
+    return `${localISODate(due)} ${reminderKey(entry)}`;
+}
+
+const SHOWN_URL = '/__mora-reminder-shown';
+
+/** Marks of the reminders the service worker has shown, today's and yesterday's. */
+export async function readShownReminders(): Promise<Set<string>> {
+    if (typeof caches === 'undefined') return new Set();
+    try {
+        const res = await (await caches.open(CACHE_NAME)).match(SHOWN_URL);
+        const parsed: unknown = res ? await res.json() : [];
+        return new Set(Array.isArray(parsed) ? parsed.filter((m): m is string => typeof m === 'string') : []);
+    } catch {
+        return new Set();
+    }
+}
+
+export async function recordShownReminder(mark: string, now: Date): Promise<void> {
+    if (typeof caches === 'undefined') return;
+    try {
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        const keep = [localISODate(now), localISODate(yesterday)];
+        const marks = [...await readShownReminders(), mark].filter((m) => keep.some((d) => m.startsWith(d)));
+        await (await caches.open(CACHE_NAME)).put(SHOWN_URL, new Response(JSON.stringify([...new Set(marks)])));
+    } catch {
+        // Worst case a second push repeats the first one's text.
+    }
+}
+
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {
     if (typeof caches === 'undefined') return;
     try {
@@ -120,7 +155,11 @@ export async function readReminderSchedule(): Promise<ReminderEntry[]> {
 export function matchReminder(
     entries: ReminderEntry[],
     now: Date,
-    windowMin = DELIVERY_WINDOW_MIN + CLOCK_SKEW_ALLOWANCE_MIN
+    windowMin = DELIVERY_WINDOW_MIN + CLOCK_SKEW_ALLOWANCE_MIN,
+    /** reminderMark()s already shown: two pushes due together (a daily
+        reminder and the weekly summary, both 22:00 on a Saturday) arrive
+        indistinguishable, so the second has to take the other entry. */
+    shown: ReadonlySet<string> = new Set()
 ): ReminderEntry | null {
     const minutes = now.getHours() * 60 + now.getMinutes();
     let best: ReminderEntry | null = null;
@@ -139,6 +178,7 @@ export function matchReminder(
             dueDay = (dueDay + 6) % 7;
         }
         if (entry.weekday !== undefined && entry.weekday !== dueDay) continue;
+        if (shown.has(reminderMark(entry, now))) continue;
         if (elapsed < bestElapsed) {
             bestElapsed = elapsed;
             best = entry;

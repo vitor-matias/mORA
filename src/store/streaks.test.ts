@@ -64,3 +64,15 @@ describe('matchReminder weekday', () => {
         expect(matchReminder([entry], new Date(2026, 9, 31, 22, 5))).toBe(entry);
     });
 });
+
+describe('matchReminder shown', () => {
+    it('gives the second of two simultaneous pushes the other entry', async () => {
+        const { matchReminder, reminderMark } = await import('@/lib/reminderSchedule');
+        const daily = { time: '22:00', title: 'd', body: 'd' };
+        const weekly = { time: '22:00', weekday: 6, title: 'w', body: 'w' };
+        const at = new Date(2026, 9, 31, 22, 3);
+        expect(matchReminder([daily, weekly], at)).toBe(daily);
+        expect(matchReminder([daily, weekly], at, undefined, new Set([reminderMark(daily, at)]))).toBe(weekly);
+        expect(reminderMark(weekly, at)).toBe('2026-10-31 6@22:00');
+    });
+});
