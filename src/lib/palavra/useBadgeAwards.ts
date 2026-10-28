@@ -69,7 +69,31 @@ export function useBadgeAwards(): {
             // runs long after the effect was set up, and the subscription
             // would only re-run it.
             const { announcedBadges } = usePalavraStore.getState();
-            const fresh = unannouncedBadges(earned, announcedBadges, pubkey);
+            const unseenHere = unannouncedBadges(earned, announcedBadges, pubkey);
+            if (unseenHere.length === 0) return;
+
+            // "Announced" is remembered per device, so a new device — or the
+            // first sign-in after storage was cleared — saw every badge as
+            // new, including ones already claimed onto the profile. The
+            // profile list is the record that travels: whatever is on it was
+            // claimed, so it is marked announced without the card.
+            let onProfile: Set<string>;
+            try {
+                const { fetchProfileBadges } = await import('./badges');
+                const refs = await fetchProfileBadges(pubkey);
+                // Unknown, not empty: announcing now could repeat a claimed
+                // badge. Left unannounced, the next check tries again.
+                if (refs === null) return;
+                onProfile = new Set(refs.map((ref) => ref.coord));
+            } catch (error) {
+                console.warn('Could not read the profile badges.', error);
+                return;
+            }
+            if (cancelled) return;
+
+            const claimed = unseenHere.filter((badge) => onProfile.has(badge.coord));
+            if (claimed.length > 0) markBadgesAnnounced(pubkey, claimed.map((badge) => badge.coord));
+            const fresh = unannouncedBadges(unseenHere, {}, pubkey, onProfile);
             if (fresh.length === 0) return;
 
             markBadgesAnnounced(pubkey, fresh.map((badge) => badge.coord));
