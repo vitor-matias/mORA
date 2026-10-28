@@ -124,7 +124,14 @@ export function useNotifications() {
                         registration.showNotification(entry.title, options)
                     );
                 } else {
-                    new Notification(entry.title, options);
+                    // A page-owned notification never reaches the service
+                    // worker's notificationclick, so route the tap here.
+                    const notification = new Notification(entry.title, options);
+                    notification.onclick = () => {
+                        window.focus();
+                        if (entry.url) window.location.hash = entry.url;
+                        notification.close();
+                    };
                 }
             }
 
