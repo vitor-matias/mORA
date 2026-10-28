@@ -7,8 +7,8 @@
 // generated at build time, same as the badge art: these bytes end up cached in
 // launchers and app switchers, so they want to be stable and reviewable.
 //
-// The master is drawn in tools/icon-master.svg — the O of Oremus around a
-// cross, cream on #1F4D3A — and exported to the PNG at 512×512, 8-bit RGB with
+// The master is drawn in tools/icon-master.svg — a breviary with ribbon
+// markers in the liturgical colours, on warm cream — and exported to the PNG at 512×512, 8-bit RGB with
 // no alpha. It is deliberately *full bleed*, no rounded corners of its own,
 // with the mark inside the central 80% that a circular crop keeps. That is
 // the shape Android's adaptive-icon pipeline wants, and it is the single fix for the icon looking
