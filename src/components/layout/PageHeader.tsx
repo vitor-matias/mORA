@@ -274,7 +274,7 @@ export function PageHeader({
                         <h1
                             ref={titleRef}
                             style={collapsing ? TITLE_STYLE : undefined}
-                            className="text-3xl font-bold tracking-tight page-title truncate"
+                            className="text-3xl font-extrabold tracking-tight page-title truncate"
                         >
                             {title}
                         </h1>

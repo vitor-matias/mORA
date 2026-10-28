@@ -46,7 +46,7 @@ export function SaintOfDayCard({ saint, className = '' }: { saint: SaintOfDay; c
     const hasBody = Boolean(bio || others);
 
     return (
-        <section className={`surface rounded-2xl ${className}`}>
+        <section className={`surface rounded-3xl ${className}`}>
             <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}

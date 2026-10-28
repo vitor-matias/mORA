@@ -662,7 +662,7 @@ export default function LiturgiaHoras() {
                                 ) : altActive && assembled && assembled.sections.length > 0 ? (
                                     <div className="space-y-6">
                                         {altEntry && (
-                                            <div className="surface rounded-2xl p-4 space-y-1.5">
+                                            <div className="surface rounded-3xl p-4 space-y-1.5">
                                                 <p className="font-bold text-zinc-900 dark:text-zinc-100">{altEntry.name}</p>
                                                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                                                     {[altEntry.descriptor, altEntry.rank].filter(Boolean).join(' — ')}
@@ -891,7 +891,7 @@ export default function LiturgiaHoras() {
                                         })}
                                     </div>
                                         ) : (
-                                            <div className="text-center p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
+                                            <div className="text-center p-8 surface rounded-3xl">
                                                 <Clock className="mx-auto text-zinc-300 dark:text-zinc-700 mb-3" size={32} />
                                                 <p className="text-zinc-500 dark:text-zinc-400">Sem conteúdo disponível para esta hora.</p>
                                             </div>
@@ -905,7 +905,7 @@ export default function LiturgiaHoras() {
                                 This confirms it happened. */}
                             {prayedToday && (
                                 <div className="mt-6 mb-2">
-                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-3xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />
                                         Rezado hoje — {streaks.liturgy_hours.days} {streaks.liturgy_hours.days === 1 ? 'dia' : 'dias'} seguidos
                                     </div>
@@ -913,7 +913,7 @@ export default function LiturgiaHoras() {
                             )}
                         </div>
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-3xl">
                             <p className="text-zinc-500 dark:text-zinc-400 text-center">
                                 Não foi possível carregar a Liturgia das Horas. Verifica a tua ligação à internet.
                             </p>
