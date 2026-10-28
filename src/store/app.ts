@@ -7,6 +7,9 @@ import { daysApart, formatISODate } from '@/lib/format';
 export interface StreakData {
     days: number;
     lastCompletedDate: string | null;
+    /** Recent days prayed, ascending. Optional: older builds and snapshots
+        don't carry it, and completedDates() fills in their unbroken run. */
+    history?: string[];
 }
 
 export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
@@ -61,6 +64,25 @@ function isUsableStreak(value: unknown): value is StreakData {
     return lastCompletedDate <= formatISODate(new Date());
 }
 
+// Enough for the week screen with room to spare, small enough that the
+// encrypted snapshot stays tiny.
+const HISTORY_DAYS = 60;
+
+/** Every day this entry knows was prayed: its history plus the run its count
+    implies (a streak of 5 ending today means the last five days). */
+export function completedDates(streak: StreakData): string[] {
+    const today = formatISODate(new Date());
+    const dates = new Set((Array.isArray(streak.history) ? streak.history : [])
+        .filter((d) => typeof d === 'string' && ISO_DATE_RE.test(d) && d <= today));
+    if (streak.lastCompletedDate) {
+        const [y, m, d] = streak.lastCompletedDate.split('-').map(Number);
+        for (let i = 0; i < Math.min(streak.days, HISTORY_DAYS); i++) {
+            dates.add(formatISODate(new Date(y, m - 1, d - i)));
+        }
+    }
+    return [...dates].sort().slice(-HISTORY_DAYS);
+}
+
 /** Persisted state from an older build can predate a streak item, so an entry
     may simply be absent. */
 function localStreak(streaks: Streaks, item: StreakItem): StreakData {
@@ -69,6 +91,12 @@ function localStreak(streaks: Streaks, item: StreakItem): StreakData {
 }
 
 function mergeStreakEntry(local: StreakData, remote: StreakData): StreakData {
+    const { days, lastCompletedDate } = mergeStreakCount(local, remote);
+    const history = completedDates({ days: 0, lastCompletedDate: null, history: [...completedDates(local), ...completedDates(remote)] });
+    return { days, lastCompletedDate, history };
+}
+
+function mergeStreakCount(local: StreakData, remote: StreakData): StreakData {
     if (!remote.lastCompletedDate) return local;
     if (!local.lastCompletedDate) return remote;
     // Same day on both: whichever counted higher already accounts for the
@@ -108,7 +136,8 @@ export function streaksEqual(a: Streaks, b: Streaks): boolean {
     return STREAK_ITEMS.every((item) => {
         const x = localStreak(a, item);
         const y = localStreak(b, item);
-        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate;
+        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate
+            && completedDates(x).join() === completedDates(y).join();
     });
 }
 
@@ -634,7 +663,11 @@ export const useAppStore = create<AppState>()(
                 return {
                     streaks: {
                         ...state.streaks,
-                        [item]: { days: newDays, lastCompletedDate: userToday }
+                        [item]: {
+                            days: newDays,
+                            lastCompletedDate: userToday,
+                            history: completedDates({ ...currentStreak, history: [...(currentStreak.history ?? []), userToday] }),
+                        }
                     }
                 };
             }),
