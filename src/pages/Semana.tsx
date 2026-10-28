@@ -96,7 +96,7 @@ function CardHeader({ icon: Icon, label, to, count, run }: { icon: typeof Clock;
 }
 
 /**
- * Resumo da Semana — this week's Mass readings and each of the Hours, day by day,
+ * Resumo da Semana (titled "A Semana", which fits a phone header) — this week's Mass readings and each of the Hours, day by day,
  * with the running streaks. Everything feeds from the streaks the Missa and
  * Horas pages record, so the Nostr sync that already carries those carries
  * this.
@@ -126,7 +126,7 @@ export default function Semana() {
 
     return (
         <div className="flex-1 w-full flex flex-col">
-            <PageHeader title="Resumo da Semana" subtitle="Missa e Liturgia das Horas, dia a dia" backTo="/" />
+            <PageHeader title="A Semana" subtitle="Missa e Liturgia das Horas, dia a dia" backTo="/" />
             <div className="p-6 pb-8 w-full max-w-md lg:max-w-2xl mx-auto space-y-4">
                 <WeekNav label={weekLabel(week, offset)} onPrev={() => setOffset(offset - 1)} onNext={() => setOffset(offset + 1)} canPrev={canPrev} canNext={offset < 0} />
                 <section className="p-4 surface rounded-2xl">
