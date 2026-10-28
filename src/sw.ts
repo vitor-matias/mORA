@@ -53,6 +53,8 @@ self.addEventListener('notificationclick', (event) => {
             if (!existing) return self.clients.openWindow(target);
             try {
                 await existing.focus();
+                // No route (generic notification): leave the page the user is on.
+                if (target === './') return;
                 // A hash-only change does not reload the page.
                 await existing.navigate(new URL(target, self.registration.scope).href);
             } catch {
