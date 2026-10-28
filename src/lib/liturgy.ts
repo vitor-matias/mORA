@@ -82,15 +82,19 @@ function writeLiturgyCache(dateStr: string, data: DailyLiturgy): void {
     }
 }
 
-// Drop cached entries for past dates so storage stays bounded.
+// Drop cached entries for past dates so storage stays bounded. Yesterday is
+// kept: until 02:00 its Completas is still the office on offer
+// (getDefaultHoursDate), and it has to open offline too.
 function pruneLiturgyCache(): void {
     try {
-        const todayStr = formatLocalDate(new Date());
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const keepFrom = formatLocalDate(yesterday);
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
             if (!key || !key.startsWith(LITURGY_CACHE_PREFIX)) continue;
             const dateStr = key.slice(LITURGY_CACHE_PREFIX.length);
-            if (dateStr < todayStr) localStorage.removeItem(key);
+            if (dateStr < keepFrom) localStorage.removeItem(key);
         }
     } catch {
         // ignore storage access errors

@@ -27,6 +27,15 @@ describe('parseVEventInfo', () => {
         expect(parsed?.info.color).toBe('branco');
     });
 
+    // 2027-08-23 in liturgia.pt's feed: the saint's name came first and
+    // "Rosa" was read as the colour.
+    it('takes the colour from the start of a line, not from a saint’s name', () => {
+        const parsed = parseVEventInfo(
+            '\nDTSTART;VALUE=DATE:20270823\nSUMMARY:Segunda-feira\nDESCRIPTION:S. Rosa de Lima\\, virgem – MF\\nVerde ou br. – Missa da féria.\n',
+        );
+        expect(parsed?.info.color).toBe('verde');
+    });
+
     it('falls back to the day name when the description names no colour', () => {
         const parsed = parseVEventInfo(
             '\nDTSTART;VALUE=DATE:20260214\nSUMMARY:S. Valentim, mártir\nDESCRIPTION:Sem cor indicada.\n',

@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
 import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useDayRollover } from "@/lib/useDayRollover";
-import { getHourForTime } from "@/lib/hours";
+import { getDefaultHoursDate, getHourForTime } from "@/lib/hours";
 import { formatISODate } from "@/lib/format";
 import { DateNav } from "@/components/DateNav";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
@@ -193,9 +193,9 @@ export default function LiturgiaHoras() {
     const [retryToken, setRetryToken] = useState(0);
 
     // Date being viewed — browsable like the Missa page.
-    const [selectedDate, setSelectedDate] = useState(() => new Date());
+    const [selectedDate, setSelectedDate] = useState(() => getDefaultHoursDate());
     const selectedDateStr = formatISODate(selectedDate);
-    const isToday = selectedDateStr === formatISODate(new Date());
+    const isToday = selectedDateStr === formatISODate(getDefaultHoursDate());
     const changeDay = (delta: number) => {
         setSelectedDate(prev => {
             const next = new Date(prev);
@@ -304,8 +304,8 @@ export default function LiturgiaHoras() {
     // A PWA resumed from the background on a later day keeps showing the day
     // it was left at. Re-anchor to today when the app returns on a new date.
     useDayRollover(
-        () => formatISODate(new Date()),
-        () => setSelectedDate(new Date())
+        () => formatISODate(getDefaultHoursDate()),
+        () => setSelectedDate(getDefaultHoursDate())
     );
 
     const markAsPrayed = useCallback(async () => {

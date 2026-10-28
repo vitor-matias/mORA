@@ -214,8 +214,14 @@ export function parseVEventInfo(event: string): { dateStr: string; info: Liturgi
         const rawDesc = descMatch[1].trim();
         description = unescapeIcsText(rawDesc, '\n');
 
+        // The colour heads its own line ("Verde ou br. – …"). Read it there
+        // first: a saint's name can hold a colour word before it, and "S. Rosa
+        // de Lima, virgem" on its first line turned the whole day pink.
+        const atLineStart = description.match(/^(verde|roxo|branco|vermelho|rosa)\b/im);
+        if (atLineStart) color = atLineStart[1].toLowerCase() as LiturgicalColor;
+
         const descLower = rawDesc.toLowerCase();
-        // Pick the color that appears first — descriptions can mention
+        // Otherwise the colour that appears first — descriptions can mention
         // secondary colors in diocesan notes that would mask the primary.
         const colorCandidates: Array<[LiturgicalColor, number]> = (
             [
@@ -226,7 +232,7 @@ export function parseVEventInfo(event: string): { dateStr: string; info: Liturgi
                 ['rosa', descLower.indexOf('rosa')],
             ] as Array<[LiturgicalColor, number]>
         ).filter(([, i]) => i !== -1).sort(([, a], [, b]) => a - b);
-        if (colorCandidates.length > 0) color = colorCandidates[0][0];
+        if (!color && colorCandidates.length > 0) color = colorCandidates[0][0];
     }
 
     // Fall back to inferring color from the day name when the

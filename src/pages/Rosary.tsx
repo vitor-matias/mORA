@@ -16,13 +16,16 @@ export default function Rosary() {
     const { rosaryMode, setRosaryMode, setRosarySession, streaks, incrementStreak, setBottomBarYielded } = useAppStore();
     const t = useTranslations().rosary;
 
-    const todayStr = formatISODate(new Date());
-    const todayMysteryClass = getMysteryForToday();
+    // Fixed when the page opens. Read on every render, a bead tap after
+    // midnight rebuilt the sequence as the next day's mysteries at the same
+    // step — a rosary begun Sorrowful finished mid-way through the Glorious.
+    const [todayStr] = useState(() => formatISODate(new Date()));
+    const [todayMysteryClass] = useState(getMysteryForToday);
 
     // Resume an unfinished session from today (same mode); otherwise start fresh.
     const [currentStepIndex, setCurrentStepIndex] = useState(() => {
         const session = useAppStore.getState().rosarySession;
-        if (session && session.date === formatISODate(new Date()) && session.mode === useAppStore.getState().rosaryMode) {
+        if (session && session.date === todayStr && session.mode === useAppStore.getState().rosaryMode) {
             return session.step;
         }
         return 0;
