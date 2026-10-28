@@ -221,10 +221,11 @@ export default function Home() {
                 the season as two flat discs behind it. White text holds AA on
                 every season's 700 (5.0:1 and up) and on the discs (7.1:1 and
                 up), which is why nothing here is tinted or translucent. */}
-            <section className={`relative rounded-3xl p-5 text-white dark:bg-transparent dark:px-0 dark:pt-8 lg:col-span-3 ${
+            <section className={`relative rounded-3xl p-5 dark:bg-transparent dark:px-0 dark:pt-8 dark:text-white lg:col-span-3 ${
                 // Until today's calendar answers, the stored colour may be
-                // yesterday's: neutral rather than a season the day may not be.
-                infoIsToday ? 'bg-liturgy-700' : 'bg-zinc-700'
+                // yesterday's: a plain tile rather than a season the day may
+                // not be (and rather than a dark slab saying nothing).
+                infoIsToday ? 'bg-liturgy-700 text-white' : 'surface text-zinc-900 dark:border-transparent'
             }`}>
                 {/* The discs stay within the day's own block: over the greeting
                     above it, its grey subtitle would lose its contrast. */}
@@ -247,7 +248,9 @@ export default function Home() {
                         <span className="text-sm min-w-0">Agora: {currentHour.label}</span>
                         <Link
                             to="/liturgia-horas"
-                            className={`pressable shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-4 min-h-[44px] text-sm font-bold dark:text-zinc-900 ${infoIsToday ? 'text-liturgy-700' : 'text-zinc-900'}`}
+                            className={`pressable shrink-0 inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-sm font-bold dark:bg-white dark:text-zinc-900 ${
+                                infoIsToday ? 'bg-white text-liturgy-700' : 'bg-zinc-900 text-white'
+                            }`}
                         >
                             Rezar <ArrowRight size={15} aria-hidden="true" />
                         </Link>
@@ -262,40 +265,42 @@ export default function Home() {
             </section>
             </div>
 
-            {/* The hub, as Bento tiles. Missa is the tall tile and Palavra the
-                wide one; the rest share a two-column grid (four across on
-                desktop). Every tile carries its own state for today. */}
+            {/* The hub, as Bento tiles: two columns on a phone, three on
+                desktop. Missa is the wide feature tile, so the five Rezar
+                tiles fill 2-2-2 / 3-3 with no holes; Palavra is wide only on
+                the phone, to pair up the three Explorar tiles. Every tile
+                carries its own state for today. */}
             <div className="relative z-10 space-y-3">
                 {[
-                    { title: 'Rezar', items: prayerAreas, tall: '/liturgia', wide: null },
-                    { title: 'Explorar', items: exploreAreas, tall: null, wide: '/palavra' },
-                ].map(({ title, items, tall, wide }) => (
+                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: null },
+                    { title: 'Explorar', items: exploreAreas, feature: null, wide: '/palavra' },
+                ].map(({ title, items, feature, wide }) => (
                     <section key={title} className="space-y-3">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 pt-2">
                             {title}
                         </h2>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 [grid-auto-flow:dense]">
+                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                         {items.map((area) => {
                             const href = 'href' in area ? area.href : undefined;
                             const body = (
                             <>
                                 <div className="flex items-start justify-between">
                                     <div className={`shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center ${
-                                        area.path === tall ? 'h-12 w-12' : 'h-10 w-10'
+                                        area.path === feature ? 'h-12 w-12' : 'h-10 w-10'
                                     }`}>
-                                        <area.icon size={area.path === tall ? 24 : 20} strokeWidth={2.2} aria-hidden="true" />
+                                        <area.icon size={area.path === feature ? 24 : 20} strokeWidth={2.2} aria-hidden="true" />
                                     </div>
                                     {href && <ExternalLink size={14} className="text-zinc-500 dark:text-zinc-400 shrink-0" aria-hidden="true" />}
                                 </div>
                                 <div className="min-w-0">
-                                    <h3 className={`font-bold leading-tight ${area.path === tall ? 'text-xl lg:text-2xl tracking-tight' : 'text-base'}`}>{area.label}</h3>
-                                    <p className={`text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 ${area.path === tall ? 'text-sm' : 'text-xs'}`}>{area.context}</p>
+                                    <h3 className={`font-bold leading-tight ${area.path === feature ? 'text-xl lg:text-2xl tracking-tight' : 'text-base'}`}>{area.label}</h3>
+                                    <p className={`text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 ${area.path === feature ? 'text-sm' : 'text-xs'}`}>{area.context}</p>
                                 </div>
                             </>
                             );
                             const className = `pressable pressable-card flex flex-col justify-between gap-4 p-4 min-h-[8rem] surface rounded-3xl ${
-                                area.path === tall ? 'row-span-2 lg:col-span-2' : ''
-                            } ${area.path === wide ? 'col-span-2' : ''}`;
+                                area.path === feature ? 'col-span-2' : ''
+                            } ${area.path === wide ? 'col-span-2 lg:col-span-1' : ''}`;
                             return href ? (
                                 <a key={area.path} href={href} target="_blank" rel="noopener noreferrer" className={className}>
                                     {body}
