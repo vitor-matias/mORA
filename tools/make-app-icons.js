@@ -1,15 +1,17 @@
 // Derives every home-screen and browser icon from one master image.
 //
-//   npm run make-app-icons
+//   npm run make-app-icons                after exporting the SVG: -- --exported
 //
 // Reads tools/icon-master-512.png and writes the five files in public/ that
 // index.html and the PWA manifest point at. Committed to the repo rather than
 // generated at build time, same as the badge art: these bytes end up cached in
 // launchers and app switchers, so they want to be stable and reviewable.
 //
-// The master is deliberately *full bleed* — the praying hands on an unbroken
-// #1D1D1D field, no rounded corners of its own. That is the shape Android's
-// adaptive-icon pipeline wants, and it is the single fix for the icon looking
+// The master is drawn in tools/icon-master.svg — a breviary with ribbon
+// markers in the liturgical colours, on warm cream — and exported to the PNG at 512×512, 8-bit RGB with
+// no alpha. It is deliberately *full bleed*, no rounded corners of its own,
+// with the mark inside the central 80% that a circular crop keeps. That is
+// the shape Android's adaptive-icon pipeline wants, and it is the single fix for the icon looking
 // like a small black square floating in a white circle: an icon that declares
 // no `purpose: "maskable"` entry cannot be cropped by the launcher, so Chrome
 // shrinks it onto a white plate instead. Given a maskable icon it crops to
@@ -31,6 +33,7 @@
 // half. Adding a native image library to resize one picture would be a poor
 // trade.
 
+import { createHash } from 'node:crypto';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -38,6 +41,12 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MASTER = join(ROOT, 'tools', 'icon-master-512.png');
+const SOURCE = join(ROOT, 'tools', 'icon-master.svg');
+/** The hash of the SVG the PNG master was exported from. There is no SVG
+    renderer here (see "No dependencies" above), so the export is a manual
+    step — this is what catches an SVG edited without re-exporting, which
+    would otherwise regenerate the old icon without a word. */
+const SOURCE_HASH = join(ROOT, 'tools', 'icon-master.svg.sha256');
 const OUT_DIR = join(ROOT, 'public');
 
 /** Corner radius of the `purpose: "any"` icons, as a fraction of the edge.
@@ -246,6 +255,19 @@ function roundCorners(rgb, size) {
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────
+
+const sourceHash = createHash('sha256').update(readFileSync(SOURCE)).digest('hex');
+if (process.argv.includes('--exported')) {
+    // Run once after exporting the PNG from the current SVG.
+    writeFileSync(SOURCE_HASH, `${sourceHash}\n`);
+} else if (readFileSync(SOURCE_HASH, 'utf8').trim() !== sourceHash) {
+    console.error(
+        'tools/icon-master.svg has changed since tools/icon-master-512.png was exported from it.\n'
+        + 'Export the SVG to the PNG again (512×512, 8-bit RGB, no alpha), then run\n'
+        + '  npm run make-app-icons -- --exported',
+    );
+    process.exit(1);
+}
 
 const master = readPng(MASTER);
 console.log(`master ${master.width}×${master.height}  ${MASTER.slice(ROOT.length + 1)}`);

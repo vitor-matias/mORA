@@ -210,12 +210,15 @@ export function TabBar() {
                 className={`hidden xl:block sticky top-0 z-40 app-bar pt-[env(safe-area-inset-top)] ${barScrolled ? 'app-bar-scrolled' : ''}`}
             >
                 <div className="max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-6">
-                    {/* Wordmark — the favicon mark, tinted by the day's
-                        liturgical color like the rest of the chrome. */}
+                    {/* Wordmark — the breviary of the favicon, tinted by the
+                        day's liturgical color like the rest of the chrome. */}
                     <NavLink to="/" end className="flex items-center gap-2.5 shrink-0">
                         <svg viewBox="0 0 64 64" className="h-7 w-7" aria-hidden="true">
                             <rect width="64" height="64" rx="14" className="fill-liturgy-600 dark:fill-liturgy-500" />
-                            <path d="M32 12v40M20 26h24" stroke="#FAF9F6" strokeWidth="7" strokeLinecap="round" />
+                            <rect x="22" y="38" width="6" height="18" fill="#FAF9F6" />
+                            <rect x="36" y="38" width="6" height="15" fill="#FAF9F6" />
+                            <rect x="17" y="8" width="30" height="34" rx="3.5" fill="#FAF9F6" />
+                            <path d="M32 15v20M25 22h14" strokeWidth="4.5" strokeLinecap="round" className="stroke-liturgy-600 dark:stroke-liturgy-500" />
                         </svg>
                         <span className="text-lg font-bold tracking-tight page-title">Oremus</span>
                     </NavLink>
