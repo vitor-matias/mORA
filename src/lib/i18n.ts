@@ -204,6 +204,10 @@ const translations = {
         joinLeague: "Entrar",
         copyInvite: (name: string) => `Copiar convite para ${name}`,
         leaveLeague: (name: string) => `Sair de ${name}`,
+        leaveConfirmTitle: (name: string) => `Sair de «${name}»?`,
+        leaveConfirmBody: "Para voltares a entrar vais precisar de um convite.",
+        leaveConfirmCancel: "Cancelar",
+        leaveConfirmLeave: "Sair",
         leagueActionFailed: "Não foi possível concluir. Tenta outra vez.",
         // Split so "não listada" can be emphasised — the distinction is the
         // whole point of the sentence and a user could act on getting it wrong.

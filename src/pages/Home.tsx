@@ -125,7 +125,7 @@ export default function Home() {
                     <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
                         {greeting}
                     </h1>
-                    <p className="text-zinc-500 dark:text-zinc-400 text-lg">{t.whatToPray}</p>
+                    <p className="text-zinc-600 dark:text-zinc-400 text-lg">{t.whatToPray}</p>
                 </div>
                 {/* Shown at every width, unlike the profile link beside it:
                     the desktop top bar has no way to lock the key. */}
@@ -252,7 +252,7 @@ export default function Home() {
                     { title: 'Explorar', items: exploreAreas },
                 ].map(({ title, items }) => (
                     <section key={title} className="space-y-3">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pt-2">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 pt-2">
                             {title}
                         </h2>
                         {/* Desktop: tiles across the frame instead of a

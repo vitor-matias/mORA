@@ -227,7 +227,7 @@ export function PageHeader({
                         page, and the subtitle (the liturgical day) is the
                         information worth keeping while reading. Title is the
                         fallback for pages without one. */}
-                    <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 truncate">
+                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 truncate">
                         {subtitle ?? title}
                     </span>
                     {action && <div className="shrink-0">{action}</div>}
@@ -282,7 +282,7 @@ export function PageHeader({
                             <p
                                 ref={subtitleRef}
                                 style={collapsing ? SUBTITLE_STYLE : undefined}
-                                className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-0.5 truncate"
+                                className="text-sm text-zinc-600 dark:text-zinc-400 font-medium mt-0.5 truncate"
                             >
                                 {subtitle}
                             </p>

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Copy, Loader2, LogOut, Plus, Users } from 'lucide-react';
 import type { League, LeagueStanding } from '@/lib/palavra/leagues';
 import { MAX_GUESSES } from '@/lib/palavra/types';
 import { formatDuration } from './playerLabel';
 import { Player } from './Player';
 import { useTranslations } from '@/lib/i18n';
+import { Sheet, type SheetHandle } from '@/components/Sheet';
 
 type Busy = null | 'creating' | 'joining' | 'leaving';
 
@@ -32,6 +33,10 @@ export function Leagues({
     const [newName, setNewName] = useState('');
     const [invite, setInvite] = useState('');
     const [copied, setCopied] = useState<string | null>(null);
+    // Leaving takes effect at once and rejoining needs the invite, so the
+    // button only asks; the alert below does the leaving.
+    const [confirmLeave, setConfirmLeave] = useState<League | null>(null);
+    const leaveSheet = useRef<SheetHandle>(null);
 
     const load = useCallback(async () => {
         const { fetchMyLeagueCoords, fetchLeagues } = await import('@/lib/palavra/leagues');
@@ -140,11 +145,7 @@ export function Leagues({
                             <button
                                 type="button"
                                 disabled={busy !== null}
-                                onClick={() => run('leaving', async () => {
-                                    const { leaveLeague } = await import('@/lib/palavra/leagues');
-                                    await leaveLeague(league.coord);
-                                    if (selected === league.coord) setSelected(null);
-                                })}
+                                onClick={() => setConfirmLeave(league)}
                                 aria-label={t.leaveLeague(league.name)}
                                 className="pressable pressable-small shrink-0 -my-2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
@@ -272,6 +273,45 @@ export function Leagues({
             <p className="text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-800 pt-3">
                 {t.unlistedBefore}<strong>{t.unlistedBold}</strong>{t.unlistedAfter}
             </p>
+
+            {confirmLeave && (
+                <Sheet
+                    ref={leaveSheet}
+                    variant="alert"
+                    labelledBy="leave-league-title"
+                    className="space-y-4"
+                    onClose={() => setConfirmLeave(null)}
+                >
+                    <h2 id="leave-league-title" className="text-lg font-bold page-title">
+                        {t.leaveConfirmTitle(confirmLeave.name)}
+                    </h2>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{t.leaveConfirmBody}</p>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => leaveSheet.current?.close()}
+                            className="pressable flex-1 rounded-xl px-4 py-3 text-sm font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                        >
+                            {t.leaveConfirmCancel}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const league = confirmLeave;
+                                leaveSheet.current?.close();
+                                run('leaving', async () => {
+                                    const { leaveLeague } = await import('@/lib/palavra/leagues');
+                                    await leaveLeague(league.coord);
+                                    setSelected((current) => (current === league.coord ? null : current));
+                                });
+                            }}
+                            className="pressable flex-1 rounded-xl px-4 py-3 text-sm font-semibold bg-red-700 text-white"
+                        >
+                            {t.leaveConfirmLeave}
+                        </button>
+                    </div>
+                </Sheet>
+            )}
         </div>
     );
 }

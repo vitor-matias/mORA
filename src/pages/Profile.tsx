@@ -475,14 +475,14 @@ export default function Profile() {
             <section className="surface rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                     <Settings className="text-zinc-500 dark:text-zinc-400" size={20} />
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.settings}</h2>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.settings}</h2>
                 </div>
 
                 <div className="space-y-6">
                     {/* Theme Preference */}
                     <div>
                         <p className="text-sm font-medium mb-3">{t.theme}</p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {(['light', 'dark', 'system'] as ThemeMode[]).map((tMode) => (
                                 <button
                                     key={tMode}
@@ -507,7 +507,7 @@ export default function Profile() {
                             <Type className="text-zinc-500 dark:text-zinc-400" size={16} />
                             <p className="text-sm font-medium">Tipo de Letra</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {([['system', 'Predefinido'], ['serif', 'Serifada'], ['sans', 'Sem Serifa']] as [FontFamily, string][]).map(([fam, label]) => (
                                 <button
                                     key={fam}
@@ -533,7 +533,7 @@ export default function Profile() {
                                     onClick={() => setFontSize(sz)}
                                     aria-label={`Tamanho ${CONTENT_FONT_SCALE[sz].label}`}
                                     aria-pressed={fontSize === sz}
-                                    className={`flex-1 py-3 px-3 rounded-xl flex items-center justify-center transition-colors ${fontSize === sz
+                                    className={`flex-1 min-w-0 py-3 px-1 rounded-xl flex items-center justify-center transition-colors ${fontSize === sz
                                         ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
@@ -547,7 +547,7 @@ export default function Profile() {
                     {/* Rosary Mode — segmented so both options are always visible */}
                     <div>
                         <p className="text-sm font-medium mb-3">{t.rosaryMode}</p>
-                        <div role="group" aria-label={t.rosaryMode} className="flex gap-2">
+                        <div role="group" aria-label={t.rosaryMode} className="flex flex-wrap gap-2">
                             {([['beginner', 'Guiado', 'Todas as orações, conta a conta'], ['advanced', 'Só mistérios', 'Reza as contas ao teu ritmo']] as [RosaryBeadMode, string, string][]).map(([mode, label, desc]) => (
                                 <button
                                     key={mode}
@@ -571,12 +571,12 @@ export default function Profile() {
                             <Bell className="text-zinc-500 dark:text-zinc-400" size={16} />
                             <p className="text-sm font-medium">{t.notifications}</p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <input
                                 type="time"
                                 value={notificationTime || ''}
                                 onChange={handleNotificationChange}
-                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-liturgy-500 outline-none"
+                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 min-w-0 focus:ring-2 focus:ring-liturgy-500 outline-none"
                             />
                             <button
                                 type="button"
@@ -607,7 +607,7 @@ export default function Profile() {
                                 const time = hourReminders[hour.id];
                                 const enabled = Boolean(time);
                                 return (
-                                    <div key={hour.id} className="flex items-center gap-3">
+                                    <div key={hour.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                         <button
                                             type="button"
                                             role="switch"
@@ -641,7 +641,7 @@ export default function Profile() {
             {pubkey ? (
                 <section className="surface rounded-2xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{t.identity}</h2>
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.identity}</h2>
                         {!isEditingProfile && (
                             <button onClick={() => setIsEditingProfile(true)} className="text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 font-medium flex items-center gap-1">
                                 Editar Perfil
