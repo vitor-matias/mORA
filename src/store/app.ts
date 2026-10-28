@@ -69,9 +69,9 @@ function isUsableStreak(value: unknown): value is StreakData {
     return lastCompletedDate <= formatISODate(new Date());
 }
 
-// Enough for the week screen with room to spare, small enough that the
-// encrypted snapshot stays tiny.
-const HISTORY_DAYS = 60;
+// Half a year of past weeks on Resumo da Semana. Every item full is about
+// 20 KB of snapshot, well inside NIP-44's 64 KB plaintext limit.
+const HISTORY_DAYS = 182;
 
 /** Every day this entry knows was prayed: its history plus the run its count
     implies (a streak of 5 ending today means the last five days). */
