@@ -51,8 +51,13 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
     // the top of the effect — the same reason the daily board stamps its date:
     // clearing there is a synchronous setState on every mount, and a stale-key
     // check says the same thing without the extra render.
+    //
+    // `fresh` is false for rows drawn from this device alone while the relay
+    // read is out, and `notAfter` records which window they were summed over,
+    // so finishing today redraws at once with today's points in it rather
+    // than holding yesterday's totals until the read returns.
     const [loaded, setLoaded] = useState<
-        { month: string; rows: MonthlyEntry[]; partial: boolean } | null
+        { month: string; notAfter?: string; rows: MonthlyEntry[]; partial: boolean; fresh: boolean } | null
     >(null);
     const current = loaded?.month === month ? loaded : null;
     const rows = current?.rows ?? null;
@@ -65,13 +70,24 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
     useEffect(() => {
         let cancelled = false;
         import('@/lib/palavra/social')
-            .then(({ fetchMonthlyPoints }) => fetchMonthlyPoints(month, notAfter))
+            .then(({ fetchMonthlyPoints, localMonthlyPoints }) => {
+                // The same bargain as the daily board: what the device holds,
+                // drawn at once, and only over nothing or over a different
+                // window — never over a read the network already answered.
+                const local = localMonthlyPoints(month, notAfter);
+                if (!cancelled && local.length > 0) {
+                    setLoaded((held) => (held?.month === month && held.notAfter === notAfter
+                        ? held
+                        : { month, notAfter, rows: local, partial: false, fresh: false }));
+                }
+                return fetchMonthlyPoints(month, notAfter);
+            })
             .then(({ entries, partial }) => {
-                if (!cancelled) setLoaded({ month, rows: entries, partial });
+                if (!cancelled) setLoaded({ month, notAfter, rows: entries, partial, fresh: true });
             })
             .catch((error: unknown) => {
                 console.warn('Could not load the monthly ranking.', error);
-                if (!cancelled) setLoaded({ month, rows: [], partial: true });
+                if (!cancelled) setLoaded({ month, notAfter, rows: [], partial: true, fresh: true });
             });
         return () => { cancelled = true; };
     }, [month, notAfter, refreshKey]);
@@ -213,6 +229,14 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                     {current?.partial && (
                         <p className="text-xs text-amber-600 dark:text-amber-500 mt-3">
                             {t.monthPartial}
+                        </p>
+                    )}
+                    {/* Drawn from this device while the relays are still
+                        being asked — see the daily board. */}
+                    {current && !current.fresh && (
+                        <p className="flex items-center justify-center gap-2 text-xs text-zinc-400 pt-2">
+                            <Loader2 size={13} className="animate-spin" aria-hidden="true" />
+                            {t.loadingMonth}
                         </p>
                     )}
                     <p className="text-xs text-zinc-400 mt-3">{t.monthLegend}</p>

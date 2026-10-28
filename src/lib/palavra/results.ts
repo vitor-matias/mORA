@@ -141,7 +141,7 @@ export function entriesFromEvents(events: NostrEvent[], date: string): Leaderboa
         // events *claiming* a given date as they care to publish under other
         // day keys. Any reader that asks for more than one `d` at a time can
         // then be paid repeatedly for the same game: the monthly tally asks
-        // for thirty-one, and duels for thirty. The daily board and league
+        // for thirty-one, and duels for ninety. The daily board and league
         // standings ask for exactly one, which is why this was invisible until
         // there was a board that summed days.
         if (tagValue(event, 'd') !== resultDTag(date)) return [];
