@@ -117,10 +117,16 @@ export const useAuthStore = create<AuthState>()(
             setProtectedKey: (protectedKey) => set({ protectedKey, isLocked: false }),
 
             unlockWithKey: (privkeyHex) => {
-                set({
-                    login: NLogin.fromNsec(nip19.nsecEncode(keyBytes(privkeyHex))),
-                    isLocked: false,
-                });
+                const login = NLogin.fromNsec(nip19.nsecEncode(keyBytes(privkeyHex)));
+                // The passkey prompt can outlive the state that opened it: a
+                // logout meanwhile clears protectedKey, and loading the key
+                // then would persist it unprotected. Only the identity still
+                // locked here may be unlocked.
+                set((s) => (
+                    s.protectedKey && s.isLocked && s.lockedPubkey === login.pubkey
+                        ? { login, isLocked: false }
+                        : {}
+                ));
             },
 
             signIn: (login) => {
