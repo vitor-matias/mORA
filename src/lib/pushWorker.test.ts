@@ -139,4 +139,13 @@ describe('push worker', () => {
         await tick('2026-10-29T00:05:00Z');
         expect(pushes).toHaveBeenCalledTimes(1);
     });
+
+    it('sends a weekday reminder only on that weekday', async () => {
+        expect((await post({ subscription: sub(1), times: ['6@22:00'], tz: 'UTC' })).status).toBe(201);
+        await tick('2026-10-30T22:02:00Z'); // Friday
+        expect(pushes).not.toHaveBeenCalled();
+        await tick('2026-10-31T22:02:00Z'); // Saturday
+        expect(pushes).toHaveBeenCalledTimes(1);
+        expect((await post({ subscription: sub(2), times: ['7@22:00'], tz: 'UTC' })).status).toBe(400);
+    });
 });

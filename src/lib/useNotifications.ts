@@ -4,7 +4,8 @@ import { useTranslations } from '@/lib/i18n';
 import { verifyPushSubscription } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
-import { writeReminderSchedule, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
+import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
+import { WEEKLY_SUMMARY, weekDates, weekSummary } from '@/lib/week';
 
 /**
  * Every reminder this device is set up for — the daily rosary reminder plus
@@ -19,7 +20,10 @@ import { writeReminderSchedule, reminderRoute, DELIVERY_WINDOW_MIN, type Reminde
 export function buildReminderSchedule(
     notificationTime: string | null,
     hourReminders: Record<string, string>,
-    rosaryTitle: string
+    rosaryTitle: string,
+    /** The weekly summary's text, when the user switched it on. */
+    weeklySummary: string | null = null,
+    now: Date = new Date()
 ): ReminderEntry[] {
     const drafts: { time: string; isHour: boolean; label: string; url: string }[] = [];
     if (notificationTime) {
@@ -37,7 +41,7 @@ export function buildReminderSchedule(
         else byTime.set(draft.time, [draft]);
     }
 
-    return [...byTime.entries()]
+    const daily: ReminderEntry[] = [...byTime.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([time, group]) => ({
             time,
@@ -48,10 +52,22 @@ export function buildReminderSchedule(
             // Two prayers due together share one notification: it opens the first.
             url: group[0].url,
         }));
+    if (weeklySummary === null) return daily;
+    // A separate server key ("6@22:00"), so it never merges with a daily
+    // reminder at the same minute.
+    return [...daily, {
+        ...WEEKLY_SUMMARY,
+        title: 'Oremus — Resumo da Semana 🙏',
+        body: weeklySummary,
+        // Counted when written; this Saturday is the only day it is true.
+        date: weekDates(now)[6],
+        staleBody: 'Vê como correu a tua semana de oração.',
+        url: '/semana',
+    }];
 }
 
 export function useNotifications() {
-    const { notificationTime, hourReminders, pushSubscribed } = useAppStore();
+    const { notificationTime, hourReminders, pushSubscribed, weeklySummary, streaks } = useAppStore();
     const t = useTranslations().home;
     // "<due date> <HH:MM>" for each reminder already shown, so a repeated tick
     // inside the catch-up window can't show it twice. Keyed by the date the
@@ -66,9 +82,12 @@ export function useNotifications() {
         verifyPushSubscription();
     }, []);
 
+    // Rebuilt on every prayer, so the summary the service worker shows on
+    // Saturday night is as fresh as this device's last one.
     const schedule = useMemo(
-        () => buildReminderSchedule(notificationTime, hourReminders, t.rosaryTitle),
-        [notificationTime, hourReminders, t.rosaryTitle]
+        () => buildReminderSchedule(notificationTime, hourReminders, t.rosaryTitle,
+            weeklySummary ? weekSummary(streaks, new Date()) : null),
+        [notificationTime, hourReminders, t.rosaryTitle, weeklySummary, streaks]
     );
 
     // Hand the schedule to the service worker even when push is active — that
@@ -97,24 +116,27 @@ export function useNotifications() {
                 // belongs to yesterday, or tonight's would look already sent.
                 let elapsed = minutes - (h * 60 + m);
                 let dueDate = today;
+                let dueDay = now.getDay();
                 if (elapsed < 0) {
                     elapsed += 1440;
                     dueDate = yesterday;
+                    dueDay = (dueDay + 6) % 7;
                 }
+                if (entry.weekday !== undefined && entry.weekday !== dueDay) continue;
                 // A window rather than an exact minute match: this tick can be
                 // late or skipped entirely (timer drift, background throttling,
                 // the device sleeping), and an exact match would drop the
                 // reminder for good.
                 if (elapsed >= DELIVERY_WINDOW_MIN) continue;
 
-                const mark = `${dueDate} ${entry.time}`;
+                const mark = `${dueDate} ${reminderKey(entry)}`;
                 if (fired.current.has(mark)) continue;
                 fired.current.add(mark);
 
                 const options: NotificationOptions = {
-                    body: entry.body,
+                    body: reminderBody(entry, now),
                     icon: '/pwa-192x192.png',
-                    tag: `mora-reminder-${entry.time}`,
+                    tag: `mora-reminder-${reminderKey(entry)}`,
                     data: { url: entry.url },
                 };
                 // Prefer the service worker: a page-owned Notification is

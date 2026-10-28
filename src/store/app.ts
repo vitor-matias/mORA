@@ -7,11 +7,19 @@ import { daysApart, formatISODate } from '@/lib/format';
 export interface StreakData {
     days: number;
     lastCompletedDate: string | null;
+    /** Recent days prayed, ascending. Optional: older builds and snapshots
+        don't carry it, and completedDates() fills in their unbroken run. */
+    history?: string[];
 }
 
-export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+// liturgy_hours is the day (any Hour counts); the hour_* items are each Hour
+// on its own, so Resumo da Semana can show which were prayed. Hora Intermédia is one
+// item whether Tércia, Sexta or Noa.
+export const HOUR_STREAK_ITEMS = ['hour_oficio', 'hour_laudes', 'hour_intermedia', 'hour_vesperas', 'hour_completas'] as const;
 
-export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours'];
+export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours' | typeof HOUR_STREAK_ITEMS[number];
+
+export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours', ...HOUR_STREAK_ITEMS];
 
 export type Streaks = Record<StreakItem, StreakData>;
 
@@ -38,7 +46,7 @@ export function emptyStreak(): StreakData {
 }
 
 export function emptyStreaks(): Streaks {
-    return { rosary: emptyStreak(), liturgy: emptyStreak(), liturgy_hours: emptyStreak() };
+    return Object.fromEntries(STREAK_ITEMS.map((item) => [item, emptyStreak()])) as Streaks;
 }
 
 // A century of unbroken daily prayer. Past this the number is not a streak,
@@ -61,6 +69,25 @@ function isUsableStreak(value: unknown): value is StreakData {
     return lastCompletedDate <= formatISODate(new Date());
 }
 
+// Half a year of past weeks on Resumo da Semana. Every item full is about
+// 20 KB of snapshot, well inside NIP-44's 64 KB plaintext limit.
+const HISTORY_DAYS = 182;
+
+/** Every day this entry knows was prayed: its history plus the run its count
+    implies (a streak of 5 ending today means the last five days). */
+export function completedDates(streak: StreakData): string[] {
+    const today = formatISODate(new Date());
+    const dates = new Set((Array.isArray(streak.history) ? streak.history : [])
+        .filter((d) => typeof d === 'string' && ISO_DATE_RE.test(d) && d <= today));
+    if (streak.lastCompletedDate) {
+        const [y, m, d] = streak.lastCompletedDate.split('-').map(Number);
+        for (let i = 0; i < Math.min(streak.days, HISTORY_DAYS); i++) {
+            dates.add(formatISODate(new Date(y, m - 1, d - i)));
+        }
+    }
+    return [...dates].sort().slice(-HISTORY_DAYS);
+}
+
 /** Persisted state from an older build can predate a streak item, so an entry
     may simply be absent. */
 function localStreak(streaks: Streaks, item: StreakItem): StreakData {
@@ -69,6 +96,12 @@ function localStreak(streaks: Streaks, item: StreakItem): StreakData {
 }
 
 function mergeStreakEntry(local: StreakData, remote: StreakData): StreakData {
+    const { days, lastCompletedDate } = mergeStreakCount(local, remote);
+    const history = completedDates({ days: 0, lastCompletedDate: null, history: [...completedDates(local), ...completedDates(remote)] });
+    return { days, lastCompletedDate, history };
+}
+
+function mergeStreakCount(local: StreakData, remote: StreakData): StreakData {
     if (!remote.lastCompletedDate) return local;
     if (!local.lastCompletedDate) return remote;
     // Same day on both: whichever counted higher already accounts for the
@@ -108,7 +141,8 @@ export function streaksEqual(a: Streaks, b: Streaks): boolean {
     return STREAK_ITEMS.every((item) => {
         const x = localStreak(a, item);
         const y = localStreak(b, item);
-        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate;
+        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate
+            && completedDates(x).join() === completedDates(y).join();
     });
 }
 
@@ -476,6 +510,10 @@ interface AppState {
         key means that Hour is not being reminded. */
     hourReminders: Record<string, string>;
     setHourReminder: (hourId: string, time: string | null) => void;
+    /** Saturday-night summary of the prayed week. Opt-in, device-local like
+        the other reminders. */
+    weeklySummary: boolean;
+    setWeeklySummary: (on: boolean) => void;
     // True while this browser holds a server-registered Web Push
     // subscription; the in-app reminder timer stands down then.
     pushSubscribed: boolean;
@@ -582,6 +620,8 @@ export const useAppStore = create<AppState>()(
                 if (time) next[hourId] = time; else delete next[hourId];
                 return { hourReminders: next };
             }),
+            weeklySummary: false,
+            setWeeklySummary: (weeklySummary) => set({ weeklySummary }),
             pushSubscribed: false,
             setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',
@@ -634,7 +674,11 @@ export const useAppStore = create<AppState>()(
                 return {
                     streaks: {
                         ...state.streaks,
-                        [item]: { days: newDays, lastCompletedDate: userToday }
+                        [item]: {
+                            days: newDays,
+                            lastCompletedDate: userToday,
+                            history: completedDates({ ...currentStreak, history: [...(currentStreak.history ?? []), userToday] }),
+                        }
                     }
                 };
             }),

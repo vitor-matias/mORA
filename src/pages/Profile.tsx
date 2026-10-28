@@ -15,6 +15,8 @@ import { MyBadges } from "@/components/palavra/MyBadges";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
+import { reminderKey } from "@/lib/reminderSchedule";
+import { WEEKLY_SUMMARY } from "@/lib/week";
 
 /** Long enough to cover picking an hour then a minute, short enough that the
     registration still feels immediate. */
@@ -33,7 +35,7 @@ export default function Profile() {
     const nsec = useAuthStore(localNsec) ?? "";
     // The passkey vault predates the login record and speaks hex.
     const privkeyHex = useAuthStore(localPrivkeyHex);
-    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, weeklySummary, setWeeklySummary, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
     const tPalavra = useTranslations().palavra;
     // Per identity: the toggle reflects and sets this pubkey's own choice,
     // so a second account on the same browser starts from its own answer.
@@ -419,10 +421,11 @@ export default function Profile() {
 
     useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
 
-    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>) => {
+    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>, nextWeekly = weeklySummary) => {
         const times = [...new Set([
             ...(nextTime ? [nextTime] : []),
             ...Object.values(nextHours),
+            ...(nextWeekly ? [reminderKey(WEEKLY_SUMMARY)] : []),
         ])].sort();
 
         window.clearTimeout(syncTimerRef.current);
@@ -634,6 +637,32 @@ export default function Profile() {
                                 );
                             })}
                         </div>
+                    </div>
+
+                    {/* Weekly summary — opt-in, Saturday night, what Resumo da Semana shows. */}
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium">Resumo da Semana</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                Sábado às {WEEKLY_SUMMARY.time}, quantos dias rezaste a Missa e cada uma das Horas.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={weeklySummary}
+                            aria-label="Resumo da Semana"
+                            onClick={() => {
+                                setWeeklySummary(!weeklySummary);
+                                syncReminders(notificationTime, hourReminders, !weeklySummary);
+                            }}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${weeklySummary ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${weeklySummary ? 'translate-x-5' : 'translate-x-0'}`}
+                            />
+                        </button>
                     </div>
                 </div>
             </section>

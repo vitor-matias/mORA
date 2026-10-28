@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
+import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, CalendarCheck, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -94,6 +94,7 @@ export default function Home() {
     // Capuchinhos' own site rather than carried here.
     const exploreAreas: { path: string; href?: string; label: string; context: string; icon: typeof BookOpen }[] = [
         { path: "/biblia", href: "https://biblia.capuchinhos.org/", label: "Bíblia Sagrada", context: "Tradução da Difusora Bíblica", icon: Book },
+        { path: "/semana", label: "Resumo da Semana", context: "Missa e Horas rezadas, dia a dia", icon: CalendarCheck },
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];
@@ -259,28 +260,28 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Intentions: beside the day on desktop; on a phone it comes
-                after the Rezar tiles (below), so the tiles sit under the day. */}
-            <section className="hidden lg:flex relative z-10 surface rounded-3xl px-5 py-4 lg:col-span-2 flex-col">
+            {/* Intentions: beside the day on desktop, under it on a phone,
+                above the Rezar tiles either way. */}
+            <section className="flex relative z-10 surface rounded-3xl px-5 py-4 lg:col-span-2 flex-col">
                 {intentions}
             </section>
             </div>
 
             {/* The hub, as Bento tiles: two columns on a phone, three on
                 desktop. Missa is the wide feature tile, so the five Rezar
-                tiles fill 2-2-2 / 3-3 with no holes; Palavra is wide only on
-                the phone, to pair up the three Explorar tiles. Every tile
+                tiles fill 2-2-2 / 3-3 with no holes. The four Explorar tiles
+                fill 2-2 on the phone and one row of four on desktop. Every tile
                 carries its own state for today. */}
             <div className="relative z-10 space-y-3">
                 {[
-                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: null },
-                    { title: 'Explorar', items: exploreAreas, feature: null, wide: '/palavra' },
-                ].map(({ title, items, feature, wide }) => (
+                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: null, cols: 'lg:grid-cols-3' },
+                    { title: 'Explorar', items: exploreAreas, feature: null, wide: null, cols: 'lg:grid-cols-4' },
+                ].map(({ title, items, feature, wide, cols }) => (
                     <section key={title} className="space-y-3">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 pt-2">
                             {title}
                         </h2>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className={`grid grid-cols-2 ${cols} gap-3`}>
                         {items.map((area) => {
                             const href = 'href' in area ? area.href : undefined;
                             const body = (
@@ -313,11 +314,6 @@ export default function Home() {
                             );
                         })}
                         </div>
-                        {title === 'Rezar' && (
-                            <section className="lg:hidden surface rounded-3xl px-5 py-4 flex flex-col !mt-6">
-                                {intentions}
-                            </section>
-                        )}
                     </section>
                 ))}
             </div>

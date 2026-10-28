@@ -1,7 +1,8 @@
 // mORA push reminder Worker.
 //
 // HTTP API (called by the app, src/lib/push.ts):
-//   POST   /subscriptions  { subscription, time: "HH:MM", tz: "Europe/Lisbon" }
+//   POST   /subscriptions  { subscription, times: ["HH:MM" | "D@HH:MM"], tz: "Europe/Lisbon" }
+//   ("6@22:00" is due only on Saturdays, local time; 0 is Sunday.)
 //   DELETE /subscriptions  { endpoint }
 //
 // A cron trigger (every 5 min, wrangler.toml) walks the KV-stored
@@ -26,7 +27,7 @@ const CORS = {
 // matching and the in-app fallback's catch-up window from it — change both.
 const DELIVERY_WINDOW_MIN = 15;
 
-// Rosary reminder + the five canonical Hours, with room to spare.
+// Rosary reminder + the five canonical Hours + the weekly summary, with room to spare.
 const MAX_TIMES_PER_SUBSCRIPTION = 12;
 
 // Real values are ~200 / ~90 / ~25 characters. Capped so one anonymous POST
@@ -159,7 +160,8 @@ function dueTimes({ tz, times, lastSent }, now) {
     const due = [];
     for (const time of times) {
         if (typeof time !== 'string') continue;
-        const [h, m] = time.split(':').map(Number);
+        const [weekday, clock] = time.includes('@') ? time.split('@') : [null, time];
+        const [h, m] = clock.split(':').map(Number);
         const target = h * 60 + m;
 
         // Completas sits near midnight, so the delivery window has to wrap: a
@@ -173,6 +175,7 @@ function dueTimes({ tz, times, lastSent }, now) {
             dueDate = previousDate(local.date);
         }
         if (delta < 0 || delta >= DELIVERY_WINDOW_MIN) continue;
+        if (weekday !== null && new Date(`${dueDate}T00:00:00Z`).getUTCDay() !== Number(weekday)) continue;
         if (lastSent[time] === dueDate) continue;
         due.push({ time, dueDate });
     }
@@ -274,7 +277,7 @@ export default {
                 typeof p256dh !== 'string' || p256dh.length > MAX_KEY_LENGTH ||
                 typeof auth !== 'string' || auth.length > MAX_KEY_LENGTH ||
                 wanted.length === 0 || wanted.length > MAX_TIMES_PER_SUBSCRIPTION ||
-                !wanted.every((t) => typeof t === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(t)) ||
+                !wanted.every((t) => typeof t === 'string' && /^(?:[0-6]@)?([01]\d|2[0-3]):[0-5]\d$/.test(t)) ||
                 typeof tz !== 'string' || tz.length > 64 || !localParts(tz, new Date())
             ) {
                 return json(400, { error: 'invalid subscription payload' });

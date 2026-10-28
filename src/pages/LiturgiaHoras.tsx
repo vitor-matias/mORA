@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
-import { useAppStore, isCompletedToday } from "@/store/app";
+import { useAppStore, isCompletedToday, STREAK_ITEMS, type StreakItem } from "@/store/app";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { AutoScrollButton, AutoScrollSpeedRow, AutoScrollFab } from "@/components/AutoScroll";
 import { useAutoScroll } from "@/lib/useAutoScroll";
@@ -220,7 +220,6 @@ export default function LiturgiaHoras() {
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set([]));
 
     const { streaks, incrementStreak } = useAppStore();
-    const prayedToday = isCompletedToday(streaks.liturgy_hours);
 
     // ── Alternative offices (Próprio dos Santos / Ofício de Defuntos) ──
     // Default remains the API office; the user can switch to a saint
@@ -320,8 +319,10 @@ export default function LiturgiaHoras() {
         () => setSelectedDate(getDefaultHoursDate())
     );
 
-    const markAsPrayed = useCallback(async () => {
+    const markAsPrayed = useCallback(async (hour: string) => {
         incrementStreak('liturgy_hours');
+        const item = `hour_${hour}` as StreakItem;
+        if (STREAK_ITEMS.includes(item)) incrementStreak(item);
         try {
             const { publishStreakToNostr } = await import('@/lib/nostr');
             await publishStreakToNostr();
@@ -331,38 +332,6 @@ export default function LiturgiaHoras() {
             console.warn('Streak sync skipped:', error);
         }
     }, [incrementStreak]);
-
-    // Completion is automatic: reaching the end of the prayed hour counts the
-    // day (one per day, whatever hour). Requires real overflow so a short
-    // spinner/error page can't count; when the whole text fits the viewport,
-    // a dwell timer counts instead — the streak must stay earnable there.
-    const autoCompletedRef = useRef(false);
-    useEffect(() => {
-        // Browsing another day's office doesn't earn today's streak.
-        if (loading || !liturgy || prayedToday || !isToday) return;
-        autoCompletedRef.current = false;
-
-        const complete = () => {
-            if (autoCompletedRef.current) return;
-            autoCompletedRef.current = true;
-            markAsPrayed();
-        };
-        const onScroll = () => {
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (maxScroll > 0 && window.scrollY >= maxScroll - 2) complete();
-        };
-        const dwellTimer = window.setTimeout(() => {
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (maxScroll <= 0) complete();
-        }, 20000);
-
-        onScroll(); // scroll restoration may land already at the end
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => {
-            window.clearTimeout(dwellTimer);
-            window.removeEventListener('scroll', onScroll);
-        };
-    }, [loading, liturgy, prayedToday, isToday, markAsPrayed]);
 
     const canonicalHours = useMemo(() => {
         if (!liturgy?.memories || liturgy.memories.length === 0) return [];
@@ -389,6 +358,54 @@ export default function LiturgiaHoras() {
     const activeSubHour = userActiveSubHour ?? defaultSelection.subHour;
 
     const selectedMoment = canonicalHours.find(m => m.id === activeHour);
+    const hourStreak = activeHour ? streaks[`hour_${activeHour}` as StreakItem] : undefined;
+    const hourPrayedToday = !!hourStreak && isCompletedToday(hourStreak);
+
+    // Completion is automatic: reaching the end of the prayed hour counts the
+    // day and that Hour, once each per day. Requires real overflow so a short
+    // spinner/error page can't count; when the whole text fits the viewport,
+    // a dwell timer counts instead — the streak must stay earnable there.
+    const autoCompletedRef = useRef(false);
+    // The Hour the last run watched. Switching to another one while parked at
+    // the bottom of the last must not count it unread.
+    const watchedHourRef = useRef<string | null>(null);
+    useEffect(() => {
+        // Browsing another day's office doesn't earn today's streak.
+        if (loading || !liturgy || !activeHour || hourPrayedToday || !isToday) return;
+        autoCompletedRef.current = false;
+
+        const complete = () => {
+            if (autoCompletedRef.current) return;
+            autoCompletedRef.current = true;
+            markAsPrayed(activeHour);
+        };
+        const atEnd = () => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            return maxScroll > 0 && window.scrollY >= maxScroll - 2;
+        };
+        // Armed at once unless the Hour just changed, so scroll restoration
+        // landing at the end still counts. After a switch the reader has to
+        // have been somewhere other than the end first.
+        const switched = watchedHourRef.current !== null && watchedHourRef.current !== activeHour;
+        watchedHourRef.current = activeHour;
+        let armed = !switched || !atEnd();
+        const onScroll = () => {
+            if (!atEnd()) armed = true;
+            else if (armed) complete();
+        };
+        const dwellTimer = window.setTimeout(() => {
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (maxScroll <= 0) complete();
+        }, 20000);
+
+        onScroll(); // scroll restoration may land already at the end
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => {
+            window.clearTimeout(dwellTimer);
+            window.removeEventListener('scroll', onScroll);
+        };
+    }, [loading, liturgy, activeHour, hourPrayedToday, isToday, markAsPrayed]);
+
 
     // For Hora Intermédia, pick which sub-hour to show
     const displayParts = useMemo(() => {
@@ -913,9 +930,9 @@ export default function LiturgiaHoras() {
                             </div>
 
                             {/* Completion is automatic (reaching the end of the
-                                hour) — one per day, whatever hour was prayed.
-                                This confirms it happened. */}
-                            {prayedToday && (
+                                hour), recorded per Hour. This confirms this
+                                one was; the count is the day streak, any Hour. */}
+                            {hourPrayedToday && (
                                 <div className="mt-6 mb-2">
                                     <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-3xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />

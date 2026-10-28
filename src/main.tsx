@@ -20,6 +20,7 @@ import Palavra from './pages/Palavra'
 const Devocionario = lazy(() => import('./pages/Devocionario'))
 const Chaplets = lazy(() => import('./pages/Chaplets'))
 const Canticos = lazy(() => import('./pages/Canticos'))
+const Semana = lazy(() => import('./pages/Semana'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')!).render(
           {/* Same shape: the index and one chaplet share a route. */}
           <Route path="coroas/:chapletId?" element={<Chaplets />} />
           <Route path="canticos" element={<Canticos />} />
+          <Route path="semana" element={<Semana />} />
           <Route path="perfil" element={<Profile />} />
         </Route>
       </Routes>
