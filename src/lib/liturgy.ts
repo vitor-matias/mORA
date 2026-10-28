@@ -1,4 +1,5 @@
 import { fetchAgendaDays } from "@/lib/agendaNostr";
+import { formatISODate } from "@/lib/format";
 
 export interface LiturgyHourVerse {
     id: string;
@@ -33,7 +34,6 @@ export interface DailyLiturgy {
     /** The date the API says the Mass belongs to. Cached entries lacking it
         or mismatching `date` are treated as cache misses — see readLiturgyCache. */
     massDate?: string;
-    liturgicalColor: string;
     saintOfDay: string;
     htmlContent: string;
     memories: LiturgyMemory[];
@@ -45,12 +45,6 @@ export interface DailyLiturgy {
 // Only successful responses are cached — never the offline fallback.
 const LITURGY_CACHE_PREFIX = 'mora_liturgy_';
 
-function formatLocalDate(d: Date): string {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
 
 function readLiturgyCacheEntry(dateStr: string): DailyLiturgy | null {
     try {
@@ -76,21 +70,32 @@ function readLiturgyCache(dateStr: string): DailyLiturgy | null {
 function writeLiturgyCache(dateStr: string, data: DailyLiturgy): void {
     try {
         localStorage.setItem(LITURGY_CACHE_PREFIX + dateStr, JSON.stringify(data));
-        pruneLiturgyCache();
+        pruneLiturgyCache(dateStr);
     } catch (e) {
         console.warn('Failed to cache liturgy:', e);
     }
 }
 
-// Drop cached entries for past dates so storage stays bounded.
-function pruneLiturgyCache(): void {
+// Keep storage bounded: drop past dates and anything more than a week ahead.
+// Yesterday is kept: until 02:00 its Completas is still the office on offer
+// (getDefaultHoursDate), and it has to open offline too. Far-future days used
+// to stay until their date passed, ~85K characters each — browsing a couple
+// of weeks ahead filled iOS's ~5 MB quota, and then the app's own settings
+// and streaks stopped saving. The day just written stays, whatever its date.
+function pruneLiturgyCache(justWritten: string): void {
     try {
-        const todayStr = formatLocalDate(new Date());
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const keepFrom = formatISODate(yesterday);
+        const weekAhead = new Date();
+        weekAhead.setDate(weekAhead.getDate() + 7);
+        const keepUntil = formatISODate(weekAhead);
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
             if (!key || !key.startsWith(LITURGY_CACHE_PREFIX)) continue;
             const dateStr = key.slice(LITURGY_CACHE_PREFIX.length);
-            if (dateStr < todayStr) localStorage.removeItem(key);
+            if (dateStr === justWritten) continue;
+            if (dateStr < keepFrom || dateStr > keepUntil) localStorage.removeItem(key);
         }
     } catch {
         // ignore storage access errors
@@ -165,6 +170,11 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
         }
 
         const json = await response.json();
+        // GraphQL reports a failed resolver with HTTP 200 and `errors`; read
+        // as "no data" that showed "no Mass today" instead of an outage.
+        if (json.errors?.length) {
+            throw new Error(`Liturgy API error: ${json.errors[0]?.message ?? 'unknown'}`);
+        }
         const data = json.data?.liturgyWithMemories;
 
         if (!data || !data.masses || data.masses.length === 0) {
@@ -187,17 +197,9 @@ export async function fetchDailyLiturgy(dateStr: string): Promise<DailyLiturgy |
             throw new Error(`No Mass dated ${dateStr} in liturgy response`);
         }
 
-        // Try to infer color from title roughly
-        let color = 'Verde';
-        const titleLower = mass.title.toLowerCase();
-        if (titleLower.includes('quaresma') || titleLower.includes('advento')) color = 'Roxo';
-        else if (titleLower.includes('mártir') || titleLower.includes('espírito santo')) color = 'Vermelho';
-        else if (titleLower.includes('solenidade') || titleLower.includes('festa')) color = 'Branco';
-
         const result: DailyLiturgy = {
             date: dateStr,
             massDate: mass.date,
-            liturgicalColor: color,
             saintOfDay: mass.title,
             htmlContent: mass.text,
             memories: data.memories || [],
@@ -234,7 +236,7 @@ export async function preloadUpcomingLiturgy(days = 5): Promise<void> {
     for (let i = 0; i <= days; i++) {
         const d = new Date(base);
         d.setDate(base.getDate() + i);
-        const dateStr = formatLocalDate(d);
+        const dateStr = formatISODate(d);
 
         if (readLiturgyCache(dateStr)) continue;
         try {
@@ -307,7 +309,7 @@ function pruneDayCache(): void {
     try {
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - KEEP_PAST_DAYS);
-        const oldest = formatLocalDate(cutoff);
+        const oldest = formatISODate(cutoff);
         for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
             if (!key || !key.startsWith(DAY_CACHE_PREFIX)) continue;
@@ -335,7 +337,7 @@ const dayMemo = new Map<string, LiturgicalDayInfoValue>();
  */
 export async function fetchLiturgicalDays(dates: string[]): Promise<Map<string, LiturgicalDayInfoValue>> {
     const wanted = [...new Set(dates)];
-    const todayStr = formatLocalDate(new Date());
+    const todayStr = formatISODate(new Date());
     const days = new Map<string, LiturgicalDayInfoValue>();
 
     const missing: string[] = [];
@@ -383,6 +385,6 @@ export async function fetchLiturgicalDays(dates: string[]): Promise<Map<string, 
 }
 
 export async function fetchLiturgicalColorFromCalendar(date: Date): Promise<LiturgicalDayInfoValue | null> {
-    const days = await fetchLiturgicalDays([formatLocalDate(date)]);
-    return days.get(formatLocalDate(date)) ?? null;
+    const days = await fetchLiturgicalDays([formatISODate(date)]);
+    return days.get(formatISODate(date)) ?? null;
 }

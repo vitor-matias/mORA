@@ -2,10 +2,19 @@
 
 Delivers the daily prayer reminder as real Web Push — it reaches the user
 even with the app closed, unlike the in-app fallback timer. Runs on
-Cloudflare Workers (free tier is plenty): subscriptions live in KV, a cron
-trigger every 5 minutes sends a payload-less, VAPID-authenticated push to
-everyone whose chosen local time has just passed, and the app's service
-worker ([src/sw.ts](../../src/sw.ts)) renders the notification text.
+Cloudflare Workers: subscriptions live in KV, a cron trigger every 5 minutes
+sends a payload-less, VAPID-authenticated push to everyone whose chosen local
+time has just passed, and the app's service worker
+([src/sw.ts](../../src/sw.ts)) renders the notification text.
+
+Each record's schedule is copied into KV list metadata, so a tick costs one
+`list` per 1,000 subscribers and a `get` only for those due right now. The
+limit on the free tier is writes: every reminder sent records its send mark,
+and the free tier allows 1,000 writes a day — about 170 users with all six
+reminders on. The free plan also caps each run at 50 outgoing requests, and
+every push is one: past about 50 reminders due in the same 5 minutes (a popular
+time like 07:00), the rest fail and are retried only while their 15-minute
+window lasts. Past either limit, the paid plan.
 
 ## Deploy
 

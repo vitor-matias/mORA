@@ -23,10 +23,10 @@ import { pathToFileURL } from 'node:url';
 import DEFAULT_RELAYS from '../../src/relays.json' with { type: 'json' };
 
 import WebSocket from 'ws';
-import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
+import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
-import { sha256 } from '@noble/hashes/sha2';
-import { utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { utf8ToBytes } from '@noble/hashes/utils.js';
 import { answerHash, normalizeWord, obfuscateAnswer } from './palavra.js';
 import { VERSES } from './verses.js';
 
@@ -49,6 +49,9 @@ const RELAY_TIMEOUT_MS = 10_000;
     history, and a process that has been off for months probably shouldn't
     silently backfill them either. */
 const MAX_GAP_DAYS = 60;
+// After a cycle that reached no relay, watch mode tries again this soon
+// rather than at the next midnight, which left the day without a puzzle.
+const RETRY_MS = 10 * 60_000;
 
 /** A little after midnight, so a slightly fast clock can't ask for a date the
     publisher itself considers to be in the future. */
@@ -174,6 +177,23 @@ function loadSecretKey() {
     return decoded.data;
 }
 
+/**
+ * The puzzle date an event from a relay proves is published, or null.
+ *
+ * Checked here, not taken on the relay's word: this socket is raw, so nothing
+ * else verifies what comes back. One hostile or buggy relay answering with an
+ * unsigned event tagged today would otherwise mark the day as done, and it
+ * would then be published nowhere.
+ */
+export function publishedDate(event, pubkey) {
+    if (!event || event.kind !== KIND || event.pubkey !== pubkey || !verifyEvent(event)) return null;
+    const date = event.tags?.find((t) => t[0] === 'date')?.[1];
+    // A result this identity published is the same kind, topic and date; only
+    // the puzzle's own address says it is the puzzle the app will ask for.
+    const d = event.tags?.find((t) => t[0] === 'd')?.[1];
+    return date && d === puzzleDTag(date) ? date : null;
+}
+
 /** Which puzzle dates this publisher already has on a relay. */
 function publishedDatesOn(url, pubkey, since) {
     return new Promise((resolve) => {
@@ -195,7 +215,7 @@ function publishedDatesOn(url, pubkey, since) {
             try {
                 const msg = JSON.parse(raw.toString());
                 if (msg[0] === 'EVENT') {
-                    const date = msg[2]?.tags?.find((t) => t[0] === 'date')?.[1];
+                    const date = publishedDate(msg[2], pubkey);
                     if (date) found.add(date);
                 }
                 if (msg[0] === 'EOSE') finish();
@@ -297,8 +317,13 @@ async function main() {
         // itself rather than leaving a day with no puzzle.
         console.log('watch mode — publishing on each 00:00 UTC rollover\n');
         for (;;) {
+            let ok = false;
+            // fillGap reads which days are missing once, when it starts: a
+            // cycle that crosses midnight never saw the new day, and waiting
+            // for the next midnight would leave it without a puzzle all day.
+            const startedOn = utcToday();
             try {
-                await fillGap(secretKey, pubkey);
+                ok = await fillGap(secretKey, pubkey);
             } catch (error) {
                 // Never let a bad night kill the process: the next wake retries,
                 // and the gap check will still see the day as missing.
@@ -306,7 +331,9 @@ async function main() {
             }
             // Recomputed from the clock every time rather than accumulated, so
             // drift and suspend-resume can't walk the schedule off midnight.
-            const wakeAt = nextWakeMs() + AFTER_MIDNIGHT_MS;
+            const nextMidnight = nextWakeMs() + AFTER_MIDNIGHT_MS;
+            const wakeAt = utcToday() !== startedOn ? Date.now()
+                : ok ? nextMidnight : Math.min(nextMidnight, Date.now() + RETRY_MS);
             console.log(`next run ${new Date(wakeAt).toISOString()}\n`);
             await new Promise((resolve) => setTimeout(resolve, Math.max(1000, wakeAt - Date.now())));
         }

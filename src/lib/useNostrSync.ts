@@ -36,6 +36,13 @@ export function useNostrSync() {
     const isLocked = useAuthStore((s) => s.isLocked);
     const shareStreaks = useAppStore((s) => s.shareStreaks);
 
+    // Installs from before the owner was recorded: whoever is signed in now
+    // owns this device's streaks and games, so a later switch starts clean.
+    useEffect(() => {
+        const app = useAppStore.getState();
+        if (pubkey && !app.localDataOwner) app.setLocalDataOwner(pubkey);
+    }, [pubkey]);
+
     useEffect(() => {
         // A protected key that hasn't been unlocked this session can't sign or
         // decrypt anything. Prayers still count locally; syncing resumes on

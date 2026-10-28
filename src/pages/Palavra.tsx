@@ -246,8 +246,10 @@ export default function Palavra() {
         if (scope !== 'daily' || guessCount === 0 || over) return;
         const timer = window.setTimeout(async () => {
             try {
-                const { publishPalavraStateToNostr } = await import('@/lib/palavra/nostr');
-                await publishPalavraStateToNostr();
+                // Merged with the identity's log first: publishing this
+                // device's alone replaced games another device had added.
+                const { syncPalavraWithNostr } = await import('@/lib/palavra/nostr');
+                await syncPalavraWithNostr();
             } catch (error) {
                 // The game is recorded locally either way; the next sync
                 // carries it.
@@ -290,10 +292,10 @@ export default function Palavra() {
         // loaded all leave the flag clear for the foreground catch-up to
         // retry. allSettled because neither half should cost the other.
         try {
-            const { publishPalavraStateToNostr, publishPalavraResult } = await import('@/lib/palavra/nostr');
+            const { syncPalavraWithNostr, publishPalavraResult } = await import('@/lib/palavra/nostr');
             const record = usePalavraStore.getState().plays[challenge.date];
             await Promise.allSettled([
-                publishPalavraStateToNostr(),
+                syncPalavraWithNostr(),
                 record ? publishPalavraResult(challenge.date, record, pubkey) : Promise.resolve(false),
             ]);
         } catch (error) {

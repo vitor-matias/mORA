@@ -24,8 +24,12 @@
        top padding everywhere finally does its job. The classic cost of this
        value — white clock and icons whatever the page — is gone: iOS 26
        picks the status bar's text colour from what is under it, black on the
-       light page and white on the dark one. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+       light page and white on the dark one.
+
+       maximum-scale/user-scalable stop pinch zoom where they are honoured;
+       iOS Safari ignores them, so index.css also sets touch-action on html.
+       Text size is the app's own setting (Perfil), not the page zoom. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#FAF9F6" />
   <title>mORA</title>

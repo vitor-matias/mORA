@@ -9,25 +9,42 @@ import { useTranslations } from "@/lib/i18n";
 import { getMysteryForToday, generateRosarySequence, mysteries, MYSTERY_LABELS } from "@/lib/rosary";
 import { formatISODate } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
+import { useDayRollover } from "@/lib/useDayRollover";
 import { Sheet, type SheetHandle } from "@/components/Sheet";
+
+function currentDay() {
+    const now = new Date();
+    return { date: formatISODate(now), mystery: getMysteryForToday(now) };
+}
 
 export default function Rosary() {
     const navigate = useNavigate();
     const { rosaryMode, setRosaryMode, setRosarySession, streaks, incrementStreak, setBottomBarYielded } = useAppStore();
     const t = useTranslations().rosary;
 
-    const todayStr = formatISODate(new Date());
-    const todayMysteryClass = getMysteryForToday();
+    // The day, and so the mysteries, are fixed once praying has begun. Read
+    // on every render, a bead tap after midnight rebuilt the sequence as the
+    // next day's mysteries at the same step — a rosary begun Sorrowful
+    // finished mid-way through the Glorious. Before the first bead they are
+    // re-read, so a page left open overnight starts with today's.
+    const [day, setDay] = useState(currentDay);
+    const { date: todayStr, mystery: todayMysteryClass } = day;
 
     // Resume an unfinished session from today (same mode); otherwise start fresh.
     const [currentStepIndex, setCurrentStepIndex] = useState(() => {
         const session = useAppStore.getState().rosarySession;
-        if (session && session.date === formatISODate(new Date()) && session.mode === useAppStore.getState().rosaryMode) {
+        if (session && session.date === todayStr && session.mode === useAppStore.getState().rosaryMode) {
             return session.step;
         }
         return 0;
     });
     const [showFinish, setShowFinish] = useState(false);
+
+    // Back in the foreground on a new day, before the first bead.
+    useDayRollover(
+        () => formatISODate(new Date()),
+        () => { if (currentStepIndex === 0) setDay(currentDay()); },
+    );
     const finishSheet = useRef<SheetHandle>(null);
 
     const sequence = useMemo(() => {
@@ -70,6 +87,7 @@ export default function Rosary() {
     const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
 
     const handleNext = () => {
+        if (currentStepIndex === 0) setDay(currentDay());
         if (currentStepIndex < sequence.length - 1) {
             // A bead under the thumb; two when this closes a decade — the
             // Glória (bead 11) is its last step.
@@ -88,12 +106,14 @@ export default function Rosary() {
     };
 
     const handleRestart = () => {
+        setDay(currentDay());
         setDirection(null);
         setCurrentStepIndex(0);
         setRosarySession(null);
     };
 
     const changeMode = (mode: RosaryBeadMode) => {
+        setDay(currentDay());
         setRosaryMode(mode);
         setDirection(null);
         setCurrentStepIndex(0);

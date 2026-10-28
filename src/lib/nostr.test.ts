@@ -207,6 +207,22 @@ describe('publishNostrProfile', () => {
         expect(relayPublish).not.toHaveBeenCalled();
     });
 
+    // The real pool never rejects: a relay that times out just goes quiet,
+    // and that used to read as "no profile yet".
+    it('refuses to publish when the relays time out without answering', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        relayQuery.mockResolvedValue([]);
+        for (const url of TEST_RELAYS) silentRelays.add(url);
+        const { publishNostrProfile } = await import('./nostr');
+
+        try {
+            await expect(publishNostrProfile({ name: 'New' })).rejects.toThrow();
+            expect(relayPublish).not.toHaveBeenCalled();
+        } finally {
+            silentRelays.clear();
+        }
+    });
+
     it('refuses when the published profile is not valid JSON', async () => {
         vi.spyOn(console, 'warn').mockImplementation(() => {});
         published('not json at all');

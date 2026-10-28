@@ -3,6 +3,7 @@ import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
+import { useAutoUnlock } from "@/lib/useAutoUnlock";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
@@ -59,6 +60,10 @@ export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
+    // The first path segment, so the error boundary below starts fresh in
+    // another section but not when a prayer opens inside the Devocionário.
+    const section = useLocation().pathname.split('/')[1];
+    useAutoUnlock();
     // Badges are awarded on a relay, where nothing would tell the person they
     // won one. Announced app-wide rather than from the Palavra page: the award
     // lands whenever it lands, and hearing about it should not depend on being
@@ -232,8 +237,9 @@ export function Layout() {
                     a route can be missing for a beat — or fail to arrive at
                     all. Suspending and catching here rather than around the
                     router keeps the nav and the day's theme on screen either
-                    way. */}
-                <ChunkBoundary>
+                    way. Keyed by section: one page that failed to load must
+                    not leave every other tab showing the error. */}
+                <ChunkBoundary key={section}>
                     <Suspense fallback={null}>
                         <Outlet />
                     </Suspense>

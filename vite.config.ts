@@ -17,6 +17,12 @@ export default defineConfig(({ command }) => ({
       srcDir: 'src',
       filename: 'sw.ts',
       includeAssets: ['apple-touch-icon.png', 'favicon.svg'],
+      // The breviary JSON (public/lh, ~830 KB) is read at runtime for saints'
+      // offices and the commons. The default glob only takes js/css/html, so
+      // without this those offices failed offline.
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html}', 'lh/*.json'],
+      },
       manifest: {
         name: 'mORA — Oração diária',
         short_name: 'mORA',

@@ -60,10 +60,11 @@ export { PALAVRA_TOPIC, resultDTag };
 // arrangement the prayer-streak sync uses, and for the same reason: sign-in
 // forces a sync that can land while a foreground one is still in flight.
 let inFlightSync: Promise<void> | null = null;
+let queuedSync: Promise<void> | null = null;
 
 // ── Private state ────────────────────────────────────────────────────────
 
-export async function publishPalavraStateToNostr(): Promise<void> {
+async function publishPalavraStateToNostr(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
     const state = usePalavraStore.getState();
@@ -82,7 +83,16 @@ export async function publishPalavraStateToNostr(): Promise<void> {
  * which is what lets it run on every foreground.
  */
 export function syncPalavraWithNostr(): Promise<void> {
-    inFlightSync ??= doSync().finally(() => { inFlightSync = null; });
+    // A run in flight may have read the store before the guess that prompted
+    // this call, so one more run follows it rather than sharing it.
+    if (inFlightSync) {
+        queuedSync ??= inFlightSync.catch(() => {}).then(() => {
+            queuedSync = null;
+            return syncPalavraWithNostr();
+        });
+        return queuedSync;
+    }
+    inFlightSync = doSync().finally(() => { inFlightSync = null; });
     return inFlightSync;
 }
 

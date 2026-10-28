@@ -12,8 +12,6 @@ import {
 /** What a signer is handed: an event with everything but the signature. */
 export type EventTemplate = Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>;
 
-export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
-
 // NIP-78 "Application-specific Data": addressable event, replaced per d-tag.
 // (30000 would collide with NIP-51 follow sets.)
 export const KIND_APP_STATE = 30078;
@@ -212,7 +210,25 @@ export async function getSigner(): Promise<NostrSigner | null> {
     }
 }
 
+// One prompt for any number of signatures asked for at once.
+let unlocking: Promise<void> | null = null;
+
+/** A protected key still locked asks for its passkey at the moment something
+    has to be signed, rather than failing. Only signing does this: encrypted
+    backups go through getSigner and skip while locked, so background sync
+    never puts up a prompt nobody asked for. A cancelled prompt rejects. */
+export async function unlockIfNeeded(): Promise<void> {
+    const { protectedKey, isLocked, unlockWithKey } = useAuthStore.getState();
+    if (!protectedKey || !isLocked) return;
+    unlocking ??= import('@/lib/keyVault')
+        .then(({ unlockKey }) => unlockKey(protectedKey))
+        .then(unlockWithKey)
+        .finally(() => { unlocking = null; });
+    await unlocking;
+}
+
 export async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
+    await unlockIfNeeded();
     const signer = await getSigner();
     if (!signer) throw new Error('No method available to sign the event');
     return signer.signEvent(baseEvent);
@@ -247,17 +263,18 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 async function fetchRawProfile(
     pubkey: string,
 ): Promise<{ content: Record<string, unknown> } | null> {
-    let events: NostrEvent[];
-    try {
-        events = await pool.query(
-            [{ kinds: [0], authors: [pubkey], limit: 1 }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
-        );
-    } catch (error) {
-        console.warn('Could not read the current profile.', error);
+    // queryComplete, not pool.query: the pool never throws — a timeout comes
+    // back as an empty answer — so a failed read used to look like "no
+    // profile yet" and the edits were published alone.
+    const { events, answered, asked } = await queryComplete(
+        [{ kinds: [0], authors: [pubkey], limit: 1 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    if (answered * 2 <= asked) {
+        console.warn(`Only ${answered} of ${asked} relays answered for the profile; refusing to replace it.`);
         return null;
     }
-    const newest = events.sort((a, b) => b.created_at - a.created_at)[0];
+    const newest = newestEvent(matching(events, { kind: 0, author: pubkey }));
     if (!newest) return { content: {} };
     try {
         const parsed = JSON.parse(newest.content) as unknown;

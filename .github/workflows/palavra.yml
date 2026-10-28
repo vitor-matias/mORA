@@ -79,5 +79,8 @@ jobs:
           if [ -n "$PUBLISH_DATE" ]; then
             node publish.js "$PUBLISH_DATE"
           else
-            node publish.js --backfill 3
+            # The whole window the gap check allows, at the same cost per run:
+            # after a longer outage (or the schedule being switched off), a
+            # 3-day window left the older days missing for good.
+            node publish.js --backfill 60
           fi

@@ -21,6 +21,9 @@
      scrollbar-gutter: stable, which some engines ignore on the root. */
   html {
     overflow-y: scroll;
+    /* No pinch zoom — iOS ignores user-scalable=no in the viewport meta, but
+       not a touch-action that leaves pinch-zoom out. Scrolling is unaffected. */
+    touch-action: pan-x pan-y;
     /* The page background lives on the root element, not only on Layout's
        wrapper: with viewport-fit=cover the strip under the status bar and the
        overscroll area paint from here, and left at the UA default they would

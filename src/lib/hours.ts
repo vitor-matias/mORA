@@ -26,6 +26,19 @@ export const CANONICAL_HOURS: CanonicalHour[] = [
     { id: 'completas', label: 'Completas', defaultTime: '21:30' },
 ];
 
+/**
+ * The day whose office the user most likely wants right now. Until 02:00 the
+ * hour on offer is still Completas (see getHourForTime), and that is the
+ * previous day's night prayer — Saturday night's is "Compl. dep. Vésp. I" of
+ * Sunday, listed under Saturday — so the date stays on yesterday until then.
+ */
+export function getDefaultHoursDate(now: Date = new Date()): Date {
+    if (now.getHours() >= 2) return now;
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    return yesterday;
+}
+
 export function getHourForTime(now: Date = new Date()): HourSelection {
     const h = now.getHours();
     if (h >= 6 && h < 9) return { id: 'laudes', subHour: null, label: 'Laudes' };
