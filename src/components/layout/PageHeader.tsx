@@ -9,8 +9,9 @@ import { ChevronRight } from "lucide-react";
 const TITLE_SCALE = 20 / 30;
 const SUBTITLE_SCALE = 12 / 14;
 const ORB_SCALE = 32 / 40;
-// pb-3 — the collapsed bar's bottom padding.
-const COLLAPSED_PADDING_BOTTOM = 12;
+// pb-3 — the collapsed bar's bottom padding, in rem: the text-size setting
+// moves the root font size, so a px constant here would drift from the CSS.
+const COLLAPSED_PADDING_BOTTOM_REM = 0.75;
 // Scroll distance over which the title collapses, when the header's own
 // ride up is shorter than this (in the installed iOS app it is zero).
 const MIN_COLLAPSE_DISTANCE = 48;
@@ -175,9 +176,10 @@ export function PageHeader({
             const style = getComputedStyle(header);
             const ride = -parseFloat(style.top) || 0;
             const paddingBottom = parseFloat(style.paddingBottom) || 0;
+            const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
             const rowShift = R - R2;
             collapseDistance.current = Math.max(MIN_COLLAPSE_DISTANCE, ride);
-            barShift.current = rowShift + paddingBottom - COLLAPSED_PADDING_BOTTOM;
+            barShift.current = rowShift + paddingBottom - COLLAPSED_PADDING_BOTTOM_REM * rootPx;
 
             const px = (n: number) => `${n.toFixed(2)}px`;
             header.style.setProperty('--orb-y', px(centre(R2, O2) - centre(R, O)));

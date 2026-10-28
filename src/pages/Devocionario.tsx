@@ -310,7 +310,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                 <h2 className="text-2xl lg:text-3xl font-bold tracking-tight page-title leading-tight">
                     {prayer.title}
                 </h2>
-                <div className="flex items-center gap-1 shrink-0 -mt-1">
+                <div className="flex items-center shrink-0 -my-2">
                     <button
                         type="button"
                         onClick={share}
@@ -319,7 +319,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                         aria-label={ticked
                             ? (canShare ? 'Oração partilhada' : 'Oração copiada')
                             : (canShare ? 'Partilhar oração' : 'Copiar oração')}
-                        className="p-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full text-zinc-500 dark:text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
                         {ticked
                             ? <Check size={18} className="text-liturgy-700 dark:text-liturgy-400" />
@@ -330,7 +330,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                         onClick={onToggleFavourite}
                         aria-pressed={isFavourite}
                         aria-label={isFavourite ? 'Remover das favoritas' : 'Guardar nas favoritas'}
-                        className={`p-2 rounded-full transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                        className={`min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                             isFavourite
                                 ? 'text-liturgy-700 dark:text-liturgy-400'
                                 : 'text-zinc-500 hover:text-liturgy-600 dark:hover:text-liturgy-400'

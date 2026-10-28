@@ -388,14 +388,20 @@ export function migrateScrollSpeed(stored: unknown, version: number): AutoScroll
     return SCROLL_LABELS.includes(stored as AutoScrollSpeed) ? stored as AutoScrollSpeed : DEFAULT_SCROLL_SPEED;
 }
 
-// Single source of truth for the content (prayer/reading) text scale.
-// Each step pairs a reading size (px) with a line-height tuned for it.
-// Consumed by Layout (applies the CSS variables) and Profile (size picker preview).
-export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: number }> = {
-    small: { size: 18, lineHeight: 1.7 },
-    medium: { size: 21, lineHeight: 1.65 },
-    large: { size: 26, lineHeight: 1.6 },
-    xlarge: { size: 32, lineHeight: 1.5 },
+// Single source of truth for the text scale.
+// Each step pairs a reading size (px) with a line-height tuned for it, and an
+// interface scale: the root font size as a percentage of the reader's own
+// default, so every rem-sized label, button and gap grows with it. Pinch zoom
+// is off, so this setting is the only way to enlarge the interface text. It
+// never goes below 100% — the small step is for denser readings, not for
+// smaller labels. index.html applies the same percentages before first
+// paint; keep the two in step.
+// Consumed by Layout (applies the CSS variables) and Profile (size picker).
+export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: number; interfacePercent: number; label: string }> = {
+    small: { size: 18, lineHeight: 1.7, interfacePercent: 100, label: 'pequeno' },
+    medium: { size: 21, lineHeight: 1.65, interfacePercent: 100, label: 'médio' },
+    large: { size: 26, lineHeight: 1.6, interfacePercent: 112.5, label: 'grande' },
+    xlarge: { size: 32, lineHeight: 1.5, interfacePercent: 125, label: 'muito grande' },
 };
 
 interface AppState {

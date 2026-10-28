@@ -122,7 +122,7 @@ export function Leagues({
                                 type="button"
                                 onClick={() => setSelected(selected === league.coord ? null : league.coord)}
                                 aria-expanded={selected === league.coord}
-                                className="flex-1 min-w-0 flex items-center gap-2 text-left text-sm font-semibold"
+                                className="flex-1 min-w-0 flex items-center gap-2 -my-3 py-3 text-left text-sm font-semibold"
                             >
                                 <Users size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                                 <span className="truncate">{league.name}</span>
@@ -131,7 +131,7 @@ export function Leagues({
                                 type="button"
                                 onClick={() => copyInvite(league)}
                                 aria-label={t.copyInvite(league.name)}
-                                className="shrink-0 p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                className="pressable pressable-small shrink-0 -my-2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 {copied === league.coord
                                     ? <Check size={15} aria-hidden="true" />
@@ -146,7 +146,7 @@ export function Leagues({
                                     if (selected === league.coord) setSelected(null);
                                 })}
                                 aria-label={t.leaveLeague(league.name)}
-                                className="shrink-0 p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                className="pressable pressable-small shrink-0 -my-2 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 <LogOut size={15} aria-hidden="true" />
                             </button>

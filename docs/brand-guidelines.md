@@ -139,18 +139,20 @@ One sans for everything around the prayer, one serif for the prayer itself. The 
 | Card title | `text-lg` | 18px | 600–700 | |
 | Body | `text-sm` / `text-base` | 14–16px | 400–500 | |
 | Small caps label | `text-xs` uppercase | 12px | 700 | 0.1em tracking, accent colour |
-| Tab label | `text-[0.65rem]` | 10.4px | 500 | The floor. One label in Horas is 0.6rem (9.6px) and should come up to it |
+| Tab label | `text-[0.65rem]` | 10.4px | 500 | The floor; nothing goes smaller |
 
 ### Reading scale (user-chosen in Perfil)
 
-Each option is shown as an "A" drawn at that size (`CONTENT_FONT_SCALE` in `src/store/app.ts`).
+Each option is shown as an "A" drawn at that size (`CONTENT_FONT_SCALE` in `src/store/app.ts`). The two largest steps also scale the whole interface through the root font size; that is the only way to enlarge it, since pinch zoom is off.
 
-| Setting | Size | Line height |
-|---------|------|-------------|
-| `small` | 18px | 1.70 |
-| `medium` (default) | 21px | 1.65 |
-| `large` | 26px | 1.60 |
-| `xlarge` | 32px | 1.50 |
+| Setting | Reading size | Line height | Interface |
+|---------|------|-------------|-----------|
+| Pequeno | 18px | 1.70 | 100% |
+| Médio (default) | 21px | 1.65 | 100% |
+| Grande | 26px | 1.60 | 112.5% |
+| Muito grande | 32px | 1.50 | 125% |
+
+Touch targets are fixed at 44px and don't grow with the interface.
 
 Reading text is ragged right with no hyphenation (most of it is verse), uses old-style figures (`onum`) and `text-wrap: pretty`. Labels inside a reading (Oração coleta, Leitura I) switch to Inter small caps so the prayer stays the only serif on the page.
 

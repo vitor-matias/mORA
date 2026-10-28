@@ -531,7 +531,7 @@ export default function Profile() {
                                 <button
                                     key={sz}
                                     onClick={() => setFontSize(sz)}
-                                    aria-label={`Tamanho ${sz}`}
+                                    aria-label={`Tamanho ${CONTENT_FONT_SCALE[sz].label}`}
                                     aria-pressed={fontSize === sz}
                                     className={`flex-1 py-3 px-3 rounded-xl flex items-center justify-center transition-colors ${fontSize === sz
                                         ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'

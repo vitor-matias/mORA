@@ -614,19 +614,22 @@ export default function LiturgiaHoras() {
 
                             {/* Mobile: horizontal hour buttons — icon + label, so
                                 first-time users don't have to decode pictograms */}
-                            <div className="lg:hidden flex justify-center gap-1.5 pb-1 shrink-0">
+                            <div className="lg:hidden flex justify-center gap-1 pb-1 shrink-0">
                                 {canonicalHours.map(moment => (
                                     <button
                                         key={moment.id}
                                         onClick={() => selectHour(moment.id)} aria-label={moment.label}
                                         aria-pressed={activeHour === moment.id}
-                                        className={`pressable pressable-small flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl ${activeHour === moment.id
+                                        className={`pressable pressable-small flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-0.5 rounded-2xl ${activeHour === moment.id
                                             ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
                                             : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
                                         <moment.icon size={20} strokeWidth={activeHour === moment.id ? 2.4 : 1.8} aria-hidden="true" />
-                                        <span className="text-[0.6rem] font-medium leading-none truncate max-w-full">{moment.shortLabel}</span>
+                                        {/* shortcut: capped at 11px so "Completas" fits a fifth of a
+                                            375px phone at every text size; give the row more width
+                                            (or two rows) if the labels must grow further. */}
+                                        <span className="text-[min(0.65rem,11px)] font-medium leading-none truncate max-w-full">{moment.shortLabel}</span>
                                     </button>
                                 ))}
                             </div>

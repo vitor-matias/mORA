@@ -75,7 +75,7 @@ export function BadgeAward({
                     type="button"
                     onClick={close}
                     aria-label={t.badgeAwardClose}
-                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    className="pressable pressable-small shrink-0 -m-3 p-3 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
                     <X size={20} />
                 </button>
