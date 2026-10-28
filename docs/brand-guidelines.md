@@ -192,7 +192,7 @@ Inter 400–800 and Lora 400–600 (plus italics 400, 500) come from Google Font
 
 ### Surfaces
 
-- Bento: white tiles of different sizes on the grey page. On Home, Missa is the tall tile and Palavra the wide one, and every tile shows its own state for today (the next Hour, the day's mysteries, the Palavra streak).
+- Bento: white tiles of different sizes on the grey page. On Home, Missa is the wide feature tile (two columns on a phone and on desktop, so the five Rezar tiles fill 2-2-2 / 3-3 with no holes), Palavra is wide only on the phone, and every tile shows its own state for today (the next Hour, the day's mysteries, the Palavra streak).
 - Flat. Tiles are opaque with a hairline and at most a 2px shadow in light mode, none in dark.
 - No cards inside cards: the readings sit on the page, not in a tile, because Horas nests its own cards inside them.
 - Anything the page scrolls under is frosted, not opaque: the top bar, the tab bar, the prayer action rail. The reading should pass beneath, not be cut off.
