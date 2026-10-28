@@ -269,19 +269,19 @@ export default function Home() {
 
             {/* The hub, as Bento tiles: two columns on a phone, three on
                 desktop. Missa is the wide feature tile, so the five Rezar
-                tiles fill 2-2-2 / 3-3 with no holes; Palavra is wide only on
-                the phone, to pair up the three Explorar tiles. Every tile
+                tiles fill 2-2-2 / 3-3 with no holes. The four Explorar tiles
+                fill 2-2 on the phone and one row of four on desktop. Every tile
                 carries its own state for today. */}
             <div className="relative z-10 space-y-3">
                 {[
-                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: null },
-                    { title: 'Explorar', items: exploreAreas, feature: null, wide: '/palavra' },
-                ].map(({ title, items, feature, wide }) => (
+                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: null, cols: 'lg:grid-cols-3' },
+                    { title: 'Explorar', items: exploreAreas, feature: null, wide: null, cols: 'lg:grid-cols-4' },
+                ].map(({ title, items, feature, wide, cols }) => (
                     <section key={title} className="space-y-3">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 pt-2">
                             {title}
                         </h2>
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className={`grid grid-cols-2 ${cols} gap-3`}>
                         {items.map((area) => {
                             const href = 'href' in area ? area.href : undefined;
                             const body = (
