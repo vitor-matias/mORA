@@ -287,7 +287,7 @@ export default function Profile() {
     const handleProtectKey = () => runVaultAction(async () => {
         if (!privkeyHex) throw new Error('A chave tem de estar desbloqueada.');
         const { protectKey } = await import('@/lib/keyVault');
-        const stored = await protectKey(privkeyHex, profileName || 'mORA');
+        const stored = await protectKey(privkeyHex, profileName || 'Oremus');
         // The login stays usable for this session; persistence drops it.
         setProtectedKey(stored);
     });

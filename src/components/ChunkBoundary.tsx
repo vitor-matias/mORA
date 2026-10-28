@@ -7,7 +7,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
  * be fetched. Without a boundary that rejection reaches the root and React
  * unmounts the whole tree, leaving a blank screen with no way out.
  *
- * This is reachable in production, not just offline: mORA ships as a PWA, so
+ * This is reachable in production, not just offline: Oremus ships as a PWA, so
  * after a deploy a client still holding the previous index.html asks for chunk
  * filenames that no longer exist. Reloading picks up the new index.html, which
  * is exactly what the button does.

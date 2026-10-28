@@ -45,7 +45,7 @@ const translations = {
         // Android installs a PWA as its own app, and browser extensions don't
         // reach it — the extension button can never work there, so say so
         // instead of leaving a button that does nothing.
-        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis — abre o mORA no navegador para entrar com a extensão, ou usa a tua chave secreta abaixo.",
+        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis — abre o Oremus no navegador para entrar com a extensão, ou usa a tua chave secreta abaixo.",
         nip07Failed: "Não foi possível entrar com a extensão.",
         or: "ou",
         createKey: "Criar identidade anónima",
@@ -87,7 +87,7 @@ const translations = {
         hiddenWord: (n: number) => `palavra escondida de ${n} letras`,
         wrongLength: (n: number) => `A palavra tem ${n} letras.`,
         alreadyTried: "Já tentaste essa palavra.",
-        shareHeading: (date: string, score: string) => `mORA — Palavra Bíblica do Dia ${date} ${score}`,
+        shareHeading: (date: string, score: string) => `Oremus — Palavra Bíblica do Dia ${date} ${score}`,
 
         board: "Tabuleiro de jogo",
         keyboard: "Teclado",
@@ -172,7 +172,7 @@ const translations = {
         badgeAwardLater: "Agora não",
         badgeAwardDone: "Fechar",
         badgeAwardClose: "Fechar",
-        badgeAwardNotificationTitle: "mORA — Nova medalha 🏅",
+        badgeAwardNotificationTitle: "Oremus — Nova medalha 🏅",
         badgeAwardNotificationBody: (names: string[]) => names.length === 1
             ? `Recebeste a medalha “${names[0]}”.`
             : `Recebeste ${names.length} medalhas: ${names.join(", ")}.`,

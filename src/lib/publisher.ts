@@ -1,6 +1,6 @@
 // The one identity whose events the app reads as *content*.
 //
-// mORA publishes two feeds for itself to read back: the daily Palavra puzzle
+// Oremus publishes two feeds for itself to read back: the daily Palavra puzzle
 // (server/palavra) and the liturgical calendar (server/agenda). Both are
 // signed by the same key, and both are pinned here.
 //

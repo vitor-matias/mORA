@@ -21,7 +21,7 @@ const KIND_AGENDA = 30078;
 
 const COLORS: LiturgicalColor[] = ['verde', 'roxo', 'vermelho', 'branco', 'rosa'];
 
-// The same pin the puzzle reads — one identity signs everything mORA
+// The same pin the puzzle reads — one identity signs everything Oremus
 // publishes, resolved once in src/lib/publisher.ts.
 const AGENDA_PUBLISHER = PUBLISHER_PUBKEY;
 
