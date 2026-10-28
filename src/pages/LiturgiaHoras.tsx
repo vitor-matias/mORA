@@ -204,13 +204,16 @@ export default function LiturgiaHoras() {
             return next;
         });
     };
-    // A tapped reminder opens "?hora=<id>"; a new one replaces whatever the
-    // user picked since (adjusting state while rendering, per the React docs).
-    const hourParam = useSearchParams()[0].get('hora');
-    const [seenHourParam, setSeenHourParam] = useState(hourParam);
+    // A tapped reminder opens "?hora=<id>&n=<nonce>"; each tap, even for the
+    // same Hour, replaces whatever the user picked since (adjusting state
+    // while rendering, per the React docs).
+    const [searchParams] = useSearchParams();
+    const hourParam = searchParams.get('hora');
+    const tapKey = searchParams.toString();
+    const [seenTapKey, setSeenTapKey] = useState(tapKey);
     const [userActiveHour, setUserActiveHour] = useState<string | null>(hourParam);
-    if (hourParam !== seenHourParam) {
-        setSeenHourParam(hourParam);
+    if (tapKey !== seenTapKey) {
+        setSeenTapKey(tapKey);
         setUserActiveHour(hourParam);
     }
     const [userActiveSubHour, setUserActiveSubHour] = useState<string | null>(null);

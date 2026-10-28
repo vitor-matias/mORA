@@ -50,6 +50,15 @@ function isReminderEntry(value: unknown): value is ReminderEntry {
         && (entry.url === undefined || (typeof entry.url === 'string' && entry.url.startsWith('/')));
 }
 
+/**
+ * The route to open for a tapped reminder. The nonce makes every tap a new
+ * location, so a second reminder for the same Hour still registers as a
+ * navigation (an identical hash would be ignored).
+ */
+export function reminderRoute(url: string, now = Date.now()): string {
+    return `${url}${url.includes('?') ? '&' : '?'}n=${now}`;
+}
+
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {
     if (typeof caches === 'undefined') return;
     try {

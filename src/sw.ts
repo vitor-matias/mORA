@@ -9,7 +9,7 @@ declare let self: ServiceWorkerGlobalScope & {
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
-import { readReminderSchedule, matchReminder } from '@/lib/reminderSchedule';
+import { readReminderSchedule, matchReminder, reminderRoute } from '@/lib/reminderSchedule';
 
 self.skipWaiting();
 clientsClaim();
@@ -45,14 +45,19 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     // Routing is hash-based, so a route is "./#/path".
     const route: unknown = event.notification.data?.url;
-    const target = typeof route === 'string' && route.startsWith('/') ? `./#${route}` : './';
+    const target = typeof route === 'string' && route.startsWith('/') ? `./#${reminderRoute(route)}` : './';
     event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+        // Controlled windows only: navigate() rejects for the rest.
+        self.clients.matchAll({ type: 'window' }).then(async (clients) => {
             const existing = clients.find((c) => 'focus' in c);
             if (!existing) return self.clients.openWindow(target);
-            await existing.focus();
-            // A hash-only change does not reload the page.
-            return existing.navigate(new URL(target, self.registration.scope).href).catch(() => undefined);
+            try {
+                await existing.focus();
+                // A hash-only change does not reload the page.
+                await existing.navigate(new URL(target, self.registration.scope).href);
+            } catch {
+                await self.clients.openWindow(target);
+            }
         })
     );
 });

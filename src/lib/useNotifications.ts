@@ -4,7 +4,7 @@ import { useTranslations } from '@/lib/i18n';
 import { verifyPushSubscription } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
-import { writeReminderSchedule, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
+import { writeReminderSchedule, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
 
 /**
  * Every reminder this device is set up for — the daily rosary reminder plus
@@ -129,7 +129,7 @@ export function useNotifications() {
                     const notification = new Notification(entry.title, options);
                     notification.onclick = () => {
                         window.focus();
-                        if (entry.url) window.location.hash = entry.url;
+                        if (entry.url) window.location.hash = reminderRoute(entry.url);
                         notification.close();
                     };
                 }
