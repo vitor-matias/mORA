@@ -537,9 +537,9 @@ export default function Palavra() {
     // an external link opened with target="_blank" doesn't reach the system
     // browser — it lands in a boxed-in in-app view with no way back except
     // closing it. A same-window navigation instead makes the OS hand the page
-    // off to the real browser, leaving mORA behind the way switching apps
+    // off to the real browser, leaving Oremus behind the way switching apps
     // does. Only worth it inside the installed app: in an ordinary browser
-    // tab, target="_blank" is what keeps mORA open behind the new one.
+    // tab, target="_blank" is what keeps Oremus open behind the new one.
     const isInstalledApp = typeof window !== 'undefined' && (
         window.matchMedia?.('(display-mode: standalone)').matches
         || (window.navigator as Navigator & { standalone?: boolean }).standalone === true

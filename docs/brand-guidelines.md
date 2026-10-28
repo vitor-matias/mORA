@@ -1,4 +1,4 @@
-# mORA Brand Guidelines v2.0
+# Oremus Brand Guidelines v2.1
 
 > Last updated: 2026-10-28
 > Status: Draft. Written down from what the app already does; section 9 lists the decisions still open.
@@ -8,7 +8,7 @@
 
 | Element | Value |
 |---------|-------|
-| Name | mORA (always this casing: lowercase m, capital ORA) |
+| Name | Oremus (title case; formerly mORA) |
 | Language | European Portuguese (pt-PT) |
 | Primary Color | The day's liturgical colour (section 3.2); brand constant #B45309 |
 | Page Background | #F7F7F9 light (Bento) / #0B0B0C dark (Imersivo) |
@@ -21,7 +21,7 @@
 
 ## 1. Essence
 
-mORA is a companion for daily Catholic prayer in European Portuguese. It gathers the day's prayer in one place, on the phone, without noise:
+Oremus is a companion for daily Catholic prayer in European Portuguese. It gathers the day's prayer in one place, on the phone, without noise:
 
 - **Missa Diária**: the day's readings, or the full missal.
 - **Liturgia das Horas**: the hour that fits the time of day.
@@ -32,7 +32,9 @@ mORA is a companion for daily Catholic prayer in European Portuguese. It gathers
 
 **What it is not.** Not a social feed, not a productivity tracker, not a devotional gift shop. Streaks and medals exist, but they never outrank the prayer.
 
-**The name.** *Ora* is Latin for "pray" (*ora pro nobis*) and the root of the Portuguese *orar*. The capitals put the prayer at the centre of the word. See section 9 for what the m stands for.
+**The name.** *Oremus* is Latin for "let us pray": the priest's invitation before the collect in the Roman Rite (*Oremos* in the Portuguese missal). It is the app's own voice: it prays *with* the reader, in the first person plural, as the interface does ("O que vamos rezar hoje?").
+
+**Formerly mORA.** The old name stays wherever changing it would break something: the repository and the GitHub Pages path (`/mORA/`), the Cloudflare Workers (`mora`, `mora-push`), and every stored or published identifier (storage keys, Nostr tags such as `mora-palavra`, the puzzle cipher salt, badge ids, the key-vault labels). Never rename those.
 
 ---
 
@@ -44,7 +46,7 @@ mORA is a companion for daily Catholic prayer in European Portuguese. It gathers
 |---------|------|------|-------|
 | App icon | `tools/icon-master-512.png` → `public/pwa-*.png`, `apple-touch-icon.png` | Praying hands, fine rose-gold line engraving (≈ #C8988F) on a full-bleed #1D1D1D field | Home screens, app switchers, install prompts |
 | Favicon | `public/favicon.svg` | A plain cross, #FAF9F6 strokes on a #B45309 rounded square | Browser tabs |
-| Wordmark | `src/components/layout/TabBar.tsx` | The favicon cross tinted with the day's liturgical colour, followed by "mORA" in Inter Bold, tight tracking | Desktop top bar (xl and up) |
+| Wordmark | `src/components/layout/TabBar.tsx` | The favicon cross tinted with the day's liturgical colour, followed by "Oremus" in Inter Bold, tight tracking | Desktop top bar (xl and up) |
 | Medals | `public/badges/palavra-{1,2,3}.png` | Material Symbols `menu_book`, gold, silver and bronze gradients | Palavra podium badges on Nostr |
 
 The app icon and the favicon don't match yet. See section 9.
@@ -57,7 +59,7 @@ The app icon and the favicon don't match yet. See section 9.
 - The wordmark is the only place the mark changes colour, and only with the liturgical palette.
 - Clear space around any mark: at least a quarter of its own height.
 - Minimum size: 24px for the cross; 48px for the praying hands, whose line detail fills in below that.
-- Don't add shadows, glows or outlines, don't recolour the hands, and don't set "mORA" in any other casing ("Mora", "MORA").
+- Don't add shadows, glows or outlines, don't recolour the hands, and don't set "Oremus" in any other casing ("oremus", "OREMUS").
 
 ---
 
@@ -229,7 +231,7 @@ Inter 400–800 and Lora 400–600 (plus italics 400, 500) come from Google Font
 - **Prayer forms.** Use the forms prayed in Portugal: "Amen" (not "Amém"), "Avé Maria", "Salvé Rainha", "Acto de contrição", «E o Verbo divino encarnou». Never Brazilian forms.
 - **Capitals.** Capitalise Vós/Vos only for God; possessives ("vosso") stay lowercase.
 - **Quotes.** Use «guillemets», and quote only what has been checked against a primary source (vatican.va, liturgia.pt, the Sanctuary of Fátima). Where translations differ, quote the clause they share and paraphrase the rest.
-- **Punctuation.** No em dashes in explanatory prose (notes on prayers, the guided Mass); use a colon or a comma. Titles of the form "mORA — Hora da oração" are the exception.
+- **Punctuation.** No em dashes in explanatory prose (notes on prayers, the guided Mass); use a colon or a comma. Titles of the form "Oremus — Hora da oração" are the exception.
 - **Accuracy.** Words like *único*, *sempre* and *nunca* must survive a literal check. Opinion superlatives ("o momento mais livre") are fine.
 - **Practical cues.** When explaining a rite, keep the practical cues: posture, gesture, what to answer.
 - **Copyright.** No modern copyrighted devotional texts (living composers, recent authors) unless the rights holder agreed.
@@ -299,7 +301,6 @@ These are inconsistencies found while writing this document. Each one needs a ch
 
 1. **Orthography in interface strings.** Authored prose is pre-1990, but interface strings mix norms: "detetada", "Desativado" and "ativa" (new) beside "actual" and "actualizada" (old). Either extend the pre-1990 rule to the chrome or exempt it explicitly.
 2. **One mark or two.** The app icon (praying hands on near-black) and the favicon and wordmark (cross on gold, or the liturgical colour) don't look like the same brand. Options: a hands favicon, a cross app icon, or keeping both with the cross defined as the small-size mark.
-3. **What the m stands for.** Worth writing down once, so the casing has a reason.
 
 ---
 
@@ -310,3 +311,4 @@ These are inconsistencies found while writing this document. Each one needs a ch
 | 1.0 | 2026-10-28 | Initial guidelines, written from the app as built, including the AA contrast rules for the liturgical palette |
 | 1.1 | 2026-10-28 | The interface addresses the reader as *tu*; the text-size setting scales the interface; touch targets fixed at 44px |
 | 2.0 | 2026-10-28 | Bento by day, Imersivo by night: new page colours, no wash, solid day cards, 3xl tiles, extra-bold titles, bead and selected-state contrast rules |
+| 2.1 | 2026-10-28 | Renamed from mORA to Oremus; old name kept in every identifier that existing data depends on |

@@ -10,7 +10,7 @@ const GAP_REM = 0.375;
  * their browser or OS text size moves every `rem` on the page, and a hardcoded
  * 6 would then under-count five gaps of it and size the board too tall — the
  * same class of mistake as the fixed `30rem` this measurement replaced, just
- * smaller and harder to notice. mORA's own text-size setting moves the root
+ * smaller and harder to notice. Oremus's own text-size setting moves the root
  * font size too, at its two largest steps.
  */
 export function gapPx(): number {

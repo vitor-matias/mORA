@@ -2,7 +2,7 @@
 //
 // The pool in src/lib/pool.ts routes every request to the same default relays.
 // That is exactly right for this app's own writes and for reading them back:
-// mORA published them there, so mORA finds them there.
+// Oremus published them there, so Oremus finds them there.
 //
 // It quietly breaks the moment we read *other people's* events. Someone whose
 // client writes to relay.snort.social and nowhere we ask is simply invisible —
@@ -134,7 +134,7 @@ export async function fetchWriteRelays(pubkeys: string[]): Promise<Map<string, s
  * The relay set to query when looking for these authors' events: the app's own
  * relays plus wherever those authors actually write.
  *
- * The defaults stay in the set rather than being replaced — most mORA players
+ * The defaults stay in the set rather than being replaced — most Oremus players
  * will have published there, and dropping them would trade one blind spot for
  * another.
  */

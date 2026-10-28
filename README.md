@@ -1,6 +1,8 @@
-# mORA
+# Oremus
 
-A Catholic companion app (PWA) for daily prayer in European Portuguese. mORA brings together the three daily pillars of prayer in a single, mobile-first interface:
+*Formerly mORA. The repository, the GitHub Pages path (`/mORA/`), the Cloudflare Workers and every stored or published identifier keep the old name, so existing installs and data carry over.*
+
+A Catholic companion app (PWA) for daily prayer in European Portuguese. Oremus brings together the three daily pillars of prayer in a single, mobile-first interface:
 
 - **Santo Terço** — a guided Rosary that follows the day's mysteries (Joyful, Luminous, Sorrowful, Glorious), with beginner and advanced modes.
 - **Missa Diária** — the day's Mass readings, with a toggle between readings-only and the full missal.

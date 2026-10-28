@@ -38,8 +38,8 @@ export default defineConfig(({ command, mode }) => {
           globPatterns: ['**/*.{js,css,html}', 'lh/*.json'],
         },
         manifest: {
-          name: 'mORA — Oração diária',
-          short_name: 'mORA',
+          name: 'Oremus — Oração diária',
+          short_name: 'Oremus',
           description: 'A tua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
           theme_color: '#F7F7F9',
           background_color: '#F7F7F9',
