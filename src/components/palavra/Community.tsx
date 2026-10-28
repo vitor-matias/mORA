@@ -133,7 +133,7 @@ export function Community({
             </div>
 
             {pubkey && !sharing && (
-                <p className="text-xs text-zinc-500 bg-zinc-500/5 rounded-xl px-3 py-2">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-500/5 rounded-xl px-3 py-2">
                     {t.notSharing}
                 </p>
             )}
@@ -207,7 +207,7 @@ function OwnResultNotice({ state, remoteSigner, onRetry }: {
     const t = useTranslations().palavra;
     if (state === 'publishing') {
         return (
-            <p role="status" className="flex items-start gap-2 text-xs text-zinc-500 bg-zinc-500/5 rounded-xl px-3 py-2">
+            <p role="status" className="flex items-start gap-2 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-500/5 rounded-xl px-3 py-2">
                 <Loader2 size={13} className="animate-spin shrink-0 mt-0.5" aria-hidden="true" />
                 <span>{remoteSigner ? t.resultPublishingSigner : t.resultPublishing}</span>
             </p>
@@ -239,7 +239,7 @@ function OwnResultNotice({ state, remoteSigner, onRetry }: {
 
 function Spoiler({ text, why }: { text: string; why: string }) {
     return (
-        <p className="text-sm text-zinc-500 text-center py-8">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
             {text}
             <br />
             <span className="text-xs">{why}</span>
@@ -249,7 +249,7 @@ function Spoiler({ text, why }: { text: string; why: string }) {
 
 function SignInPrompt({ what, hint }: { what: string; hint: string }) {
     return (
-        <p className="text-sm text-zinc-500 text-center py-8">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
             {what}
             <br />
             <span className="text-xs">{hint}</span>

@@ -136,7 +136,7 @@ function SectionList({ sections, dayColor, expanded, onToggle }: {
                         <button
                             type="button"
                             onClick={onToggle}
-                            className="mt-1 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
+                            className="mt-1 text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
                         >
                             {expanded ? '▴ Ver menos' : `▾ Ver mais (${notes.length})`}
                         </button>
@@ -174,7 +174,7 @@ export function DayCard({ dateLabel, color, title, description, sections, classN
                 className="pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left"
             >
                 <span>
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5">
                         {/* The dot is the color signal; its name is already in
                             the description text, so no "Cor litúrgica" line. */}
                         {color && <LiturgicalColorDot color={color} />}

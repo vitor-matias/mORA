@@ -46,6 +46,10 @@
         var root = document.documentElement;
         root.classList.toggle('dark', dark);
         if (state.liturgicalColor) root.setAttribute('data-theme', state.liturgicalColor);
+        // Interface text size, so the page doesn't reflow once React mounts.
+        // Same percentages as CONTENT_FONT_SCALE in src/store/app.ts.
+        var interfacePercent = { large: '112.5%', xlarge: '125%' }[state.fontSize];
+        if (interfacePercent) root.style.fontSize = interfacePercent;
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', dark ? '#121212' : '#FAF9F6');
       } catch (e) { /* first visit or blocked storage — defaults apply */ }

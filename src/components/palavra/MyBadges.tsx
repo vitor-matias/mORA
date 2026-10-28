@@ -58,7 +58,7 @@ export function MyBadges({ pubkey }: { pubkey: string }) {
             <p className="text-sm font-medium">{t.badgesTitle}</p>
 
             {badges === null ? (
-                <p className="flex items-center gap-2 text-xs text-zinc-500 mt-2">
+                <p className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                     <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                     {t.badgesLoading}
                 </p>
@@ -68,7 +68,7 @@ export function MyBadges({ pubkey }: { pubkey: string }) {
                         {badges.map((badge) => <BadgeItem key={badge.coord} badge={badge} />)}
                     </ul>
 
-                    <p className="text-xs text-zinc-500 mt-3">{t.badgesPublishHelp}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3">{t.badgesPublishHelp}</p>
                     <button
                         onClick={onPublish}
                         disabled={publishing === 'saving'}

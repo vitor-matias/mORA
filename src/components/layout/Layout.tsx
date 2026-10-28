@@ -173,11 +173,15 @@ export function Layout() {
             mq.addEventListener('change', onSchemeChange);
         }
 
-        // Font size — set as CSS variables so only content (prayer/reading)
-        // areas pick it up, not the UI chrome.
+        // Font size — the reading size goes in CSS variables, which only
+        // content (prayer/reading) areas read. The interface scales through
+        // the root font size, which every rem follows; the reading size is in
+        // px, so it is not scaled twice.
         const sizeConfig = CONTENT_FONT_SCALE[fontSize] || CONTENT_FONT_SCALE.medium;
         document.documentElement.style.setProperty('--content-font-size', `${sizeConfig.size}px`);
         document.documentElement.style.setProperty('--content-line-height', String(sizeConfig.lineHeight));
+        document.documentElement.style.fontSize =
+            sizeConfig.interfacePercent === 100 ? '' : `${sizeConfig.interfacePercent}%`;
 
         // Font family — set as CSS variable so only content areas pick it up (not UI)
         const familyMap: Record<string, string> = {

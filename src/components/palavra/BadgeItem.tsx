@@ -33,7 +33,7 @@ export function BadgeItem({ badge }: { badge: EarnedBadge }) {
             <span className="min-w-0">
                 <span className="block text-sm font-semibold truncate">{badge.name}</span>
                 {badge.description && (
-                    <span className="block text-xs text-zinc-500 truncate">{badge.description}</span>
+                    <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{badge.description}</span>
                 )}
             </span>
         </li>

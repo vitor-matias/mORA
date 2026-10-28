@@ -92,17 +92,23 @@
     color: rgb(250 250 250);
   }
 
-  /* Primary action — one flat liturgical fill, no gradient or glow. */
+  /* Primary action — one flat liturgical fill, no gradient or glow.
+     Label contrast is held at AA (4.5:1) in every season. White on the 600
+     fill measured 3.2:1 in gold and 3.8:1 in green, so light mode fills at
+     700 (5.0:1 and up). In dark mode no bright fill carries white — 500 gave
+     2.2–4.0:1 — so the fill goes lighter and the label turns to ink, the
+     way the Palavra tiles do (6.6:1 and up). */
   .cta-primary {
     color: #fff;
-    background: rgb(var(--liturgy-600));
+    background: rgb(var(--liturgy-700));
     transition: background-color 0.2s ease;
   }
-  .cta-primary:hover { background: rgb(var(--liturgy-700)); }
+  .cta-primary:hover { background: rgb(var(--liturgy-800)); }
   .dark .cta-primary {
-    background: rgb(var(--liturgy-500));
+    color: rgb(24 24 27);
+    background: rgb(var(--liturgy-400));
   }
-  .dark .cta-primary:hover { background: rgb(var(--liturgy-400)); }
+  .dark .cta-primary:hover { background: rgb(var(--liturgy-300)); }
 
   /* Sticky top bars (Missa / Horas headers, the xl nav) — full-bleed, with
      only a bottom hairline that appears once the page scrolls.
@@ -317,7 +323,7 @@
   }
   /* The "Refrão" cue closing each stanza */
   .psalm-cue {
-    color: rgb(var(--liturgy-600));
+    color: rgb(var(--liturgy-700));
     font-weight: 600;
   }
   .dark .psalm-cue {
@@ -741,7 +747,7 @@ html[data-theme="rosa"] {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgb(var(--liturgy-600));
+  color: rgb(var(--liturgy-700));
   margin-bottom: 0.35em;
 }
 
@@ -758,7 +764,7 @@ html[data-theme="rosa"] {
   text-transform: uppercase;
   /* Small capitals take 0.1em everywhere in the app; 14px ones, 0.05em. */
   letter-spacing: 0.1em;
-  color: rgb(var(--liturgy-600));
+  color: rgb(var(--liturgy-700));
   background: rgb(var(--liturgy-50));
   border: 1px solid rgb(var(--liturgy-200));
   border-radius: 4px;
@@ -788,7 +794,9 @@ html[data-theme="rosa"] {
   font-size: 0.72em;
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: rgb(var(--liturgy-500));
+  /* 700, not 500: at 0.72em the reference is small text, and 500 on the
+     page measured 2.0–3.8:1 across the seasons. */
+  color: rgb(var(--liturgy-700));
   margin-top: 0.1em;
   margin-bottom: 0.45em;
 }

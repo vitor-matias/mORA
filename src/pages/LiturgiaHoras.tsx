@@ -494,10 +494,10 @@ export default function LiturgiaHoras() {
                     <button
                         type="button"
                         onClick={() => selectOffice(null)}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === null ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === null ? 'font-semibold text-liturgy-700 dark:text-liturgy-400' : ''}`}
                     >
                         Ofício do dia
-                        <span className="block text-xs text-zinc-400 font-normal">{liturgy?.saintOfDay}</span>
+                        <span className="block text-xs text-zinc-500 dark:text-zinc-400 font-normal">{liturgy?.saintOfDay}</span>
                     </button>
                     {saints.map((saint, i) => {
                         const available = hasRenderableOffice(saint);
@@ -508,11 +508,11 @@ export default function LiturgiaHoras() {
                                 onClick={() => available && selectOffice(i)}
                                 disabled={!available}
                                 className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${available
-                                    ? `hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === i ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`
+                                    ? `hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === i ? 'font-semibold text-liturgy-700 dark:text-liturgy-400' : ''}`
                                     : 'opacity-50 cursor-not-allowed'}`}
                             >
                                 {saint.name}
-                                <span className="block text-xs text-zinc-400 font-normal">
+                                <span className="block text-xs text-zinc-500 dark:text-zinc-400 font-normal">
                                     {[saint.descriptor, saint.rank].filter(Boolean).join(' — ')}
                                     {!available && ' — texto não disponível'}
                                 </span>
@@ -522,10 +522,10 @@ export default function LiturgiaHoras() {
                     <button
                         type="button"
                         onClick={() => selectOffice('defuntos')}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === 'defuntos' ? 'font-semibold text-liturgy-600 dark:text-liturgy-400' : ''}`}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${altOffice === 'defuntos' ? 'font-semibold text-liturgy-700 dark:text-liturgy-400' : ''}`}
                     >
                         Ofício de Defuntos
-                        <span className="block text-xs text-zinc-400 font-normal">Pelos fiéis defuntos</span>
+                        <span className="block text-xs text-zinc-500 dark:text-zinc-400 font-normal">Pelos fiéis defuntos</span>
                     </button>
                 </div>
             )}
@@ -550,7 +550,7 @@ export default function LiturgiaHoras() {
                         {dateNav}
                         {officeChooser}
                         <nav aria-label="Horas do Ofício">
-                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 px-2">
+                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 px-2">
                                 Horas
                             </p>
                             <ul className="space-y-0.5">
@@ -560,7 +560,7 @@ export default function LiturgiaHoras() {
                                             onClick={() => selectHour(moment.id)}
                                             className={`w-full text-left text-sm py-1.5 px-2 rounded-lg transition-colors flex items-center gap-2 ${
                                                 activeHour === moment.id
-                                                    ? 'text-liturgy-600 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
+                                                    ? 'text-liturgy-700 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
                                                     : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                                             }`}
                                         >
@@ -575,8 +575,8 @@ export default function LiturgiaHoras() {
                                                         onClick={() => selectSubHour(sub)}
                                                         className={`text-left text-xs py-1 px-2 rounded-lg transition-colors ${
                                                             activeSubHour === sub
-                                                                ? 'text-liturgy-600 dark:text-liturgy-400 font-semibold bg-liturgy-50/50 dark:bg-liturgy-950/20'
-                                                                : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/40'
+                                                                ? 'text-liturgy-700 dark:text-liturgy-400 font-semibold bg-liturgy-50/50 dark:bg-liturgy-950/20'
+                                                                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/40'
                                                         }`}
                                                     >
                                                         {sub}
@@ -601,7 +601,7 @@ export default function LiturgiaHoras() {
                     {loading ? (
                         <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-20">
                             <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-liturgy-500 animate-spin" />
-                            <p className="text-zinc-400">A obter a liturgia de hoje...</p>
+                            <p className="text-zinc-500 dark:text-zinc-400">A obter a liturgia de hoje...</p>
                         </div>
                     ) : canonicalHours.length > 0 ? (
                         <div className="space-y-5 flex-1 flex flex-col">
@@ -614,19 +614,22 @@ export default function LiturgiaHoras() {
 
                             {/* Mobile: horizontal hour buttons — icon + label, so
                                 first-time users don't have to decode pictograms */}
-                            <div className="lg:hidden flex justify-center gap-1.5 pb-1 shrink-0">
+                            {/* auto-fit: five across at the default size; at the larger text
+                                sizes (or on a narrow phone) the buttons wrap to a second
+                                row rather than truncate their labels. */}
+                            <div className="lg:hidden grid grid-cols-[repeat(auto-fit,minmax(3.9rem,1fr))] gap-1 pb-1 shrink-0">
                                 {canonicalHours.map(moment => (
                                     <button
                                         key={moment.id}
                                         onClick={() => selectHour(moment.id)} aria-label={moment.label}
                                         aria-pressed={activeHour === moment.id}
-                                        className={`pressable pressable-small flex-1 min-w-0 flex flex-col items-center gap-1 py-2.5 px-1 rounded-2xl ${activeHour === moment.id
+                                        className={`pressable pressable-small min-w-0 flex flex-col items-center gap-1 py-2.5 px-0.5 rounded-2xl ${activeHour === moment.id
                                             ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
-                                            : 'surface text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300'
+                                            : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
                                         <moment.icon size={20} strokeWidth={activeHour === moment.id ? 2.4 : 1.8} aria-hidden="true" />
-                                        <span className="text-[0.6rem] font-medium leading-none truncate max-w-full">{moment.shortLabel}</span>
+                                        <span className="text-[0.65rem] font-medium leading-none truncate max-w-full">{moment.shortLabel}</span>
                                     </button>
                                 ))}
                             </div>
@@ -654,21 +657,21 @@ export default function LiturgiaHoras() {
                                 {altActive && assembled === undefined ? (
                                     <div className="flex flex-col items-center justify-center space-y-3 py-16">
                                         <div className="h-6 w-6 rounded-full border-4 border-zinc-200 border-t-liturgy-500 animate-spin" />
-                                        <p className="text-sm text-zinc-400">A carregar o ofício...</p>
+                                        <p className="text-sm text-zinc-500 dark:text-zinc-400">A carregar o ofício...</p>
                                     </div>
                                 ) : altActive && assembled && assembled.sections.length > 0 ? (
                                     <div className="space-y-6">
                                         {altEntry && (
                                             <div className="surface rounded-2xl p-4 space-y-1.5">
                                                 <p className="font-bold text-zinc-900 dark:text-zinc-100">{altEntry.name}</p>
-                                                <p className="text-sm text-zinc-500">
+                                                <p className="text-sm text-zinc-500 dark:text-zinc-400">
                                                     {[altEntry.descriptor, altEntry.rank].filter(Boolean).join(' — ')}
                                                 </p>
                                                 {altEntry.bio && (
                                                     <p className="text-sm italic text-zinc-500 dark:text-zinc-400 whitespace-pre-line">{altEntry.bio}</p>
                                                 )}
                                                 {altEntry.commonsText && (
-                                                    <p className="text-xs text-zinc-400">{altEntry.commonsText}</p>
+                                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{altEntry.commonsText}</p>
                                                 )}
                                             </div>
                                         )}
@@ -779,7 +782,7 @@ export default function LiturgiaHoras() {
                                             <span>Completas como no Domingo.</span>
                                         </div>
                                         <div className="space-y-3">
-                                            <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                            <h3 className="text-sm font-bold text-liturgy-700 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                 {sundayCompline.title}
                                             </h3>
                                             <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sundayCompline.html) }} />
@@ -811,13 +814,13 @@ export default function LiturgiaHoras() {
                                                         isInvitatory ? (
                                                             <button
                                                                 onClick={toggleSection}
-                                                                className="pressable pressable-card w-full flex items-center justify-between text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2"
+                                                                className="pressable pressable-card w-full flex items-center justify-between text-sm font-bold text-liturgy-700 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2"
                                                             >
                                                                 {part.title}
                                                                 <ChevronRight className={`transition-transform ${!isCollapsed ? 'rotate-90' : ''}`} size={16} />
                                                             </button>
                                                         ) : (
-                                                            <h3 className="text-sm font-bold text-liturgy-600 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                                            <h3 className="text-sm font-bold text-liturgy-700 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                                 {part.title}
                                                             </h3>
                                                         )
@@ -862,7 +865,7 @@ export default function LiturgiaHoras() {
                                                                                 const sectionEl = document.getElementById(`section-${nextPart.title}`);
                                                                                 if (sectionEl) {
                                                                                     // Try to find the "Salmodia" heading inside the next section
-                                                                                    const salmodiaEl = Array.from(sectionEl.querySelectorAll('h3, h6, font[color="red"], span.text-liturgy-600'))
+                                                                                    const salmodiaEl = Array.from(sectionEl.querySelectorAll('h3, h6, font[color="red"], span.text-liturgy-700'))
                                                                                         .find(el => el.textContent?.trim().toLowerCase() === 'hino');
 
                                                                                     if (salmodiaEl) {
@@ -890,7 +893,7 @@ export default function LiturgiaHoras() {
                                         ) : (
                                             <div className="text-center p-8 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
                                                 <Clock className="mx-auto text-zinc-300 dark:text-zinc-700 mb-3" size={32} />
-                                                <p className="text-zinc-500">Sem conteúdo disponível para esta hora.</p>
+                                                <p className="text-zinc-500 dark:text-zinc-400">Sem conteúdo disponível para esta hora.</p>
                                             </div>
                                         )}
                                     </>
@@ -911,8 +914,8 @@ export default function LiturgiaHoras() {
                         </div>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
-                            <p className="text-zinc-500 text-center">
-                                Não foi possível carregar a Liturgia das Horas. Verifique a sua ligação à internet.
+                            <p className="text-zinc-500 dark:text-zinc-400 text-center">
+                                Não foi possível carregar a Liturgia das Horas. Verifica a tua ligação à internet.
                             </p>
                             <button
                                 onClick={() => setRetryToken(t => t + 1)}

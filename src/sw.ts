@@ -31,7 +31,7 @@ self.addEventListener('push', (event) => {
             // the generic wording.
         }
         await self.registration.showNotification(entry?.title ?? 'mORA — Hora da oração 🙏', {
-            body: entry?.body ?? 'As leituras e orações de hoje esperam por si.',
+            body: entry?.body ?? 'As leituras e orações de hoje esperam por ti.',
             icon: 'pwa-192x192.png',
             badge: 'pwa-192x192.png',
             // Per-reminder tag, so an Hour never collapses onto another one.

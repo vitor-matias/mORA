@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import indexHtml from '../../index.html?raw';
 import {
     favouriteLogsEqual,
     isCompleteSyncedSettings,
@@ -15,6 +16,7 @@ import {
     starredIds,
     toggleFavourite,
     useAppStore,
+    CONTENT_FONT_SCALE,
     CLOCK_SKEW_TOLERANCE_MS,
     DEFAULT_SCROLL_SPEED,
     SCROLL_LEVELS,
@@ -410,5 +412,27 @@ describe('migrateAppState', () => {
     it('still resolves a scroll speed persisted as an index into an older scale', () => {
         expect(migrateAppState({ autoScrollSpeed: 0 }, 0).autoScrollSpeed).toBe('½');
         expect(migrateAppState({ autoScrollSpeed: 0 }, 1).autoScrollSpeed).toBe('¼');
+    });
+});
+
+describe('CONTENT_FONT_SCALE', () => {
+    it('never shrinks the interface below the reader\'s own default', () => {
+        for (const step of Object.values(CONTENT_FONT_SCALE)) {
+            expect(step.interfacePercent).toBeGreaterThanOrEqual(100);
+        }
+    });
+
+    // index.html sets the root size before first paint from its own copy of
+    // these percentages; a drift between the two reflows the page on load.
+    it('matches the pre-paint copy in index.html', () => {
+        const literal = indexHtml.match(/var interfacePercent = (\{[^}]*\})/)?.[1];
+        expect(literal).toBeDefined();
+        const prePaint = Function(`return ${literal}`)() as Record<string, string>;
+        const expected = Object.fromEntries(
+            Object.entries(CONTENT_FONT_SCALE)
+                .filter(([, step]) => step.interfacePercent !== 100)
+                .map(([key, step]) => [key, `${step.interfacePercent}%`]),
+        );
+        expect(prePaint).toEqual(expected);
     });
 });
