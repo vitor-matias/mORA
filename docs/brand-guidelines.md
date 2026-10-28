@@ -10,7 +10,7 @@
 |---------|-------|
 | Name | Oremus (title case; formerly mORA) |
 | Language | European Portuguese (pt-PT) |
-| Primary Color | The day's liturgical colour (section 3.2); brand constant #B45309 |
+| Primary Color | The day's liturgical colour (section 3.2); the app icon's fixed palette is leather #8E4130, gold #E8C27A and cream #F6E8D4 |
 | Page Background | #F7F7F9 light (Bento) / #0B0B0C dark (Imersivo) |
 | Primary Font | Inter (interface) |
 | Reading Font | Lora (prayers and readings) |
@@ -44,22 +44,21 @@ Oremus is a companion for daily Catholic prayer in European Portuguese. It gathe
 
 | Variant | File | Look | Where |
 |---------|------|------|-------|
-| App icon | `tools/icon-master-512.png` → `public/pwa-*.png`, `apple-touch-icon.png` | Praying hands, fine rose-gold line engraving (≈ #C8988F) on a full-bleed #1D1D1D field | Home screens, app switchers, install prompts |
-| Favicon | `public/favicon.svg` | A plain cross, #FAF9F6 strokes on a #B45309 rounded square | Browser tabs |
-| Wordmark | `src/components/layout/TabBar.tsx` | The favicon cross tinted with the day's liturgical colour, followed by "Oremus" in Inter Bold, tight tracking | Desktop top bar (xl and up) |
+| App icon | `tools/icon-master.svg` → `tools/icon-master-512.png` → `public/pwa-*.png`, `apple-touch-icon.png` | A breviary: red-brown leather (#8E4130) with a gold cross (#E8C27A), four ribbon markers in the liturgical colours (red, green, purple, gold), on a full-bleed warm cream field (#F6E8D4) | Home screens, app switchers, install prompts |
+| Favicon | `public/favicon.svg` | The same breviary, simplified to the book, the cross and two ribbons, on a cream rounded square | Browser tabs |
+| Wordmark | `src/components/layout/TabBar.tsx` | The breviary in cream on the day's liturgical colour, the cross in that colour, followed by "Oremus" in Inter Bold, tight tracking | Desktop top bar (xl and up) |
 | Medals | `public/badges/palavra-{1,2,3}.png` | Material Symbols `menu_book`, gold, silver and bronze gradients | Palavra podium badges on Nostr |
-
-The app icon and the favicon don't match yet. See section 9.
 
 ### Rules
 
-- Regenerate icons with `npm run make-app-icons` from the master. Never edit the PNGs in `public/` by hand.
+- Edit `tools/icon-master.svg`, export it to `tools/icon-master-512.png` (512×512, 8-bit RGB, no alpha), then run `npm run make-app-icons`. Never edit the PNGs in `public/` by hand.
+- Keep the mark inside the central 80% of the master, the part a circular crop keeps.
 - The app icon stays full bleed. The launcher supplies the shape; a mark with its own corners ends up on a white plate on Android.
 - Medal art stays PNG and stays derived from an Apache-2.0 shape, never an emoji font. Other Nostr clients refuse SVG, and emoji fonts are proprietary.
 - The wordmark is the only place the mark changes colour, and only with the liturgical palette.
 - Clear space around any mark: at least a quarter of its own height.
-- Minimum size: 24px for the cross; 48px for the praying hands, whose line detail fills in below that.
-- Don't add shadows, glows or outlines, don't recolour the hands, and don't set "Oremus" in any other casing ("oremus", "OREMUS").
+- Minimum size: 48px for the full breviary with four ribbons; below that, use the favicon's simplified book with two ribbons, which holds to 16px.
+- Don't add shadows, glows or outlines, don't change the order or colours of the ribbons, and don't set "Oremus" in any other casing ("oremus", "OREMUS").
 
 ---
 
@@ -83,7 +82,7 @@ By day (**Bento**) the page is a cool light grey and the tiles are white. It is 
 
 ### Primary Colors (liturgical)
 
-The accent colour is the colour of the day's liturgy, set by `data-theme` on `<html>` from the liturgia.pt calendar. Nothing in the chrome uses a fixed brand hue except the favicon.
+The accent colour is the colour of the day's liturgy, set by `data-theme` on `<html>` from the liturgia.pt calendar. Nothing in the chrome uses a fixed brand hue except the app icon and favicon.
 
 | Season | Theme | Text and fill, light (700) | Text and fill, dark (400) | Pill background (50) |
 |--------|-------|---------------|---------------|-------------|
@@ -263,25 +262,25 @@ Why: an error should say what happened and what to do; prayer isn't an alert; ga
 
 ## 8. Imagery
 
-The only illustration in the brand is the app icon, and it sets the style for any future art: a single-weight line engraving, devotional and calm, one warm metallic line colour on a dark field, no fill and no texture.
+The only illustration in the brand is the app icon, and it sets the style for any future art: flat, simple filled shapes, warm and gentle, a few warm colours on a light cream field, no outlines, no gradient and no texture. Bold enough to read at 48px.
 
 ### Base Prompt Template
 
 ```
-Fine single-weight line engraving, devotional and calm, warm rose-gold line (#C8988F)
-on an unbroken near-black field (#1D1D1D), no fill, no gradient, no text, no halo,
-centered with generous margin, flat, quiet, timeless.
+Flat illustration of simple filled shapes, warm and gentle, red-brown leather (#8E4130)
+and soft gold (#E8C27A) on an unbroken warm cream field (#F6E8D4), no outlines, no
+gradient, no text, no halo, centered with generous margin, quiet, timeless.
 ```
 
 ### Style Keywords
 
 | Category | Keywords |
 |----------|----------|
-| **Lighting** | none: line art on a flat field |
+| **Lighting** | none: flat shapes on a flat field |
 | **Mood** | recollected, quiet, reverent |
 | **Composition** | centered, symmetrical, generous margin |
-| **Treatment** | single line weight, no shading, no texture |
-| **Aesthetic** | engraved holy card, not modern flat illustration |
+| **Treatment** | flat fills, no outlines, no shading, no texture |
+| **Aesthetic** | a well-loved prayer book, not a stock church icon |
 
 ### Avoid
 
@@ -289,7 +288,7 @@ centered with generous margin, flat, quiet, timeless.
 |-------|-----|
 | Photographs of people praying | Stock piety; competes with the text |
 | Glowing halos, light rays, stained-glass effects | Kitsch, and reads as decoration over prayer |
-| Emoji-style or 3D icons | Clashes with the engraving and with Lucide |
+| Emoji-style or 3D icons | Clashes with the flat mark and with Lucide |
 | Sacred images from paintings or photos without a licence | Copyright, and the brand's commitment to sources |
 
 ---
@@ -299,7 +298,6 @@ centered with generous margin, flat, quiet, timeless.
 These are inconsistencies found while writing this document. Each one needs a choice from the owner before the rule above can be completed.
 
 1. **Orthography in interface strings.** Authored prose is pre-1990, but interface strings mix norms: "detetada", "Desativado" and "ativa" (new) beside "actual" and "actualizada" (old). Either extend the pre-1990 rule to the chrome or exempt it explicitly.
-2. **One mark or two.** The app icon (praying hands on near-black) and the favicon and wordmark (cross on gold, or the liturgical colour) don't look like the same brand. Options: a hands favicon, a cross app icon, or keeping both with the cross defined as the small-size mark.
 
 ---
 
@@ -308,6 +306,7 @@ These are inconsistencies found while writing this document. Each one needs a ch
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-10-28 | Initial guidelines, written from the app as built, including the AA contrast rules for the liturgical palette |
+| 1.1 | 2026-10-28 | One mark everywhere: the breviary with liturgical-colour ribbons replaces the praying hands and the cross; imagery style moves from line engraving to flat warm shapes |
 | 1.1 | 2026-10-28 | The interface addresses the reader as *tu*; the text-size setting scales the interface; touch targets fixed at 44px |
 | 2.0 | 2026-10-28 | Bento by day, Imersivo by night: new page colours, no wash, solid day cards, 3xl tiles, extra-bold titles, bead and selected-state contrast rules |
 | 2.1 | 2026-10-28 | Renamed from mORA to Oremus; old name kept in every identifier that existing data depends on |
