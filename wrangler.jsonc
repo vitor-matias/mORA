@@ -1,14 +1,16 @@
 // The app as a Cloudflare Worker serving the built dist/ as static assets —
 // no Worker code. Build with the VITE_* variables set, as the GitHub Pages
 // deploy does, then `npm run deploy:cloudflare`.
+//
+// No `build` block: Workers Builds runs `npm run build` in its own build
+// step, which is where the dashboard's build variables are set. A build
+// here would run again inside `wrangler preview` / `deploy`, without them,
+// and overwrite dist/ with the demo-mode app. Locally, build first (the
+// deploy:cloudflare script does).
 {
   "$schema": "https://unpkg.com/wrangler@4.154.0/config-schema.json",
   "name": "mora",
   "compatibility_date": "2026-10-23",
-  // Wrangler runs this before every deploy, upload and preview, so dist/ is
-  // never stale or missing — Workers Builds included, whatever its dashboard
-  // build command says.
-  "build": { "command": "npm run build" },
   // Workers Builds creates a Preview for each pull-request branch with
   // `wrangler preview`, which refuses to run without this block. Empty is
   // enough: assets and compatibility settings stay at the top level.
