@@ -65,7 +65,7 @@ function ChapletChooser() {
                     <Link
                         key={chaplet.id}
                         to={chaplet.to}
-                        className="pressable pressable-card group flex items-start gap-4 p-4 surface rounded-2xl"
+                        className="pressable pressable-card group flex items-start gap-4 p-4 surface rounded-3xl"
                     >
                         <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
                             <Rosary size={20} strokeWidth={2.2} aria-hidden="true" />
@@ -202,7 +202,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
             <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2 px-1">
                 {title}
             </h2>
-            <div className="surface rounded-2xl p-5 space-y-5">{children}</div>
+            <div className="surface rounded-3xl p-5 space-y-5">{children}</div>
         </section>
     );
 }
@@ -316,7 +316,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                 {atStart && (
                     <>
                         {picker}
-                        <div className="surface rounded-2xl px-4 py-3 mb-8">
+                        <div className="surface rounded-3xl px-4 py-3 mb-8">
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{chaplet.note}</p>
                         </div>
                     </>
@@ -346,10 +346,11 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                                         className={`rounded-full transition-[background-color,border-color,transform,box-shadow] duration-300 shrink-0 ${
                                             isMarker ? 'h-5 w-5 border-2 border-current' : 'h-2.5 w-2.5'
                                         } ${
+                                            // Same colours as the Terço's beads: 3:1 or better on the page.
                                             i < step.beadIndex!
-                                                ? 'bg-liturgy-500 border-liturgy-500'
+                                                ? 'bg-liturgy-700 border-liturgy-700 dark:bg-liturgy-500 dark:border-liturgy-500'
                                                 : i === step.beadIndex
-                                                    ? 'bg-liturgy-600 border-liturgy-600 scale-125 shadow-md shadow-liturgy-500/20'
+                                                    ? 'bg-liturgy-700 border-liturgy-700 dark:bg-liturgy-400 dark:border-liturgy-400 scale-125 shadow-md shadow-liturgy-500/20'
                                                     : 'bg-zinc-200 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800'
                                         }`}
                                     />
