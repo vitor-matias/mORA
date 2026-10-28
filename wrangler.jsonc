@@ -5,6 +5,10 @@
   "$schema": "https://unpkg.com/wrangler@4.154.0/config-schema.json",
   "name": "mora",
   "compatibility_date": "2026-10-23",
+  // Served at oremus.pt. A custom domain needs the zone active on this
+  // Cloudflare account (oremus.pt is registered at OVH with Cloudflare's
+  // nameservers); until it is, a deploy with this route fails.
+  "routes": [{ "pattern": "oremus.pt", "custom_domain": true }],
   "assets": {
     "directory": "./dist",
     // Routing is hash-based, so this only matters for a mistyped path.
