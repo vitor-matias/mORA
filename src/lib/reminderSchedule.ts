@@ -11,6 +11,29 @@ export interface ReminderEntry {
     time: string;
     title: string;
     body: string;
+    /** 0 (Sunday) – 6: due only on that weekday. Absent: every day. */
+    weekday?: number;
+    /** Local YYYY-MM-DD the body was written for. A push on another day
+        (the app not opened since last week) shows `staleBody` instead. */
+    date?: string;
+    staleBody?: string;
+    /** Where tapping the notification should land. */
+    url?: string;
+}
+
+/** The server and the push tag know an entry by this: "HH:MM", or
+    "6@HH:MM" for a weekly one. */
+export function reminderKey(entry: Pick<ReminderEntry, 'time' | 'weekday'>): string {
+    return entry.weekday === undefined ? entry.time : `${entry.weekday}@${entry.time}`;
+}
+
+function localISODate(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** The body to show at `now`: a dated one only on its own day. */
+export function reminderBody(entry: ReminderEntry, now: Date): string {
+    return entry.date && entry.date !== localISODate(now) && entry.staleBody ? entry.staleBody : entry.body;
 }
 
 /**
@@ -42,9 +65,12 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 function isReminderEntry(value: unknown): value is ReminderEntry {
     if (typeof value !== 'object' || value === null) return false;
     const entry = value as Record<string, unknown>;
+    const optionalString = (key: string) => entry[key] === undefined || typeof entry[key] === 'string';
     return typeof entry.time === 'string' && TIME_PATTERN.test(entry.time)
         && typeof entry.title === 'string'
-        && typeof entry.body === 'string';
+        && typeof entry.body === 'string'
+        && (entry.weekday === undefined || (Number.isInteger(entry.weekday) && (entry.weekday as number) >= 0 && (entry.weekday as number) <= 6))
+        && optionalString('date') && optionalString('staleBody') && optionalString('url');
 }
 
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {
@@ -97,7 +123,12 @@ export function matchReminder(
         // Minutes since the reminder fell due, wrapping midnight so a 23:55
         // reminder is 10 minutes old at 00:05 rather than 1430 minutes early.
         let elapsed = minutes - (h * 60 + m);
-        if (elapsed < 0) elapsed += 1440;
+        let dueDay = now.getDay();
+        if (elapsed < 0) {
+            elapsed += 1440;
+            dueDay = (dueDay + 6) % 7;
+        }
+        if (entry.weekday !== undefined && entry.weekday !== dueDay) continue;
         if (elapsed < bestElapsed) {
             bestElapsed = elapsed;
             best = entry;

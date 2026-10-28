@@ -9,7 +9,7 @@ declare let self: ServiceWorkerGlobalScope & {
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
-import { readReminderSchedule, matchReminder } from '@/lib/reminderSchedule';
+import { readReminderSchedule, matchReminder, reminderBody, reminderKey } from '@/lib/reminderSchedule';
 
 self.skipWaiting();
 clientsClaim();
@@ -31,22 +31,27 @@ self.addEventListener('push', (event) => {
             // the generic wording.
         }
         await self.registration.showNotification(entry?.title ?? 'Oremus — Hora da oração 🙏', {
-            body: entry?.body ?? 'As leituras e orações de hoje esperam por ti.',
+            body: entry ? reminderBody(entry, new Date()) : 'As leituras e orações de hoje esperam por ti.',
             icon: 'pwa-192x192.png',
             badge: 'pwa-192x192.png',
             // Per-reminder tag, so an Hour never collapses onto another one.
-            tag: entry ? `mora-reminder-${entry.time}` : 'mora-daily-reminder',
+            tag: entry ? `mora-reminder-${reminderKey(entry)}` : 'mora-daily-reminder',
+            data: { url: entry?.url },
         });
     })());
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const url: string = (event.notification.data as { url?: string } | null)?.url ?? './';
     event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
             const existing = clients.find((c) => 'focus' in c);
-            if (existing) return existing.focus();
-            return self.clients.openWindow('./');
+            if (!existing) return self.clients.openWindow(url);
+            const focused = await existing.focus();
+            // An uncontrolled window can't be navigated; focusing it is still right.
+            if (url !== './') await focused.navigate(url).catch(() => {});
+            return focused;
         })
     );
 });

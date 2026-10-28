@@ -12,9 +12,14 @@ export interface StreakData {
     history?: string[];
 }
 
-export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+// liturgy_hours is the day (any Hour counts); the hour_* items are each Hour
+// on its own, so Resumo da Semana can show which were prayed. Hora Intermédia is one
+// item whether Tércia, Sexta or Noa.
+export const HOUR_STREAK_ITEMS = ['hour_oficio', 'hour_laudes', 'hour_intermedia', 'hour_vesperas', 'hour_completas'] as const;
 
-export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours'];
+export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours' | typeof HOUR_STREAK_ITEMS[number];
+
+export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours', ...HOUR_STREAK_ITEMS];
 
 export type Streaks = Record<StreakItem, StreakData>;
 
@@ -41,7 +46,7 @@ export function emptyStreak(): StreakData {
 }
 
 export function emptyStreaks(): Streaks {
-    return { rosary: emptyStreak(), liturgy: emptyStreak(), liturgy_hours: emptyStreak() };
+    return Object.fromEntries(STREAK_ITEMS.map((item) => [item, emptyStreak()])) as Streaks;
 }
 
 // A century of unbroken daily prayer. Past this the number is not a streak,
@@ -505,6 +510,10 @@ interface AppState {
         key means that Hour is not being reminded. */
     hourReminders: Record<string, string>;
     setHourReminder: (hourId: string, time: string | null) => void;
+    /** Saturday-night summary of the prayed week. Opt-in, device-local like
+        the other reminders. */
+    weeklySummary: boolean;
+    setWeeklySummary: (on: boolean) => void;
     // True while this browser holds a server-registered Web Push
     // subscription; the in-app reminder timer stands down then.
     pushSubscribed: boolean;
@@ -611,6 +620,8 @@ export const useAppStore = create<AppState>()(
                 if (time) next[hourId] = time; else delete next[hourId];
                 return { hourReminders: next };
             }),
+            weeklySummary: false,
+            setWeeklySummary: (weeklySummary) => set({ weeklySummary }),
             pushSubscribed: false,
             setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',

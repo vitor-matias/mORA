@@ -94,7 +94,7 @@ export default function Home() {
     // Capuchinhos' own site rather than carried here.
     const exploreAreas: { path: string; href?: string; label: string; context: string; icon: typeof BookOpen }[] = [
         { path: "/biblia", href: "https://biblia.capuchinhos.org/", label: "Bíblia Sagrada", context: "Tradução da Difusora Bíblica", icon: Book },
-        { path: "/semana", label: "A Semana", context: "Missa e Horas rezadas, dia a dia", icon: CalendarCheck },
+        { path: "/semana", label: "Resumo da Semana", context: "Missa e Horas rezadas, dia a dia", icon: CalendarCheck },
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
     ];

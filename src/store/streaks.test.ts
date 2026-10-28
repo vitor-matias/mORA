@@ -40,3 +40,27 @@ describe('mergeStreaks history', () => {
         expect(streaksEqual(mergeStreaks(merged, remote), merged)).toBe(true);
     });
 });
+
+describe('weekly summary', () => {
+    it('counts the week, per Hour, from Sunday', async () => {
+        const { weekSummary } = await import('@/lib/week');
+        const streaks = {
+            ...emptyStreaks(),
+            liturgy: { days: 2, lastCompletedDate: '2026-10-27', history: ['2026-10-24'] }, // Sat before is last week
+            liturgy_hours: { days: 4, lastCompletedDate: '2026-10-28' },
+            hour_laudes: { days: 4, lastCompletedDate: '2026-10-28' },
+            hour_completas: { days: 1, lastCompletedDate: '2026-10-26' },
+        };
+        expect(weekSummary(streaks, new Date())).toBe(
+            'Missa: 2 de 7 dias. Horas: 4 de 7 dias (Laudes 4, Completas 1). 🔥 4 dias seguidos.');
+    });
+});
+
+describe('matchReminder weekday', () => {
+    it('ignores a weekly entry on other days', async () => {
+        const { matchReminder } = await import('@/lib/reminderSchedule');
+        const entry = { time: '22:00', weekday: 6, title: 't', body: 'b' };
+        expect(matchReminder([entry], new Date(2026, 9, 30, 22, 5))).toBeNull();
+        expect(matchReminder([entry], new Date(2026, 9, 31, 22, 5))).toBe(entry);
+    });
+});
