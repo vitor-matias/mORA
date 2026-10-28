@@ -215,7 +215,8 @@ export function TabBar() {
                     <NavLink to="/" end className="flex items-center gap-2.5 shrink-0">
                         <svg viewBox="0 0 64 64" className="h-7 w-7" aria-hidden="true">
                             <rect width="64" height="64" rx="14" className="fill-liturgy-600 dark:fill-liturgy-500" />
-                            <path d="M32 12v40M20 26h24" stroke="#FAF9F6" strokeWidth="7" strokeLinecap="round" />
+                            <circle cx="32" cy="32" r="18" fill="none" stroke="#FAF9F6" strokeWidth="6" />
+                            <path d="M32 21v22M25 29h14" stroke="#FAF9F6" strokeWidth="6" strokeLinecap="round" />
                         </svg>
                         <span className="text-lg font-bold tracking-tight page-title">Oremus</span>
                     </NavLink>
