@@ -10,8 +10,10 @@ export function useAutoUnlock() {
     const locked = useAuthStore((s) => s.isLocked && Boolean(s.protectedKey));
     const tried = useRef(false);
     useEffect(() => {
-        if (tried.current || !autoUnlock || !locked) return;
+        // Decided once, at app open. Re-checked later, locking the key from
+        // Início with the switch on would put the prompt straight back up.
+        if (tried.current) return;
         tried.current = true;
-        unlockIfNeeded().catch(() => {});
+        if (autoUnlock && locked) unlockIfNeeded().catch(() => {});
     }, [autoUnlock, locked]);
 }

@@ -88,6 +88,52 @@ describe('push worker', () => {
         expect(pushes.mock.calls[0][0]).toBe(sub(2).endpoint);
     });
 
+    // Written before the schedule moved into metadata: read in full once and
+    // rewritten in the current shape.
+    it('delivers to an old record without metadata and upgrades it', async () => {
+        await env.SUBSCRIPTIONS.put('old', JSON.stringify({ subscription: sub(1), time: '07:00', tz: 'UTC' }));
+        await tick('2026-10-28T07:02:00Z');
+        expect(pushes).toHaveBeenCalledTimes(1);
+        const upgraded = env.SUBSCRIPTIONS.data.get('old')!;
+        expect(upgraded.metadata).toEqual({ tz: 'UTC', times: ['07:00'], lastSent: { '07:00': '2026-10-28' } });
+    });
+
+    it('deletes a corrupt record', async () => {
+        await env.SUBSCRIPTIONS.put('bad', '{not json');
+        await tick('2026-10-28T07:02:00Z');
+        expect(env.SUBSCRIPTIONS.data.has('bad')).toBe(false);
+    });
+
+    it.each([404, 410])('deletes a subscription the push service answers %i for', async (status) => {
+        await post({ subscription: sub(1), times: ['07:00'], tz: 'UTC' });
+        pushes.mockResolvedValueOnce(new Response(null, { status }));
+        await tick('2026-10-28T07:02:00Z');
+        expect(env.SUBSCRIPTIONS.data.size).toBe(0);
+    });
+
+    // A failed send leaves no mark, so the next tick inside the window retries.
+    it('retries a failed send on the next tick', async () => {
+        await post({ subscription: sub(1), times: ['07:00'], tz: 'UTC' });
+        pushes.mockResolvedValueOnce(new Response(null, { status: 500 }));
+        await tick('2026-10-28T07:02:00Z');
+        const [key] = env.SUBSCRIPTIONS.data.keys();
+        expect(JSON.parse(env.SUBSCRIPTIONS.data.get(key)!.value).lastSent).toEqual({});
+
+        await tick('2026-10-28T07:07:00Z');
+        expect(pushes).toHaveBeenCalledTimes(2);
+        expect(JSON.parse(env.SUBSCRIPTIONS.data.get(key)!.value).lastSent).toEqual({ '07:00': '2026-10-28' });
+    });
+
+    // Every reminder edit re-registers the whole set; a time already sent
+    // today must not fire again.
+    it('keeps today’s send marks when the reminders are re-registered', async () => {
+        await post({ subscription: sub(1), times: ['07:00'], tz: 'UTC' });
+        await tick('2026-10-28T07:02:00Z');
+        await post({ subscription: sub(1), times: ['07:00', '21:00'], tz: 'UTC' });
+        await tick('2026-10-28T07:07:00Z');
+        expect(pushes).toHaveBeenCalledTimes(1);
+    });
+
     it('wraps a 23:55 reminder past midnight', async () => {
         await post({ subscription: sub(1), times: ['23:55'], tz: 'UTC' });
         await tick('2026-10-29T00:05:00Z');

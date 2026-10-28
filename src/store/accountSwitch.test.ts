@@ -3,7 +3,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { generateSecretKey, nip19 } from 'nostr-tools';
-import { useAppStore } from './app';
+import { starredIds, useAppStore } from './app';
 import { useAuthStore } from './auth';
 import { usePalavraStore } from './palavra';
 
@@ -41,5 +41,19 @@ describe('signing in on a device another identity used', () => {
 
         expect(usePalavraStore.getState().plays).toEqual({});
         expect(useAppStore.getState().streaks.rosary?.days ?? 0).toBe(0);
+    });
+
+    // Favourites sync the same way: left in place, they would merge into the
+    // new identity's starred prayers and hymns.
+    it('starts a different identity with no favourites', () => {
+        useAuthStore.getState().loginWithPrivateKey(nsec());
+        useAppStore.getState().togglePrayerFavourite('angelus');
+        useAppStore.getState().toggleChantFavourite('salve-regina');
+        useAuthStore.getState().logout();
+
+        useAuthStore.getState().loginWithPrivateKey(nsec());
+
+        expect(starredIds(useAppStore.getState().prayerFavourites)).toEqual([]);
+        expect(starredIds(useAppStore.getState().chantFavourites)).toEqual([]);
     });
 });

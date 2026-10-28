@@ -14,7 +14,7 @@ const me = getPublicKey(sk);
 // Through JSON, as it arrives off the socket: finalizeEvent marks its result
 // as already verified, and that mark would otherwise survive a tamper.
 const puzzle = (key = sk) => JSON.parse(JSON.stringify(finalizeEvent(
-    { kind: 30078, created_at: 1, tags: [['date', '2026-10-28'], ['t', 'morapalavra']], content: '' }, key)));
+    { kind: 30078, created_at: 1, tags: [['d', 'mora-palavra-p:2026-10-28'], ['date', '2026-10-28'], ['t', 'morapalavra']], content: '' }, key)));
 
 describe('publishedDate', () => {
     it('accepts the publisher’s own signed puzzle', () => {
@@ -25,6 +25,13 @@ describe('publishedDate', () => {
     it('ignores an unsigned or tampered event', () => {
         expect(publishedDate({ ...puzzle(), sig: '0'.repeat(128) }, me)).toBeNull();
         expect(publishedDate({ kind: 30078, pubkey: me, tags: [['date', '2026-10-28']] }, me)).toBeNull();
+    });
+
+    // The publisher's own result for a day shares kind, topic and date.
+    it('ignores an event that is not at the puzzle’s address', () => {
+        const result = JSON.parse(JSON.stringify(finalizeEvent(
+            { kind: 30078, created_at: 1, tags: [['d', 'mora-palavra-r:2026-10-28'], ['date', '2026-10-28'], ['t', 'morapalavra']], content: '' }, sk)));
+        expect(publishedDate(result, me)).toBeNull();
     });
 
     it('ignores someone else’s event', () => {

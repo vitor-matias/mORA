@@ -11,7 +11,10 @@ Each record's schedule is copied into KV list metadata, so a tick costs one
 `list` per 1,000 subscribers and a `get` only for those due right now. The
 limit on the free tier is writes: every reminder sent records its send mark,
 and the free tier allows 1,000 writes a day — about 170 users with all six
-reminders on. Past that, the paid plan.
+reminders on. The free plan also caps each run at 50 outgoing requests, and
+every push is one: past about 50 reminders due in the same 5 minutes (a popular
+time like 07:00), the rest fail and are retried only while their 15-minute
+window lasts. Past either limit, the paid plan.
 
 ## Deploy
 

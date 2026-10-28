@@ -169,8 +169,8 @@ export function generateRosarySequence(day: MysteryDay, mode: RosaryBeadMode): R
     return steps;
 }
 
-export function getMysteryForToday(): MysteryDay {
-    const dayOfWeek = new Date().getDay(); // 0 is Sunday, 1 is Monday...
+export function getMysteryForToday(now: Date = new Date()): MysteryDay {
+    const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday...
 
     if (dayOfWeek === 1 || dayOfWeek === 6) return 'gozosos'; // Monday, Saturday
     if (dayOfWeek === 2 || dayOfWeek === 5) return 'dolorosos'; // Tuesday, Friday

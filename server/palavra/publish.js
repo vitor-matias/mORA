@@ -187,7 +187,11 @@ function loadSecretKey() {
  */
 export function publishedDate(event, pubkey) {
     if (!event || event.kind !== KIND || event.pubkey !== pubkey || !verifyEvent(event)) return null;
-    return event.tags?.find((t) => t[0] === 'date')?.[1] ?? null;
+    const date = event.tags?.find((t) => t[0] === 'date')?.[1];
+    // A result this identity published is the same kind, topic and date; only
+    // the puzzle's own address says it is the puzzle the app will ask for.
+    const d = event.tags?.find((t) => t[0] === 'd')?.[1];
+    return date && d === puzzleDTag(date) ? date : null;
 }
 
 /** Which puzzle dates this publisher already has on a relay. */
@@ -314,6 +318,10 @@ async function main() {
         console.log('watch mode — publishing on each 00:00 UTC rollover\n');
         for (;;) {
             let ok = false;
+            // fillGap reads which days are missing once, when it starts: a
+            // cycle that crosses midnight never saw the new day, and waiting
+            // for the next midnight would leave it without a puzzle all day.
+            const startedOn = utcToday();
             try {
                 ok = await fillGap(secretKey, pubkey);
             } catch (error) {
@@ -324,7 +332,8 @@ async function main() {
             // Recomputed from the clock every time rather than accumulated, so
             // drift and suspend-resume can't walk the schedule off midnight.
             const nextMidnight = nextWakeMs() + AFTER_MIDNIGHT_MS;
-            const wakeAt = ok ? nextMidnight : Math.min(nextMidnight, Date.now() + RETRY_MS);
+            const wakeAt = utcToday() !== startedOn ? Date.now()
+                : ok ? nextMidnight : Math.min(nextMidnight, Date.now() + RETRY_MS);
             console.log(`next run ${new Date(wakeAt).toISOString()}\n`);
             await new Promise((resolve) => setTimeout(resolve, Math.max(1000, wakeAt - Date.now())));
         }

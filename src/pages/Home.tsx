@@ -127,6 +127,8 @@ export default function Home() {
                     </h1>
                     <p className="text-zinc-500 text-lg">{t.whatToPray}</p>
                 </div>
+                {/* Shown at every width, unlike the profile link beside it:
+                    the desktop top bar has no way to lock the key. */}
                 {hasProtectedKey && (
                     <button
                         type="button"
@@ -135,7 +137,7 @@ export default function Home() {
                             import("@/lib/nostr").then(({ unlockIfNeeded }) => unlockIfNeeded()).catch(() => {});
                         }}
                         aria-label={isLocked ? 'Desbloquear a chave' : 'Bloquear a chave'}
-                        className="xl:hidden shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center"
+                        className="shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center"
                     >
                         {isLocked
                             ? <Lock size={20} className="text-zinc-400" aria-hidden="true" />

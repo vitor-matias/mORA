@@ -33,11 +33,16 @@ describe('fetchDailyLiturgy', () => {
         await expect(fetchDailyLiturgy(day(0))).rejects.toThrow('resolver failed');
     });
 
+    // An entry without massDate is a cache miss (see readLiturgyCache), so
+    // the fetch runs and the fallback is what returns it.
     it('falls back to the cached day on a GraphQL error', async () => {
-        vi.stubGlobal('fetch', answer(mass(day(0))));
-        await fetchDailyLiturgy(day(0));
-        vi.stubGlobal('fetch', answer({ errors: [{ message: 'x' }] }));
+        store.set(`mora_liturgy_${day(0)}`, JSON.stringify({
+            date: day(0), saintOfDay: 'Missa', htmlContent: '<p>Leitura</p>', memories: [],
+        }));
+        const failing = answer({ errors: [{ message: 'x' }] });
+        vi.stubGlobal('fetch', failing);
         expect((await fetchDailyLiturgy(day(0)))?.htmlContent).toBe('<p>Leitura</p>');
+        expect(failing).toHaveBeenCalled();
     });
 
     it('drops cached days more than a week ahead, but keeps the one just opened', async () => {

@@ -27,7 +27,7 @@ function enableSyncForNewIdentity(pubkey: string | null | undefined) {
     usePalavraStore.getState().setSharePalavraResults(pubkey ?? null, true);
 }
 
-// Streaks and the Palavra log are device state, merged into whoever syncs
+// Streaks, favourites and the Palavra log are device state, merged into whoever syncs
 // next. Played signed out, they are adopted by the first identity to sign in
 // — that is the point of playing first. But once they belong to someone, a
 // different identity signing in on this device starts clean: merging would
@@ -37,6 +37,7 @@ function claimLocalData(pubkey: string | null) {
     const app = useAppStore.getState();
     if (pubkey && app.localDataOwner && app.localDataOwner !== pubkey) {
         app.setStreaks(emptyStreaks());
+        useAppStore.setState({ prayerFavourites: {}, chantFavourites: {}, favouritesFromRemote: false });
         usePalavraStore.setState({ plays: {}, sharedNotes: {} });
     }
     if (pubkey) app.setLocalDataOwner(pubkey);
