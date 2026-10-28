@@ -49,6 +49,9 @@ const RELAY_TIMEOUT_MS = 10_000;
     history, and a process that has been off for months probably shouldn't
     silently backfill them either. */
 const MAX_GAP_DAYS = 60;
+// After a cycle that reached no relay, watch mode tries again this soon
+// rather than at the next midnight, which left the day without a puzzle.
+const RETRY_MS = 10 * 60_000;
 
 /** A little after midnight, so a slightly fast clock can't ask for a date the
     publisher itself considers to be in the future. */
@@ -310,8 +313,9 @@ async function main() {
         // itself rather than leaving a day with no puzzle.
         console.log('watch mode — publishing on each 00:00 UTC rollover\n');
         for (;;) {
+            let ok = false;
             try {
-                await fillGap(secretKey, pubkey);
+                ok = await fillGap(secretKey, pubkey);
             } catch (error) {
                 // Never let a bad night kill the process: the next wake retries,
                 // and the gap check will still see the day as missing.
@@ -319,7 +323,8 @@ async function main() {
             }
             // Recomputed from the clock every time rather than accumulated, so
             // drift and suspend-resume can't walk the schedule off midnight.
-            const wakeAt = nextWakeMs() + AFTER_MIDNIGHT_MS;
+            const nextMidnight = nextWakeMs() + AFTER_MIDNIGHT_MS;
+            const wakeAt = ok ? nextMidnight : Math.min(nextMidnight, Date.now() + RETRY_MS);
             console.log(`next run ${new Date(wakeAt).toISOString()}\n`);
             await new Promise((resolve) => setTimeout(resolve, Math.max(1000, wakeAt - Date.now())));
         }

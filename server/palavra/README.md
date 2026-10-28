@@ -115,7 +115,7 @@ the way it does:
 
 - **Scheduled runs are best-effort.** They are routinely delayed, sometimes by
   most of an hour, and are dropped when the runner queue is busy. That is why
-  it runs hourly with `--backfill 3` instead of once at midnight — publishing
+  it runs hourly with `--backfill 60` instead of once at midnight — publishing
   is idempotent and asks the relays what already exists, so the extra runs cost
   one query each and a missed midnight is caught by the next hour.
 - **GitHub disables scheduled workflows after 60 days of repository

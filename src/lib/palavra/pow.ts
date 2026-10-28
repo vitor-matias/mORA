@@ -29,10 +29,6 @@ export const POW_MINIMUM = 16;
 /** How long to let mining run before giving up and publishing unmined. */
 const MINE_TIMEOUT_MS = 15_000;
 
-export function eventPow(id: string): number {
-    return getPow(id);
-}
-
 export function meetsPow(id: string): boolean {
     return getPow(id) >= POW_MINIMUM;
 }

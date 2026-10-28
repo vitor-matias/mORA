@@ -401,7 +401,6 @@ export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: nu
 interface AppState {
     rosaryMode: RosaryBeadMode;
     setRosaryMode: (mode: RosaryBeadMode) => void;
-    toggleRosaryMode: () => void;
     rosarySession: RosarySession | null;
     setRosarySession: (session: RosarySession | null) => void;
     /** A page is using the bottom of the screen for its own controls, so the
@@ -415,6 +414,11 @@ interface AppState {
     incrementStreak: (item: StreakItem) => void;
     /** Replaces the whole set — used by the Nostr pull after merging. */
     setStreaks: (streaks: Streaks) => void;
+    /** The identity this device's streaks and Palavra log belong to, or null
+        while nobody has signed in since they started. See claimLocalData in
+        store/auth. */
+    localDataOwner: string | null;
+    setLocalDataOwner: (pubkey: string | null) => void;
 
     /** When the synced settings last changed on this device (epoch ms).
         Settings are last-write-wins, so this is what decides a conflict. */
@@ -534,11 +538,6 @@ export const useAppStore = create<AppState>()(
         (set) => ({
             rosaryMode: 'beginner',
             setRosaryMode: (rosaryMode) => set({ rosaryMode, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
-            toggleRosaryMode: () => set((state) => ({
-                rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner',
-                settingsUpdatedAt: Date.now(),
-                settingsFromRemote: false,
-            })),
             rosarySession: null,
             setRosarySession: (rosarySession) => set({ rosarySession }),
 
@@ -634,6 +633,8 @@ export const useAppStore = create<AppState>()(
                 };
             }),
             setStreaks: (streaks) => set({ streaks }),
+            localDataOwner: null,
+            setLocalDataOwner: (localDataOwner) => set({ localDataOwner }),
             settingsUpdatedAt: 0,
             settingsFromRemote: false,
             applySyncedSettings: (settings, updatedAt) => set({

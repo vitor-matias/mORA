@@ -12,8 +12,6 @@ import {
 /** What a signer is handed: an event with everything but the signature. */
 export type EventTemplate = Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>;
 
-export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
-
 // NIP-78 "Application-specific Data": addressable event, replaced per d-tag.
 // (30000 would collide with NIP-51 follow sets.)
 export const KIND_APP_STATE = 30078;

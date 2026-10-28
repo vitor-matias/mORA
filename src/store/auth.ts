@@ -4,7 +4,7 @@ import { NLogin, type NLoginType } from '@nostrify/react/login';
 import { generateSecretKey, nip19 } from 'nostr-tools';
 import type { NostrProfile } from '@/lib/nostr';
 import type { ProtectedKey } from '@/lib/keyVault';
-import { useAppStore } from '@/store/app';
+import { emptyStreaks, useAppStore } from '@/store/app';
 import { usePalavraStore } from '@/store/palavra';
 
 // Signing in is the point at which a user gets an identity to sync under, so
@@ -22,8 +22,24 @@ import { usePalavraStore } from '@/store/palavra';
 // same browser inherited the first one's choice and started publishing without
 // being asked; the consent has to belong to whoever it discloses.
 function enableSyncForNewIdentity(pubkey: string | null | undefined) {
+    claimLocalData(pubkey ?? null);
     useAppStore.getState().setShareStreaks(true);
     usePalavraStore.getState().setSharePalavraResults(pubkey ?? null, true);
+}
+
+// Streaks and the Palavra log are device state, merged into whoever syncs
+// next. Played signed out, they are adopted by the first identity to sign in
+// — that is the point of playing first. But once they belong to someone, a
+// different identity signing in on this device starts clean: merging would
+// write one person's games and streaks into another's synced record for good,
+// and could publish their result under the new name.
+function claimLocalData(pubkey: string | null) {
+    const app = useAppStore.getState();
+    if (pubkey && app.localDataOwner && app.localDataOwner !== pubkey) {
+        app.setStreaks(emptyStreaks());
+        usePalavraStore.setState({ plays: {}, sharedNotes: {} });
+    }
+    if (pubkey) app.setLocalDataOwner(pubkey);
 }
 
 // Signing out no longer clears the Palavra preference: it is stored per
