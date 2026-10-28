@@ -5,6 +5,14 @@
   "$schema": "https://unpkg.com/wrangler@4.154.0/config-schema.json",
   "name": "mora",
   "compatibility_date": "2026-10-23",
+  // Wrangler runs this before every deploy, upload and preview, so dist/ is
+  // never stale or missing — Workers Builds included, whatever its dashboard
+  // build command says.
+  "build": { "command": "npm run build" },
+  // Workers Builds creates a Preview for each pull-request branch with
+  // `wrangler preview`, which refuses to run without this block. Empty is
+  // enough: assets and compatibility settings stay at the top level.
+  "previews": {},
   "assets": {
     "directory": "./dist",
     // Routing is hash-based, so this only matters for a mistyped path.
