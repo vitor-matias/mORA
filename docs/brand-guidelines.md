@@ -1,4 +1,4 @@
-# mORA Brand Guidelines v1.0
+# mORA Brand Guidelines v2.0
 
 > Last updated: 2026-10-28
 > Status: Draft. Written down from what the app already does; section 9 lists the decisions still open.
@@ -11,7 +11,7 @@
 | Name | mORA (always this casing: lowercase m, capital ORA) |
 | Language | European Portuguese (pt-PT) |
 | Primary Color | The day's liturgical colour (section 3.2); brand constant #B45309 |
-| Page Background | #FAF9F6 light / #121212 dark |
+| Page Background | #F7F7F9 light (Bento) / #0B0B0C dark (Imersivo) |
 | Primary Font | Inter (interface) |
 | Reading Font | Lora (prayers and readings) |
 | Icons | Lucide, outline |
@@ -67,17 +67,17 @@ The app icon and the favicon don't match yet. See section 9.
 
 | Name | Hex | RGB | Usage |
 |------|-----|-----|-------|
-| Page Light | #FAF9F6 | rgb(250,249,246) | Page background, status-bar strip, PWA theme colour |
+| Page Light | #F7F7F9 | rgb(247,247,249) | Page background, status-bar strip, PWA theme colour |
 | Surface Light | #FFFFFF | rgb(255,255,255) | Cards (`.surface`), sheets |
 | Ink Light | #18181B | rgb(24,24,27) | Headings, body text (zinc-900) |
 | Secondary Light | #71717A | rgb(113,113,122) | Supporting text (zinc-500) |
-| Page Dark | #121212 | rgb(18,18,18) | Page background in dark mode |
-| Surface Dark | #1B1B1E | rgb(27,27,30) | Cards in dark mode |
+| Page Dark | #0B0B0C | rgb(11,11,12) | Page background in dark mode |
+| Surface Dark | #18181B | rgb(24,24,27) | Tiles in dark mode (zinc-900) |
 | Ink Dark | #FAFAFA | rgb(250,250,250) | Headings, body text (zinc-50) |
 | Secondary Dark | #A1A1AA | rgb(161,161,170) | Supporting text (zinc-400) |
 | Hairline | ink at 8% | rgb(24 24 27 / 0.08) | Card borders (white at 8% in dark) |
 
-The page is warm off-white, never pure white; cards are the white. Dark mode is near-black, never blue-black.
+By day (**Bento**) the page is a cool light grey and the tiles are white. It is the lightest grey on which zinc-500 still holds 4.5:1 (4.52); text sitting directly on the page, rather than on a tile, uses zinc-600. By night (**Imersivo**) the page is near-black, never blue-black, with zinc-900 tiles.
 
 ### Primary Colors (liturgical)
 
@@ -95,9 +95,13 @@ How to use them:
 
 - **Accent text** (labels, links, references): 700 in light mode, 400 in dark.
 - **Primary button** (`.cta-primary`): a 700 fill with white text in light mode; a 400 fill with ink text (#18181B) in dark. Dark mode has no white-on-colour button, because no bright fill reaches 4.5:1 with white.
-- **500 is decorative only**: dots, small ornaments, tints at 8–15% opacity. Against white it falls below 3:1 in green and gold.
-- **The wash** (`--app-wash`): the 200 shade (900 in dark) at 35% at the top of the viewport, fading to nothing by 70vh. It's the one place the season colours the whole screen, and the only gradient in the interface.
-- One coloured panel per page at most (`.surface-accent`, a tinted hairline, not a halo).
+- **Selected states** (a chosen day, an active chip) follow the button rule: 700 with white by day, 400 with ink by night. Never white on 500 or 600.
+- **Day cards are solid**: Home's day card, the day card on Missa, the Terço's mysteries card and the Devocionário's suggestion are blocks of 700 (800 by night) with white text, 5.0:1 or better. Only when the card shows *today*: the Diretório shows other days, whose colour can differ from the page's, so its panel stays white with the colour dot.
+- **Imersivo's discs**: on Home by night, the day card gives way to a large headline over two flat discs of 950 and 800. Keep them inside the day's own block; grey text over them would fail.
+- **Progress beads** (Terço, Coroas): 700 by day, 500 by night for beads prayed, 700 / 400 for the current one, which is also larger. 3:1 or better against the page in every season.
+- **500 is decorative only**: dots, small ornaments, tints at 8–15% opacity. Against the page it falls below 3:1 in green and gold, and 600 does too in gold.
+- **No wash.** The season no longer tints the top of the page (`--app-wash` is `none`); the day cards and the accents carry it.
+- One coloured panel per page at most.
 
 ### Semantic Colors (fixed: they never follow the season)
 
@@ -113,7 +117,7 @@ On the Palavra board the colour *is* the feedback, so it can't turn purple in Ad
 ### Accessibility
 
 - Every text pairing meets WCAG AA (4.5:1) in all five seasons and both modes. Check new pairings against every theme, not just green.
-- Lowest pairings in use: white on gold 700 is 5.02:1; ink on purple 400 is 6.70:1; zinc-500 on white is 4.83:1.
+- Lowest pairings in use: white on gold 700 is 5.02:1; gold 700 text on the page is 4.69:1; ink on purple 400 is 6.70:1; zinc-500 on the page is 4.52:1.
 - `prefers-reduced-motion`, `prefers-reduced-transparency` and `prefers-contrast: more` each have their own rules in `src/index.css`. New floating or animated surfaces join those rules.
 
 ---
@@ -134,7 +138,7 @@ One sans for everything around the prayer, one serif for the prayer itself. The 
 
 | Element | Class | Size | Weight | Notes |
 |---------|-------|------|--------|-------|
-| Page title | `text-3xl` | 30px | 700 | Tight tracking; collapses to `text-xl` on scroll |
+| Page title | `text-3xl` | 30px | 800 | Extra-bold, tight tracking; collapses to `text-xl` on scroll |
 | Section heading | `text-sm` uppercase | 14px | 600 | `tracking-wider`, secondary colour |
 | Card title | `text-lg` | 18px | 600–700 | |
 | Body | `text-sm` / `text-base` | 14–16px | 400–500 | |
@@ -180,15 +184,18 @@ Inter 400–800 and Lora 400–600 (plus italics 400, 500) come from Google Font
 |---------|--------|
 | Base (`--radius`) | 10px |
 | Inputs, small buttons | `rounded-xl` (14px) |
-| Cards, panels | `rounded-2xl` / `rounded-3xl` (18–22px) |
+| Tiles, cards, panels | `rounded-3xl` (22px) |
+| Search fields, list rows | `rounded-2xl` (18px) |
 | Sheets, floating tab bar | `rounded-3xl` (22px) |
 | Pills, avatars | full |
 
 ### Surfaces
 
-- Flat. Cards are opaque with a hairline and at most a 2px shadow in light mode, none in dark.
+- Bento: white tiles of different sizes on the grey page. On Home, Missa is the tall tile and Palavra the wide one, and every tile shows its own state for today (the next Hour, the day's mysteries, the Palavra streak).
+- Flat. Tiles are opaque with a hairline and at most a 2px shadow in light mode, none in dark.
+- No cards inside cards: the readings sit on the page, not in a tile, because Horas nests its own cards inside them.
 - Anything the page scrolls under is frosted, not opaque: the top bar, the tab bar, the prayer action rail. The reading should pass beneath, not be cut off.
-- No gradients except the liturgical wash and the medal art. No glows, no coloured shadows, no glassmorphism cards.
+- No gradients except the medal art. No glows, no coloured shadows, no glassmorphism cards.
 
 ### Motion
 
@@ -302,3 +309,4 @@ These are inconsistencies found while writing this document. Each one needs a ch
 |---------|------|---------|
 | 1.0 | 2026-10-28 | Initial guidelines, written from the app as built, including the AA contrast rules for the liturgical palette |
 | 1.1 | 2026-10-28 | The interface addresses the reader as *tu*; the text-size setting scales the interface; touch targets fixed at 44px |
+| 2.0 | 2026-10-28 | Bento by day, Imersivo by night: new page colours, no wash, solid day cards, 3xl tiles, extra-bold titles, bead and selected-state contrast rules |
