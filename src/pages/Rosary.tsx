@@ -45,6 +45,17 @@ export default function Rosary() {
         () => formatISODate(new Date()),
         () => { if (currentStepIndex === 0) setDay(currentDay()); },
     );
+    // …and at midnight while the page stays open on screen, which the
+    // rollover above (visibility changes only) never sees: "Hoje rezamos"
+    // must not keep listing yesterday's mysteries. Re-armed every day.
+    useEffect(() => {
+        if (currentStepIndex !== 0) return;
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        const id = window.setTimeout(() => setDay(currentDay()), midnight.getTime() - now.getTime() + 1000);
+        return () => window.clearTimeout(id);
+    }, [currentStepIndex, day]);
     const finishSheet = useRef<SheetHandle>(null);
 
     const sequence = useMemo(() => {

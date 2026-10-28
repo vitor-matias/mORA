@@ -176,7 +176,11 @@ export function DayCard({ dateLabel, color, title, description, sections, classN
                 onClick={() => setExpanded((v) => !v)}
                 aria-expanded={expanded}
                 disabled={!hasBody}
-                className="pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left bg-liturgy-700 dark:bg-liturgy-800 text-white"
+                className={`pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left text-white ${
+                    // No colour yet for this day: the page palette may still be another
+                    // day's, so the header stays neutral (white on zinc-700, 10:1).
+                    color ? 'bg-liturgy-700 dark:bg-liturgy-800' : 'bg-zinc-700 dark:bg-zinc-800'
+                }`}
             >
                 <span>
                     <span className="block text-xs font-bold uppercase tracking-widest mb-1.5">

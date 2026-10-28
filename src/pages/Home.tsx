@@ -221,11 +221,15 @@ export default function Home() {
                 the season as two flat discs behind it. White text holds AA on
                 every season's 700 (5.0:1 and up) and on the discs (7.1:1 and
                 up), which is why nothing here is tinted or translucent. */}
-            <section className="relative rounded-3xl p-5 bg-liturgy-700 text-white dark:bg-transparent dark:px-0 dark:pt-8 lg:col-span-3">
+            <section className={`relative rounded-3xl p-5 text-white dark:bg-transparent dark:px-0 dark:pt-8 lg:col-span-3 ${
+                // Until today's calendar answers, the stored colour may be
+                // yesterday's: neutral rather than a season the day may not be.
+                infoIsToday ? 'bg-liturgy-700' : 'bg-zinc-700'
+            }`}>
                 {/* The discs stay within the day's own block: over the greeting
                     above it, its grey subtitle would lose its contrast. */}
-                <div aria-hidden="true" className="hidden dark:block absolute -top-4 -right-28 h-64 w-64 rounded-full bg-liturgy-950" />
-                <div aria-hidden="true" className="hidden dark:block absolute top-6 -right-10 h-36 w-36 rounded-full bg-liturgy-800" />
+                <div aria-hidden="true" className={`hidden absolute -top-4 -right-28 h-64 w-64 rounded-full bg-liturgy-950 ${infoIsToday ? 'dark:block' : ''}`} />
+                <div aria-hidden="true" className={`hidden absolute top-6 -right-10 h-36 w-36 rounded-full bg-liturgy-800 ${infoIsToday ? 'dark:block' : ''}`} />
                 <div className="relative">
                     <p className="text-xs font-bold uppercase tracking-widest">
                         {formatDisplayDate(new Date())}
@@ -243,7 +247,7 @@ export default function Home() {
                         <span className="text-sm min-w-0">Agora: {currentHour.label}</span>
                         <Link
                             to="/liturgia-horas"
-                            className="pressable shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-4 min-h-[44px] text-sm font-bold text-liturgy-700 dark:text-zinc-900"
+                            className={`pressable shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-4 min-h-[44px] text-sm font-bold dark:text-zinc-900 ${infoIsToday ? 'text-liturgy-700' : 'text-zinc-900'}`}
                         >
                             Rezar <ArrowRight size={15} aria-hidden="true" />
                         </Link>
