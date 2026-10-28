@@ -106,24 +106,30 @@ export function TabBar() {
     // translate-y-[150%] was a fraction of the bar alone, which left its top
     // edge showing over a 34px home-indicator inset.)
     const navRef = useRef<HTMLElement>(null);
+    // Styles are written to the bar inside the fixed nav, never to the nav
+    // itself: on iOS, restyling a position:fixed element mid-momentum-scroll
+    // re-places it from the main thread's stale scroll offset, so the bar
+    // rode along with the page and only snapped back once scrolling settled.
+    const barRef = useRef<HTMLDivElement>(null);
     const spring = useRef<Spring | null>(null);
     const hideRef = useRef(hide);
     useLayoutEffect(() => {
         const nav = navRef.current;
-        if (!nav) return;
+        const bar = barRef.current;
+        if (!nav || !bar) return;
         const render = (y: number) => {
             const extent = hiddenOffset(nav) || 1;
             const progress = Math.min(1, Math.max(0, y / extent));
             // Reduced motion: the same timing as a fade in place, not a slide.
             if (prefersReducedMotion()) {
-                nav.style.transform = '';
-                nav.style.opacity = String(1 - progress);
+                bar.style.transform = '';
+                bar.style.opacity = String(1 - progress);
             } else {
-                nav.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
-                nav.style.opacity = '';
+                bar.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+                bar.style.opacity = '';
             }
-            nav.style.visibility = progress >= 1 ? 'hidden' : '';
-            nav.style.pointerEvents = progress > 0.5 ? 'none' : '';
+            bar.style.visibility = progress >= 1 ? 'hidden' : '';
+            bar.style.pointerEvents = progress > 0.5 ? 'none' : '';
         };
         const s = createSpring(0, render);
         spring.current = s;
@@ -162,9 +168,9 @@ export function TabBar() {
                 ref={navRef}
                 aria-label="Navegação principal"
                 aria-hidden={hide}
-                className="xl:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40"
+                className="xl:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 pointer-events-none"
             >
-                <div className="max-w-md lg:max-w-xl mx-auto flex floating-bar rounded-3xl px-1">
+                <div ref={barRef} className="pointer-events-auto max-w-md lg:max-w-xl mx-auto flex floating-bar rounded-3xl px-1">
                     {tabs.map(({ to, label, icon: Icon, end }) => (
                         <NavLink
                             key={to}
