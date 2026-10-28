@@ -41,21 +41,25 @@ export default function Rosary() {
     const [showFinish, setShowFinish] = useState(false);
 
     // Back in the foreground on a new day, before the first bead.
+    // Guided mode only: "Só mistérios" is the prayer itself from the moment
+    // it opens (its step index never moves), so swapping its five mysteries
+    // under the reader would break the prayer. Changing mode re-reads the day.
+    const refreshesDay = rosaryMode === 'beginner' && currentStepIndex === 0;
     useDayRollover(
         () => formatISODate(new Date()),
-        () => { if (currentStepIndex === 0) setDay(currentDay()); },
+        () => { if (refreshesDay) setDay(currentDay()); },
     );
     // …and at midnight while the page stays open on screen, which the
     // rollover above (visibility changes only) never sees: "Hoje rezamos"
     // must not keep listing yesterday's mysteries. Re-armed every day.
     useEffect(() => {
-        if (currentStepIndex !== 0) return;
+        if (!refreshesDay) return;
         const now = new Date();
         const midnight = new Date(now);
         midnight.setHours(24, 0, 0, 0);
         const id = window.setTimeout(() => setDay(currentDay()), midnight.getTime() - now.getTime() + 1000);
         return () => window.clearTimeout(id);
-    }, [currentStepIndex, day]);
+    }, [refreshesDay, day]);
     const finishSheet = useRef<SheetHandle>(null);
 
     const sequence = useMemo(() => {
