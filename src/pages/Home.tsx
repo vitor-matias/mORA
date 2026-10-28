@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
+import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -14,12 +14,14 @@ import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
-import { UnlockKeyCard } from "@/components/UnlockKeyCard";
 
 export default function Home() {
     const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalSections, liturgicalColorDate } = useAppStore();
     const { profile, setProfile } = useAuthStore();
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
+    const hasProtectedKey = useAuthStore((s) => Boolean(s.protectedKey));
+    const isLocked = useAuthStore((s) => s.isLocked);
+    const lockKey = useAuthStore((s) => s.lock);
     const t = useTranslations().home;
     const tPalavra = useTranslations().palavra;
 
@@ -125,6 +127,21 @@ export default function Home() {
                     </h1>
                     <p className="text-zinc-500 text-lg">{t.whatToPray}</p>
                 </div>
+                {hasProtectedKey && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!isLocked) return lockKey();
+                            import("@/lib/nostr").then(({ unlockIfNeeded }) => unlockIfNeeded()).catch(() => {});
+                        }}
+                        aria-label={isLocked ? 'Desbloquear a chave' : 'Bloquear a chave'}
+                        className="xl:hidden shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center"
+                    >
+                        {isLocked
+                            ? <Lock size={20} className="text-zinc-400" aria-hidden="true" />
+                            : <LockOpen size={20} className="text-liturgy-600 dark:text-liturgy-400" aria-hidden="true" />}
+                    </button>
+                )}
                 {/* xl:hidden — the global top bar already carries Perfil, and
                     a launcher shouldn't duplicate the chrome above it. */}
                 <Link
@@ -143,8 +160,6 @@ export default function Home() {
                     )}
                 </Link>
             </header>
-
-            <UnlockKeyCard />
 
             {/* Desktop: hero and progress share a row */}
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">

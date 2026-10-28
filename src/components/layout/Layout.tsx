@@ -3,6 +3,7 @@ import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
+import { useAutoUnlock } from "@/lib/useAutoUnlock";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
@@ -59,6 +60,7 @@ export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
+    useAutoUnlock();
     // Badges are awarded on a relay, where nothing would tell the person they
     // won one. Announced app-wide rather than from the Palavra page: the award
     // lands whenever it lands, and hearing about it should not depend on being

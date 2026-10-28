@@ -186,7 +186,25 @@ export async function getSigner(): Promise<NostrSigner | null> {
     }
 }
 
+// One prompt for any number of signatures asked for at once.
+let unlocking: Promise<void> | null = null;
+
+/** A protected key still locked asks for its passkey at the moment something
+    has to be signed, rather than failing. Only signing does this: encrypted
+    backups go through getSigner and skip while locked, so background sync
+    never puts up a prompt nobody asked for. A cancelled prompt rejects. */
+export async function unlockIfNeeded(): Promise<void> {
+    const { protectedKey, isLocked, unlockWithKey } = useAuthStore.getState();
+    if (!protectedKey || !isLocked) return;
+    unlocking ??= import('@/lib/keyVault')
+        .then(({ unlockKey }) => unlockKey(protectedKey))
+        .then(unlockWithKey)
+        .finally(() => { unlocking = null; });
+    await unlocking;
+}
+
 export async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
+    await unlockIfNeeded();
     const signer = await getSigner();
     if (!signer) throw new Error('No method available to sign the event');
     return signer.signEvent(baseEvent);

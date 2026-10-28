@@ -21,7 +21,7 @@ import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib
 const REMINDER_SYNC_DEBOUNCE_MS = 600;
 
 export default function Profile() {
-    const { login, lockedPubkey, protectedKey, isLocked, setProtectedKey, unlockWithKey, signIn, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
+    const { login, lockedPubkey, protectedKey, isLocked, autoUnlock, setAutoUnlock, setProtectedKey, unlockWithKey, signIn, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
     // One login record replaces the old pubkey/privkey/isNip07/bunker
     // quadruple; everything the page used to branch on is its `type`.
     const pubkey = login?.pubkey ?? lockedPubkey;
@@ -828,6 +828,29 @@ export default function Profile() {
                                             </button>
                                         )}
                                     </div>
+                                    {protectedKey && (
+                                        <div className="flex items-center justify-between gap-4 mt-3">
+                                            <div>
+                                                <p className="text-sm font-medium">Desbloquear ao abrir</p>
+                                                <p className="text-xs text-zinc-500 mt-0.5">
+                                                    Pede a biometria assim que a aplicação abre.
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAutoUnlock(!autoUnlock)}
+                                                role="switch"
+                                                aria-checked={autoUnlock}
+                                                aria-label="Desbloquear ao abrir"
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${autoUnlock ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${autoUnlock ? 'translate-x-5' : 'translate-x-0'}`}
+                                                />
+                                            </button>
+                                        </div>
+                                    )}
                                     {vaultError && <p className="text-red-500 text-xs mt-2">{vaultError}</p>}
                                 </div>
                             )}
