@@ -29,7 +29,7 @@ export function Duels({ pubkey, refreshKey }: {
 
     if (rows === null) {
         return (
-            <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
+            <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8">
                 <Loader2 size={15} className="animate-spin" aria-hidden="true" />
                 {t.loadingDuels}
             </p>
@@ -38,7 +38,7 @@ export function Duels({ pubkey, refreshKey }: {
 
     if (rows.length === 0) {
         return (
-            <p className="text-sm text-zinc-500 text-center py-8">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
                 {t.emptyDuels}
             </p>
         );
@@ -52,18 +52,18 @@ export function Duels({ pubkey, refreshKey }: {
                         <Player player={row} />
                         <span className="shrink-0 tabular-nums text-xs">
                             <strong className="text-emerald-600 dark:text-emerald-400">{row.wins}</strong>
-                            <span className="text-zinc-400 mx-1">·</span>
-                            <span className="text-zinc-500">{row.draws}</span>
-                            <span className="text-zinc-400 mx-1">·</span>
-                            <strong className="text-zinc-500">{row.losses}</strong>
+                            <span className="text-zinc-500 dark:text-zinc-400 mx-1">·</span>
+                            <span className="text-zinc-500 dark:text-zinc-400">{row.draws}</span>
+                            <span className="text-zinc-500 dark:text-zinc-400 mx-1">·</span>
+                            <strong className="text-zinc-500 dark:text-zinc-400">{row.losses}</strong>
                         </span>
-                        <span className="shrink-0 w-16 text-right text-xs text-zinc-400">
+                        <span className="shrink-0 w-16 text-right text-xs text-zinc-500 dark:text-zinc-400">
                             {t.days(row.played)}
                         </span>
                     </li>
                 ))}
             </ul>
-            <p className="text-xs text-zinc-400 mt-3">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3">
                 {t.duelsLegend(DUEL_DAYS)}
             </p>
         </>

@@ -55,7 +55,7 @@ export function SaintOfDayCard({ saint, className = '' }: { saint: SaintOfDay; c
                 className="pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left"
             >
                 <span>
-                    <span className="block text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
+                    <span className="block text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1">
                         Santo do dia
                     </span>
                     <span className="block text-sm font-semibold leading-snug text-zinc-800 dark:text-zinc-100">
@@ -66,7 +66,7 @@ export function SaintOfDayCard({ saint, className = '' }: { saint: SaintOfDay; c
                     <ChevronDown
                         size={16}
                         aria-hidden="true"
-                        className={`mt-0.5 shrink-0 text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                        className={`mt-0.5 shrink-0 text-zinc-500 dark:text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
                     />
                 )}
             </button>
@@ -77,7 +77,7 @@ export function SaintOfDayCard({ saint, className = '' }: { saint: SaintOfDay; c
                     )}
                     {others && (
                         <div>
-                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2">
+                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">
                                 Outros santos do dia
                             </p>
                             <div className={BODY_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: others }} />

@@ -10,7 +10,7 @@ import { Player } from './Player';
 /** The three podium places get a tint; everyone else is plain. */
 const PLACE_TINT = [
     'text-amber-600 dark:text-amber-400',
-    'text-zinc-500 dark:text-zinc-300',
+    'text-zinc-600 dark:text-zinc-300',
     'text-orange-700 dark:text-orange-500',
 ];
 
@@ -58,7 +58,7 @@ export function Leaderboard({ date, you, refreshKey }: {
 
     if (rows === null) {
         return (
-            <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
+            <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8">
                 <Loader2 size={15} className="animate-spin" aria-hidden="true" />
                 {t.loadingBoard}
             </p>
@@ -67,7 +67,7 @@ export function Leaderboard({ date, you, refreshKey }: {
 
     if (rows.length === 0) {
         return (
-            <p className="text-sm text-zinc-500 text-center py-8">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
                 {date === formatUTCDate(new Date()) ? t.emptyBoard : t.emptyBoardArchive}
             </p>
         );
@@ -85,7 +85,7 @@ export function Leaderboard({ date, you, refreshKey }: {
                                 isYou ? 'font-semibold text-liturgy-700 dark:text-liturgy-300' : ''
                             }`}
                         >
-                            <span className={`w-6 shrink-0 tabular-nums text-center font-bold ${PLACE_TINT[i] ?? 'text-zinc-400'}`}>
+                            <span className={`w-6 shrink-0 tabular-nums text-center font-bold ${PLACE_TINT[i] ?? 'text-zinc-500 dark:text-zinc-400'}`}>
                                 {i < 3
                                     ? <>
                                         <Medal size={15} className="mx-auto" aria-hidden="true" />
@@ -94,10 +94,10 @@ export function Leaderboard({ date, you, refreshKey }: {
                                     : i + 1}
                             </span>
                             <Player player={row} you={isYou} />
-                            <span className="shrink-0 tabular-nums text-zinc-500">
+                            <span className="shrink-0 tabular-nums text-zinc-500 dark:text-zinc-400">
                                 {row.solved ? `${row.tries}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`}
                             </span>
-                            <span className="shrink-0 tabular-nums text-xs text-zinc-400 w-16 text-right">
+                            <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400 w-16 text-right">
                                 {formatDuration(row.ms)}
                             </span>
                         </li>
@@ -108,7 +108,7 @@ export function Leaderboard({ date, you, refreshKey }: {
                 asked: more may come, and saying so keeps a short board from
                 reading as the whole day. */}
             {refreshing && (
-                <p className="flex items-center justify-center gap-2 text-xs text-zinc-400 pt-2">
+                <p className="flex items-center justify-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 pt-2">
                     <Loader2 size={13} className="animate-spin" aria-hidden="true" />
                     {t.loadingBoard}
                 </p>

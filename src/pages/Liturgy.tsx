@@ -381,7 +381,7 @@ export default function Liturgy() {
 
                         {sections.length > 0 && (
                             <nav aria-label="Secções das leituras" className="mt-1">
-                                <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 px-2">
+                                <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 px-2">
                                     Secções
                                 </p>
                                 <ul className="space-y-0.5">
@@ -391,7 +391,7 @@ export default function Liturgy() {
                                                 onClick={() => scrollToSection(id)}
                                                 className={`w-full text-left text-sm py-1.5 px-2 rounded-lg transition-colors ${
                                                     activeSection === id
-                                                        ? 'text-liturgy-600 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
+                                                        ? 'text-liturgy-700 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
                                                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                                                 }`}
                                             >
@@ -416,7 +416,7 @@ export default function Liturgy() {
                     {loading ? (
                         <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-20">
                             <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-amber-500 animate-spin" />
-                            <p className="text-zinc-400">A obter leituras de hoje...</p>
+                            <p className="text-zinc-500 dark:text-zinc-400">A obter leituras de hoje...</p>
                         </div>
                     ) : liturgy ? (
                         <>
@@ -470,7 +470,7 @@ export default function Liturgy() {
                                 success, so this must show on all breakpoints */}
                             <div className="lg:max-w-sm">{dateNav}</div>
                             <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
-                                <p className="text-zinc-500 text-center">
+                                <p className="text-zinc-500 dark:text-zinc-400 text-center">
                                     {loadFailed
                                         ? 'Não foi possível carregar as leituras. Verifique a sua ligação à internet.'
                                         : 'Sem leituras disponíveis para este dia.'}

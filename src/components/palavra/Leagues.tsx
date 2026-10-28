@@ -94,7 +94,7 @@ export function Leagues({
 
     if (leagues === null) {
         return (
-            <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
+            <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8">
                 <Loader2 size={15} className="animate-spin" aria-hidden="true" />
                 {t.loadingLeagues}
             </p>
@@ -109,7 +109,7 @@ export function Leagues({
     return (
         <div className="space-y-4">
             {leagues.length === 0 && (
-                <p className="text-sm text-zinc-500">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {t.emptyLeagues}
                 </p>
             )}
@@ -124,14 +124,14 @@ export function Leagues({
                                 aria-expanded={selected === league.coord}
                                 className="flex-1 min-w-0 flex items-center gap-2 text-left text-sm font-semibold"
                             >
-                                <Users size={15} className="shrink-0 text-zinc-400" aria-hidden="true" />
+                                <Users size={15} className="shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                                 <span className="truncate">{league.name}</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => copyInvite(league)}
                                 aria-label={t.copyInvite(league.name)}
-                                className="shrink-0 p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                className="shrink-0 p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 {copied === league.coord
                                     ? <Check size={15} aria-hidden="true" />
@@ -146,7 +146,7 @@ export function Leagues({
                                     if (selected === league.coord) setSelected(null);
                                 })}
                                 aria-label={t.leaveLeague(league.name)}
-                                className="shrink-0 p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                                className="shrink-0 p-1.5 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-red-600 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                             >
                                 <LogOut size={15} aria-hidden="true" />
                             </button>
@@ -155,18 +155,18 @@ export function Leagues({
                         {selected === league.coord && (
                             <div className="px-3 pb-3">
                                 {!revealResults && (
-                                    <p className="text-xs text-zinc-500 py-2">
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
                                         {t.standingsSpoiler}
                                     </p>
                                 )}
                                 {revealResults && standings === null && (
-                                    <p className="flex items-center gap-2 text-xs text-zinc-500 py-2">
+                                    <p className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 py-2">
                                         <Loader2 size={13} className="animate-spin" aria-hidden="true" />
                                         {t.loadingStandings}
                                     </p>
                                 )}
                                 {revealResults && standings?.length === 0 && (
-                                    <p className="text-xs text-zinc-500 py-2">
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 py-2">
                                         {t.emptyStandings}
                                     </p>
                                 )}
@@ -174,7 +174,7 @@ export function Leagues({
                                     <ol className="divide-y divide-zinc-200 dark:divide-zinc-700/60">
                                         {standings.map((row, i) => (
                                             <li key={row.pubkey} className="flex items-center gap-3 py-2 text-sm">
-                                                <span className="w-4 shrink-0 tabular-nums text-xs text-zinc-400">{i + 1}</span>
+                                                <span className="w-4 shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400">{i + 1}</span>
                                                 {/* A div, not a span: Player
                                                     now renders the player sheet
                                                     beside its button, and that
@@ -188,10 +188,10 @@ export function Leagues({
                                                 }`}>
                                                     <Player player={row} />
                                                 </div>
-                                                <span className="shrink-0 tabular-nums text-zinc-500 text-xs">
+                                                <span className="shrink-0 tabular-nums text-zinc-500 dark:text-zinc-400 text-xs">
                                                     {row.solved ? `${row.tries}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`}
                                                 </span>
-                                                <span className="shrink-0 tabular-nums text-xs text-zinc-400 w-14 text-right">
+                                                <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400 w-14 text-right">
                                                     {formatDuration(row.ms)}
                                                 </span>
                                             </li>
@@ -269,7 +269,7 @@ export function Leagues({
             </div>
 
             {/* Said plainly, because a user could act on believing otherwise. */}
-            <p className="text-xs text-zinc-400 border-t border-zinc-100 dark:border-zinc-800 pt-3">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-800 pt-3">
                 {t.unlistedBefore}<strong>{t.unlistedBold}</strong>{t.unlistedAfter}
             </p>
         </div>

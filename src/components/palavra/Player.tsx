@@ -81,7 +81,7 @@ export function Player({ player, you = false }: { player: PlayerRef; you?: boole
                             setBrokenPicture(true);
                         }}
                     />
-                    : <User size={13} className="text-zinc-400" />}
+                    : <User size={13} className="text-zinc-500 dark:text-zinc-400" />}
             </span>
             <span className="truncate">
                 {player.name || shortPubkey(player.pubkey)}

@@ -75,7 +75,7 @@ export function BadgeAward({
                     type="button"
                     onClick={close}
                     aria-label={t.badgeAwardClose}
-                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
                     <X size={20} />
                 </button>
@@ -85,7 +85,7 @@ export function BadgeAward({
                 {badges.map((badge) => <BadgeItem key={badge.coord} badge={badge} />)}
             </ul>
 
-            <p className="text-xs text-zinc-500">{t.badgesPublishHelp}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">{t.badgesPublishHelp}</p>
 
             <button
                 type="button"
@@ -101,7 +101,7 @@ export function BadgeAward({
             <button
                 type="button"
                 onClick={close}
-                className="pressable w-full rounded-xl px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200"
+                className="pressable w-full rounded-xl px-4 py-2 text-sm font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
             >
                 {publishing === 'done' ? t.badgeAwardDone : t.badgeAwardLater}
             </button>

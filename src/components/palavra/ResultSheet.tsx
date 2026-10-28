@@ -35,7 +35,7 @@ function StatFigure({ value, label }: { value: ReactNode; label: string }) {
     return (
         <div className="text-center px-1">
             <p className="text-2xl font-bold leading-tight">{value}</p>
-            <p className="text-xs text-zinc-500 leading-tight mt-0.5">{label}</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-tight mt-0.5">{label}</p>
         </div>
     );
 }
@@ -148,17 +148,17 @@ export function ResultSheet({
                     {solved ? (tries === 1 ? t.wonFirstTry : t.wonIn(tries)) : t.lost}
                 </h2>
                 {!solved && (
-                    <p className="text-sm text-zinc-500">
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
                         {t.answerWas} <strong className="text-zinc-800 dark:text-zinc-100">{answer}</strong>.
                     </p>
                 )}
             </div>
 
             <div>
-                <h3 className="text-sm font-semibold text-zinc-500 mb-2">
+                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2">
                     {t.record}
                     {archive && (
-                        <span className="ml-2 font-normal text-xs text-zinc-400">
+                        <span className="ml-2 font-normal text-xs text-zinc-500 dark:text-zinc-400">
                             {t.recordUnchanged}
                         </span>
                     )}
@@ -172,7 +172,7 @@ export function ResultSheet({
             </div>
 
             <div>
-                <h3 className="text-sm font-semibold text-zinc-500 mb-2">{t.distribution}</h3>
+                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-2">{t.distribution}</h3>
                 <div className="space-y-1">
                     {Array.from({ length: MAX_GUESSES }, (_, i) => {
                         const count = stats.distribution[i] ?? 0;
@@ -181,7 +181,7 @@ export function ResultSheet({
                         const isThisGame = solved && tries === i + 1 && !archive;
                         return (
                             <div key={i} className="flex items-center gap-2 text-xs">
-                                <span className="w-3 text-zinc-500 tabular-nums">{i + 1}</span>
+                                <span className="w-3 text-zinc-500 dark:text-zinc-400 tabular-nums">{i + 1}</span>
                                 <div className="flex-1 bg-zinc-100 dark:bg-zinc-800 rounded overflow-hidden">
                                     <div
                                         className={`h-5 rounded flex items-center justify-end px-1.5 font-semibold text-white transition-[width] ${
@@ -222,7 +222,7 @@ export function ResultSheet({
             </div>
 
             {!archive && (
-                <p className="text-center text-xs text-zinc-500">
+                <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">
                     {t.nextWordIn(countdown)}
                 </p>
             )}

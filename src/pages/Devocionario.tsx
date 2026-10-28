@@ -85,7 +85,7 @@ export default function Devocionario() {
                     prayer ? 'hidden lg:block' : ''
                 }`}>
                     <div className="relative">
-                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                         <input
                             type="search"
                             value={query}
@@ -99,7 +99,7 @@ export default function Devocionario() {
                                 type="button"
                                 onClick={() => setQuery('')}
                                 aria-label="Limpar procura"
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                             >
                                 <X size={15} />
                             </button>
@@ -135,26 +135,26 @@ export default function Devocionario() {
                             to={`/devocionario/${suggestion.id}`}
                             className="block surface surface-accent rounded-2xl px-4 py-3 pressable pressable-card"
                         >
-                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
+                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1">
                                 Sugestão de hoje
                             </p>
                             <p className="text-sm font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
                                 {suggestion.title}
                             </p>
                             {suggestion.note && (
-                                <p className="text-xs text-zinc-500 mt-0.5 leading-snug">{suggestion.note}</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">{suggestion.note}</p>
                             )}
                         </Link>
                     )}
 
-                    <p className="text-xs text-zinc-400 dark:text-zinc-500 px-1">
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
                         {results.length === PRAYERS.length
                             ? `${PRAYERS.length} orações`
                             : `${results.length} de ${PRAYERS.length} orações`}
                     </p>
 
                     {results.length === 0 ? (
-                        <p className="text-sm text-zinc-500 px-1 py-6">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 px-1 py-6">
                             {filter === FAVOURITES
                                 ? 'Nenhuma das suas orações favoritas corresponde a esta procura.'
                                 : 'Nenhuma oração corresponde a esta procura.'}
@@ -172,12 +172,12 @@ export default function Devocionario() {
                                     >
                                         <div className="flex-1 min-w-0">
                                             <h3 className="text-sm font-semibold leading-snug">{entry.title}</h3>
-                                            <p className="text-xs text-zinc-500 mt-0.5 truncate">
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">
                                                 {entry.note ?? CATEGORY_LABEL.get(entry.category)}
                                             </p>
                                         </div>
                                         {favourites.includes(entry.id) && (
-                                            <Star size={13} className="shrink-0 text-liturgy-500 fill-current" aria-label="Favorita" />
+                                            <Star size={13} className="shrink-0 text-liturgy-700 dark:text-liturgy-400 fill-current" aria-label="Favorita" />
                                         )}
                                         <ChevronRight size={16} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
                                     </Link>
@@ -198,7 +198,7 @@ export default function Devocionario() {
                     ) : (
                         <div className="surface rounded-3xl px-6 py-16 text-center">
                             <BookMarked size={28} className="mx-auto text-liturgy-500 mb-3" aria-hidden="true" />
-                            <p className="text-sm text-zinc-500 max-w-xs mx-auto leading-relaxed text-balance">
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed text-balance">
                                 Escolhe uma oração da lista ou procure pelo nome ou conteúdo.
                             </p>
                         </div>
@@ -303,7 +303,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
 
     return (
         <article className="surface rounded-3xl p-6 lg:p-8">
-            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5">
                 {CATEGORY_LABEL.get(prayer.category)}
             </p>
             <div className="flex items-start justify-between gap-4">
@@ -319,10 +319,10 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                         aria-label={ticked
                             ? (canShare ? 'Oração partilhada' : 'Oração copiada')
                             : (canShare ? 'Partilhar oração' : 'Copiar oração')}
-                        className="p-2 rounded-full text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="p-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
                         {ticked
-                            ? <Check size={18} className="text-liturgy-600 dark:text-liturgy-400" />
+                            ? <Check size={18} className="text-liturgy-700 dark:text-liturgy-400" />
                             : canShare ? <ShareIcon size={18} /> : <Copy size={18} />}
                     </button>
                     <button
@@ -332,8 +332,8 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                         aria-label={isFavourite ? 'Remover das favoritas' : 'Guardar nas favoritas'}
                         className={`p-2 rounded-full transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                             isFavourite
-                                ? 'text-liturgy-600 dark:text-liturgy-400'
-                                : 'text-zinc-400 hover:text-liturgy-600 dark:hover:text-liturgy-400'
+                                ? 'text-liturgy-700 dark:text-liturgy-400'
+                                : 'text-zinc-500 hover:text-liturgy-600 dark:hover:text-liturgy-400'
                         }`}
                     >
                         <Star size={18} className={isFavourite ? 'fill-current' : ''} />
@@ -341,7 +341,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                 </div>
             </div>
             {prayer.note && (
-                <p className="text-sm text-zinc-500 mt-2 leading-snug">{prayer.note}</p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 leading-snug">{prayer.note}</p>
             )}
 
             <PrayerText text={prayer.text} className="content-text text-zinc-800 dark:text-zinc-200 mt-6" />
@@ -365,7 +365,7 @@ function PrayerView({ prayer, isFavourite, onToggleFavourite }: {
                     key={prayer.id}
                     className="mt-8 border-t border-zinc-200/70 dark:border-zinc-700/60 pt-4"
                 >
-                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 select-none">
+                    <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 select-none">
                         Em latim
                     </summary>
                     <PrayerText text={prayer.latin} className="content-text text-zinc-600 dark:text-zinc-400 mt-4" />

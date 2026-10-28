@@ -280,7 +280,7 @@ export function PageHeader({
                             <p
                                 ref={subtitleRef}
                                 style={collapsing ? SUBTITLE_STYLE : undefined}
-                                className="text-sm text-zinc-500 font-medium mt-0.5 truncate"
+                                className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-0.5 truncate"
                             >
                                 {subtitle}
                             </p>

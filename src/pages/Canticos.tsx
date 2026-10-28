@@ -65,7 +65,7 @@ export default function Canticos() {
 
             <div className="p-6 pb-8 w-full max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto">
                 <div className="relative mb-4">
-                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
                     <input
                         type="search"
                         value={query}
@@ -79,7 +79,7 @@ export default function Canticos() {
                             type="button"
                             onClick={() => setQuery('')}
                             aria-label="Limpar procura"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                         >
                             <X size={15} />
                         </button>
@@ -109,7 +109,7 @@ export default function Canticos() {
                     </div>
                 </div>
 
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 px-1 mb-3">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1 mb-3">
                     {results
                         ? `${results.length} de ${CHANTS.length} cânticos`
                         : `${CHANTS.length} cânticos`}
@@ -117,7 +117,7 @@ export default function Canticos() {
 
                 {results ? (
                     results.length === 0 ? (
-                        <p className="text-sm text-zinc-500 px-1 py-6">
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 px-1 py-6">
                             {inFavourites
                                 ? 'Nenhum dos seus cânticos favoritos corresponde a esta procura.'
                                 : 'Nenhum cântico corresponde a esta procura.'}
@@ -133,7 +133,7 @@ export default function Canticos() {
                     <div className="space-y-8">
                         {categories.map((category) => (
                             <section key={category.id}>
-                                <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3 px-1">
+                                <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-3 px-1">
                                     {category.heading}
                                 </h2>
                                 <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
@@ -187,7 +187,7 @@ function Sung({ text, muted = false }: { text: string; muted?: boolean }) {
             {stanzas.map((stanza, i) => (
                 stanza.isRefrain ? (
                     <div key={i} className="pl-4 border-l-2 border-liturgy-500/60">
-                        <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
+                        <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1">
                             Refrão
                         </p>
                         <p className={`content-text whitespace-pre-line italic ${tone}`}>
@@ -223,11 +223,11 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                 >
                     <div className="flex-1 min-w-0">
                         <h3 className="text-base font-bold leading-tight">{chant.title}</h3>
-                        <p className="text-zinc-500 text-xs mt-1 leading-snug">{chant.note}</p>
+                        <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1 leading-snug">{chant.note}</p>
                     </div>
                     <ChevronDown
                         size={18}
-                        className={`text-zinc-400 shrink-0 mt-1 transition-transform ${open ? 'rotate-180' : ''}`}
+                        className={`text-zinc-500 dark:text-zinc-400 shrink-0 mt-1 transition-transform ${open ? 'rotate-180' : ''}`}
                         aria-hidden="true"
                     />
                 </button>
@@ -240,7 +240,7 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                         : `Guardar ${chant.title} nos favoritos`}
                     className={`shrink-0 mt-3 mr-3 ml-1 p-2 rounded-full transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                         isFavourite
-                            ? 'text-liturgy-600 dark:text-liturgy-400'
+                            ? 'text-liturgy-700 dark:text-liturgy-400'
                             : 'text-zinc-300 dark:text-zinc-600 hover:text-liturgy-600 dark:hover:text-liturgy-400'
                     }`}
                 >
@@ -262,7 +262,7 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                             : ''
                         }>
                             {chant.body && (
-                                <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-2">
+                                <p className="text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-2">
                                     Em latim
                                 </p>
                             )}
@@ -272,7 +272,7 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                     {chant.prayerId && (
                         <Link
                             to={`/devocionario/${chant.prayerId}`}
-                            className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 hover:underline"
+                            className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 hover:underline"
                         >
                             <BookMarked size={13} aria-hidden="true" />
                             Ver no Devocionário

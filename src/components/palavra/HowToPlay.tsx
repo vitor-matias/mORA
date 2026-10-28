@@ -91,7 +91,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
                     type="button"
                     onClick={close}
                     aria-label={t.howToPlayClose}
-                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
                     <X size={20} />
                 </button>
@@ -106,7 +106,7 @@ export function HowToPlay({ onClose }: { onClose: () => void }) {
             <hr className="border-zinc-200 dark:border-zinc-800" />
 
             <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-zinc-500">{t.howToPlayExamples}</h3>
+                <h3 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{t.howToPlayExamples}</h3>
                 <ExampleRow word="TERRA" highlightIndex={0} mark="correct" caption={t.howToPlayExampleCorrect} />
                 <ExampleRow word="SENHOR" highlightIndex={1} mark="present" caption={t.howToPlayExamplePresent} />
                 <ExampleRow word="PROFETA" highlightIndex={2} mark="absent" caption={t.howToPlayExampleAbsent} />

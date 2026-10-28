@@ -745,7 +745,7 @@ export default function Palavra() {
                 )}
 
                 {!challenge && !loadError && (
-                    <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-12">
+                    <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-12">
                         <Loader2 size={16} className="animate-spin" aria-hidden="true" />
                         {t.loading}
                     </p>
@@ -787,7 +787,7 @@ export default function Palavra() {
                                     )}
                                 </Fragment>
                             ))}
-                            <cite className="block not-italic text-xs font-medium text-zinc-500 mt-2">
+                            <cite className="block not-italic text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-2">
                                 {over && (
                                     <>
                                         {refUrl

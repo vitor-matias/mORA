@@ -158,7 +158,7 @@ export default function Rosary() {
                     </button>
                 ))}
             </div>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-2">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                 {rosaryMode === 'beginner'
                     ? 'Todas as orações, conta a conta.'
                     : 'Os cinco mistérios numa só página — reze as contas ao seu ritmo.'}
@@ -195,7 +195,7 @@ export default function Rosary() {
                                 key={m.id}
                                 className="surface rounded-3xl p-5"
                             >
-                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-3">
+                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-3">
                                     {m.mysteryNum}º Mistério
                                 </span>
                                 <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 leading-snug mb-2">
@@ -204,7 +204,7 @@ export default function Rosary() {
                                 <p className="content-text italic text-zinc-700 dark:text-zinc-300 whitespace-pre-line mb-2">
                                     {m.description}
                                 </p>
-                                <p className="text-xs font-medium text-zinc-500">
+                                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                                     Fruto: {m.fruit}
                                 </p>
                             </article>
@@ -234,7 +234,7 @@ export default function Rosary() {
                         key={currentStepIndex}
                         className={`flex-1 flex flex-col ${direction ? `step-enter-${direction}` : ''}`}
                     >
-                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
+                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
                             {currentStep.title}
                         </span>
 
@@ -256,10 +256,10 @@ export default function Rosary() {
                 {rosaryMode === 'beginner' && currentStep.decadeIndex && currentStep.type !== 'misterio' ? (
                     <div className="mt-auto mb-8">
                         <div className="flex justify-between items-center mb-4">
-                            <span className="text-sm font-medium text-zinc-500">
+                            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                 Mistério {currentStep.decadeIndex} de 5
                             </span>
-                            <span className="text-sm font-medium text-zinc-500">
+                            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                 {currentStep.beadIndex === 0 ? 'Pai Nosso' :
                                     currentStep.beadIndex === 11 ? 'Glória' :
                                         `Conta ${currentStep.beadIndex} de 10`}
@@ -341,7 +341,7 @@ export default function Rosary() {
                         <PartyPopper size={32} />
                     </div>
                     <h2 id="rosary-finish-title" className="text-2xl font-bold text-zinc-900 dark:text-white">Graças a Deus!</h2>
-                    <p className="text-zinc-500 text-sm leading-relaxed">
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
                         Concluiu o Santo Terço de hoje. <br />
                         Que Nossa Senhora interceda por si e pelos seus.
                     </p>

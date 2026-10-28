@@ -9,7 +9,7 @@ import { Player } from './Player';
 /** The three podium places get a tint; everyone else is plain. */
 const PLACE_TINT = [
     'text-amber-600 dark:text-amber-400',
-    'text-zinc-500 dark:text-zinc-300',
+    'text-zinc-600 dark:text-zinc-300',
     'text-orange-700 dark:text-orange-500',
 ];
 
@@ -119,14 +119,14 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
             </div>
 
             {rows === null && (
-                <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-8">
+                <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-8">
                     <Loader2 size={15} className="animate-spin" aria-hidden="true" />
                     {t.loadingMonth}
                 </p>
             )}
 
             {rows !== null && rows.length === 0 && (
-                <p className="text-sm text-zinc-500 text-center py-8">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
                     {/* On the first of the month, holding today back leaves
                         nothing at all to sum — worth saying plainly, since
                         "nobody has scored" would be a different and wrong
@@ -157,7 +157,7 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                         four-figure streak, 31 days, a perfect month of 186 —
                         because everything trimmed here is width the names get
                         back, and the names are the part that truncates. */}
-                    <div className="flex items-center gap-2 pb-1 text-zinc-400" aria-hidden="true">
+                    <div className="flex items-center gap-2 pb-1 text-zinc-500 dark:text-zinc-400" aria-hidden="true">
                         <span className="w-5 shrink-0" />
                         <span className="flex-1 min-w-0" />
                         <span className="w-7 shrink-0 flex justify-end">
@@ -180,7 +180,7 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                                         isYou ? 'font-semibold text-liturgy-700 dark:text-liturgy-300' : ''
                                     }`}
                                 >
-                                    <span className={`w-5 shrink-0 tabular-nums text-center font-bold ${PLACE_TINT[i] ?? 'text-zinc-400'}`}>
+                                    <span className={`w-5 shrink-0 tabular-nums text-center font-bold ${PLACE_TINT[i] ?? 'text-zinc-500 dark:text-zinc-400'}`}>
                                         {i < 3
                                             ? <>
                                                 <Medal size={15} className="mx-auto" aria-hidden="true" />
@@ -197,7 +197,7 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                                         beside it would sit at a different x on
                                         every row that has no run, and most
                                         rows have no run. */}
-                                    <span className="shrink-0 w-7 text-right tabular-nums text-xs text-zinc-500">
+                                    <span className="shrink-0 w-7 text-right tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
                                         {row.streak !== undefined && (
                                             <>
                                                 <span aria-hidden="true">{row.streak}</span>
@@ -210,7 +210,7 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                                         and 12 across two are different months.
                                         It ranks nothing either — it only ever
                                         breaks an exact tie. */}
-                                    <span className="shrink-0 w-7 text-right tabular-nums text-xs text-zinc-500">
+                                    <span className="shrink-0 w-7 text-right tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
                                         <span aria-hidden="true">{row.played}</span>
                                         <span className="sr-only">{t.days(row.played)}</span>
                                     </span>
@@ -234,12 +234,12 @@ export function PointsBoard({ you, refreshKey, revealResults }: {
                     {/* Drawn from this device while the relays are still
                         being asked — see the daily board. */}
                     {current && !current.fresh && (
-                        <p className="flex items-center justify-center gap-2 text-xs text-zinc-400 pt-2">
+                        <p className="flex items-center justify-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 pt-2">
                             <Loader2 size={13} className="animate-spin" aria-hidden="true" />
                             {t.loadingMonth}
                         </p>
                     )}
-                    <p className="text-xs text-zinc-400 mt-3">{t.monthLegend}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-3">{t.monthLegend}</p>
                 </>
             )}
         </>
@@ -269,7 +269,7 @@ function MonthStep({ label, onClick, disabled, children }: {
             // p-2.5 around an 18px icon, matching DateNav's day stepper — the
             // same control one section up the page, and the size that keeps
             // this a thumb-sized target rather than a 28px one.
-            className="shrink-0 rounded-lg p-2.5 text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-500"
+            className="shrink-0 rounded-lg p-2.5 text-zinc-500 dark:text-zinc-400 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-500"
         >
             {children}
         </button>

@@ -47,7 +47,7 @@ function ChapletChooser() {
             {/* text-balance so the last line never comes out as a stray
                 "por si." — the browser evens the lines instead of filling the
                 first one and orphaning whatever is left. */}
-            <p className="text-sm text-zinc-500 leading-relaxed mb-5 lg:max-w-2xl text-balance">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed mb-5 lg:max-w-2xl text-balance">
                 Cada coroa reza-se conta a conta, como o terço. Toca para avançar. A aplicação conta por ti.
             </p>
             <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4">
@@ -72,7 +72,7 @@ function ChapletChooser() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <h2 className="text-base font-bold leading-tight">{chaplet.title}</h2>
-                            <p className="text-zinc-500 text-xs mt-1 leading-snug">{chaplet.subtitle}</p>
+                            <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1 leading-snug">{chaplet.subtitle}</p>
                             {/* Duration first: every one of them reads
                                 "≈ N minutos", so it is the same width on
                                 every card and the shape after it starts in
@@ -80,7 +80,7 @@ function ChapletChooser() {
                                 runs from "5 dezenas" to "9 saudações de 1 + 3
                                 contas" and the clock wanders 100px down the
                                 list. */}
-                            <p className="flex items-center gap-3 text-[0.7rem] text-zinc-400 dark:text-zinc-500 mt-2">
+                            <p className="flex items-center gap-3 text-[0.7rem] text-zinc-500 dark:text-zinc-400 mt-2">
                                 <span className="flex items-center gap-1">
                                     <Clock size={11} aria-hidden="true" />
                                     {chaplet.duration}
@@ -118,7 +118,7 @@ function ModePicker({ mode, onChange }: { mode: ChapletMode; onChange: (mode: Ch
                     </button>
                 ))}
             </div>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-2">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                 {mode === 'guiado'
                     ? 'Todas as orações, conta a conta.'
                     : 'As orações numa só página — reze nas suas contas, ao seu ritmo.'}
@@ -135,7 +135,7 @@ function ChapletText({ chaplet, picker }: { chaplet: Chaplet; picker: React.Reac
         <div className="p-6 pb-8 w-full max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto">
             <div className="lg:max-w-2xl lg:mx-auto">
                 {picker}
-                <p className="text-xs text-zinc-500 leading-relaxed mb-6">{chaplet.note}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-6">{chaplet.note}</p>
 
                 <Section title="Para começar">
                     {chaplet.opening.map((prayer, i) => (
@@ -164,7 +164,7 @@ function ChapletText({ chaplet, picker }: { chaplet: Chaplet; picker: React.Reac
                     <ol className="space-y-4 list-none">
                         {chaplet.groups.map((group, i) => (
                             <li key={i}>
-                                <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400">
+                                <p className="text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400">
                                     {group.title}
                                 </p>
                                 {group.meditation && (
@@ -199,7 +199,7 @@ function ChapletText({ chaplet, picker }: { chaplet: Chaplet; picker: React.Reac
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <section className="mb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2 px-1">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2 px-1">
                 {title}
             </h2>
             <div className="surface rounded-2xl p-5 space-y-5">{children}</div>
@@ -210,7 +210,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Passage({ label, text, repeat }: { label: string; text: string; repeat?: number }) {
     return (
         <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1">
+            <p className="text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1">
                 {label}{repeat && repeat > 1 ? ` (${repeat} vezes)` : ''}
             </p>
             <PrayerText text={text} className="content-text text-zinc-800 dark:text-zinc-200" />
@@ -301,7 +301,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                     {/* Keyed by step, so each bead's text enters afresh from
                         the side it was turned towards (see .step-enter-*). */}
                     <div key={stepIndex} className={`flex-1 flex flex-col ${direction ? `step-enter-${direction}` : ''}`}>
-                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
+                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
                             {step.title}
                         </span>
                         <div className="flex-1 flex flex-col justify-center overflow-y-auto">
@@ -317,7 +317,7 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                     <>
                         {picker}
                         <div className="surface rounded-2xl px-4 py-3 mb-8">
-                            <p className="text-xs text-zinc-500 leading-relaxed">{chaplet.note}</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">{chaplet.note}</p>
                         </div>
                     </>
                 )}
@@ -326,10 +326,10 @@ function ChapletPlayer({ chaplet }: { chaplet: Chaplet }) {
                 {step.beadIndex !== undefined && step.groupIndex !== undefined ? (
                     <div className="mt-auto mb-8">
                         <div className="flex justify-between items-center mb-4">
-                            <span className="text-sm font-medium text-zinc-500">
+                            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                 {chaplet.groups[step.groupIndex - 1].title} · {step.groupIndex} de {chaplet.groups.length}
                             </span>
-                            <span className="text-sm font-medium text-zinc-500">
+                            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
                                 {step.beadIndex === 0
                                     ? chaplet.largeBead.title
                                     : step.beadIndex > chaplet.smallBeads

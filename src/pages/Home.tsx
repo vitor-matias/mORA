@@ -125,7 +125,7 @@ export default function Home() {
                     <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
                         {greeting}
                     </h1>
-                    <p className="text-zinc-500 text-lg">{t.whatToPray}</p>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-lg">{t.whatToPray}</p>
                 </div>
                 {/* Shown at every width, unlike the profile link beside it:
                     the desktop top bar has no way to lock the key. */}
@@ -140,8 +140,8 @@ export default function Home() {
                         className="shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center"
                     >
                         {isLocked
-                            ? <Lock size={20} className="text-zinc-400" aria-hidden="true" />
-                            : <LockOpen size={20} className="text-liturgy-600 dark:text-liturgy-400" aria-hidden="true" />}
+                            ? <Lock size={20} className="text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
+                            : <LockOpen size={20} className="text-liturgy-700 dark:text-liturgy-400" aria-hidden="true" />}
                     </button>
                 )}
                 {/* xl:hidden — the global top bar already carries Perfil, and
@@ -158,7 +158,7 @@ export default function Home() {
                             className="h-full w-full object-cover"
                         />
                     ) : (
-                        <User size={22} className="text-zinc-400" />
+                        <User size={22} className="text-zinc-500 dark:text-zinc-400" />
                     )}
                 </Link>
             </header>
@@ -167,7 +167,7 @@ export default function Home() {
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
             {/* Liturgical day hero */}
             <section className="relative z-10 surface surface-accent rounded-3xl p-5 lg:col-span-3">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5">
                     {/* The dot is the color signal; its name is already in the
                         description text, so no "Cor litúrgica" line here. */}
                     {infoIsToday && <LiturgicalColorDot color={liturgicalColor} />}
@@ -200,20 +200,20 @@ export default function Home() {
             {/* Intentions */}
             <section className="relative z-10 surface rounded-2xl px-5 py-4 lg:col-span-2 lg:rounded-3xl flex flex-col">
                 <div className="flex items-center justify-between mb-2.5">
-                    <h2 className="text-sm font-semibold text-zinc-500">{t.intentions}</h2>
+                    <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{t.intentions}</h2>
                     <HandHeart size={16} className="text-liturgy-500" aria-hidden="true" />
                 </div>
                 <ul className="flex-1 space-y-3">
                     <li>
-                        <p className="text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 mb-0.5">{t.intentionToday}</p>
+                        <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionToday}</p>
                         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{weekdayDevotion}</p>
                     </li>
                     <li>
-                        <p className="text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 mb-0.5">{t.intentionThisMonth}</p>
+                        <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionThisMonth}</p>
                         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{monthlyDevotion}</p>
                     </li>
                     {intentionLoading ? (
-                        <li className="text-sm text-zinc-400">{t.intentionPopeLoading}</li>
+                        <li className="text-sm text-zinc-500 dark:text-zinc-400">{t.intentionPopeLoading}</li>
                     ) : monthIntention ? (
                         <li>
                             <a
@@ -233,10 +233,10 @@ export default function Home() {
                                 }}
                                 className="group block"
                             >
-                                <p className="text-xs font-semibold text-liturgy-600 dark:text-liturgy-400 mb-0.5">{t.intentionPope}</p>
+                                <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionPope}</p>
                                 <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug flex items-start gap-1.5">
                                     <span>{monthIntention.title}</span>
-                                    <ExternalLink size={12} className="shrink-0 mt-1 text-zinc-400 group-hover:text-liturgy-500 transition-colors" aria-hidden="true" />
+                                    <ExternalLink size={12} className="shrink-0 mt-1 text-zinc-500 dark:text-zinc-400 group-hover:text-liturgy-500 transition-colors" aria-hidden="true" />
                                 </p>
                             </a>
                         </li>
@@ -252,7 +252,7 @@ export default function Home() {
                     { title: 'Explorar', items: exploreAreas },
                 ].map(({ title, items }) => (
                     <section key={title} className="space-y-3">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 pt-2">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pt-2">
                             {title}
                         </h2>
                         {/* Desktop: tiles across the frame instead of a
@@ -267,7 +267,7 @@ export default function Home() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-base font-bold leading-tight">{area.label}</h3>
-                                    <p className="text-zinc-500 text-xs mt-0.5 truncate">{area.context}</p>
+                                    <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-0.5 truncate">{area.context}</p>
                                 </div>
                                 {href
                                     ? <ExternalLink size={16} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
