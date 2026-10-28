@@ -11,6 +11,8 @@ export interface ReminderEntry {
     time: string;
     title: string;
     body: string;
+    /** In-app route (hash path) to open when the notification is tapped. */
+    url?: string;
 }
 
 /**
@@ -44,7 +46,8 @@ function isReminderEntry(value: unknown): value is ReminderEntry {
     const entry = value as Record<string, unknown>;
     return typeof entry.time === 'string' && TIME_PATTERN.test(entry.time)
         && typeof entry.title === 'string'
-        && typeof entry.body === 'string';
+        && typeof entry.body === 'string'
+        && (entry.url === undefined || (typeof entry.url === 'string' && entry.url.startsWith('/')));
 }
 
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {

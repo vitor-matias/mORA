@@ -36,17 +36,23 @@ self.addEventListener('push', (event) => {
             badge: 'pwa-192x192.png',
             // Per-reminder tag, so an Hour never collapses onto another one.
             tag: entry ? `mora-reminder-${entry.time}` : 'mora-daily-reminder',
+            data: { url: entry?.url },
         });
     })());
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    // Routing is hash-based, so a route is "./#/path".
+    const route: unknown = event.notification.data?.url;
+    const target = typeof route === 'string' && route.startsWith('/') ? `./#${route}` : './';
     event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
             const existing = clients.find((c) => 'focus' in c);
-            if (existing) return existing.focus();
-            return self.clients.openWindow('./');
+            if (!existing) return self.clients.openWindow(target);
+            await existing.focus();
+            // A hash-only change does not reload the page.
+            return existing.navigate(new URL(target, self.registration.scope).href).catch(() => undefined);
         })
     );
 });

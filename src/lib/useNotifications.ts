@@ -21,13 +21,13 @@ export function buildReminderSchedule(
     hourReminders: Record<string, string>,
     rosaryTitle: string
 ): ReminderEntry[] {
-    const drafts: { time: string; isHour: boolean; label: string }[] = [];
+    const drafts: { time: string; isHour: boolean; label: string; url: string }[] = [];
     if (notificationTime) {
-        drafts.push({ time: notificationTime, isHour: false, label: `o ${rosaryTitle}` });
+        drafts.push({ time: notificationTime, isHour: false, label: `o ${rosaryTitle}`, url: '/terco' });
     }
     for (const hour of CANONICAL_HOURS) {
         const time = hourReminders[hour.id];
-        if (time) drafts.push({ time, isHour: true, label: hour.label });
+        if (time) drafts.push({ time, isHour: true, label: hour.label, url: `/liturgia-horas?hora=${hour.id}` });
     }
 
     const byTime = new Map<string, typeof drafts>();
@@ -45,6 +45,8 @@ export function buildReminderSchedule(
                 ? 'Oremus — Liturgia das Horas 🙏'
                 : 'Oremus — Hora da oração 🙏',
             body: `É hora de rezar ${joinWithE(group.map((d) => d.label))}`,
+            // Two prayers due together share one notification: it opens the first.
+            url: group[0].url,
         }));
 }
 
@@ -113,6 +115,7 @@ export function useNotifications() {
                     body: entry.body,
                     icon: '/pwa-192x192.png',
                     tag: `mora-reminder-${entry.time}`,
+                    data: { url: entry.url },
                 };
                 // Prefer the service worker: a page-owned Notification is
                 // dismissed with the tab on mobile.
