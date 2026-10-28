@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ChevronRight, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
+import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, Puzzle, ExternalLink, BookMarked, Music, Book } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -13,10 +13,10 @@ import { getMysteryForToday, MYSTERY_LABELS } from "@/lib/rosary";
 import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
-import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
+import { COLOR_DOTS } from "@/lib/dayInfo";
 
 export default function Home() {
-    const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalSections, liturgicalColorDate } = useAppStore();
+    const { liturgicalColor, liturgicalDayName, liturgicalSections, liturgicalColorDate } = useAppStore();
     const { profile, setProfile } = useAuthStore();
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const hasProtectedKey = useAuthStore((s) => Boolean(s.protectedKey));
@@ -61,7 +61,6 @@ export default function Home() {
     // hasn't succeeded yet — only show it when it belongs to today.
     const infoIsToday = liturgicalColorDate === formatISODate(new Date());
     const todayDayName = infoIsToday ? liturgicalDayName : null;
-    const todayDescription = infoIsToday ? liturgicalDescription : null;
     const todaySections = infoIsToday ? liturgicalSections : null;
 
     // The Palavra row carries its own state, the way the prayer rows carry
@@ -114,6 +113,58 @@ export default function Home() {
         return () => { cancelled = true; };
     }, []);
 
+    // The day's rank ("Festa", "Solenidade"), shown as a chip on the day card.
+    // The rest of the day's description lives on Missa, Horas and Diretório.
+    const todayRank = todaySections?.find((section) => section.kind === 'celebration')?.rank ?? null;
+
+    const intentions = (
+        <>
+            <div className="flex items-center justify-between mb-2.5">
+                <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{t.intentions}</h2>
+                <HandHeart size={16} className="text-liturgy-700 dark:text-liturgy-400" aria-hidden="true" />
+            </div>
+            <ul className="flex-1 space-y-3">
+                <li>
+                    <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionToday}</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{weekdayDevotion}</p>
+                </li>
+                <li>
+                    <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionThisMonth}</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{monthlyDevotion}</p>
+                </li>
+                {intentionLoading ? (
+                    <li className="text-sm text-zinc-500 dark:text-zinc-400">{t.intentionPopeLoading}</li>
+                ) : monthIntention ? (
+                    <li>
+                        <a
+                            href={monthIntention.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                                // A plain target="_blank" opens a tab in every modern
+                                // browser — passing window features is what actually
+                                // forces a separate window. Only a plain left-click is
+                                // upgraded to that; modified clicks (ctrl/cmd/shift/middle)
+                                // fall through to the browser's own new-tab/new-window
+                                // handling instead of being overridden.
+                                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                                e.preventDefault();
+                                window.open(monthIntention.sourceUrl, '_blank', 'noopener,noreferrer,width=480,height=800');
+                            }}
+                            className="group block"
+                        >
+                            <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionPope}</p>
+                            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug flex items-start gap-1.5">
+                                <span>{monthIntention.title}</span>
+                                <ExternalLink size={12} className="shrink-0 mt-1 text-zinc-500 dark:text-zinc-400 group-hover:text-liturgy-700 dark:group-hover:text-liturgy-400 transition-colors" aria-hidden="true" />
+                            </p>
+                        </a>
+                    </li>
+                ) : null}
+            </ul>
+        </>
+    );
+
     // The root's top padding carries env(safe-area-inset-top): Home has no
     // PageHeader to take it, and the page draws under the status bar (see the
     // viewport meta in index.html). Not at xl, where the in-flow top bar
@@ -122,7 +173,7 @@ export default function Home() {
         <div className="p-6 pt-[calc(3rem+env(safe-area-inset-top))] xl:pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight page-title mb-2">
+                    <h1 className="text-3xl font-extrabold tracking-tight page-title mb-1">
                         {greeting}
                     </h1>
                     <p className="text-zinc-600 dark:text-zinc-400 text-lg">{t.whatToPray}</p>
@@ -137,7 +188,7 @@ export default function Home() {
                             import("@/lib/nostr").then(({ unlockIfNeeded }) => unlockIfNeeded()).catch(() => {});
                         }}
                         aria-label={isLocked ? 'Desbloquear a chave' : 'Bloquear a chave'}
-                        className="shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 flex items-center justify-center"
+                        className="pressable pressable-small shrink-0 h-12 w-12 rounded-full surface flex items-center justify-center"
                     >
                         {isLocked
                             ? <Lock size={20} className="text-zinc-500 dark:text-zinc-400" aria-hidden="true" />
@@ -149,7 +200,7 @@ export default function Home() {
                 <Link
                     to="/perfil"
                     aria-label="Perfil e configurações"
-                    className="xl:hidden shrink-0 h-12 w-12 rounded-full bg-white dark:bg-zinc-800 border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center hover:border-liturgy-400 dark:hover:border-liturgy-600 transition-colors"
+                    className="pressable pressable-small xl:hidden shrink-0 h-12 w-12 rounded-full surface overflow-hidden flex items-center justify-center"
                 >
                     {profile?.picture ? (
                         <img
@@ -163,118 +214,82 @@ export default function Home() {
                 </Link>
             </header>
 
-            {/* Desktop: hero and progress share a row */}
+            {/* Desktop: the day and the intentions share a row */}
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
-            {/* Liturgical day hero */}
-            <section className="relative z-10 surface surface-accent rounded-3xl p-5 lg:col-span-3">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5">
-                    {/* The dot is the color signal; its name is already in the
-                        description text, so no "Cor litúrgica" line here. */}
-                    {infoIsToday && <LiturgicalColorDot color={liturgicalColor} />}
-                    {formatDisplayDate(new Date())}
-                </p>
-                <h2 className="text-lg font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100 line-clamp-2">
-                    {todayDayName || 'A liturgia de hoje'}
-                </h2>
-                {/* hideReadings: this card says what day it is, and the
-                    references belong on the Missa page where they're read. */}
-                {todayDescription && (
-                    <DayDescription
-                        text={todayDescription}
-                        sections={todaySections}
-                        color={infoIsToday ? liturgicalColor : undefined}
-                        hideReadings
-                        className="mt-2"
-                    />
-                )}
-                {/* Full-width footer CTA — since the color label moved into
-                    the title dot, a lone right-aligned pill floated oddly. */}
-                <Link
-                    to="/liturgia-horas"
-                    className="mt-4 flex items-center justify-center gap-1.5 text-sm font-semibold cta-primary rounded-xl px-3.5 py-2.5 pressable"
-                >
-                    Rezar agora <ArrowRight size={15} aria-hidden="true" />
-                </Link>
+            {/* The day. By light a solid card in the season's colour; by night
+                (Imersivo) no card at all — a large headline over the page, with
+                the season as two flat discs behind it. White text holds AA on
+                every season's 700 (5.0:1 and up) and on the discs (7.1:1 and
+                up), which is why nothing here is tinted or translucent. */}
+            <section className="relative rounded-3xl p-5 bg-liturgy-700 text-white dark:bg-transparent dark:px-0 dark:pt-8 lg:col-span-3">
+                {/* The discs stay within the day's own block: over the greeting
+                    above it, its grey subtitle would lose its contrast. */}
+                <div aria-hidden="true" className="hidden dark:block absolute -top-4 -right-28 h-64 w-64 rounded-full bg-liturgy-950" />
+                <div aria-hidden="true" className="hidden dark:block absolute top-6 -right-10 h-36 w-36 rounded-full bg-liturgy-800" />
+                <div className="relative">
+                    <p className="text-xs font-bold uppercase tracking-widest">
+                        {formatDisplayDate(new Date())}
+                        {infoIsToday && <span className="sr-only"> · Cor litúrgica: {COLOR_DOTS[liturgicalColor].label}</span>}
+                    </p>
+                    <h2 className="mt-2 text-2xl dark:text-4xl font-extrabold leading-tight tracking-tight line-clamp-3">
+                        {todayDayName || 'A liturgia de hoje'}
+                    </h2>
+                    {todayRank && (
+                        <span className="mt-3 inline-block rounded-full border border-white/60 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest">
+                            {todayRank}
+                        </span>
+                    )}
+                    <div className="mt-5 flex items-center justify-between gap-3">
+                        <span className="text-sm min-w-0">Agora: {currentHour.label}</span>
+                        <Link
+                            to="/liturgia-horas"
+                            className="pressable shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-4 min-h-[44px] text-sm font-bold text-liturgy-700 dark:text-zinc-900"
+                        >
+                            Rezar <ArrowRight size={15} aria-hidden="true" />
+                        </Link>
+                    </div>
+                </div>
             </section>
 
-            {/* Intentions */}
-            <section className="relative z-10 surface rounded-2xl px-5 py-4 lg:col-span-2 lg:rounded-3xl flex flex-col">
-                <div className="flex items-center justify-between mb-2.5">
-                    <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">{t.intentions}</h2>
-                    <HandHeart size={16} className="text-liturgy-500" aria-hidden="true" />
-                </div>
-                <ul className="flex-1 space-y-3">
-                    <li>
-                        <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionToday}</p>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{weekdayDevotion}</p>
-                    </li>
-                    <li>
-                        <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionThisMonth}</p>
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug">{monthlyDevotion}</p>
-                    </li>
-                    {intentionLoading ? (
-                        <li className="text-sm text-zinc-500 dark:text-zinc-400">{t.intentionPopeLoading}</li>
-                    ) : monthIntention ? (
-                        <li>
-                            <a
-                                href={monthIntention.sourceUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => {
-                                    // A plain target="_blank" opens a tab in every modern
-                                    // browser — passing window features is what actually
-                                    // forces a separate window. Only a plain left-click is
-                                    // upgraded to that; modified clicks (ctrl/cmd/shift/middle)
-                                    // fall through to the browser's own new-tab/new-window
-                                    // handling instead of being overridden.
-                                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                                    e.preventDefault();
-                                    window.open(monthIntention.sourceUrl, '_blank', 'noopener,noreferrer,width=480,height=800');
-                                }}
-                                className="group block"
-                            >
-                                <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionPope}</p>
-                                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-snug flex items-start gap-1.5">
-                                    <span>{monthIntention.title}</span>
-                                    <ExternalLink size={12} className="shrink-0 mt-1 text-zinc-500 dark:text-zinc-400 group-hover:text-liturgy-500 transition-colors" aria-hidden="true" />
-                                </p>
-                            </a>
-                        </li>
-                    ) : null}
-                </ul>
+            {/* Intentions: beside the day on desktop; on a phone it comes
+                after the Rezar tiles (below), so the tiles sit under the day. */}
+            <section className="hidden lg:flex relative z-10 surface rounded-3xl px-5 py-4 lg:col-span-2 flex-col">
+                {intentions}
             </section>
             </div>
 
-            {/* Main navigation */}
+            {/* The hub, as Bento tiles. Missa is the tall tile and Palavra the
+                wide one; the rest share a two-column grid (four across on
+                desktop). Every tile carries its own state for today. */}
             <div className="relative z-10 space-y-3">
                 {[
-                    { title: 'Rezar', items: prayerAreas },
-                    { title: 'Explorar', items: exploreAreas },
-                ].map(({ title, items }) => (
+                    { title: 'Rezar', items: prayerAreas, tall: '/liturgia', wide: null },
+                    { title: 'Explorar', items: exploreAreas, tall: null, wide: '/palavra' },
+                ].map(({ title, items, tall, wide }) => (
                     <section key={title} className="space-y-3">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 pt-2">
                             {title}
                         </h2>
-                        {/* Desktop: tiles across the frame instead of a
-                            phone-style stack of full-width rows. */}
-                        <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 [grid-auto-flow:dense]">
                         {items.map((area) => {
                             const href = 'href' in area ? area.href : undefined;
                             const body = (
                             <>
-                                <div className="h-11 w-11 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center transition-transform group-hover:scale-110">
-                                    <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
+                                <div className="flex items-start justify-between">
+                                    <div className="h-10 w-10 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center">
+                                        <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
+                                    </div>
+                                    {href && <ExternalLink size={14} className="text-zinc-500 dark:text-zinc-400 shrink-0" aria-hidden="true" />}
                                 </div>
-                                <div className="flex-1 min-w-0">
+                                <div className="min-w-0">
                                     <h3 className="text-base font-bold leading-tight">{area.label}</h3>
-                                    <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-0.5 truncate">{area.context}</p>
+                                    <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1 line-clamp-2">{area.context}</p>
                                 </div>
-                                {href
-                                    ? <ExternalLink size={16} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />
-                                    : <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0" aria-hidden="true" />}
                             </>
                             );
-                            const className = "pressable pressable-card group flex items-center gap-4 p-4 surface rounded-2xl";
+                            const className = `pressable pressable-card flex flex-col justify-between gap-4 p-4 min-h-[8rem] surface rounded-3xl ${
+                                area.path === tall ? 'row-span-2' : ''
+                            } ${area.path === wide ? 'col-span-2' : ''}`;
                             return href ? (
                                 <a key={area.path} href={href} target="_blank" rel="noopener noreferrer" className={className}>
                                     {body}
@@ -286,6 +301,11 @@ export default function Home() {
                             );
                         })}
                         </div>
+                        {title === 'Rezar' && (
+                            <section className="lg:hidden surface rounded-3xl px-5 py-4 flex flex-col !mt-6">
+                                {intentions}
+                            </section>
+                        )}
                     </section>
                 ))}
             </div>

@@ -31,7 +31,7 @@
        Text size is the app's own setting (Perfil), not the page zoom. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#FAF9F6" />
+  <meta name="theme-color" content="#F7F7F9" />
   <title>mORA</title>
   <script>
     // Apply theme before first paint so there is no flash of the wrong
@@ -51,7 +51,7 @@
         var interfacePercent = { large: '112.5%', xlarge: '125%' }[state.fontSize];
         if (interfacePercent) root.style.fontSize = interfacePercent;
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', dark ? '#121212' : '#FAF9F6');
+        if (meta) meta.setAttribute('content', dark ? '#0B0B0C' : '#F7F7F9');
       } catch (e) { /* first visit or blocked storage — defaults apply */ }
     })();
   </script>

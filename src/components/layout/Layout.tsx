@@ -27,7 +27,7 @@ function pageTopColor(isDark: boolean): string {
     const tint = channels('--app-wash-tint');
     const alpha = Number(css.getPropertyValue('--app-wash-top'));
     // Stylesheet not applied yet — the untinted background is the best guess.
-    if (!bg) return isDark ? '#121212' : '#FAF9F6';
+    if (!bg) return isDark ? '#0B0B0C' : '#F7F7F9';
     if (!tint || !Number.isFinite(alpha)) return `rgb(${bg.join(' ')})`;
     const mixed = bg.map((b, i) => Math.round(alpha * tint[i] + (1 - alpha) * b));
     return `rgb(${mixed.join(' ')})`;

@@ -564,16 +564,17 @@ html[data-theme="rosa"] {
    Its tint and its strength at the very top of the page are named separately
    because Layout's theme-color effect has to reproduce that first stop in
    JS: the strip under the status bar is painted by the OS, not by us, so the
-   only way it can match the page is to hand the OS the same blend. */
+   only way it can match the page is to hand the OS the same blend.
+
+   The Bento design turns the wash off (top 0, no gradient): the season is
+   carried by Home's day card and by the accents instead. The page is the
+   lightest cool grey on which zinc-500 text still holds 4.5:1 (4.52). */
 :root {
-  --app-bg: 250 249 246;
+  --app-bg: 247 247 249;
   --surface-bg: 255 255 255;
   --app-wash-tint: var(--liturgy-200);
-  --app-wash-top: 0.35;
-  --app-wash: linear-gradient(to bottom,
-    rgb(var(--app-wash-tint) / var(--app-wash-top)),
-    rgb(var(--app-wash-tint) / 0.10) 30vh,
-    rgb(var(--app-wash-tint) / 0) 70vh);
+  --app-wash-top: 0;
+  --app-wash: none;
 
   --radius: 0.625rem;
   --background: 0 0% 100%;
@@ -610,14 +611,12 @@ html[data-theme="rosa"] {
 }
 
 .dark {
-  --app-bg: 18 18 18;
-  --surface-bg: 27 27 30;
+  /* Imersivo: near-black, with zinc-900 tiles. */
+  --app-bg: 11 11 12;
+  --surface-bg: 24 24 27;
   --app-wash-tint: var(--liturgy-900);
-  --app-wash-top: 0.25;
-  --app-wash: linear-gradient(to bottom,
-    rgb(var(--app-wash-tint) / var(--app-wash-top)),
-    rgb(var(--app-wash-tint) / 0.08) 30vh,
-    rgb(var(--app-wash-tint) / 0) 70vh);
+  --app-wash-top: 0;
+  --app-wash: none;
 
   --background: 0 0% 7%;
   --foreground: 0 0% 97%;
