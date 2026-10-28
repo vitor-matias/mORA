@@ -84,7 +84,7 @@ missing, nothing is lost.
 ```ini
 # /etc/systemd/system/palavra.service
 [Unit]
-Description=mORA Palavra publisher
+Description=Oremus Palavra publisher
 After=network-online.target
 
 [Service]

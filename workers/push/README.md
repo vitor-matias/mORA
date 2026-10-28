@@ -1,4 +1,4 @@
-# mORA push Worker
+# Oremus push Worker
 
 Delivers the daily prayer reminder as real Web Push — it reaches the user
 even with the app closed, unlike the in-app fallback timer. Runs on

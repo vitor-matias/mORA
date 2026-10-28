@@ -42,8 +42,8 @@ export function buildReminderSchedule(
         .map(([time, group]) => ({
             time,
             title: group.every((d) => d.isHour)
-                ? 'mORA — Liturgia das Horas 🙏'
-                : 'mORA — Hora da oração 🙏',
+                ? 'Oremus — Liturgia das Horas 🙏'
+                : 'Oremus — Hora da oração 🙏',
             body: `É hora de rezar ${joinWithE(group.map((d) => d.label))}`,
         }));
 }

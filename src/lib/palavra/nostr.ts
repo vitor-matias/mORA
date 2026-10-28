@@ -373,7 +373,7 @@ async function sendResult(date: string, play: PalavraPlay, pubkey: string): Prom
 
 /**
  * Post the emoji grid as an ordinary note, so it shows up in every Nostr
- * client rather than only in mORA. Always an explicit action — nothing here
+ * client rather than only in Oremus. Always an explicit action — nothing here
  * runs on its own.
  *
  * No verse reference. This lands on public timelines where most readers

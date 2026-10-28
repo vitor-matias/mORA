@@ -87,7 +87,7 @@ export function leagueInvite(league: League): string {
         identifier: league.dTag,
         // The hint the doc comment above promises. Without it the coordinate
         // alone only resolves for a recipient already querying a relay that
-        // holds the league — which every mORA client is, so the omission was
+        // holds the league — which every Oremus client is, so the omission was
         // invisible in testing and broke exactly the case invites are for:
         // someone on another client.
         relays: [...RELAYS],

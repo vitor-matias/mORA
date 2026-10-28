@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
-  "description": "Publishes mORA's Palavra Bíblica do Dia to Nostr, once a day. No server.",
+  "description": "Publishes Oremus's Palavra Bíblica do Dia to Nostr, once a day. No server.",
   "scripts": {
     "start": "node publish.js --watch",
     "keygen": "node keygen.js",

@@ -40,6 +40,25 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  /* Keyboard focus: one ring for everything focusable, in the season's
+     700 (400 by night) — 4.69:1 or better against the page in every
+     season, where the browsers' own rings varied and some inputs used 500
+     (2.5:1 in green and gold). Only :focus-visible, so a tap or click
+     never draws it. In the base layer: a component that styles its own
+     focus with utilities still wins. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--liturgy-700));
+    outline-offset: 2px;
+  }
+  .dark :focus-visible {
+    outline-color: rgb(var(--liturgy-400));
+  }
+  /* Inside a solid season card the ring would be the card's own colour:
+     white there instead (5.0:1 and up on 700 and 800). */
+  .on-season :focus-visible {
+    outline-color: #fff;
+  }
+
   /* Headings use the same sans as the rest of the chrome — one family
      everywhere outside the readings. Reading content picks its own size and
      family via the inline --content-font-* variables. */
@@ -564,16 +583,17 @@ html[data-theme="rosa"] {
    Its tint and its strength at the very top of the page are named separately
    because Layout's theme-color effect has to reproduce that first stop in
    JS: the strip under the status bar is painted by the OS, not by us, so the
-   only way it can match the page is to hand the OS the same blend. */
+   only way it can match the page is to hand the OS the same blend.
+
+   The Bento design turns the wash off (top 0, no gradient): the season is
+   carried by Home's day card and by the accents instead. The page is the
+   lightest cool grey on which zinc-500 text still holds 4.5:1 (4.52). */
 :root {
-  --app-bg: 250 249 246;
+  --app-bg: 247 247 249;
   --surface-bg: 255 255 255;
   --app-wash-tint: var(--liturgy-200);
-  --app-wash-top: 0.35;
-  --app-wash: linear-gradient(to bottom,
-    rgb(var(--app-wash-tint) / var(--app-wash-top)),
-    rgb(var(--app-wash-tint) / 0.10) 30vh,
-    rgb(var(--app-wash-tint) / 0) 70vh);
+  --app-wash-top: 0;
+  --app-wash: none;
 
   --radius: 0.625rem;
   --background: 0 0% 100%;
@@ -610,14 +630,12 @@ html[data-theme="rosa"] {
 }
 
 .dark {
-  --app-bg: 18 18 18;
-  --surface-bg: 27 27 30;
+  /* Imersivo: near-black, with zinc-900 tiles. */
+  --app-bg: 11 11 12;
+  --surface-bg: 24 24 27;
   --app-wash-tint: var(--liturgy-900);
-  --app-wash-top: 0.25;
-  --app-wash: linear-gradient(to bottom,
-    rgb(var(--app-wash-tint) / var(--app-wash-top)),
-    rgb(var(--app-wash-tint) / 0.08) 30vh,
-    rgb(var(--app-wash-tint) / 0) 70vh);
+  --app-wash-top: 0;
+  --app-wash: none;
 
   --background: 0 0% 7%;
   --foreground: 0 0% 97%;

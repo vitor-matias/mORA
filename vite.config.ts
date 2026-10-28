@@ -38,11 +38,11 @@ export default defineConfig(({ command, mode }) => {
           globPatterns: ['**/*.{js,css,html}', 'lh/*.json'],
         },
         manifest: {
-          name: 'mORA — Oração diária',
-          short_name: 'mORA',
+          name: 'Oremus — Oração diária',
+          short_name: 'Oremus',
           description: 'A tua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
-          theme_color: '#FAF9F6',
-          background_color: '#FAF9F6',
+          theme_color: '#F7F7F9',
+          background_color: '#F7F7F9',
           // Both purposes, deliberately. Without a `maskable` entry Android
           // cannot crop the icon to the launcher's shape, so it shrinks the
           // `any` one onto a white circle instead — the artwork ends up a small

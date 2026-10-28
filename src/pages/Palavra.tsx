@@ -537,9 +537,9 @@ export default function Palavra() {
     // an external link opened with target="_blank" doesn't reach the system
     // browser — it lands in a boxed-in in-app view with no way back except
     // closing it. A same-window navigation instead makes the OS hand the page
-    // off to the real browser, leaving mORA behind the way switching apps
+    // off to the real browser, leaving Oremus behind the way switching apps
     // does. Only worth it inside the installed app: in an ordinary browser
-    // tab, target="_blank" is what keeps mORA open behind the new one.
+    // tab, target="_blank" is what keeps Oremus open behind the new one.
     const isInstalledApp = typeof window !== 'undefined' && (
         window.matchMedia?.('(display-mode: standalone)').matches
         || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
@@ -738,7 +738,7 @@ export default function Palavra() {
 
                     <div className={pageTab === 'game' ? 'space-y-4 sm:space-y-5' : 'hidden'}>
                 {loadError && (
-                    <div className="surface rounded-2xl p-5 text-center space-y-2">
+                    <div className="surface rounded-3xl p-5 text-center space-y-2">
                         <TriangleAlert size={22} className="mx-auto text-amber-600" aria-hidden="true" />
                         <p className="text-sm text-zinc-600 dark:text-zinc-300">{loadError}</p>
                     </div>
@@ -752,7 +752,7 @@ export default function Palavra() {
                 )}
 
                 {challenge && !answer && (
-                    <div className="surface rounded-2xl p-5 text-center">
+                    <div className="surface rounded-3xl p-5 text-center">
                         <p className="text-sm text-zinc-600 dark:text-zinc-300">
                             {t.corrupt}
                         </p>
@@ -765,7 +765,7 @@ export default function Palavra() {
                             repeats the hidden word, every occurrence is hidden,
                             or the answer would sit in plain sight beside its
                             own gap. They all fill together on the reveal. */}
-                        <blockquote className="surface surface-accent rounded-2xl p-4 text-[1.05rem] leading-relaxed">
+                        <blockquote className="surface surface-accent rounded-3xl p-4 text-[1.05rem] leading-relaxed">
                             {verseParts.map((part, i) => (
                                 <Fragment key={i}>
                                     {part}

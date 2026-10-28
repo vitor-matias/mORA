@@ -44,7 +44,7 @@ const DEFAULT_SIGNER_RELAYS = [
     Without them a signer may prompt again for every background sync. */
 const PERMS = ['sign_event', 'nip44_encrypt', 'nip44_decrypt'];
 
-const CLIENT_NAME = 'mORA';
+const CLIENT_NAME = 'Oremus';
 const CLIENT_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 /** The remote-signer arm of Nostrify's login union. The union is exported

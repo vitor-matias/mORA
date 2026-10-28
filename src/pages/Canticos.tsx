@@ -72,7 +72,7 @@ export default function Canticos() {
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Procurar cântico…"
                         aria-label="Procurar cântico"
-                        className="w-full surface rounded-2xl pl-10 pr-10 py-3 text-sm bg-transparent outline-none focus:border-liturgy-400 dark:focus:border-liturgy-600 transition-colors [&::-webkit-search-cancel-button]:appearance-none"
+                        className="w-full surface rounded-2xl pl-10 pr-10 py-3 text-sm bg-transparent focus:border-liturgy-700 dark:focus:border-liturgy-400 transition-colors [&::-webkit-search-cancel-button]:appearance-none"
                     />
                     {query && (
                         <button
@@ -210,7 +210,7 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
     const toggleFavourite = useAppStore((s) => s.toggleChantFavourite);
 
     return (
-        <article id={chant.id} className="surface rounded-2xl overflow-hidden">
+        <article id={chant.id} className="surface rounded-3xl overflow-hidden">
             {/* The star sits beside the disclosure rather than inside it —
                 nesting a button in a button is invalid, and starring a hymn
                 should not also open it. */}
@@ -238,10 +238,10 @@ function ChantCard({ chant }: { chant: ResolvedChant }) {
                     aria-label={isFavourite
                         ? `Remover ${chant.title} dos favoritos`
                         : `Guardar ${chant.title} nos favoritos`}
-                    className={`shrink-0 mt-3 mr-3 ml-1 p-2 rounded-full transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                    className={`shrink-0 mt-1 mr-1 min-w-[44px] min-h-[44px] inline-flex items-center justify-center rounded-full transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
                         isFavourite
                             ? 'text-liturgy-700 dark:text-liturgy-400'
-                            : 'text-zinc-300 dark:text-zinc-600 hover:text-liturgy-600 dark:hover:text-liturgy-400'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:text-liturgy-700 dark:hover:text-liturgy-400'
                     }`}
                 >
                     <Star size={16} className={isFavourite ? 'fill-current' : ''} />
