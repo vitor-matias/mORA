@@ -72,7 +72,7 @@ export default function Canticos() {
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Procurar cântico…"
                         aria-label="Procurar cântico"
-                        className="w-full surface rounded-2xl pl-10 pr-10 py-3 text-sm bg-transparent outline-none focus:border-liturgy-400 dark:focus:border-liturgy-600 transition-colors [&::-webkit-search-cancel-button]:appearance-none"
+                        className="w-full surface rounded-2xl pl-10 pr-10 py-3 text-sm bg-transparent focus:border-liturgy-700 dark:focus:border-liturgy-400 transition-colors [&::-webkit-search-cancel-button]:appearance-none"
                     />
                     {query && (
                         <button

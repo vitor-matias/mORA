@@ -80,12 +80,15 @@ function ChapletChooser() {
                                 runs from "5 dezenas" to "9 saudações de 1 + 3
                                 contas" and the clock wanders 100px down the
                                 list. */}
-                            <p className="flex items-center gap-3 text-[0.7rem] text-zinc-500 dark:text-zinc-400 mt-2">
-                                <span className="flex items-center gap-1">
+                            {/* Each item keeps to one line; when the pair doesn't fit
+                                the shape moves under the duration as a whole, instead
+                                of both breaking mid-phrase ("≈ 12 / minutos"). */}
+                            <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.7rem] text-zinc-500 dark:text-zinc-400 mt-2">
+                                <span className="flex items-center gap-1 whitespace-nowrap">
                                     <Clock size={11} aria-hidden="true" />
                                     {chaplet.duration}
                                 </span>
-                                <span>{chaplet.shape}</span>
+                                <span className="whitespace-nowrap">{chaplet.shape}</span>
                             </p>
                         </div>
                         <ChevronRight size={18} className="text-zinc-300 dark:text-zinc-600 shrink-0 mt-1" aria-hidden="true" />

@@ -40,6 +40,25 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  /* Keyboard focus: one ring for everything focusable, in the season's
+     700 (400 by night) — 4.69:1 or better against the page in every
+     season, where the browsers' own rings varied and some inputs used 500
+     (2.5:1 in green and gold). Only :focus-visible, so a tap or click
+     never draws it. In the base layer: a component that styles its own
+     focus with utilities still wins. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--liturgy-700));
+    outline-offset: 2px;
+  }
+  .dark :focus-visible {
+    outline-color: rgb(var(--liturgy-400));
+  }
+  /* Inside a solid season card the ring would be the card's own colour:
+     white there instead (5.0:1 and up on 700 and 800). */
+  .on-season :focus-visible {
+    outline-color: #fff;
+  }
+
   /* Headings use the same sans as the rest of the chrome — one family
      everywhere outside the readings. Reading content picks its own size and
      family via the inline --content-font-* variables. */

@@ -229,7 +229,7 @@ export default function Home() {
                 // Until today's calendar answers, the stored colour may be
                 // yesterday's: a plain tile rather than a season the day may
                 // not be (and rather than a dark slab saying nothing).
-                infoIsToday ? 'bg-liturgy-700 dark:bg-liturgy-800 text-white' : 'surface text-zinc-900 dark:text-white'
+                infoIsToday ? 'on-season bg-liturgy-700 dark:bg-liturgy-800 text-white' : 'surface text-zinc-900 dark:text-white'
             }`}>
                 <div>
                     <p className="text-xs font-bold uppercase tracking-widest">

@@ -600,7 +600,7 @@ export default function LiturgiaHoras() {
                 <div className="flex-1 min-w-0 flex flex-col">
                     {loading ? (
                         <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-20">
-                            <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-liturgy-500 animate-spin" />
+                            <div className="h-8 w-8 rounded-full border-4 border-zinc-200 dark:border-zinc-800 border-t-liturgy-700 dark:border-t-liturgy-400 animate-spin" />
                             <p className="text-zinc-500 dark:text-zinc-400">A obter a liturgia de hoje...</p>
                         </div>
                     ) : canonicalHours.length > 0 ? (
@@ -656,7 +656,7 @@ export default function LiturgiaHoras() {
                             <div className="flex-1">
                                 {altActive && assembled === undefined ? (
                                     <div className="flex flex-col items-center justify-center space-y-3 py-16">
-                                        <div className="h-6 w-6 rounded-full border-4 border-zinc-200 border-t-liturgy-500 animate-spin" />
+                                        <div className="h-6 w-6 rounded-full border-4 border-zinc-200 dark:border-zinc-800 border-t-liturgy-700 dark:border-t-liturgy-400 animate-spin" />
                                         <p className="text-sm text-zinc-500 dark:text-zinc-400">A carregar o ofício...</p>
                                     </div>
                                 ) : altActive && assembled && assembled.sections.length > 0 ? (
