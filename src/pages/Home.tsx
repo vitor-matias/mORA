@@ -14,6 +14,7 @@ import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { DayDescription, LiturgicalColorDot } from "@/components/DayInfo";
+import { UnlockKeyCard } from "@/components/UnlockKeyCard";
 
 export default function Home() {
     const { liturgicalColor, liturgicalDayName, liturgicalDescription, liturgicalSections, liturgicalColorDate } = useAppStore();
@@ -142,6 +143,8 @@ export default function Home() {
                     )}
                 </Link>
             </header>
+
+            <UnlockKeyCard />
 
             {/* Desktop: hero and progress share a row */}
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
