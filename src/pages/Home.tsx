@@ -113,9 +113,14 @@ export default function Home() {
         return () => { cancelled = true; };
     }, []);
 
-    // The day's rank ("Festa", "Solenidade"), shown as a chip on the day card.
-    // The rest of the day's description lives on Missa, Horas and Diretório.
-    const todayRank = todaySections?.find((section) => section.kind === 'celebration')?.rank ?? null;
+    // What the day celebrates, when it is more than the weekday: the feast or
+    // memorial is the card's headline, with its rank as a chip and the
+    // weekday ("Quarta-feira da semana XXX") beneath. The rest of the day's
+    // description lives on Missa, Horas and Diretório.
+    const celebration = todaySections?.find((section) => section.kind === 'celebration');
+    const todayHeadline = celebration?.text || todayDayName;
+    const todayWeekday = celebration?.text && todayDayName !== celebration.text ? todayDayName : null;
+    const todayRank = celebration?.rank ?? null;
 
     const intentions = (
         <>
@@ -237,8 +242,9 @@ export default function Home() {
                         {infoIsToday && <span className="sr-only"> · Cor litúrgica: {COLOR_DOTS[liturgicalColor].label}</span>}
                     </p>
                     <h2 className="mt-2 text-2xl dark:text-4xl font-extrabold leading-tight tracking-tight line-clamp-3">
-                        {todayDayName || 'A liturgia de hoje'}
+                        {todayHeadline || 'A liturgia de hoje'}
                     </h2>
+                    {todayWeekday && <p className="mt-1 text-sm font-medium">{todayWeekday}</p>}
                     {todayRank && (
                         <span className="mt-3 inline-block rounded-full border border-white/60 px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-widest">
                             {todayRank}
