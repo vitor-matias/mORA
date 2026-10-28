@@ -98,8 +98,7 @@ How to use them:
 - **Accent text** (labels, links, references): 700 in light mode, 400 in dark.
 - **Primary button** (`.cta-primary`): a 700 fill with white text in light mode; a 400 fill with ink text (#18181B) in dark. Dark mode has no white-on-colour button, because no bright fill reaches 4.5:1 with white.
 - **Selected states** (a chosen day, an active chip) follow the button rule: 700 with white by day, 400 with ink by night. Never white on 500 or 600.
-- **Day cards are solid**: Home's day card, the day card on Missa, the Terço's mysteries card and the Devocionário's suggestion are blocks of 700 (800 by night) with white text, 5.0:1 or better. Only when the card shows *today*: the Diretório shows other days, whose colour can differ from the page's, so its panel stays white with the colour dot.
-- **Imersivo's discs**: on Home by night, the day card gives way to a large headline over two flat discs of 950 and 800. Keep them inside the day's own block; grey text over them would fail.
+- **Day cards are solid**, by day and by night (no decorative shapes behind them): Home's day card, the day card on Missa, the Terço's mysteries card and the Devocionário's suggestion are blocks of 700 (800 by night) with white text, 5.0:1 or better. Only when the card shows *today*: the Diretório shows other days, whose colour can differ from the page's, so its panel stays white with the colour dot.
 - **Progress beads** (Terço, Coroas): 700 by day, 500 by night for beads prayed, 700 / 400 for the current one, which is also larger. 3:1 or better against the page in every season.
 - **500 is decorative only**: dots, small ornaments, tints at 8–15% opacity. Against the page it falls below 3:1 in green and gold, and 600 does too in gold.
 - **No wash.** The season no longer tints the top of the page (`--app-wash` is `none`); the day cards and the accents carry it.

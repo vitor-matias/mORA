@@ -221,27 +221,22 @@ export default function Home() {
 
             {/* Desktop: the day and the intentions share a row */}
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
-            {/* The day. By light a solid card in the season's colour; by night
-                (Imersivo) no card at all — a large headline over the page, with
-                the season as two flat discs behind it. White text holds AA on
-                every season's 700 (5.0:1 and up) and on the discs (7.1:1 and
-                up), which is why nothing here is tinted or translucent. */}
-            <section className={`relative rounded-3xl p-5 dark:bg-transparent dark:px-0 dark:pt-8 dark:text-white lg:col-span-3 ${
+            {/* The day: a solid card in the season's colour, 700 by day and 800
+                by night like the other day cards. White text holds AA on both
+                in every season (5.0:1 and up), which is why nothing here is
+                tinted or translucent. */}
+            <section className={`relative rounded-3xl p-5 lg:col-span-3 ${
                 // Until today's calendar answers, the stored colour may be
                 // yesterday's: a plain tile rather than a season the day may
                 // not be (and rather than a dark slab saying nothing).
-                infoIsToday ? 'bg-liturgy-700 text-white' : 'surface text-zinc-900 dark:border-transparent'
+                infoIsToday ? 'bg-liturgy-700 dark:bg-liturgy-800 text-white' : 'surface text-zinc-900 dark:text-white'
             }`}>
-                {/* The discs stay within the day's own block: over the greeting
-                    above it, its grey subtitle would lose its contrast. */}
-                <div aria-hidden="true" className={`hidden absolute -top-4 -right-28 h-64 w-64 rounded-full bg-liturgy-950 ${infoIsToday ? 'dark:block' : ''}`} />
-                <div aria-hidden="true" className={`hidden absolute top-6 -right-10 h-36 w-36 rounded-full bg-liturgy-800 ${infoIsToday ? 'dark:block' : ''}`} />
-                <div className="relative">
+                <div>
                     <p className="text-xs font-bold uppercase tracking-widest">
                         {formatDisplayDate(new Date())}
                         {infoIsToday && <span className="sr-only"> · Cor litúrgica: {COLOR_DOTS[liturgicalColor].label}</span>}
                     </p>
-                    <h2 className="mt-2 text-2xl dark:text-4xl font-extrabold leading-tight tracking-tight line-clamp-3">
+                    <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight line-clamp-3">
                         {todayHeadline || 'A liturgia de hoje'}
                     </h2>
                     {todayWeekday && <p className="mt-1 text-sm font-medium">{todayWeekday}</p>}
@@ -254,8 +249,8 @@ export default function Home() {
                         <span className="text-sm min-w-0">Agora: {currentHour.label}</span>
                         <Link
                             to="/liturgia-horas"
-                            className={`pressable shrink-0 inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-sm font-bold dark:bg-white dark:text-zinc-900 ${
-                                infoIsToday ? 'bg-white text-liturgy-700' : 'bg-zinc-900 text-white'
+                            className={`pressable shrink-0 inline-flex items-center gap-1.5 rounded-full px-4 min-h-[44px] text-sm font-bold ${
+                                infoIsToday ? 'bg-white text-liturgy-700' : 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
                             }`}
                         >
                             Rezar <ArrowRight size={15} aria-hidden="true" />
