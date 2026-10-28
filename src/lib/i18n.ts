@@ -45,7 +45,7 @@ const translations = {
         // Android installs a PWA as its own app, and browser extensions don't
         // reach it — the extension button can never work there, so say so
         // instead of leaving a button that does nothing.
-        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis — abre o Oremus no navegador para entrar com a extensão, ou usa a tua chave secreta abaixo.",
+        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis. Abre o Oremus no navegador para entrar com a extensão, ou usa a tua chave secreta abaixo.",
         nip07Failed: "Não foi possível entrar com a extensão.",
         or: "ou",
         createKey: "Criar identidade anónima",
@@ -57,7 +57,7 @@ const translations = {
         system: "Sistema",
         language: "Idioma",
         notifications: "Notificação Diária (Terço)",
-        notificationsOff: "Desativado",
+        notificationsOff: "Desativar",
         notificationsSet: "Definir Hora",
         rosaryMode: "Modo do Terço",
         rosaryBeginner: "Iniciante",
@@ -75,9 +75,9 @@ const translations = {
         tabGame: "Jogo",
         tabCommunity: "Comunidade",
 
-        demoMode: "Modo de demonstração — sem publicador de desafios configurado.",
-        archiveRecorded: "Já jogaste este dia — este é o teu resultado.",
-        archivePractice: "Modo de treino — não conta para o teu registo nem para as classificações.",
+        demoMode: "Modo de demonstração: sem publicador de desafios configurado.",
+        archiveRecorded: "Já jogaste este dia. Este é o teu resultado.",
+        archivePractice: "Modo de treino: não conta para o teu registo nem para as classificações.",
 
         loading: "A carregar o desafio…",
         loadFailed: "Não foi possível carregar o desafio.",

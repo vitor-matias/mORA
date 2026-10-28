@@ -588,7 +588,7 @@ export default function Profile() {
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                             {pushSubscribed
-                                ? 'Lembrete ativo — chega mesmo com a aplicação fechada.'
+                                ? 'Lembrete ativo: chega mesmo com a aplicação fechada.'
                                 : 'Por agora, o lembrete só aparece com a aplicação aberta.'}
                         </p>
                     </div>
@@ -600,7 +600,7 @@ export default function Profile() {
                             <p className="text-sm font-medium">Liturgia das Horas</p>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                            Escolhe as Horas que queres rezar — cada uma avisa à hora que definires.
+                            Escolhe as Horas que queres rezar. Cada uma avisa à hora que definires.
                         </p>
                         <div className="space-y-2">
                             {CANONICAL_HOURS.map((hour) => {
@@ -1185,7 +1185,7 @@ export default function Profile() {
                             </button>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje» — podes mudá-lo ou deixá-lo em branco.
+                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje». Podes mudá-lo ou deixá-lo em branco.
                         </p>
                     </div>
                 </section>
