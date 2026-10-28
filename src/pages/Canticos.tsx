@@ -119,7 +119,7 @@ export default function Canticos() {
                     results.length === 0 ? (
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 px-1 py-6">
                             {inFavourites
-                                ? 'Nenhum dos seus cânticos favoritos corresponde a esta procura.'
+                                ? 'Nenhum dos teus cânticos favoritos corresponde a esta procura.'
                                 : 'Nenhum cântico corresponde a esta procura.'}
                         </p>
                     ) : (

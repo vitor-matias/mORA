@@ -26,7 +26,7 @@ export default defineConfig(({ command }) => ({
       manifest: {
         name: 'mORA — Oração diária',
         short_name: 'mORA',
-        description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
+        description: 'A tua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
         theme_color: '#FAF9F6',
         background_color: '#FAF9F6',
         // Both purposes, deliberately. Without a `maskable` entry Android

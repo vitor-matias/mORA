@@ -195,7 +195,7 @@ export const useAuthStore = create<AuthState>()(
                     set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                     enableSyncForNewIdentity(login.pubkey);
                 } catch {
-                    throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
+                    throw new Error('Formato de chave privada inválido. Usa nsec ou hex.');
                 }
             },
 

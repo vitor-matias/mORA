@@ -322,7 +322,7 @@ export async function publishNostrProfile(
     const current = options.isNewIdentity ? { content: {} } : await fetchRawProfile(pubkey);
     if (!current) {
         throw new Error(
-            'Não foi possível ler o perfil atual, por isso não foi guardado. Tente novamente.',
+            'Não foi possível ler o perfil atual, por isso não foi guardado. Tenta outra vez.',
         );
     }
 

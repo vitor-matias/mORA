@@ -222,7 +222,7 @@ export default function LiturgicalDirectory() {
                 ) : (
                     <div>
                         <p className="text-sm text-liturgy-800/80 dark:text-liturgy-200/70">
-                            Não foi possível carregar o calendário. Verifique a ligação à internet.
+                            Não foi possível carregar o calendário. Verifica a ligação à internet.
                         </p>
                         <button
                             type="button"

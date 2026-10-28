@@ -915,7 +915,7 @@ export default function LiturgiaHoras() {
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
                             <p className="text-zinc-500 dark:text-zinc-400 text-center">
-                                Não foi possível carregar a Liturgia das Horas. Verifique a sua ligação à internet.
+                                Não foi possível carregar a Liturgia das Horas. Verifica a tua ligação à internet.
                             </p>
                             <button
                                 onClick={() => setRetryToken(t => t + 1)}

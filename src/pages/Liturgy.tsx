@@ -472,7 +472,7 @@ export default function Liturgy() {
                             <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
                                 <p className="text-zinc-500 dark:text-zinc-400 text-center">
                                     {loadFailed
-                                        ? 'Não foi possível carregar as leituras. Verifique a sua ligação à internet.'
+                                        ? 'Não foi possível carregar as leituras. Verifica a tua ligação à internet.'
                                         : 'Sem leituras disponíveis para este dia.'}
                                 </p>
                                 <button

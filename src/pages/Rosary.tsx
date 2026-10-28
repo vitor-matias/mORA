@@ -161,7 +161,7 @@ export default function Rosary() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                 {rosaryMode === 'beginner'
                     ? 'Todas as orações, conta a conta.'
-                    : 'Os cinco mistérios numa só página — reze as contas ao seu ritmo.'}
+                    : 'Os cinco mistérios numa só página — reza as contas ao teu ritmo.'}
             </p>
         </div>
     );
@@ -342,8 +342,8 @@ export default function Rosary() {
                     </div>
                     <h2 id="rosary-finish-title" className="text-2xl font-bold text-zinc-900 dark:text-white">Graças a Deus!</h2>
                     <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
-                        Concluiu o Santo Terço de hoje. <br />
-                        Que Nossa Senhora interceda por si e pelos seus.
+                        Concluíste o Santo Terço de hoje. <br />
+                        Que Nossa Senhora interceda por ti e pelos teus.
                     </p>
                     {isCompletedToday(streaks.rosary) && (
                         <p className="text-sm font-semibold text-orange-500">

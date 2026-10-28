@@ -214,7 +214,7 @@ Inter 400–800 and Lora 400–600 (plus italics 400, 500) come from Google Font
 
 - The app prays **with** the reader: "O que vamos rezar hoje?" Invitations use *nós*.
 - Explanatory prose (the guided Mass, notes on prayers) also uses *nós* and never addresses the reader as *tu*. Quoted sources may ("Ele vive e quer-te vivo").
-- Direct instructions in the interface address the reader. Whether that is *tu* or *você* is open (section 9).
+- Direct instructions in the interface address the reader as *tu*: "Escolhe as Horas que queres rezar", "Tenta outra vez", "Que Nossa Senhora interceda por ti e pelos teus". Never *você* forms, *o senhor*, *por si* or *o seu* for the reader. Scripture and prayer texts keep their own forms.
 
 ### Writing rules
 
@@ -290,10 +290,9 @@ centered with generous margin, flat, quiet, timeless.
 
 These are inconsistencies found while writing this document. Each one needs a choice from the owner before the rule above can be completed.
 
-1. **Tu or você in the interface.** Palavra speaks *tu* ("o teu resultado", "Tenta outra vez", "Desbloqueia-a"), while other strings use *você* forms ("abra o mORA no navegador", "Tente novamente" in `src/lib/i18n.ts`) and the PWA manifest says "A sua companhia de oração diária". Pick one and align `i18n.ts` and `vite.config.ts`.
-2. **Orthography in interface strings.** Authored prose is pre-1990, but interface strings mix norms: "detetada", "Desativado" and "ativa" (new) beside "actual" and "actualizada" (old). Either extend the pre-1990 rule to the chrome or exempt it explicitly.
-3. **One mark or two.** The app icon (praying hands on near-black) and the favicon and wordmark (cross on gold, or the liturgical colour) don't look like the same brand. Options: a hands favicon, a cross app icon, or keeping both with the cross defined as the small-size mark.
-4. **What the m stands for.** Worth writing down once, so the casing has a reason.
+1. **Orthography in interface strings.** Authored prose is pre-1990, but interface strings mix norms: "detetada", "Desativado" and "ativa" (new) beside "actual" and "actualizada" (old). Either extend the pre-1990 rule to the chrome or exempt it explicitly.
+2. **One mark or two.** The app icon (praying hands on near-black) and the favicon and wordmark (cross on gold, or the liturgical colour) don't look like the same brand. Options: a hands favicon, a cross app icon, or keeping both with the cross defined as the small-size mark.
+3. **What the m stands for.** Worth writing down once, so the casing has a reason.
 
 ---
 
@@ -302,3 +301,4 @@ These are inconsistencies found while writing this document. Each one needs a ch
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2026-10-28 | Initial guidelines, written from the app as built, including the AA contrast rules for the liturgical palette |
+| 1.1 | 2026-10-28 | The interface addresses the reader as *tu*; the text-size setting scales the interface; touch targets fixed at 44px |

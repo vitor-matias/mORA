@@ -156,7 +156,7 @@ export default function Devocionario() {
                     {results.length === 0 ? (
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 px-1 py-6">
                             {filter === FAVOURITES
-                                ? 'Nenhuma das suas orações favoritas corresponde a esta procura.'
+                                ? 'Nenhuma das tuas orações favoritas corresponde a esta procura.'
                                 : 'Nenhuma oração corresponde a esta procura.'}
                         </p>
                     ) : (
@@ -199,7 +199,7 @@ export default function Devocionario() {
                         <div className="surface rounded-3xl px-6 py-16 text-center">
                             <BookMarked size={28} className="mx-auto text-liturgy-500 mb-3" aria-hidden="true" />
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed text-balance">
-                                Escolhe uma oração da lista ou procure pelo nome ou conteúdo.
+                                Escolhe uma oração da lista ou procura pelo nome ou conteúdo.
                             </p>
                         </div>
                     )}

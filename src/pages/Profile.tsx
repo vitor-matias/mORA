@@ -239,7 +239,7 @@ export default function Profile() {
     const handleBunkerUriLogin = async () => {
         const input = bunkerUri.trim();
         if (!input) {
-            setSignerError('Cole o endereço do seu assinador.');
+            setSignerError('Cola o endereço do teu assinador.');
             return;
         }
         setSignerError("");
@@ -299,7 +299,7 @@ export default function Profile() {
     });
 
     const handleRemoveProtection = () => runVaultAction(async () => {
-        if (!nsec) throw new Error('Desbloqueie a chave primeiro.');
+        if (!nsec) throw new Error('Desbloqueia a chave primeiro.');
         setProtectedKey(null);
     });
 
@@ -548,7 +548,7 @@ export default function Profile() {
                     <div>
                         <p className="text-sm font-medium mb-3">{t.rosaryMode}</p>
                         <div role="group" aria-label={t.rosaryMode} className="flex gap-2">
-                            {([['beginner', 'Guiado', 'Todas as orações, conta a conta'], ['advanced', 'Só mistérios', 'Reza as contas ao seu ritmo']] as [RosaryBeadMode, string, string][]).map(([mode, label, desc]) => (
+                            {([['beginner', 'Guiado', 'Todas as orações, conta a conta'], ['advanced', 'Só mistérios', 'Reza as contas ao teu ritmo']] as [RosaryBeadMode, string, string][]).map(([mode, label, desc]) => (
                                 <button
                                     key={mode}
                                     onClick={() => setRosaryMode(mode)}
@@ -600,7 +600,7 @@ export default function Profile() {
                             <p className="text-sm font-medium">Liturgia das Horas</p>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
-                            Escolha as Horas que quer rezar — cada uma avisa à hora que definir.
+                            Escolhe as Horas que queres rezar — cada uma avisa à hora que definires.
                         </p>
                         <div className="space-y-2">
                             {CANONICAL_HOURS.map((hour) => {
@@ -675,7 +675,7 @@ export default function Profile() {
                                     type="text"
                                     value={profileName}
                                     onChange={e => setProfileName(e.target.value)}
-                                    placeholder="O seu nome..."
+                                    placeholder="O teu nome..."
                                     className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none"
                                 />
                             </div>
@@ -785,9 +785,9 @@ export default function Profile() {
                                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                                 {protectedKey
                                                     ? (isLocked
-                                                        ? 'Desbloqueie para sincronizar e ver a chave. As orações continuam a contar neste dispositivo.'
+                                                        ? 'Desbloqueia para sincronizar e ver a chave. As orações continuam a contar neste dispositivo.'
                                                         : 'Encriptada neste dispositivo, desbloqueada nesta sessão.')
-                                                    : 'Encripte a chave com a biometria do dispositivo. Fica ilegível para quem aceda ao armazenamento do navegador.'}
+                                                    : 'Encripta a chave com a biometria do dispositivo. Fica ilegível para quem aceda ao armazenamento do navegador.'}
                                             </p>
                                         </div>
                                         {protectedKey && !isLocked && (
@@ -864,7 +864,7 @@ export default function Profile() {
                                 <div>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Chave privada</p>
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        Protegida. Desbloqueie acima para a ver ou copiar.
+                                        Protegida. Desbloqueia acima para a ver ou copiar.
                                     </p>
                                 </div>
                             )}
@@ -903,12 +903,12 @@ export default function Profile() {
                                             </code>
                                             <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 mt-2">
                                                 <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
-                                                Quem tiver esta chave assume a sua identidade. Guarde-a num sítio seguro e nunca a partilhe.
+                                                Quem tiver esta chave assume a tua identidade. Guarda-a num sítio seguro e nunca a partilhes.
                                             </p>
                                         </>
                                     ) : (
                                         <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            Use-a para entrar na mesma conta noutro dispositivo, para manter os seus dados.
+                                            Usa-a para entrar na mesma conta noutro dispositivo, para manter os teus dados.
                                         </p>
                                     )}
                                 </div>
@@ -925,7 +925,7 @@ export default function Profile() {
                             <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                 Guarda sequências, favoritos e preferências de leitura na rede, encriptados —
-                                só os seus dispositivos os conseguem ler. O seu nome pode aparecer na lista de quem rezou hoje.
+                                só os teus dispositivos os conseguem ler. O teu nome pode aparecer na lista de quem rezou hoje.
                             </p>
                         </div>
                         <button
@@ -997,7 +997,7 @@ export default function Profile() {
                                 Entrar com assinador
                             </p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                Abre a sua aplicação de assinatura para aprovar a ligação. A chave nunca sai de lá.
+                                Abre a tua aplicação de assinatura para aprovar a ligação. A chave nunca sai de lá.
                             </p>
                             <button
                                 type="button"
@@ -1030,8 +1030,8 @@ export default function Profile() {
                                 </summary>
                                 <div className="space-y-2 mt-2">
                                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        No Amber (ou outro assinador): adicione uma aplicação, copie o endereço
-                                        <span className="font-mono"> bunker://</span> e cole-o aqui — também aceita
+                                        No Amber (ou outro assinador): adiciona uma aplicação, copia o endereço
+                                        <span className="font-mono"> bunker://</span> e cola-o aqui — também aceita
                                         um identificador NIP-05 (nome@dominio). Ligar por aqui não depende de
                                         apanhar a resposta enquanto o navegador está suspenso.
                                     </p>
@@ -1078,7 +1078,7 @@ export default function Profile() {
                                     {connectUri && (
                                         <div className="mt-3 space-y-2">
                                             <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
-                                                Leia este código com a aplicação de assinatura do outro dispositivo:
+                                                Lê este código com a aplicação de assinatura do outro dispositivo:
                                             </p>
                                             <div className="bg-white p-3 rounded-xl w-fit mx-auto">
                                                 <QRCodeSVG
@@ -1142,7 +1142,7 @@ export default function Profile() {
                             <button
                                 onClick={() => {
                                     if (!customKey.trim()) {
-                                        setKeyError("Por favor, introduza uma chave");
+                                        setKeyError("Por favor, introduz uma chave");
                                         return;
                                     }
                                     try {
@@ -1172,7 +1172,7 @@ export default function Profile() {
                                 value={newIdentityName}
                                 onChange={(e) => setNewIdentityName(e.target.value)}
                                 maxLength={24}
-                                placeholder="O seu nome (opcional)"
+                                placeholder="O teu nome (opcional)"
                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
                             />
                             <button
@@ -1185,7 +1185,7 @@ export default function Profile() {
                             </button>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje» — pode mudá-lo ou deixá-lo em branco.
+                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje» — podes mudá-lo ou deixá-lo em branco.
                         </p>
                     </div>
                 </section>
