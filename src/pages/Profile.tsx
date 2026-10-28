@@ -472,7 +472,7 @@ export default function Profile() {
             <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
             {/* Application Settings Section */}
-            <section className="surface rounded-2xl p-6">
+            <section className="surface rounded-3xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                     <Settings className="text-zinc-500 dark:text-zinc-400" size={20} />
                     <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.settings}</h2>
@@ -639,7 +639,7 @@ export default function Profile() {
             </section>
             {/* Nostr Identity Section */}
             {pubkey ? (
-                <section className="surface rounded-2xl p-6">
+                <section className="surface rounded-3xl p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.identity}</h2>
                         {!isEditingProfile && (
@@ -980,7 +980,7 @@ export default function Profile() {
                     </button>
                 </section>
             ) : (
-                <section className="surface rounded-2xl p-6">
+                <section className="surface rounded-3xl p-6">
                     <div className="space-y-4">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {t.loginPrompt}

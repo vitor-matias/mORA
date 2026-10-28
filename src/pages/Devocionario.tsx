@@ -133,16 +133,18 @@ export default function Devocionario() {
                     {showSuggestion && (
                         <Link
                             to={`/devocionario/${suggestion.id}`}
-                            className="block surface surface-accent rounded-2xl px-4 py-3 pressable pressable-card"
+                            // Solid in the season's colour, like the day cards:
+                            // white on 700 / 800 holds 5.0:1 or better.
+                            className="block rounded-3xl px-4 py-3 pressable pressable-card bg-liturgy-700 dark:bg-liturgy-800 text-white"
                         >
-                            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1">
+                            <p className="text-[0.65rem] font-bold uppercase tracking-widest mb-1">
                                 Sugestão de hoje
                             </p>
-                            <p className="text-sm font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
+                            <p className="text-sm font-bold leading-snug">
                                 {suggestion.title}
                             </p>
                             {suggestion.note && (
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 leading-snug">{suggestion.note}</p>
+                                <p className="text-xs mt-0.5 leading-snug">{suggestion.note}</p>
                             )}
                         </Link>
                     )}
@@ -166,7 +168,7 @@ export default function Devocionario() {
                                     <Link
                                         to={`/devocionario/${entry.id}`}
                                         aria-current={entry.id === prayer?.id ? 'true' : undefined}
-                                        className={`group flex items-center gap-3 px-4 py-3 surface rounded-2xl pressable pressable-card ${
+                                        className={`group flex items-center gap-3 px-4 py-3 surface rounded-3xl pressable pressable-card ${
                                             entry.id === prayer?.id ? 'surface-accent' : ''
                                         }`}
                                     >
