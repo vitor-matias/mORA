@@ -457,7 +457,7 @@ export default function Liturgy() {
                                 confirms it happened. */}
                             {canMarkPrayed && readToday && (
                                 <div className="mt-10 mb-4">
-                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-3xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />
                                         Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
                                     </div>
@@ -469,7 +469,7 @@ export default function Liturgy() {
                             {/* The sidebar (and its date nav) only renders on
                                 success, so this must show on all breakpoints */}
                             <div className="lg:max-w-sm">{dateNav}</div>
-                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-3xl">
                                 <p className="text-zinc-500 dark:text-zinc-400 text-center">
                                     {loadFailed
                                         ? 'Não foi possível carregar as leituras. Verifica a tua ligação à internet.'
