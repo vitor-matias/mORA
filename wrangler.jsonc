@@ -1,0 +1,13 @@
+// The app as a Cloudflare Worker serving the built dist/ as static assets —
+// no Worker code. Build with the VITE_* variables set, as the GitHub Pages
+// deploy does, then `npm run deploy:cloudflare`.
+{
+  "$schema": "https://unpkg.com/wrangler@4.154.0/config-schema.json",
+  "name": "mora",
+  "compatibility_date": "2026-10-23",
+  "assets": {
+    "directory": "./dist",
+    // Routing is hash-based, so this only matters for a mistyped path.
+    "not_found_handling": "single-page-application"
+  }
+}
