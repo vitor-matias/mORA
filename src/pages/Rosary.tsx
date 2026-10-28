@@ -220,6 +220,26 @@ export default function Rosary() {
                 </div>
             ) : (
             <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
+                {/* Before the first bead: today's five mysteries at a glance,
+                    in a solid card of the season's colour like Home's day card
+                    (white on 700 by day, 800 by night, 5.0:1 or better). */}
+                {atStart && !showFinish && (
+                    <section className="rounded-3xl p-5 mb-4 bg-liturgy-700 dark:bg-liturgy-800 text-white">
+                        <p className="text-xs font-bold uppercase tracking-widest">Hoje rezamos</p>
+                        <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
+                            Mistérios {MYSTERY_LABELS[todayMysteryClass]}
+                        </h2>
+                        <ol className="mt-3 space-y-1.5 text-sm">
+                            {mysteries[todayMysteryClass].map((m) => (
+                                <li key={m.id} className="flex gap-2">
+                                    <span className="font-bold tabular-nums">{m.mysteryNum}.</span>
+                                    <span>{m.title}</span>
+                                </li>
+                            ))}
+                        </ol>
+                    </section>
+                )}
+
                 {/* Active Step Card — tapping it advances, like turning a bead */}
                 <div
                     onClick={handleNext}
@@ -278,9 +298,9 @@ export default function Rosary() {
                                         ? 'h-5 w-5 border-2 border-current' // PN and Gloria
                                         : 'h-2.5 w-2.5' // Ave Marias
                                         } ${(currentStep.beadIndex !== undefined && i < currentStep.beadIndex)
-                                            ? 'bg-liturgy-500 border-liturgy-500' // Past
+                                            ? 'bg-liturgy-700 border-liturgy-700 dark:bg-liturgy-500 dark:border-liturgy-500' // Past (3:1 or better on the page in every season)
                                             : i === currentStep.beadIndex
-                                                ? 'bg-liturgy-600 border-liturgy-600 scale-125 shadow-md shadow-liturgy-500/20' // Current
+                                                ? 'bg-liturgy-700 border-liturgy-700 dark:bg-liturgy-400 dark:border-liturgy-400 scale-125 shadow-md shadow-liturgy-500/20' // Current
                                                 : 'bg-zinc-200 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800' // Future
                                         }`}
                                 />
