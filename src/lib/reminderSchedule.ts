@@ -17,7 +17,7 @@ export interface ReminderEntry {
         (the app not opened since last week) shows `staleBody` instead. */
     date?: string;
     staleBody?: string;
-    /** Where tapping the notification should land. */
+    /** In-app route (hash path) to open when the notification is tapped. */
     url?: string;
 }
 
@@ -70,7 +70,17 @@ function isReminderEntry(value: unknown): value is ReminderEntry {
         && typeof entry.title === 'string'
         && typeof entry.body === 'string'
         && (entry.weekday === undefined || (Number.isInteger(entry.weekday) && (entry.weekday as number) >= 0 && (entry.weekday as number) <= 6))
-        && optionalString('date') && optionalString('staleBody') && optionalString('url');
+        && optionalString('date') && optionalString('staleBody')
+        && (entry.url === undefined || (typeof entry.url === 'string' && entry.url.startsWith('/')));
+}
+
+/**
+ * The route to open for a tapped reminder. The nonce makes every tap a new
+ * location, so a second reminder for the same Hour still registers as a
+ * navigation (an identical hash would be ignored).
+ */
+export function reminderRoute(url: string, now = Date.now()): string {
+    return `${url}${url.includes('?') ? '&' : '?'}n=${now}`;
 }
 
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {

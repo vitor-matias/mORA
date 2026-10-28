@@ -4,7 +4,7 @@ import { useTranslations } from '@/lib/i18n';
 import { verifyPushSubscription } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
-import { writeReminderSchedule, reminderBody, reminderKey, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
+import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
 import { WEEKLY_SUMMARY, weekDates, weekSummary } from '@/lib/week';
 
 /**
@@ -25,13 +25,13 @@ export function buildReminderSchedule(
     weeklySummary: string | null = null,
     now: Date = new Date()
 ): ReminderEntry[] {
-    const drafts: { time: string; isHour: boolean; label: string }[] = [];
+    const drafts: { time: string; isHour: boolean; label: string; url: string }[] = [];
     if (notificationTime) {
-        drafts.push({ time: notificationTime, isHour: false, label: `o ${rosaryTitle}` });
+        drafts.push({ time: notificationTime, isHour: false, label: `o ${rosaryTitle}`, url: '/terco' });
     }
     for (const hour of CANONICAL_HOURS) {
         const time = hourReminders[hour.id];
-        if (time) drafts.push({ time, isHour: true, label: hour.label });
+        if (time) drafts.push({ time, isHour: true, label: hour.label, url: `/liturgia-horas?hora=${hour.id}` });
     }
 
     const byTime = new Map<string, typeof drafts>();
@@ -49,6 +49,8 @@ export function buildReminderSchedule(
                 ? 'Oremus — Liturgia das Horas 🙏'
                 : 'Oremus — Hora da oração 🙏',
             body: `É hora de rezar ${joinWithE(group.map((d) => d.label))}`,
+            // Two prayers due together share one notification: it opens the first.
+            url: group[0].url,
         }));
     if (weeklySummary === null) return daily;
     // A separate server key ("6@22:00"), so it never merges with a daily
@@ -60,7 +62,7 @@ export function buildReminderSchedule(
         // Counted when written; this Saturday is the only day it is true.
         date: weekDates(now)[6],
         staleBody: 'Vê como correu a tua semana de oração.',
-        url: './#/semana',
+        url: '/semana',
     }];
 }
 
@@ -144,7 +146,14 @@ export function useNotifications() {
                         registration.showNotification(entry.title, options)
                     );
                 } else {
-                    new Notification(entry.title, options);
+                    // A page-owned notification never reaches the service
+                    // worker's notificationclick, so route the tap here.
+                    const notification = new Notification(entry.title, options);
+                    notification.onclick = () => {
+                        window.focus();
+                        if (entry.url) window.location.hash = reminderRoute(entry.url);
+                        notification.close();
+                    };
                 }
             }
 

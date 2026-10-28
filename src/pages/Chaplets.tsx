@@ -124,7 +124,7 @@ function ModePicker({ mode, onChange }: { mode: ChapletMode; onChange: (mode: Ch
             <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                 {mode === 'guiado'
                     ? 'Todas as orações, conta a conta.'
-                    : 'As orações numa só página — reza nas tuas contas, ao teu ritmo.'}
+                    : 'As orações numa só página, para rezares nas tuas contas ao teu ritmo.'}
             </p>
         </div>
     );

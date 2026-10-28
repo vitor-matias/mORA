@@ -123,8 +123,13 @@ async function sendPush(subscription, env) {
             headers: await vapidHeaders(subscription.endpoint, env),
         });
         if (res.status === 404 || res.status === 410) return 'gone';
-        return res.ok || res.status === 201 ? 'sent' : 'failed';
-    } catch {
+        if (res.ok || res.status === 201) return 'sent';
+        // Visible in `wrangler tail`: a push service's refusal says why (bad
+        // VAPID token, bad subject…), and 'failed' is otherwise silent.
+        console.error(`Push refused: ${res.status} ${new URL(subscription.endpoint).host} ${await res.text().catch(() => '')}`);
+        return 'failed';
+    } catch (error) {
+        console.error('Push request threw:', error);
         return 'failed';
     }
 }

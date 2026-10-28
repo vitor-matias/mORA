@@ -9,7 +9,7 @@ declare let self: ServiceWorkerGlobalScope & {
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
-import { readReminderSchedule, matchReminder, reminderBody, reminderKey } from '@/lib/reminderSchedule';
+import { readReminderSchedule, matchReminder, reminderBody, reminderKey, reminderRoute } from '@/lib/reminderSchedule';
 
 self.skipWaiting();
 clientsClaim();
@@ -43,15 +43,23 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const url: string = (event.notification.data as { url?: string } | null)?.url ?? './';
+    // Routing is hash-based, so a route is "./#/path".
+    const route: unknown = event.notification.data?.url;
+    const target = typeof route === 'string' && route.startsWith('/') ? `./#${reminderRoute(route)}` : './';
     event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+        // Controlled windows only: navigate() rejects for the rest.
+        self.clients.matchAll({ type: 'window' }).then(async (clients) => {
             const existing = clients.find((c) => 'focus' in c);
-            if (!existing) return self.clients.openWindow(url);
-            const focused = await existing.focus();
-            // An uncontrolled window can't be navigated; focusing it is still right.
-            if (url !== './') await focused.navigate(url).catch(() => {});
-            return focused;
+            if (!existing) return self.clients.openWindow(target);
+            try {
+                await existing.focus();
+                // No route (generic notification): leave the page the user is on.
+                if (target === './') return;
+                // A hash-only change does not reload the page.
+                await existing.navigate(new URL(target, self.registration.scope).href);
+            } catch {
+                await self.clients.openWindow(target);
+            }
         })
     );
 });
