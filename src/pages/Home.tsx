@@ -260,9 +260,9 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* Intentions: beside the day on desktop; on a phone it comes
-                after the Rezar tiles (below), so the tiles sit under the day. */}
-            <section className="hidden lg:flex relative z-10 surface rounded-3xl px-5 py-4 lg:col-span-2 flex-col">
+            {/* Intentions: beside the day on desktop, under it on a phone,
+                above the Rezar tiles either way. */}
+            <section className="flex relative z-10 surface rounded-3xl px-5 py-4 lg:col-span-2 flex-col">
                 {intentions}
             </section>
             </div>
@@ -314,11 +314,6 @@ export default function Home() {
                             );
                         })}
                         </div>
-                        {title === 'Rezar' && (
-                            <section className="lg:hidden surface rounded-3xl px-5 py-4 flex flex-col !mt-6">
-                                {intentions}
-                            </section>
-                        )}
                     </section>
                 ))}
             </div>
