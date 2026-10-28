@@ -380,7 +380,7 @@ export default function Liturgy() {
                         {filterButton}
 
                         {sections.length > 0 && (
-                            <nav aria-label="Secções das leituras" className="mt-1">
+                            <nav aria-label="Secções das leituras" className="surface rounded-3xl p-3">
                                 <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 px-2">
                                     Secções
                                 </p>

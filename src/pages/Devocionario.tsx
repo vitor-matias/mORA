@@ -198,8 +198,8 @@ export default function Devocionario() {
                             onToggleFavourite={() => toggleFavourite(prayer.id)}
                         />
                     ) : (
-                        <div className="surface rounded-3xl px-6 py-16 text-center">
-                            <BookMarked size={28} className="mx-auto text-liturgy-500 mb-3" aria-hidden="true" />
+                        <div className="surface rounded-3xl px-6 py-16 text-center lg:min-h-[28rem] lg:flex lg:flex-col lg:items-center lg:justify-center">
+                            <BookMarked size={28} className="mx-auto text-liturgy-700 dark:text-liturgy-400 mb-3" aria-hidden="true" />
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed text-balance">
                                 Escolhe uma oração da lista ou procura pelo nome ou conteúdo.
                             </p>

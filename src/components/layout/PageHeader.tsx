@@ -253,14 +253,16 @@ export function PageHeader({
                     />
                 )}
                 {/* One frame for every page (matches the desktop top bar), so
-                    the back orb and title never shift between routes. */}
+                    the back orb and title never shift between routes. From
+                    xl the top bar is the navigation, so the orb goes and the
+                    title lines up with the content's left edge. */}
                 <div
                     ref={rowRef}
                     className="pointer-events-auto max-w-5xl 2xl:max-w-6xl mx-auto px-6 flex items-center gap-4"
                 >
                     {/* The scroll-driven shrink sits on this wrapper so the
                         button's own transform stays free for the press. */}
-                    <div ref={orbRef} style={collapsing ? ORB_STYLE : undefined} className="shrink-0">
+                    <div ref={orbRef} style={collapsing ? ORB_STYLE : undefined} className="shrink-0 xl:hidden">
                         <button
                             type="button"
                             aria-label="Voltar ao início"

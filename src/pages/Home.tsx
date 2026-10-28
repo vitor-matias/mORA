@@ -276,19 +276,21 @@ export default function Home() {
                             const body = (
                             <>
                                 <div className="flex items-start justify-between">
-                                    <div className="h-10 w-10 shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center">
-                                        <area.icon size={20} strokeWidth={2.2} aria-hidden="true" />
+                                    <div className={`shrink-0 rounded-2xl icon-chip text-liturgy-700 dark:text-liturgy-300 flex items-center justify-center ${
+                                        area.path === tall ? 'h-12 w-12' : 'h-10 w-10'
+                                    }`}>
+                                        <area.icon size={area.path === tall ? 24 : 20} strokeWidth={2.2} aria-hidden="true" />
                                     </div>
                                     {href && <ExternalLink size={14} className="text-zinc-500 dark:text-zinc-400 shrink-0" aria-hidden="true" />}
                                 </div>
                                 <div className="min-w-0">
-                                    <h3 className="text-base font-bold leading-tight">{area.label}</h3>
-                                    <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1 line-clamp-2">{area.context}</p>
+                                    <h3 className={`font-bold leading-tight ${area.path === tall ? 'text-xl lg:text-2xl tracking-tight' : 'text-base'}`}>{area.label}</h3>
+                                    <p className={`text-zinc-500 dark:text-zinc-400 mt-1 line-clamp-2 ${area.path === tall ? 'text-sm' : 'text-xs'}`}>{area.context}</p>
                                 </div>
                             </>
                             );
                             const className = `pressable pressable-card flex flex-col justify-between gap-4 p-4 min-h-[8rem] surface rounded-3xl ${
-                                area.path === tall ? 'row-span-2' : ''
+                                area.path === tall ? 'row-span-2 lg:col-span-2' : ''
                             } ${area.path === wide ? 'col-span-2' : ''}`;
                             return href ? (
                                 <a key={area.path} href={href} target="_blank" rel="noopener noreferrer" className={className}>

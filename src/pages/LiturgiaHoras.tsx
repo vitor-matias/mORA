@@ -549,7 +549,7 @@ export default function LiturgiaHoras() {
                     <aside className="hidden lg:flex flex-col gap-4 w-64 xl:w-72 shrink-0 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pb-4">
                         {dateNav}
                         {officeChooser}
-                        <nav aria-label="Horas do Ofício">
+                        <nav aria-label="Horas do Ofício" className="surface rounded-3xl p-3">
                             <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 px-2">
                                 Horas
                             </p>
