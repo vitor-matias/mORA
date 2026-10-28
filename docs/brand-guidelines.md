@@ -51,7 +51,7 @@ Oremus is a companion for daily Catholic prayer in European Portuguese. It gathe
 
 ### Rules
 
-- Edit `tools/icon-master.svg`, export it to `tools/icon-master-512.png` (512×512, 8-bit RGB, no alpha), then run `npm run make-app-icons`. Never edit the PNGs in `public/` by hand.
+- Edit `tools/icon-master.svg`, export it to `tools/icon-master-512.png` (512×512, 8-bit RGB, no alpha), then run `npm run make-app-icons -- --exported`, which records which SVG the PNG came from (a later run refuses to use a PNG the SVG has moved on from). Never edit the PNGs in `public/` by hand.
 - Keep the mark inside the central 80% of the master, the part a circular crop keeps.
 - The app icon stays full bleed. The launcher supplies the shape; a mark with its own corners ends up on a white plate on Android.
 - Medal art stays PNG and stays derived from an Apache-2.0 shape, never an emoji font. Other Nostr clients refuse SVG, and emoji fonts are proprietary.
