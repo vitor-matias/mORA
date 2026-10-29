@@ -1,72 +1,93 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
 
+// The values a production build needs from where it is built (see
+// .env.example). Missing, the app silently plays the demo puzzle pool and has
+// no push, so the build says so: one line naming what is missing, never a
+// value. It is the only trace in a CI log of which values a build received.
+const BUILD_ENV = ['VITE_PALAVRA_PUBLISHER_PUBKEY', 'VITE_PUSH_SERVER_URL', 'VITE_VAPID_PUBLIC_KEY'];
+
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  // Relative asset paths so the build also works when hosted in a subfolder.
-  base: command === 'build' ? './' : '/',
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      // Custom SW (src/sw.ts) so we can handle Web Push events; it
-      // reproduces generateSW's precache + auto-update behaviour.
-      strategies: 'injectManifest',
-      srcDir: 'src',
-      filename: 'sw.ts',
-      includeAssets: ['apple-touch-icon.png', 'favicon.svg'],
-      manifest: {
-        name: 'mORA — Oração diária',
-        short_name: 'mORA',
-        description: 'A sua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
-        theme_color: '#FAF9F6',
-        background_color: '#FAF9F6',
-        // Both purposes, deliberately. Without a `maskable` entry Android
-        // cannot crop the icon to the launcher's shape, so it shrinks the
-        // `any` one onto a white circle instead — the artwork ends up a small
-        // square floating in a plate. The maskable files are full bleed with
-        // the hands inside the central 80% safe zone; the `any` files keep
-        // their own rounded-square shape for surfaces that draw the icon
-        // as-is. All five are built by `npm run make-app-icons`.
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
-          },
-          {
-            src: 'pwa-maskable-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'maskable'
-          },
-          {
-            src: 'pwa-maskable-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
-      }
-    })
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+export default defineConfig(({ command, mode }) => {
+  if (command === 'build') {
+    const env = loadEnv(mode, process.cwd(), 'VITE_');
+    const missing = BUILD_ENV.filter((name) => !env[name]);
+    if (missing.length > 0) {
+      console.warn(`\n⚠ Building without ${missing.join(', ')}: this build plays the demo puzzles and has no push reminders.\n`);
+    }
+  }
+  return {
+    // Relative asset paths so the build also works when hosted in a subfolder.
+    base: command === 'build' ? './' : '/',
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        // Custom SW (src/sw.ts) so we can handle Web Push events; it
+        // reproduces generateSW's precache + auto-update behaviour.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
+        includeAssets: ['apple-touch-icon.png', 'favicon.svg'],
+        // The breviary JSON (public/lh, ~830 KB) is read at runtime for saints'
+        // offices and the commons. The default glob only takes js/css/html, so
+        // without this those offices failed offline.
+        injectManifest: {
+          globPatterns: ['**/*.{js,css,html}', 'lh/*.json'],
+        },
+        manifest: {
+          name: 'Oremus — Oração diária',
+          short_name: 'Oremus',
+          description: 'A tua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
+          theme_color: '#F7F7F9',
+          background_color: '#F7F7F9',
+          // Both purposes, deliberately. Without a `maskable` entry Android
+          // cannot crop the icon to the launcher's shape, so it shrinks the
+          // `any` one onto a white circle instead — the artwork ends up a small
+          // square floating in a plate. The maskable files are full bleed with
+          // the hands inside the central 80% safe zone; the `any` files keep
+          // their own rounded-square shape for surfaces that draw the icon
+          // as-is. All five are built by `npm run make-app-icons`.
+          icons: [
+            {
+              src: 'pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: 'pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any'
+            },
+            {
+              src: 'pwa-maskable-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable'
+            },
+            {
+              src: 'pwa-maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable'
+            }
+          ]
+        }
+      })
+    ],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  // Honour an assigned port (e.g. from tooling that sets PORT) so multiple
-  // dev servers can run against this folder without fighting over 5173.
-  server: {
-    port: process.env.PORT ? Number(process.env.PORT) : undefined,
-  },
-}))
+    // Honour an assigned port (e.g. from tooling that sets PORT) so multiple
+    // dev servers can run against this folder without fighting over 5173.
+    server: {
+      port: process.env.PORT ? Number(process.env.PORT) : undefined,
+    },
+  }
+})

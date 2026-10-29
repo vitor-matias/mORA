@@ -1,4 +1,4 @@
-# mORA calendar publisher
+# Oremus calendar publisher
 
 Mirrors the Portuguese liturgical calendar onto Nostr, one event per day, so
 the app can read it from a browser.
@@ -64,7 +64,7 @@ screen and the Mass ask for today, and the directory for the month around it.
 
 **There is nothing to set up.** The calendar is signed by `PALAVRA_NSEC` and
 pinned by `VITE_PALAVRA_PUBLISHER_PUBKEY` — the same identity that signs the
-daily puzzle, both of which already exist. One key signs everything mORA
+daily puzzle, both of which already exist. One key signs everything Oremus
 publishes: the feeds are told apart by their `d` and `t` tags, never by who
 signed them, so a key of its own would buy nothing but a second secret to set
 up and rotate, and a second pubkey to forget.

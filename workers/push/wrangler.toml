@@ -5,7 +5,7 @@ compatibility_date = "2026-07-01"
 # Create with: npx wrangler kv namespace create SUBSCRIPTIONS
 # then paste the generated id below.
 kv_namespaces = [
-  { binding = "SUBSCRIPTIONS", id = "REPLACE_WITH_KV_NAMESPACE_ID" }
+  { binding = "SUBSCRIPTIONS", id = "00be8050b9d0430989eeed31fc668248" }
 ]
 
 [triggers]

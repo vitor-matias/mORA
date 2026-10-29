@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
-  "description": "Publishes mORA's Palavra Bíblica do Dia to Nostr, once a day. No server.",
+  "description": "Publishes Oremus's Palavra Bíblica do Dia to Nostr, once a day. No server.",
   "scripts": {
     "start": "node publish.js --watch",
     "keygen": "node keygen.js",
@@ -14,7 +14,7 @@
     "badges-dry-run": "node --experimental-strip-types badges.js --dry-run"
   },
   "dependencies": {
-    "@noble/hashes": "^1.8.0",
+    "@noble/hashes": "^2.4.0",
     "nostr-tools": "^2.23.9",
     "ws": "^8.18.0"
   },

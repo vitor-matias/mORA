@@ -9,25 +9,57 @@ import { useTranslations } from "@/lib/i18n";
 import { getMysteryForToday, generateRosarySequence, mysteries, MYSTERY_LABELS } from "@/lib/rosary";
 import { formatISODate } from "@/lib/format";
 import { haptic } from "@/lib/haptics";
+import { useDayRollover } from "@/lib/useDayRollover";
 import { Sheet, type SheetHandle } from "@/components/Sheet";
+
+function currentDay() {
+    const now = new Date();
+    return { date: formatISODate(now), mystery: getMysteryForToday(now) };
+}
 
 export default function Rosary() {
     const navigate = useNavigate();
     const { rosaryMode, setRosaryMode, setRosarySession, streaks, incrementStreak, setBottomBarYielded } = useAppStore();
     const t = useTranslations().rosary;
 
-    const todayStr = formatISODate(new Date());
-    const todayMysteryClass = getMysteryForToday();
+    // The day, and so the mysteries, are fixed once praying has begun. Read
+    // on every render, a bead tap after midnight rebuilt the sequence as the
+    // next day's mysteries at the same step — a rosary begun Sorrowful
+    // finished mid-way through the Glorious. Before the first bead they are
+    // re-read, so a page left open overnight starts with today's.
+    const [day, setDay] = useState(currentDay);
+    const { date: todayStr, mystery: todayMysteryClass } = day;
 
     // Resume an unfinished session from today (same mode); otherwise start fresh.
     const [currentStepIndex, setCurrentStepIndex] = useState(() => {
         const session = useAppStore.getState().rosarySession;
-        if (session && session.date === formatISODate(new Date()) && session.mode === useAppStore.getState().rosaryMode) {
+        if (session && session.date === todayStr && session.mode === useAppStore.getState().rosaryMode) {
             return session.step;
         }
         return 0;
     });
     const [showFinish, setShowFinish] = useState(false);
+
+    // Back in the foreground on a new day, before the first bead.
+    // Guided mode only: "Só mistérios" is the prayer itself from the moment
+    // it opens (its step index never moves), so swapping its five mysteries
+    // under the reader would break the prayer. Changing mode re-reads the day.
+    const refreshesDay = rosaryMode === 'beginner' && currentStepIndex === 0;
+    useDayRollover(
+        () => formatISODate(new Date()),
+        () => { if (refreshesDay) setDay(currentDay()); },
+    );
+    // …and at midnight while the page stays open on screen, which the
+    // rollover above (visibility changes only) never sees: "Hoje rezamos"
+    // must not keep listing yesterday's mysteries. Re-armed every day.
+    useEffect(() => {
+        if (!refreshesDay) return;
+        const now = new Date();
+        const midnight = new Date(now);
+        midnight.setHours(24, 0, 0, 0);
+        const id = window.setTimeout(() => setDay(currentDay()), midnight.getTime() - now.getTime() + 1000);
+        return () => window.clearTimeout(id);
+    }, [refreshesDay, day]);
     const finishSheet = useRef<SheetHandle>(null);
 
     const sequence = useMemo(() => {
@@ -70,6 +102,7 @@ export default function Rosary() {
     const [direction, setDirection] = useState<'next' | 'prev' | null>(null);
 
     const handleNext = () => {
+        if (currentStepIndex === 0) setDay(currentDay());
         if (currentStepIndex < sequence.length - 1) {
             // A bead under the thumb; two when this closes a decade — the
             // Glória (bead 11) is its last step.
@@ -88,12 +121,14 @@ export default function Rosary() {
     };
 
     const handleRestart = () => {
+        setDay(currentDay());
         setDirection(null);
         setCurrentStepIndex(0);
         setRosarySession(null);
     };
 
     const changeMode = (mode: RosaryBeadMode) => {
+        setDay(currentDay());
         setRosaryMode(mode);
         setDirection(null);
         setCurrentStepIndex(0);
@@ -138,10 +173,10 @@ export default function Rosary() {
                     </button>
                 ))}
             </div>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center mt-2">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                 {rosaryMode === 'beginner'
                     ? 'Todas as orações, conta a conta.'
-                    : 'Os cinco mistérios numa só página — reze as contas ao seu ritmo.'}
+                    : 'Os cinco mistérios numa só página, para rezares as contas ao teu ritmo.'}
             </p>
         </div>
     );
@@ -167,15 +202,15 @@ export default function Rosary() {
             {rosaryMode === 'advanced' ? (
                 /* ── Mysteries-only mode: all five on one page, prayed at the
                    user's own pace, closed with a single complete button. ── */
-                <div className="flex-1 flex flex-col mt-4 pb-8 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
-                    {modePicker}
-                    <div className="space-y-3 mb-8">
+                <div className="flex-1 flex flex-col mt-4 pb-8 relative z-10 w-full">
+                    <div className="lg:max-w-md">{modePicker}</div>
+                    <div className="space-y-3 mb-8 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4">
                         {mysteries[todayMysteryClass].map((m) => (
                             <article
                                 key={m.id}
                                 className="surface rounded-3xl p-5"
                             >
-                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-3">
+                                <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-3">
                                     {m.mysteryNum}º Mistério
                                 </span>
                                 <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100 leading-snug mb-2">
@@ -184,7 +219,7 @@ export default function Rosary() {
                                 <p className="content-text italic text-zinc-700 dark:text-zinc-300 whitespace-pre-line mb-2">
                                     {m.description}
                                 </p>
-                                <p className="text-xs font-medium text-zinc-500">
+                                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
                                     Fruto: {m.fruit}
                                 </p>
                             </article>
@@ -193,112 +228,143 @@ export default function Rosary() {
                     <button
                         type="button"
                         onClick={() => { haptic('complete'); handleFinishRosary(); }}
-                        className="pressable h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3"
+                        className="pressable h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3 lg:w-80 lg:self-end"
                     >
                         {t.finish} <Check size={24} />
                     </button>
                 </div>
             ) : (
-            <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:max-w-2xl lg:mx-auto">
-                {/* Active Step Card — tapping it advances, like turning a bead */}
-                <div
-                    onClick={handleNext}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext(); } }}
-                    className="pressable pressable-card surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none"
-                >
-                    {/* Keyed by step, so each bead's text enters afresh from
-                        the side it was turned towards (see .step-enter-*). */}
+            <div className="flex-1 flex flex-col mt-4 relative z-10 w-full lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-8 lg:items-start">
+                {/* Today's five mysteries, in a solid card of the season's
+                    colour like Home's day card (white on 700 by day, 800 by
+                    night, 5.0:1 or better). On a phone only before the first
+                    bead; on desktop it stays in the left column the whole way
+                    and marks the mystery being prayed. */}
+                <section className={`${atStart && !showFinish ? '' : 'hidden lg:block'} lg:sticky lg:top-24 rounded-3xl p-5 mb-4 lg:mb-0 bg-liturgy-700 dark:bg-liturgy-800 text-white`}>
+                    <p className="text-xs font-bold uppercase tracking-widest">Hoje rezamos</p>
+                    <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
+                        Mistérios {MYSTERY_LABELS[todayMysteryClass]}
+                    </h2>
+                    <ol className="mt-3 space-y-1.5 text-sm">
+                        {mysteries[todayMysteryClass].map((m) => {
+                            const current = !atStart && currentStep.decadeIndex === m.mysteryNum;
+                            return (
+                                <li
+                                    key={m.id}
+                                    aria-current={current ? 'step' : undefined}
+                                    className={`flex gap-2 ${current ? 'font-bold underline decoration-2 underline-offset-4' : ''}`}
+                                >
+                                    <span className="font-bold tabular-nums">{m.mysteryNum}.</span>
+                                    <span>{m.title}</span>
+                                </li>
+                            );
+                        })}
+                    </ol>
+                </section>
+
+                <div className="flex-1 flex flex-col min-w-0 lg:min-h-[calc(100vh-12rem)]">
+                    {/* Mode picker — only before starting, where the choice
+                        matters. Above the card, so the sticky button at the foot
+                        never covers it. */}
+                    {atStart && !showFinish && modePicker}
+
+                    {/* Active Step Card — tapping it advances, like turning a bead */}
                     <div
-                        key={currentStepIndex}
-                        className={`flex-1 flex flex-col ${direction ? `step-enter-${direction}` : ''}`}
+                        onClick={handleNext}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNext(); } }}
+                        className="pressable pressable-card surface rounded-3xl p-6 mb-8 min-h-[240px] flex flex-col cursor-pointer select-none"
                     >
-                        <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
-                            {currentStep.title}
-                        </span>
+                        {/* Keyed by step, so each bead's text enters afresh from
+                            the side it was turned towards (see .step-enter-*). */}
+                        <div
+                            key={currentStepIndex}
+                            className={`flex-1 flex flex-col ${direction ? `step-enter-${direction}` : ''}`}
+                        >
+                            <span className="inline-block px-3 py-1 bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 text-xs font-bold uppercase tracking-widest rounded-xl mb-4 self-start shrink-0">
+                                {currentStep.title}
+                            </span>
 
-                        <div className="flex-1 flex flex-col justify-center overflow-y-auto">
-                            <p className={`content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line ${currentStep.type === 'misterio'
-                                ? 'italic font-medium'
-                                : 'font-medium'
-                                }`}>
-                                {currentStep.content}
-                            </p>
+                            <div className="flex-1 flex flex-col justify-center overflow-y-auto">
+                                <p className={`content-text text-zinc-800 dark:text-zinc-200 whitespace-pre-line ${currentStep.type === 'misterio'
+                                    ? 'italic font-medium'
+                                    : 'font-medium'
+                                    }`}>
+                                    {currentStep.content}
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Mode picker — only before starting, where the choice matters */}
-                {atStart && !showFinish && modePicker}
+                    {/* Progress Indicators (Only for beginner mode, during a decade) */}
+                    {rosaryMode === 'beginner' && currentStep.decadeIndex && currentStep.type !== 'misterio' ? (
+                        <div className="mt-auto mb-8">
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                    Mistério {currentStep.decadeIndex} de 5
+                                </span>
+                                <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                    {currentStep.beadIndex === 0 ? 'Pai Nosso' :
+                                        currentStep.beadIndex === 11 ? 'Glória' :
+                                            `Conta ${currentStep.beadIndex} de 10`}
+                                </span>
+                            </div>
 
-                {/* Progress Indicators (Only for beginner mode, during a decade) */}
-                {rosaryMode === 'beginner' && currentStep.decadeIndex && currentStep.type !== 'misterio' ? (
-                    <div className="mt-auto mb-8">
-                        <div className="flex justify-between items-center mb-4">
-                            <span className="text-sm font-medium text-zinc-500">
-                                Mistério {currentStep.decadeIndex} de 5
-                            </span>
-                            <span className="text-sm font-medium text-zinc-500">
-                                {currentStep.beadIndex === 0 ? 'Pai Nosso' :
-                                    currentStep.beadIndex === 11 ? 'Glória' :
-                                        `Conta ${currentStep.beadIndex} de 10`}
-                            </span>
+                            {/* 12 Beads: 1 PN (0), 10 AM (1-10), 1 Gloria (11).
+                                Sized like a physical rosary: the ten contas are
+                                the small beads, Pai Nosso and Glória the large
+                                markers — clustered, not stretched to the frame. */}
+                            <div className="flex justify-center gap-2.5 items-center">
+                                {[...Array(12)].map((_, i) => (
+                                    <div
+                                        key={i}
+                                        className={`rounded-full transition-[background-color,border-color,transform,box-shadow] duration-300 shrink-0 ${i === 0 || i === 11
+                                            ? 'h-5 w-5 border-2 border-current' // PN and Gloria
+                                            : 'h-2.5 w-2.5' // Ave Marias
+                                            } ${(currentStep.beadIndex !== undefined && i < currentStep.beadIndex)
+                                                ? 'bg-liturgy-700 border-liturgy-700 dark:bg-liturgy-500 dark:border-liturgy-500' // Past (3:1 or better on the page in every season)
+                                                : i === currentStep.beadIndex
+                                                    ? 'bg-liturgy-700 border-liturgy-700 dark:bg-liturgy-400 dark:border-liturgy-400 scale-125 shadow-md shadow-liturgy-500/20' // Current
+                                                    : 'bg-zinc-200 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800' // Future
+                                            }`}
+                                    />
+                                ))}
+                            </div>
                         </div>
+                    ) : (
+                        <div className="mt-auto mb-8 h-12"></div> // Spacer
+                    )}
 
-                        {/* 12 Beads: 1 PN (0), 10 AM (1-10), 1 Gloria (11).
-                            Sized like a physical rosary: the ten contas are
-                            the small beads, Pai Nosso and Glória the large
-                            markers — clustered, not stretched to the frame. */}
-                        <div className="flex justify-center gap-2.5 items-center">
-                            {[...Array(12)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className={`rounded-full transition-[background-color,border-color,transform,box-shadow] duration-300 shrink-0 ${i === 0 || i === 11
-                                        ? 'h-5 w-5 border-2 border-current' // PN and Gloria
-                                        : 'h-2.5 w-2.5' // Ave Marias
-                                        } ${(currentStep.beadIndex !== undefined && i < currentStep.beadIndex)
-                                            ? 'bg-liturgy-500 border-liturgy-500' // Past
-                                            : i === currentStep.beadIndex
-                                                ? 'bg-liturgy-600 border-liturgy-600 scale-125 shadow-md shadow-liturgy-500/20' // Current
-                                                : 'bg-zinc-200 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-800' // Future
-                                        }`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="mt-auto mb-8 h-12"></div> // Spacer
-                )}
-
-                {/* Action row: back-step + big advance button. Stuck to the
-                    foot of the viewport — see StickyActions. */}
-                <StickyActions clearsBottomBar={atStart}>
-                    {!atStart && (
+                    {/* Action row: back-step + big advance button. Stuck to the
+                        foot of the viewport — see StickyActions. */}
+                    <StickyActions clearsBottomBar={atStart}>
+                        {!atStart && (
+                            <button
+                                type="button"
+                                onClick={handleBackStep}
+                                aria-label="Passo anterior"
+                                className="pressable w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center"
+                            >
+                                <Undo2 size={22} />
+                            </button>
+                        )}
                         <button
                             type="button"
-                            onClick={handleBackStep}
-                            aria-label="Passo anterior"
-                            className="pressable w-16 shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-2xl flex items-center justify-center"
+                            onClick={handleNext}
+                            className="pressable flex-1 h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3"
                         >
-                            <Undo2 size={22} />
+                            {currentStepIndex === sequence.length - 1 ? (
+                                <>{t.finish} <Check size={24} /></>
+                            ) : (
+                                <>{currentStep.type === 'misterio' ? 'Iniciar Mistério' :
+                                    currentStep.type === 'intro' ? 'Iniciar Terço' :
+                                        currentStep.type === 'salve_rainha' ? 'Concluir Terço' :
+                                            'Continuar'} <ChevronRight size={24} /></>
+                            )}
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        onClick={handleNext}
-                        className="pressable flex-1 h-20 cta-primary rounded-2xl font-bold text-lg flex items-center justify-center gap-3"
-                    >
-                        {currentStepIndex === sequence.length - 1 ? (
-                            <>{t.finish} <Check size={24} /></>
-                        ) : (
-                            <>{currentStep.type === 'misterio' ? 'Iniciar Mistério' :
-                                currentStep.type === 'intro' ? 'Iniciar Terço' :
-                                    currentStep.type === 'salve_rainha' ? 'Concluir Terço' :
-                                        'Continuar'} <ChevronRight size={24} /></>
-                        )}
-                    </button>
-                </StickyActions>
+                    </StickyActions>
+                </div>
             </div>
             )}
 
@@ -321,9 +387,9 @@ export default function Rosary() {
                         <PartyPopper size={32} />
                     </div>
                     <h2 id="rosary-finish-title" className="text-2xl font-bold text-zinc-900 dark:text-white">Graças a Deus!</h2>
-                    <p className="text-zinc-500 text-sm leading-relaxed">
-                        Concluiu o Santo Terço de hoje. <br />
-                        Que Nossa Senhora interceda por si e pelos seus.
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed">
+                        Concluíste o Santo Terço de hoje. <br />
+                        Que Nossa Senhora interceda por ti e pelos teus.
                     </p>
                     {isCompletedToday(streaks.rosary) && (
                         <p className="text-sm font-semibold text-orange-500">

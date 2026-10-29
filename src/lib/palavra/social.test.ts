@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    duelFilters,
     duelRecords,
     duelVerdict,
     entriesFromEvents,
@@ -12,7 +13,7 @@ import { KIND_RESULT } from './results';
 import { KIND_APP_STATE } from '@/lib/nostr';
 import { POW_MINIMUM } from './pow';
 import type { NostrEvent } from '@nostrify/nostrify';
-import type { LeaderboardEntry } from './types';
+import { DUEL_DAYS, type LeaderboardEntry } from './types';
 import { formatUTCDate } from '@/lib/format';
 
 function result(over: Partial<RankableResult> = {}): RankableResult {
@@ -221,7 +222,7 @@ describe('duelRecords', () => {
 
 // The guard that makes a summed board possible. `d` and `date` are separate
 // fields, and any reader asking for more than one `d` at a time — the monthly
-// tally asks for thirty-one, duels for thirty — would otherwise count one
+// tally asks for thirty-one, duels for ninety — would otherwise count one
 // game under every day key its author cared to publish it beneath.
 describe('the d/date agreement guard', () => {
     it('accepts an event whose d tag matches its date', () => {
@@ -306,6 +307,34 @@ describe('rank with an unrecorded duration', () => {
 
     it('leaves two unrecorded durations in a stable order', () => {
         expect([solvedIn(3, 0), solvedIn(3, 0)].sort(rank)).toHaveLength(2);
+    });
+});
+
+// The window is ninety days, and the oldest of them survive on only a few
+// relays. A relay that caps a filter keeps its newest results, so the window is
+// read a month per filter: a cap can then cost part of one month, never the
+// oldest weeks of every read.
+describe('duelFilters', () => {
+    const authors = ['a'.repeat(64), 'b'.repeat(64)];
+    const dates = recentDates(DUEL_DAYS, new Date('2026-10-18T12:00:00Z'));
+
+    it('covers every day of the window exactly once', () => {
+        const asked = duelFilters(authors, dates).flatMap((filter) => filter['#d'] ?? []);
+        expect(asked).toEqual(dates.map(resultDTag));
+    });
+
+    it('asks for no more than a month per filter', () => {
+        const filters = duelFilters(authors, dates);
+        expect(filters).toHaveLength(3);
+        for (const filter of filters) {
+            expect(filter['#d']!.length).toBeLessThanOrEqual(30);
+            expect(filter.authors).toEqual(authors);
+            expect(filter.kinds).toEqual([KIND_APP_STATE]);
+        }
+    });
+
+    it('reaches back ninety days', () => {
+        expect(dates.at(-1)).toBe('2026-07-21');
     });
 });
 

@@ -516,8 +516,8 @@ export default function Liturgy() {
                         {filterButton}
 
                         {sections.length > 0 && (
-                            <nav aria-label="Secções das leituras" className="mt-1">
-                                <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-2 px-2">
+                            <nav aria-label="Secções das leituras" className="surface rounded-3xl p-3">
+                                <p className="text-[0.65rem] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 px-2">
                                     Secções
                                 </p>
                                 <ul className="space-y-0.5">
@@ -527,7 +527,7 @@ export default function Liturgy() {
                                                 onClick={() => scrollToSection(id)}
                                                 className={`w-full text-left text-sm py-1.5 px-2 rounded-lg transition-colors ${
                                                     activeSection === id
-                                                        ? 'text-liturgy-600 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
+                                                        ? 'text-liturgy-700 dark:text-liturgy-400 bg-liturgy-50 dark:bg-liturgy-950/30 font-semibold'
                                                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60'
                                                 }`}
                                             >
@@ -551,8 +551,8 @@ export default function Liturgy() {
                 <div className="flex-1 min-w-0 flex flex-col">
                     {loading ? (
                         <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-20">
-                            <div className="h-8 w-8 rounded-full border-4 border-zinc-200 border-t-amber-500 animate-spin" />
-                            <p className="text-zinc-400">A obter leituras de hoje...</p>
+                            <div className="h-8 w-8 rounded-full border-4 border-zinc-200 dark:border-zinc-800 border-t-liturgy-700 dark:border-t-liturgy-400 animate-spin" />
+                            <p className="text-zinc-500 dark:text-zinc-400">A obter leituras de hoje...</p>
                         </div>
                     ) : hasContent ? (
                         <>
@@ -591,7 +591,7 @@ export default function Liturgy() {
                                 confirms it happened. */}
                             {canMarkPrayed && readToday && (
                                 <div className="mt-10 mb-4">
-                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-2xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
+                                    <div className="flex items-center justify-center gap-2 py-4 px-6 rounded-3xl surface surface-accent text-liturgy-700 dark:text-liturgy-300 text-sm font-semibold">
                                         <CheckCircle2 size={18} aria-hidden="true" />
                                         Rezado hoje — {streaks.liturgy.days} {streaks.liturgy.days === 1 ? 'dia' : 'dias'} seguidos
                                     </div>
@@ -603,10 +603,10 @@ export default function Liturgy() {
                             {/* The sidebar (and its date nav) only renders on
                                 success, so this must show on all breakpoints */}
                             <div className="lg:max-w-sm">{dateNav}</div>
-                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-2xl">
-                                <p className="text-zinc-500 text-center">
+                            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 surface rounded-3xl">
+                                <p className="text-zinc-500 dark:text-zinc-400 text-center">
                                     {loadFailed
-                                        ? 'Não foi possível carregar as leituras. Verifique a sua ligação à internet.'
+                                        ? 'Não foi possível carregar as leituras. Verifica a tua ligação à internet.'
                                         : 'Sem leituras disponíveis para este dia.'}
                                 </p>
                                 <button

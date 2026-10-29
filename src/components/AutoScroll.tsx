@@ -51,7 +51,7 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
                     type="button"
                     onClick={scroll.slower}
                     aria-label="Mais lento"
-                    className="pressable pressable-small text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2"
+                    className="pressable pressable-small text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 p-2"
                 >
                     <Minus size={15} />
                 </button>
@@ -62,7 +62,7 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
                     type="button"
                     onClick={scroll.faster}
                     aria-label="Mais rápido"
-                    className="pressable pressable-small text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 p-2"
+                    className="pressable pressable-small text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 p-2"
                 >
                     <Plus size={15} />
                 </button>

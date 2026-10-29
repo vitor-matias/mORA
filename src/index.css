@@ -21,6 +21,9 @@
      scrollbar-gutter: stable, which some engines ignore on the root. */
   html {
     overflow-y: scroll;
+    /* No pinch zoom — iOS ignores user-scalable=no in the viewport meta, but
+       not a touch-action that leaves pinch-zoom out. Scrolling is unaffected. */
+    touch-action: pan-x pan-y;
     /* The page background lives on the root element, not only on Layout's
        wrapper: with viewport-fit=cover the strip under the status bar and the
        overscroll area paint from here, and left at the UA default they would
@@ -35,6 +38,25 @@
   body {
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Keyboard focus: one ring for everything focusable, in the season's
+     700 (400 by night) — 4.69:1 or better against the page in every
+     season, where the browsers' own rings varied and some inputs used 500
+     (2.5:1 in green and gold). Only :focus-visible, so a tap or click
+     never draws it. In the base layer: a component that styles its own
+     focus with utilities still wins. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--liturgy-700));
+    outline-offset: 2px;
+  }
+  .dark :focus-visible {
+    outline-color: rgb(var(--liturgy-400));
+  }
+  /* Inside a solid season card the ring would be the card's own colour:
+     white there instead (5.0:1 and up on 700 and 800). */
+  .on-season :focus-visible {
+    outline-color: #fff;
   }
 
   /* Headings use the same sans as the rest of the chrome — one family
@@ -89,17 +111,23 @@
     color: rgb(250 250 250);
   }
 
-  /* Primary action — one flat liturgical fill, no gradient or glow. */
+  /* Primary action — one flat liturgical fill, no gradient or glow.
+     Label contrast is held at AA (4.5:1) in every season. White on the 600
+     fill measured 3.2:1 in gold and 3.8:1 in green, so light mode fills at
+     700 (5.0:1 and up). In dark mode no bright fill carries white — 500 gave
+     2.2–4.0:1 — so the fill goes lighter and the label turns to ink, the
+     way the Palavra tiles do (6.6:1 and up). */
   .cta-primary {
     color: #fff;
-    background: rgb(var(--liturgy-600));
+    background: rgb(var(--liturgy-700));
     transition: background-color 0.2s ease;
   }
-  .cta-primary:hover { background: rgb(var(--liturgy-700)); }
+  .cta-primary:hover { background: rgb(var(--liturgy-800)); }
   .dark .cta-primary {
-    background: rgb(var(--liturgy-500));
+    color: rgb(24 24 27);
+    background: rgb(var(--liturgy-400));
   }
-  .dark .cta-primary:hover { background: rgb(var(--liturgy-400)); }
+  .dark .cta-primary:hover { background: rgb(var(--liturgy-300)); }
 
   /* Sticky top bars (Missa / Horas headers, the xl nav) — full-bleed, with
      only a bottom hairline that appears once the page scrolls.
@@ -314,7 +342,7 @@
   }
   /* The "Refrão" cue closing each stanza */
   .psalm-cue {
-    color: rgb(var(--liturgy-600));
+    color: rgb(var(--liturgy-700));
     font-weight: 600;
   }
   .dark .psalm-cue {
@@ -555,16 +583,17 @@ html[data-theme="rosa"] {
    Its tint and its strength at the very top of the page are named separately
    because Layout's theme-color effect has to reproduce that first stop in
    JS: the strip under the status bar is painted by the OS, not by us, so the
-   only way it can match the page is to hand the OS the same blend. */
+   only way it can match the page is to hand the OS the same blend.
+
+   The Bento design turns the wash off (top 0, no gradient): the season is
+   carried by Home's day card and by the accents instead. The page is the
+   lightest cool grey on which zinc-500 text still holds 4.5:1 (4.52). */
 :root {
-  --app-bg: 250 249 246;
+  --app-bg: 247 247 249;
   --surface-bg: 255 255 255;
   --app-wash-tint: var(--liturgy-200);
-  --app-wash-top: 0.35;
-  --app-wash: linear-gradient(to bottom,
-    rgb(var(--app-wash-tint) / var(--app-wash-top)),
-    rgb(var(--app-wash-tint) / 0.10) 30vh,
-    rgb(var(--app-wash-tint) / 0) 70vh);
+  --app-wash-top: 0;
+  --app-wash: none;
 
   --radius: 0.625rem;
   --background: 0 0% 100%;
@@ -601,14 +630,12 @@ html[data-theme="rosa"] {
 }
 
 .dark {
-  --app-bg: 18 18 18;
-  --surface-bg: 27 27 30;
+  /* Imersivo: near-black, with zinc-900 tiles. */
+  --app-bg: 11 11 12;
+  --surface-bg: 24 24 27;
   --app-wash-tint: var(--liturgy-900);
-  --app-wash-top: 0.25;
-  --app-wash: linear-gradient(to bottom,
-    rgb(var(--app-wash-tint) / var(--app-wash-top)),
-    rgb(var(--app-wash-tint) / 0.08) 30vh,
-    rgb(var(--app-wash-tint) / 0) 70vh);
+  --app-wash-top: 0;
+  --app-wash: none;
 
   --background: 0 0% 7%;
   --foreground: 0 0% 97%;
@@ -738,7 +765,7 @@ html[data-theme="rosa"] {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: rgb(var(--liturgy-600));
+  color: rgb(var(--liturgy-700));
   margin-bottom: 0.35em;
 }
 
@@ -755,7 +782,7 @@ html[data-theme="rosa"] {
   text-transform: uppercase;
   /* Small capitals take 0.1em everywhere in the app; 14px ones, 0.05em. */
   letter-spacing: 0.1em;
-  color: rgb(var(--liturgy-600));
+  color: rgb(var(--liturgy-700));
   background: rgb(var(--liturgy-50));
   border: 1px solid rgb(var(--liturgy-200));
   border-radius: 4px;
@@ -785,7 +812,9 @@ html[data-theme="rosa"] {
   font-size: 0.72em;
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: rgb(var(--liturgy-500));
+  /* 700, not 500: at 0.72em the reference is small text, and 500 on the
+     page measured 2.0–3.8:1 across the seasons. */
+  color: rgb(var(--liturgy-700));
   margin-top: 0.1em;
   margin-bottom: 0.45em;
 }

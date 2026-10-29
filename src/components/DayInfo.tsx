@@ -103,13 +103,15 @@ function Section({ section, dayColor }: { section: DaySection; dayColor?: Liturg
 
 /**
  * The day as the publisher classified it, with the "*" remarks behind
- * "Ver mais" wherever the feed happened to put them.
+ * "Ver mais" wherever the feed happened to put them — or, with no `onToggle`,
+ * simply listed after the rest.
  */
 function SectionList({ sections, dayColor, expanded, onToggle }: {
     sections: DaySection[];
     dayColor?: LiturgicalColor;
     expanded: boolean;
-    onToggle: () => void;
+    /** Absent when the remarks are always shown: no toggle is rendered. */
+    onToggle?: () => void;
 }) {
     const { main, notes } = splitSections(sections);
     const visible = main.filter((section) => !isEmptySection(section));
@@ -130,13 +132,15 @@ function SectionList({ sections, dayColor, expanded, onToggle }: {
                             ))}
                         </ul>
                     )}
-                    <button
-                        type="button"
-                        onClick={onToggle}
-                        className="mt-1 text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
-                    >
-                        {expanded ? '▴ Ver menos' : `▾ Ver mais (${notes.length})`}
-                    </button>
+                    {onToggle && (
+                        <button
+                            type="button"
+                            onClick={onToggle}
+                            className="mt-1 text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 dark:hover:text-liturgy-200 transition-colors"
+                        >
+                            {expanded ? '▴ Ver menos' : `▾ Ver mais (${notes.length})`}
+                        </button>
+                    )}
                 </>
             )}
         </>
@@ -145,7 +149,12 @@ function SectionList({ sections, dayColor, expanded, onToggle }: {
 
 /** Collapsible day card: date and day name up front, the day's description
     (rank, colour, readings list) behind a tap — same shape as the "Santo do
-    dia" card, so the sidebar stays scannable on a laptop screen. */
+    dia" card, so the sidebar stays scannable on a laptop screen.
+
+    The header is a solid block of the season's colour, as on Home's day
+    card: white on every season's 700 (by day) and 800 (by night) holds 5.0:1
+    or better. The description below stays on the white tile, where its own
+    liturgy-tinted lines were measured. */
 export function DayCard({ dateLabel, color, title, description, sections, className = '' }: {
     dateLabel: string;
     color?: LiturgicalColor;
@@ -161,22 +170,25 @@ export function DayCard({ dateLabel, color, title, description, sections, classN
     const hasBody = (sections?.length ?? 0) > 0 || body.length > 0;
 
     return (
-        <section className={`surface surface-accent rounded-2xl ${className}`}>
+        <section className={`surface rounded-3xl overflow-hidden ${className}`}>
             <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
                 aria-expanded={expanded}
                 disabled={!hasBody}
-                className="pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left"
+                className={`pressable pressable-card w-full flex items-start justify-between gap-2 p-4 text-left text-white ${
+                    // No colour yet for this day: the page palette may still be another
+                    // day's, so the header stays neutral (white on zinc-700, 10:1).
+                    color ? 'bg-liturgy-700 dark:bg-liturgy-800' : 'bg-zinc-700 dark:bg-zinc-800'
+                }`}
             >
                 <span>
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5">
-                        {/* The dot is the color signal; its name is already in
-                            the description text, so no "Cor litúrgica" line. */}
-                        {color && <LiturgicalColorDot color={color} />}
+                    <span className="block text-xs font-bold uppercase tracking-widest mb-1.5">
                         {dateLabel}
+                        {/* The header's colour is the colour signal; this says it. */}
+                        {color && <span className="sr-only"> · Cor litúrgica: {COLOR_DOTS[color].label}</span>}
                     </span>
-                    <span className="block text-base font-semibold leading-snug text-liturgy-900 dark:text-liturgy-100">
+                    <span className="block text-base font-bold leading-snug">
                         {title}
                     </span>
                 </span>
@@ -184,12 +196,12 @@ export function DayCard({ dateLabel, color, title, description, sections, classN
                     <ChevronDown
                         size={16}
                         aria-hidden="true"
-                        className={`mt-0.5 shrink-0 text-liturgy-600/70 dark:text-liturgy-400/70 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                        className={`mt-0.5 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}
                     />
                 )}
             </button>
             {expanded && hasBody && (
-                <div className="px-4 pb-4">
+                <div className="px-4 py-4">
                     {/* The card itself is the collapse, so the whole day goes
                         in at once — including the remarks, which have no
                         second "Ver mais" of their own to hide behind here. */}
@@ -215,11 +227,13 @@ export function DayDescription({ text, sections, color, hideReadings = false, no
     color?: LiturgicalColor;
     /** For cards that say which day it is rather than what is read at Mass. */
     hideReadings?: boolean;
-    /** Start with the remarks already open (the card is the collapse). */
+    /** Always show the remarks, with no "Ver mais" to hide them behind: for
+        the day card (the card itself is the collapse) and the directory,
+        where the reader came for the whole entry. */
     notesOpen?: boolean;
     className?: string;
 }) {
-    const [expanded, setExpanded] = useState(notesOpen);
+    const [expanded, setExpanded] = useState(false);
     const resolved = useMemo(
         () => (sections && sections.length > 0 ? sections : parseDaySections(text)),
         [sections, text],
@@ -230,8 +244,8 @@ export function DayDescription({ text, sections, color, hideReadings = false, no
             <SectionList
                 sections={hideReadings ? withoutReadings(resolved) : resolved}
                 dayColor={color}
-                expanded={expanded}
-                onToggle={() => setExpanded((v) => !v)}
+                expanded={notesOpen || expanded}
+                onToggle={notesOpen ? undefined : () => setExpanded((v) => !v)}
             />
         </div>
     );

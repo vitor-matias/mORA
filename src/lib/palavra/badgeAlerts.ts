@@ -23,8 +23,11 @@ export function unannouncedBadges(
     earned: EarnedBadge[],
     announced: Record<string, true>,
     pubkey: string,
+    /** Coordinates already on this identity's profile badge list. */
+    onProfile: ReadonlySet<string> = new Set(),
 ): EarnedBadge[] {
-    return earned.filter((badge) => !announced[badgeAnnouncementKey(pubkey, badge.coord)]);
+    return earned.filter((badge) =>
+        !announced[badgeAnnouncementKey(pubkey, badge.coord)] && !onProfile.has(badge.coord));
 }
 
 /**

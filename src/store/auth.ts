@@ -4,7 +4,7 @@ import { NLogin, type NLoginType } from '@nostrify/react/login';
 import { generateSecretKey, nip19 } from 'nostr-tools';
 import type { NostrProfile } from '@/lib/nostr';
 import type { ProtectedKey } from '@/lib/keyVault';
-import { useAppStore } from '@/store/app';
+import { emptyStreaks, useAppStore } from '@/store/app';
 import { usePalavraStore } from '@/store/palavra';
 
 // Signing in is the point at which a user gets an identity to sync under, so
@@ -22,8 +22,25 @@ import { usePalavraStore } from '@/store/palavra';
 // same browser inherited the first one's choice and started publishing without
 // being asked; the consent has to belong to whoever it discloses.
 function enableSyncForNewIdentity(pubkey: string | null | undefined) {
+    claimLocalData(pubkey ?? null);
     useAppStore.getState().setShareStreaks(true);
     usePalavraStore.getState().setSharePalavraResults(pubkey ?? null, true);
+}
+
+// Streaks, favourites and the Palavra log are device state, merged into whoever syncs
+// next. Played signed out, they are adopted by the first identity to sign in
+// — that is the point of playing first. But once they belong to someone, a
+// different identity signing in on this device starts clean: merging would
+// write one person's games and streaks into another's synced record for good,
+// and could publish their result under the new name.
+function claimLocalData(pubkey: string | null) {
+    const app = useAppStore.getState();
+    if (pubkey && app.localDataOwner && app.localDataOwner !== pubkey) {
+        app.setStreaks(emptyStreaks());
+        useAppStore.setState({ prayerFavourites: {}, chantFavourites: {}, favouritesFromRemote: false });
+        usePalavraStore.setState({ plays: {}, sharedNotes: {} });
+    }
+    if (pubkey) app.setLocalDataOwner(pubkey);
 }
 
 // Signing out no longer clears the Palavra preference: it is stored per
@@ -48,10 +65,16 @@ interface AuthState {
     /** Encrypted at rest and not yet unlocked this session: the app works,
         but nothing that needs the key (signing, Nostr sync) can run. */
     isLocked: boolean;
+    /** Ask for the passkey as soon as the app opens, instead of waiting for
+        the user to press Desbloquear. */
+    autoUnlock: boolean;
+    setAutoUnlock: (autoUnlock: boolean) => void;
     profile: NostrProfile | null;
     setProfile: (profile: NostrProfile | null) => void;
     setProtectedKey: (protectedKey: ProtectedKey | null) => void;
     unlockWithKey: (privkeyHex: string) => void;
+    /** Drops the unlocked key from memory; only the passkey brings it back. */
+    lock: () => void;
     signIn: (login: NLoginType) => void;
     loginWithNip07: () => Promise<void>;
     loginWithPrivateKey: (key: string) => void;
@@ -108,20 +131,39 @@ export const useAuthStore = create<AuthState>()(
             lockedPubkey: null,
             protectedKey: null,
             isLocked: false,
+            autoUnlock: false,
             profile: null,
+
+            setAutoUnlock: (autoUnlock) => set({ autoUnlock }),
 
             setProfile: (profile) => set({ profile }),
 
             // Turning protection on keeps the login usable for this session and
             // stops persisting it; turning it off writes it back to storage.
-            setProtectedKey: (protectedKey) => set({ protectedKey, isLocked: false }),
+            setProtectedKey: (protectedKey) => set((s) => ({
+                protectedKey,
+                isLocked: false,
+                autoUnlock: protectedKey ? s.autoUnlock : false,
+            })),
 
             unlockWithKey: (privkeyHex) => {
-                set({
-                    login: NLogin.fromNsec(nip19.nsecEncode(keyBytes(privkeyHex))),
-                    isLocked: false,
-                });
+                const login = NLogin.fromNsec(nip19.nsecEncode(keyBytes(privkeyHex)));
+                // The passkey prompt can outlive the state that opened it: a
+                // logout meanwhile clears protectedKey, and loading the key
+                // then would persist it unprotected. Only the identity still
+                // locked here may be unlocked.
+                set((s) => (
+                    s.protectedKey && s.isLocked && s.lockedPubkey === login.pubkey
+                        ? { login, isLocked: false }
+                        : {}
+                ));
             },
+
+            lock: () => set((s) => (
+                s.protectedKey
+                    ? { login: null, lockedPubkey: s.login?.pubkey ?? s.lockedPubkey, isLocked: true }
+                    : {}
+            )),
 
             signIn: (login) => {
                 set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
@@ -153,7 +195,7 @@ export const useAuthStore = create<AuthState>()(
                     set({ login, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
                     enableSyncForNewIdentity(login.pubkey);
                 } catch {
-                    throw new Error('Formato de chave privada inválido. Utilize nsec ou hex.');
+                    throw new Error('Formato de chave privada inválido. Usa nsec ou hex.');
                 }
             },
 
@@ -164,7 +206,7 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: () => {
-                set({ login: null, lockedPubkey: null, protectedKey: null, isLocked: false, profile: null });
+                set({ login: null, lockedPubkey: null, protectedKey: null, isLocked: false, autoUnlock: false, profile: null });
                 clearSyncForIdentity();
                 // Clearing the login doesn't hang up on a remote signer: the
                 // connection is cached at module scope and would keep answering

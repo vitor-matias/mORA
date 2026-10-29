@@ -9,8 +9,9 @@ import { ChevronRight } from "lucide-react";
 const TITLE_SCALE = 20 / 30;
 const SUBTITLE_SCALE = 12 / 14;
 const ORB_SCALE = 32 / 40;
-// pb-3 — the collapsed bar's bottom padding.
-const COLLAPSED_PADDING_BOTTOM = 12;
+// pb-3 — the collapsed bar's bottom padding, in rem: the text-size setting
+// moves the root font size, so a px constant here would drift from the CSS.
+const COLLAPSED_PADDING_BOTTOM_REM = 0.75;
 // Scroll distance over which the title collapses, when the header's own
 // ride up is shorter than this (in the installed iOS app it is zero).
 const MIN_COLLAPSE_DISTANCE = 48;
@@ -175,9 +176,10 @@ export function PageHeader({
             const style = getComputedStyle(header);
             const ride = -parseFloat(style.top) || 0;
             const paddingBottom = parseFloat(style.paddingBottom) || 0;
+            const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
             const rowShift = R - R2;
             collapseDistance.current = Math.max(MIN_COLLAPSE_DISTANCE, ride);
-            barShift.current = rowShift + paddingBottom - COLLAPSED_PADDING_BOTTOM;
+            barShift.current = rowShift + paddingBottom - COLLAPSED_PADDING_BOTTOM_REM * rootPx;
 
             const px = (n: number) => `${n.toFixed(2)}px`;
             header.style.setProperty('--orb-y', px(centre(R2, O2) - centre(R, O)));
@@ -225,7 +227,7 @@ export function PageHeader({
                         page, and the subtitle (the liturgical day) is the
                         information worth keeping while reading. Title is the
                         fallback for pages without one. */}
-                    <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400 truncate">
+                    <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400 truncate">
                         {subtitle ?? title}
                     </span>
                     {action && <div className="shrink-0">{action}</div>}
@@ -251,14 +253,16 @@ export function PageHeader({
                     />
                 )}
                 {/* One frame for every page (matches the desktop top bar), so
-                    the back orb and title never shift between routes. */}
+                    the back orb and title never shift between routes. From
+                    xl the top bar is the navigation, so the orb goes and the
+                    title lines up with the content's left edge. */}
                 <div
                     ref={rowRef}
                     className="pointer-events-auto max-w-5xl 2xl:max-w-6xl mx-auto px-6 flex items-center gap-4"
                 >
                     {/* The scroll-driven shrink sits on this wrapper so the
                         button's own transform stays free for the press. */}
-                    <div ref={orbRef} style={collapsing ? ORB_STYLE : undefined} className="shrink-0">
+                    <div ref={orbRef} style={collapsing ? ORB_STYLE : undefined} className="shrink-0 xl:hidden">
                         <button
                             type="button"
                             aria-label="Voltar ao início"
@@ -272,7 +276,7 @@ export function PageHeader({
                         <h1
                             ref={titleRef}
                             style={collapsing ? TITLE_STYLE : undefined}
-                            className="text-3xl font-bold tracking-tight page-title truncate"
+                            className="text-3xl font-extrabold tracking-tight page-title truncate"
                         >
                             {title}
                         </h1>
@@ -280,7 +284,7 @@ export function PageHeader({
                             <p
                                 ref={subtitleRef}
                                 style={collapsing ? SUBTITLE_STYLE : undefined}
-                                className="text-sm text-zinc-500 font-medium mt-0.5 truncate"
+                                className="text-sm text-zinc-600 dark:text-zinc-400 font-medium mt-0.5 truncate"
                             >
                                 {subtitle}
                             </p>

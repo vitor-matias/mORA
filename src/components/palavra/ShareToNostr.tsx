@@ -6,7 +6,7 @@ type State = 'idle' | 'sending' | 'sent' | 'failed';
 
 /**
  * Posts the emoji grid as an ordinary Nostr note, so it shows up in every
- * client rather than only in mORA.
+ * client rather than only in Oremus.
  *
  * Always an explicit press. Nothing about finishing a game publishes text on
  * someone's behalf — the automatic publish is the structured result event, and

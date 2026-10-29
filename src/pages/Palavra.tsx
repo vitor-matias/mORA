@@ -21,12 +21,13 @@ import {
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
 import { derivePalavraStats, isFinished, sharesResults, usePalavraStore } from '@/store/palavra';
-import { currentPubkey, useAuthStore } from '@/store/auth';
+import { useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
 import { syncNostrNow } from '@/lib/useNostrSync';
+import { publishKey, usePublishStatus } from '@/lib/palavra/publishStatus';
 import { useTranslations } from '@/lib/i18n';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
@@ -245,8 +246,10 @@ export default function Palavra() {
         if (scope !== 'daily' || guessCount === 0 || over) return;
         const timer = window.setTimeout(async () => {
             try {
-                const { publishPalavraStateToNostr } = await import('@/lib/palavra/nostr');
-                await publishPalavraStateToNostr();
+                // Merged with the identity's log first: publishing this
+                // device's alone replaced games another device had added.
+                const { syncPalavraWithNostr } = await import('@/lib/palavra/nostr');
+                await syncPalavraWithNostr();
             } catch (error) {
                 // The game is recorded locally either way; the next sync
                 // carries it.
@@ -260,8 +263,9 @@ export default function Palavra() {
     // the ref makes sure a slow relay can't have it run twice for the same day.
     // Practice runs never reach it: an archive game is not a result.
     const publishedFor = useRef<string | null>(null);
-    // Whether today's result has become published — however that happened,
-    // see the comment inside reportResult below — so the community panels
+    // Whether today's result has become published — however that happened:
+    // publishPalavraResult sets the flag itself, whether this page's attempt
+    // landed it or the foreground catch-up did — so the community panels
     // reload and the player sees themselves on the board. Read straight from
     // the store rather than a local counter bumped from one call site: that
     // was what left players invisible until a reload when this page's own
@@ -272,43 +276,65 @@ export default function Palavra() {
         if (!challenge || scope !== 'daily') return;
         if (publishedFor.current === challenge.date) return;
         publishedFor.current = challenge.date;
+        // Whose game this is, decided now: the import below is an await, and
+        // an account switch in that window would otherwise publish it under
+        // whoever is signed in by the time it lands.
+        const pubkey = myPubkey ?? undefined;
 
         // The encrypted log (so other devices see this game) and, if the
         // player opted in, the public result the social views read.
         // Best-effort and after the fact — the game is already recorded
         // locally, so nothing here can cost them the play.
+        //
+        // Nothing to mark here: publishPalavraResult sets the published flag
+        // itself, and only once a relay has taken the event, so a failed
+        // publish, a player who hasn't opted in, or an import that never
+        // loaded all leave the flag clear for the foreground catch-up to
+        // retry. allSettled because neither half should cost the other.
         try {
-            const { publishPalavraStateToNostr, publishPalavraResult } = await import('@/lib/palavra/nostr');
+            const { syncPalavraWithNostr, publishPalavraResult } = await import('@/lib/palavra/nostr');
             const record = usePalavraStore.getState().plays[challenge.date];
-            const [, published] = await Promise.allSettled([
-                publishPalavraStateToNostr(),
-                record ? publishPalavraResult(challenge.date, record) : Promise.resolve(false),
+            await Promise.allSettled([
+                syncPalavraWithNostr(),
+                record ? publishPalavraResult(challenge.date, record, pubkey) : Promise.resolve(false),
             ]);
-            // Only when the public result genuinely reached a relay. Marking
-            // unconditionally — which is what putting this after the try did —
-            // would tell the next foreground the result is already out there
-            // on a failed publish, an import that never loaded, or a player
-            // who hasn't opted into sharing — and it would never retry.
-            //
-            // `allSettled` is why the return value has to be read rather than
-            // the absence of a throw: it swallows a rejection into a settled
-            // entry, so awaiting it says nothing about what happened.
-            //
-            // Marked here rather than tracked in a local ref: the background
-            // sync (see publishTodaysResultIfMissing, which runs on every
-            // foreground) marks the same flag when *it* is the one that lands
-            // the publish — e.g. this attempt stalled on a slow relay and a
-            // later foreground succeeded instead. resultsVersion above reads
-            // this flag, so the board catches up either way, instead of only
-            // when this exact call succeeds.
-            if (published.status === 'fulfilled' && published.value === true) {
-                const pubkey = currentPubkey();
-                if (pubkey) usePalavraStore.getState().markResultPublished(pubkey, challenge.date);
-            }
         } catch (error) {
             console.warn('Palavra Nostr publish skipped:', error);
         }
-    }, [challenge, scope]);
+    }, [challenge, scope, myPubkey]);
+
+    // Today's result, when it is finished, shared, and not out yet — what the
+    // community panels say above the boards instead of letting an empty board
+    // imply nobody has played. See publishStatus.ts.
+    const todayPublished = usePalavraStore((s) =>
+        Boolean(myPubkey && s.publishedResults[`${myPubkey}:${today}`]));
+    const todayPublishState = usePublishStatus((s) =>
+        (myPubkey ? s.byKey[publishKey(myPubkey, today)] : undefined));
+    const remoteSigner = useAuthStore((s) => s.login?.type === 'bunker');
+    // A locked passkey key can't sign, so offering to publish would only
+    // turn into "failed". It is asked to unlock instead.
+    const locked = useAuthStore((s) => s.isLocked);
+    const ownResult = finishedToday && sharing && !todayPublished
+        ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
+        : null;
+
+    // The player's way round a publish that gave up — with a remote signer,
+    // usually because the signing app didn't answer in time. Without it the
+    // only retry was the next time the app came back to the foreground,
+    // which a player sitting on the board waiting for themselves never does.
+    // The result alone: the encrypted log rides the next sync.
+    const retryResult = useCallback(async () => {
+        const record = usePalavraStore.getState().plays[today];
+        // The identity the notice was shown for, pinned across the import's
+        // await — see reportResult.
+        if (!record || !myPubkey) return;
+        try {
+            const { publishPalavraResult } = await import('@/lib/palavra/nostr');
+            await publishPalavraResult(today, record, myPubkey);
+        } catch (error) {
+            console.warn('Could not retry publishing the result.', error);
+        }
+    }, [today, myPubkey]);
 
     const onEnter = useCallback(() => {
         if (!challenge || !answer || readOnly) return;
@@ -442,12 +468,33 @@ export default function Palavra() {
         // Between two elements it is stable — shrink the board and both edges
         // move up together.
         const below = keyboard.getBoundingClientRect().bottom - boardBox.bottom;
-        const available = window.innerHeight - boardBox.top - below - BOARD_BREATHING_PX;
+        // `<main>` carries its own bottom padding — the safe-area clearance
+        // Layout reserves under the keyboard (see Layout.tsx) — which sits
+        // below `window.innerHeight` in the box model but isn't part of it.
+        // Sizing against innerHeight alone ignored that padding, so the
+        // keyboard was allowed to grow right up to the visual bottom edge:
+        // the reserved clearance was still applied, but as page overflow
+        // below the fold instead of visible space above the gesture area,
+        // which is exactly what it was meant to prevent.
+        const mainPaddingBottom = parseFloat(
+            getComputedStyle(board.closest('main') ?? document.body).paddingBottom,
+        ) || 0;
+        const available = window.innerHeight - boardBox.top - below - mainPaddingBottom - BOARD_BREATHING_PX;
         const perTile = (available - gapPx() * (MAX_GUESSES - 1)) / MAX_GUESSES;
         // Floored, so a landscape phone gets a small board and a scroll rather
         // than one collapsed to nothing.
         setMaxTilePx(Math.max(MIN_TILE_PX, Math.floor(perTile)));
     }, []);
+
+    // `bottomBarYielded` drives the padding `measure()` now reads (see the
+    // comment inside it), but that padding lives on Layout's `<main>`, one
+    // component up — nothing here re-renders when it changes on its own.
+    // Worse, `setBottomBarYielded` below fires from a plain effect, which
+    // commits *after* this layout effect on the very same pass, so the very
+    // first measurement always runs against the *previous* page's padding.
+    // Depending on the store value directly is what closes both gaps: it
+    // forces a remeasure once Layout has actually applied the new padding.
+    const bottomBarYielded = useAppStore((s) => s.bottomBarYielded);
 
     // Subscriptions, set up once per layout-changing state. `maxTilePx` is
     // deliberately *not* a dependency here: it changes on every settling pass,
@@ -473,7 +520,7 @@ export default function Palavra() {
             window.removeEventListener('resize', measure);
             observer.disconnect();
         };
-    }, [challenge, over, pageTab, measure]);
+    }, [challenge, over, pageTab, bottomBarYielded, measure]);
 
     // The settling pass, split from the subscriptions above so it costs a
     // measurement and nothing else. Applying a size changes the layout the
@@ -490,9 +537,9 @@ export default function Palavra() {
     // an external link opened with target="_blank" doesn't reach the system
     // browser — it lands in a boxed-in in-app view with no way back except
     // closing it. A same-window navigation instead makes the OS hand the page
-    // off to the real browser, leaving mORA behind the way switching apps
+    // off to the real browser, leaving Oremus behind the way switching apps
     // does. Only worth it inside the installed app: in an ordinary browser
-    // tab, target="_blank" is what keeps mORA open behind the new one.
+    // tab, target="_blank" is what keeps Oremus open behind the new one.
     const isInstalledApp = typeof window !== 'undefined' && (
         window.matchMedia?.('(display-mode: standalone)').matches
         || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
@@ -683,27 +730,33 @@ export default function Palavra() {
                                 // counts summed. `over` describes whichever day
                                 // is on screen; this describes today.
                                 finishedToday={finishedToday}
+                                // Only on today's board: the notice is about
+                                // the game just played, and on an archive day
+                                // it would read as being about that day.
+                                ownResult={viewDate === today ? ownResult : null}
+                                remoteSigner={remoteSigner}
+                                onRetryResult={retryResult}
                             />
                         </div>
                     )}
 
                     <div className={pageTab === 'game' ? 'space-y-4 sm:space-y-5' : 'hidden'}>
                 {loadError && (
-                    <div className="surface rounded-2xl p-5 text-center space-y-2">
+                    <div className="surface rounded-3xl p-5 text-center space-y-2">
                         <TriangleAlert size={22} className="mx-auto text-amber-600" aria-hidden="true" />
                         <p className="text-sm text-zinc-600 dark:text-zinc-300">{loadError}</p>
                     </div>
                 )}
 
                 {!challenge && !loadError && (
-                    <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 py-12">
+                    <p className="flex items-center justify-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-12">
                         <Loader2 size={16} className="animate-spin" aria-hidden="true" />
                         {t.loading}
                     </p>
                 )}
 
                 {challenge && !answer && (
-                    <div className="surface rounded-2xl p-5 text-center">
+                    <div className="surface rounded-3xl p-5 text-center">
                         <p className="text-sm text-zinc-600 dark:text-zinc-300">
                             {t.corrupt}
                         </p>
@@ -716,7 +769,7 @@ export default function Palavra() {
                             repeats the hidden word, every occurrence is hidden,
                             or the answer would sit in plain sight beside its
                             own gap. They all fill together on the reveal. */}
-                        <blockquote className="surface surface-accent rounded-2xl p-4 text-[1.05rem] leading-relaxed">
+                        <blockquote className="surface surface-accent rounded-3xl p-4 text-[1.05rem] leading-relaxed">
                             {verseParts.map((part, i) => (
                                 <Fragment key={i}>
                                     {part}
@@ -738,7 +791,7 @@ export default function Palavra() {
                                     )}
                                 </Fragment>
                             ))}
-                            <cite className="block not-italic text-xs font-medium text-zinc-500 mt-2">
+                            <cite className="block not-italic text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-2">
                                 {over && (
                                     <>
                                         {refUrl

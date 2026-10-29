@@ -24,13 +24,16 @@ import { pool, RELAYS } from '@/lib/pool';
 import { currentPubkey } from '@/store/auth';
 import {
     KIND_APP_STATE,
+    matching,
+    newestEvent,
+    queryComplete,
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
     signNostrEvent,
 } from '@/lib/nostr';
 import { relaysForAuthors } from '@/lib/relayList';
 import { resultDTag } from './nostr';
-import { entriesFromEvents, rank, withNames } from './social';
+import { entriesFromEvents, rank, withNames, withOwnRow, withRemembered } from './social';
 import type { LeaderboardEntry } from './types';
 
 /** NIP-51 follow set. */
@@ -84,7 +87,7 @@ export function leagueInvite(league: League): string {
         identifier: league.dTag,
         // The hint the doc comment above promises. Without it the coordinate
         // alone only resolves for a recipient already querying a relay that
-        // holds the league — which every mORA client is, so the omission was
+        // holds the league — which every Oremus client is, so the omission was
         // invisible in testing and broke exactly the case invites are for:
         // someone on another client.
         relays: [...RELAYS],
@@ -119,10 +122,18 @@ export function parseInvite(invite: string): string | null {
  */
 async function readMyLeagueCoords(pubkey: string): Promise<string[] | null> {
     try {
-        const [event] = await pool.query(
+        // queryComplete, not pool.query: the pool never throws — a timeout
+        // comes back as an empty answer — so the catch below never saw a
+        // failed read, and "no leagues" was written over the real list.
+        const { events, answered, asked } = await queryComplete(
             [{ kinds: [KIND_APP_STATE], authors: [pubkey], '#d': [D_MY_LEAGUES], limit: 1 }],
             { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
         );
+        if (answered * 2 <= asked) {
+            console.warn(`Only ${answered} of ${asked} relays answered for league memberships; treating them as unknown.`);
+            return null;
+        }
+        const event = newestEvent(matching(events, { kind: KIND_APP_STATE, author: pubkey, dTag: D_MY_LEAGUES }));
         if (!event) return [];
         return event.tags
             .filter((tag) => tag[0] === 'a' && parseCoord(tag[1] ?? ''))
@@ -305,7 +316,9 @@ export async function fetchLeagueStandings(coord: string, date: string): Promise
     }
 
     // Reuse the leaderboard's reader so a league ranks by exactly the same
-    // rules, proof-of-work gate included.
-    const rows = entriesFromEvents(events, date).sort(rank);
+    // rules, proof-of-work gate included — and the same cache, so a member's
+    // own result shows here as soon as it is out.
+    const rows = withOwnRow(entriesFromEvents(withRemembered(events, [date], members), date), date, members)
+        .sort(rank);
     return withNames(rows);
 }

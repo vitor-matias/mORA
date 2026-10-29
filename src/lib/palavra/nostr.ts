@@ -23,7 +23,7 @@
 import { pool } from '@/lib/pool';
 import { appUrl } from '@/lib/appUrl';
 import { formatUTCDate } from '@/lib/format';
-import { currentPubkey } from '@/store/auth';
+import { currentPubkey, useAuthStore } from '@/store/auth';
 import { useAppStore } from '@/store/app';
 import {
     KIND_APP_STATE,
@@ -43,6 +43,8 @@ import {
 } from '@/store/palavra';
 import { MAX_GUESSES } from './types';
 import { meetsPow, minePalavraEvent } from './pow';
+import { rememberResults } from './resultCache';
+import { publishKey, setPublishState, usePublishStatus } from './publishStatus';
 
 /** The private cross-device log. */
 export const D_PALAVRA_STATE = 'mora-palavra-state';
@@ -58,10 +60,11 @@ export { PALAVRA_TOPIC, resultDTag };
 // arrangement the prayer-streak sync uses, and for the same reason: sign-in
 // forces a sync that can land while a foreground one is still in flight.
 let inFlightSync: Promise<void> | null = null;
+let queuedSync: Promise<void> | null = null;
 
 // ── Private state ────────────────────────────────────────────────────────
 
-export async function publishPalavraStateToNostr(): Promise<void> {
+async function publishPalavraStateToNostr(): Promise<void> {
     const pubkey = currentPubkey();
     if (!pubkey || !useAppStore.getState().shareStreaks) return;
     const state = usePalavraStore.getState();
@@ -80,7 +83,16 @@ export async function publishPalavraStateToNostr(): Promise<void> {
  * which is what lets it run on every foreground.
  */
 export function syncPalavraWithNostr(): Promise<void> {
-    inFlightSync ??= doSync().finally(() => { inFlightSync = null; });
+    // A run in flight may have read the store before the guess that prompted
+    // this call, so one more run follows it rather than sharing it.
+    if (inFlightSync) {
+        queuedSync ??= inFlightSync.catch(() => {}).then(() => {
+            queuedSync = null;
+            return syncPalavraWithNostr();
+        });
+        return queuedSync;
+    }
+    inFlightSync = doSync().finally(() => { inFlightSync = null; });
     return inFlightSync;
 }
 
@@ -195,19 +207,18 @@ async function doPublishMissingResults(pubkey: string): Promise<void> {
         // so without the marker the app would re-mine events the relays
         // already hold every time it comes back on screen.
         if (current.publishedResults[`${pubkey}:${date}`]) continue;
+        // A day already being published — usually by the page that just
+        // finished it — is turned away inside publishPalavraResult, which
+        // keeps one attempt per result whoever calls.
 
         try {
-            // Marked on the return value, not on the absence of a throw.
+            // Counted on the return value, not on the absence of a throw.
             // `publishPalavraResult` swallows its own failures and returns
             // early on half a dozen paths — no signer, the proof of work lost,
             // the relay unreachable — so awaiting it says nothing about
-            // whether anything reached a relay. Marking a day done on that
-            // basis is what the marker exists to prevent: invisible for good,
-            // and retried never.
-            if (await publishPalavraResult(date, play, pubkey)) {
-                usePalavraStore.getState().markResultPublished(pubkey, date);
-                published++;
-            }
+            // whether anything reached a relay. It sets the marker itself,
+            // and only when one did.
+            if (await publishPalavraResult(date, play, pubkey)) published++;
         } catch (error) {
             // Never let one day fail the rest, or the caller this rides on —
             // the next foreground tries again.
@@ -247,7 +258,38 @@ export async function publishPalavraResult(
     }
     if (!sharesResults(usePalavraStore.getState(), pubkey)) return false;
     if (!isFinished(play)) return false;
+    // A passkey-protected key that hasn't been unlocked this session has no
+    // signer, so mining a proof of work for an event nothing can sign is
+    // seconds of a phone's CPU for nothing. The notice above the boards asks
+    // for the unlock instead, and unlocking re-runs the catch-up
+    // (useNostrSync), which publishes it then.
+    if (useAuthStore.getState().isLocked) return false;
+    // One attempt per result at a time: a retry tapped twice before its
+    // import landed, or the page's publish meeting a foreground catch-up,
+    // would otherwise each mine the same proof of work and, with a remote
+    // signer, put two approval requests in front of the player. The check
+    // and the mark below have no await between them, so two callers can't
+    // both get through; the one in flight sets the outcome for both.
+    if (usePublishStatus.getState().byKey[publishKey(pubkey, date)] === 'publishing') return false;
 
+    // From here the player is owed an outcome they can see: the boards say
+    // "publishing" or "not published" instead of leaving an empty board to
+    // speak for a publish that is still out or has given up. See
+    // publishStatus.ts.
+    //
+    // Recorded here rather than by each caller, so a publish from the page
+    // and one from the catch-up land the same way. The marker goes in before
+    // the in-flight state comes out, so nothing in between reads as "never
+    // tried".
+    setPublishState(pubkey, date, 'publishing');
+    const sent = await sendResult(date, play, pubkey);
+    if (sent) usePalavraStore.getState().markResultPublished(pubkey, date);
+    setPublishState(pubkey, date, sent ? null : 'failed');
+    return sent;
+}
+
+/** Mine, sign and send one result. True only once a relay has accepted it. */
+async function sendResult(date: string, play: PalavraPlay, pubkey: string): Promise<boolean> {
     const tags: string[][] = [
         ['d', resultDTag(date)],
         ['t', PALAVRA_TOPIC],
@@ -313,6 +355,11 @@ export async function publishPalavraResult(
             return false;
         }
         await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
+        // Straight into the boards' cache. `pool.event` returns on the first
+        // relay to accept, and the read that follows can easily be ended by
+        // others that haven't got it yet — this device knows the event exists,
+        // so its own board needn't wait to be told. See resultCache.ts.
+        rememberResults([event]);
         return true;
     } catch (error) {
         // Relays reject or go offline routinely, and the game is already
@@ -326,7 +373,7 @@ export async function publishPalavraResult(
 
 /**
  * Post the emoji grid as an ordinary note, so it shows up in every Nostr
- * client rather than only in mORA. Always an explicit action — nothing here
+ * client rather than only in Oremus. Always an explicit action — nothing here
  * runs on its own.
  *
  * No verse reference. This lands on public timelines where most readers

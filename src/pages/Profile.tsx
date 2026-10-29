@@ -15,13 +15,15 @@ import { MyBadges } from "@/components/palavra/MyBadges";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
+import { reminderKey } from "@/lib/reminderSchedule";
+import { WEEKLY_SUMMARY } from "@/lib/week";
 
 /** Long enough to cover picking an hour then a minute, short enough that the
     registration still feels immediate. */
 const REMINDER_SYNC_DEBOUNCE_MS = 600;
 
 export default function Profile() {
-    const { login, lockedPubkey, protectedKey, isLocked, setProtectedKey, unlockWithKey, signIn, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
+    const { login, lockedPubkey, protectedKey, isLocked, autoUnlock, setAutoUnlock, setProtectedKey, unlockWithKey, signIn, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
     // One login record replaces the old pubkey/privkey/isNip07/bunker
     // quadruple; everything the page used to branch on is its `type`.
     const pubkey = login?.pubkey ?? lockedPubkey;
@@ -33,7 +35,7 @@ export default function Profile() {
     const nsec = useAuthStore(localNsec) ?? "";
     // The passkey vault predates the login record and speaks hex.
     const privkeyHex = useAuthStore(localPrivkeyHex);
-    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, weeklySummary, setWeeklySummary, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
     const tPalavra = useTranslations().palavra;
     // Per identity: the toggle reflects and sets this pubkey's own choice,
     // so a second account on the same browser starts from its own answer.
@@ -239,7 +241,7 @@ export default function Profile() {
     const handleBunkerUriLogin = async () => {
         const input = bunkerUri.trim();
         if (!input) {
-            setSignerError('Cole o endereço do seu assinador.');
+            setSignerError('Cola o endereço do teu assinador.');
             return;
         }
         setSignerError("");
@@ -287,7 +289,7 @@ export default function Profile() {
     const handleProtectKey = () => runVaultAction(async () => {
         if (!privkeyHex) throw new Error('A chave tem de estar desbloqueada.');
         const { protectKey } = await import('@/lib/keyVault');
-        const stored = await protectKey(privkeyHex, profileName || 'mORA');
+        const stored = await protectKey(privkeyHex, profileName || 'Oremus');
         // The login stays usable for this session; persistence drops it.
         setProtectedKey(stored);
     });
@@ -299,7 +301,7 @@ export default function Profile() {
     });
 
     const handleRemoveProtection = () => runVaultAction(async () => {
-        if (!nsec) throw new Error('Desbloqueie a chave primeiro.');
+        if (!nsec) throw new Error('Desbloqueia a chave primeiro.');
         setProtectedKey(null);
     });
 
@@ -419,10 +421,11 @@ export default function Profile() {
 
     useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
 
-    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>) => {
+    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>, nextWeekly = weeklySummary) => {
         const times = [...new Set([
             ...(nextTime ? [nextTime] : []),
             ...Object.values(nextHours),
+            ...(nextWeekly ? [reminderKey(WEEKLY_SUMMARY)] : []),
         ])].sort();
 
         window.clearTimeout(syncTimerRef.current);
@@ -472,23 +475,23 @@ export default function Profile() {
             <div className="space-y-8 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
 
             {/* Application Settings Section */}
-            <section className="surface rounded-2xl p-6">
+            <section className="surface rounded-3xl p-6">
                 <div className="flex items-center gap-2 mb-6">
-                    <Settings className="text-zinc-400" size={20} />
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.settings}</h2>
+                    <Settings className="text-zinc-500 dark:text-zinc-400" size={20} />
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.settings}</h2>
                 </div>
 
                 <div className="space-y-6">
                     {/* Theme Preference */}
                     <div>
                         <p className="text-sm font-medium mb-3">{t.theme}</p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {(['light', 'dark', 'system'] as ThemeMode[]).map((tMode) => (
                                 <button
                                     key={tMode}
                                     onClick={() => setTheme(tMode)}
                                     className={`flex-1 py-2 px-3 rounded-xl flex flex-col items-center gap-1 transition-colors ${theme === tMode
-                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
@@ -504,16 +507,16 @@ export default function Profile() {
                     {/* Font Family */}
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <Type className="text-zinc-400" size={16} />
+                            <Type className="text-zinc-500 dark:text-zinc-400" size={16} />
                             <p className="text-sm font-medium">Tipo de Letra</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             {([['system', 'Predefinido'], ['serif', 'Serifada'], ['sans', 'Sem Serifa']] as [FontFamily, string][]).map(([fam, label]) => (
                                 <button
                                     key={fam}
                                     onClick={() => setFontFamily(fam)}
                                     className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${fontFamily === fam
-                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
@@ -531,10 +534,10 @@ export default function Profile() {
                                 <button
                                     key={sz}
                                     onClick={() => setFontSize(sz)}
-                                    aria-label={`Tamanho ${sz}`}
+                                    aria-label={`Tamanho ${CONTENT_FONT_SCALE[sz].label}`}
                                     aria-pressed={fontSize === sz}
-                                    className={`flex-1 py-3 px-3 rounded-xl flex items-center justify-center transition-colors ${fontSize === sz
-                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                    className={`flex-1 min-w-0 py-3 px-1 rounded-xl flex items-center justify-center transition-colors ${fontSize === sz
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
@@ -547,14 +550,14 @@ export default function Profile() {
                     {/* Rosary Mode — segmented so both options are always visible */}
                     <div>
                         <p className="text-sm font-medium mb-3">{t.rosaryMode}</p>
-                        <div role="group" aria-label={t.rosaryMode} className="flex gap-2">
-                            {([['beginner', 'Guiado', 'Todas as orações, conta a conta'], ['advanced', 'Só mistérios', 'Reza as contas ao seu ritmo']] as [RosaryBeadMode, string, string][]).map(([mode, label, desc]) => (
+                        <div role="group" aria-label={t.rosaryMode} className="flex flex-wrap gap-2">
+                            {([['beginner', 'Guiado', 'Todas as orações, conta a conta'], ['advanced', 'Só mistérios', 'Reza as contas ao teu ritmo']] as [RosaryBeadMode, string, string][]).map(([mode, label, desc]) => (
                                 <button
                                     key={mode}
                                     onClick={() => setRosaryMode(mode)}
                                     aria-pressed={rosaryMode === mode}
                                     className={`flex-1 py-2 px-3 rounded-xl text-center transition-colors ${rosaryMode === mode
-                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-600 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                        ? 'bg-liturgy-50 dark:bg-liturgy-900/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
@@ -568,15 +571,15 @@ export default function Profile() {
                     {/* Notification Preference */}
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <Bell className="text-zinc-400" size={16} />
+                            <Bell className="text-zinc-500 dark:text-zinc-400" size={16} />
                             <p className="text-sm font-medium">{t.notifications}</p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                             <input
                                 type="time"
                                 value={notificationTime || ''}
                                 onChange={handleNotificationChange}
-                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 focus:ring-2 focus:ring-liturgy-500 outline-none"
+                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 min-w-0 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
                             />
                             <button
                                 type="button"
@@ -586,9 +589,9 @@ export default function Profile() {
                                 {t.notificationsOff}
                             </button>
                         </div>
-                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                             {pushSubscribed
-                                ? 'Lembrete ativo — chega mesmo com a aplicação fechada.'
+                                ? 'Lembrete ativo: chega mesmo com a aplicação fechada.'
                                 : 'Por agora, o lembrete só aparece com a aplicação aberta.'}
                         </p>
                     </div>
@@ -596,25 +599,25 @@ export default function Profile() {
                     {/* Liturgy of the Hours reminders — one per canonical Hour */}
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <Clock className="text-zinc-400" size={16} />
+                            <Clock className="text-zinc-500 dark:text-zinc-400" size={16} />
                             <p className="text-sm font-medium">Liturgia das Horas</p>
                         </div>
-                        <p className="text-xs text-zinc-400 dark:text-zinc-500 mb-3">
-                            Escolha as Horas que quer rezar — cada uma avisa à hora que definir.
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                            Escolhe as Horas que queres rezar. Cada uma avisa à hora que definires.
                         </p>
                         <div className="space-y-2">
                             {CANONICAL_HOURS.map((hour) => {
                                 const time = hourReminders[hour.id];
                                 const enabled = Boolean(time);
                                 return (
-                                    <div key={hour.id} className="flex items-center gap-3">
+                                    <div key={hour.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                                         <button
                                             type="button"
                                             role="switch"
                                             aria-checked={enabled}
                                             aria-label={`Lembrete: ${hour.label}`}
                                             onClick={() => setHourTime(hour.id, enabled ? null : hour.defaultTime)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                                         >
                                             <span
                                                 aria-hidden="true"
@@ -628,22 +631,48 @@ export default function Profile() {
                                             disabled={!enabled}
                                             aria-label={`Hora do lembrete: ${hour.label}`}
                                             onChange={(e) => setHourTime(hour.id, e.target.value || null)}
-                                            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-500 outline-none"
+                                            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
                                         />
                                     </div>
                                 );
                             })}
                         </div>
                     </div>
+
+                    {/* Weekly summary — opt-in, Saturday night, what Resumo da Semana shows. */}
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-medium">Resumo da Semana</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                Sábado às {WEEKLY_SUMMARY.time}, quantos dias rezaste a Missa e cada uma das Horas.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={weeklySummary}
+                            aria-label="Resumo da Semana"
+                            onClick={() => {
+                                setWeeklySummary(!weeklySummary);
+                                syncReminders(notificationTime, hourReminders, !weeklySummary);
+                            }}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${weeklySummary ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${weeklySummary ? 'translate-x-5' : 'translate-x-0'}`}
+                            />
+                        </button>
+                    </div>
                 </div>
             </section>
             {/* Nostr Identity Section */}
             {pubkey ? (
-                <section className="surface rounded-2xl p-6">
+                <section className="surface rounded-3xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">{t.identity}</h2>
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.identity}</h2>
                         {!isEditingProfile && (
-                            <button onClick={() => setIsEditingProfile(true)} className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1">
+                            <button onClick={() => setIsEditingProfile(true)} className="text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 font-medium flex items-center gap-1">
                                 Editar Perfil
                             </button>
                         )}
@@ -654,13 +683,13 @@ export default function Profile() {
                         {profilePicture ? (
                             <img src={profilePicture} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
                         ) : (
-                            <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
+                            <div className="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
                                 <User size={24} />
                             </div>
                         )}
                         <div>
                             <h3 className="font-bold text-lg dark:text-zinc-100">{profileName || 'Anónimo'}</h3>
-                            <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1">
+                            <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mt-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
                                 {t.authenticated} {bunker ? 'Assinador remoto' : isNip07 ? 'NIP-07' : 'Chave Local'}
                             </div>
@@ -670,22 +699,22 @@ export default function Profile() {
                     {isEditingProfile ? (
                         <div className="space-y-4 mb-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
                             <div>
-                                <label className="text-xs font-medium text-zinc-500 mb-1 block">Nome</label>
+                                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 block">Nome</label>
                                 <input
                                     type="text"
                                     value={profileName}
                                     onChange={e => setProfileName(e.target.value)}
-                                    placeholder="O seu nome..."
-                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none"
+                                    placeholder="O teu nome..."
+                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
                                 />
                             </div>
                             <div>
-                                <label className="text-xs font-medium text-zinc-500 mb-1 block">Imagem de Perfil</label>
+                                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1 block">Imagem de Perfil</label>
                                 <div className="flex items-center gap-3">
                                     {profilePicture ? (
                                         <img src={profilePicture} alt="" className="w-12 h-12 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shrink-0" />
                                     ) : (
-                                        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 shrink-0">
+                                        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400 shrink-0">
                                             <User size={20} />
                                         </div>
                                     )}
@@ -706,7 +735,7 @@ export default function Profile() {
                                         <button
                                             type="button"
                                             onClick={() => { setProfilePicture(""); setPictureError(""); }}
-                                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+                                            className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
                                         >
                                             Remover
                                         </button>
@@ -722,13 +751,13 @@ export default function Profile() {
                                 {pictureError && (
                                     <p className="text-xs text-red-600 dark:text-red-400 mt-2">{pictureError}</p>
                                 )}
-                                <label className="text-xs font-medium text-zinc-500 mt-3 mb-1 block">ou um endereço (URL)</label>
+                                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-3 mb-1 block">ou um endereço (URL)</label>
                                 <input
                                     type="url"
                                     value={profilePicture.startsWith('data:') ? '' : profilePicture}
                                     onChange={e => setProfilePicture(e.target.value)}
                                     placeholder={profilePicture.startsWith('data:') ? 'A usar a imagem carregada' : 'https://'}
-                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none"
+                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
                                 />
                             </div>
                             <div className="flex gap-2 pt-2">
@@ -745,7 +774,7 @@ export default function Profile() {
                                     disabled={isSaving}
                                 >
                                     {isSaving ? (
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                                     ) : (
                                         <Save size={16} />
                                     )}
@@ -757,11 +786,11 @@ export default function Profile() {
                         <div className="space-y-4">
                             <div>
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-xs text-zinc-500">{t.pubkey}</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{t.pubkey}</p>
                                     <button
                                         type="button"
                                         onClick={() => copyKey('npub', npub)}
-                                        className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1"
+                                        className="text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 font-medium flex items-center gap-1"
                                     >
                                         {copied === 'npub'
                                             ? <><Check size={12} aria-hidden="true" /> Copiado</>
@@ -782,16 +811,16 @@ export default function Profile() {
                                                 {protectedKey ? <Lock size={13} aria-hidden="true" /> : <LockOpen size={13} aria-hidden="true" />}
                                                 {protectedKey ? 'Chave protegida' : 'Chave guardada sem proteção'}
                                             </p>
-                                            <p className="text-xs text-zinc-500 mt-0.5">
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                                 {protectedKey
                                                     ? (isLocked
-                                                        ? 'Desbloqueie para sincronizar e ver a chave. As orações continuam a contar neste dispositivo.'
+                                                        ? 'Desbloqueia para sincronizar e ver a chave. As orações continuam a contar neste dispositivo.'
                                                         : 'Encriptada neste dispositivo, desbloqueada nesta sessão.')
-                                                    : 'Encripte a chave com a biometria do dispositivo. Fica ilegível para quem aceda ao armazenamento do navegador.'}
+                                                    : 'Encripta a chave com a biometria do dispositivo. Fica ilegível para quem aceda ao armazenamento do navegador.'}
                                             </p>
                                         </div>
                                         {protectedKey && !isLocked && (
-                                            <span className="shrink-0 text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400">
+                                            <span className="shrink-0 text-[0.65rem] font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400">
                                                 Ativa
                                             </span>
                                         )}
@@ -828,6 +857,29 @@ export default function Profile() {
                                             </button>
                                         )}
                                     </div>
+                                    {protectedKey && (
+                                        <div className="flex items-center justify-between gap-4 mt-3">
+                                            <div>
+                                                <p className="text-sm font-medium">Desbloquear ao abrir</p>
+                                                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                                    Pede a biometria assim que a aplicação abre.
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setAutoUnlock(!autoUnlock)}
+                                                role="switch"
+                                                aria-checked={autoUnlock}
+                                                aria-label="Desbloquear ao abrir"
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${autoUnlock ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                                            >
+                                                <span
+                                                    aria-hidden="true"
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${autoUnlock ? 'translate-x-5' : 'translate-x-0'}`}
+                                                />
+                                            </button>
+                                        </div>
+                                    )}
                                     {vaultError && <p className="text-red-500 text-xs mt-2">{vaultError}</p>}
                                 </div>
                             )}
@@ -839,22 +891,22 @@ export default function Profile() {
                                 reachable, but never on screen by default. */}
                             {protectedKey && isLocked && (
                                 <div>
-                                    <p className="text-xs text-zinc-500 mb-1">Chave privada</p>
-                                    <p className="text-xs text-zinc-500">
-                                        Protegida. Desbloqueie acima para a ver ou copiar.
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Chave privada</p>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        Protegida. Desbloqueia acima para a ver ou copiar.
                                     </p>
                                 </div>
                             )}
                             {nsec && (
                                 <div>
                                     <div className="flex items-center justify-between gap-2 mb-1">
-                                        <p className="text-xs text-zinc-500">Chave privada</p>
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">Chave privada</p>
                                         <div className="flex items-center gap-3">
                                             {nsecRevealed && (
                                                 <button
                                                     type="button"
                                                     onClick={() => copyKey('nsec', nsec)}
-                                                    className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1"
+                                                    className="text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 font-medium flex items-center gap-1"
                                                 >
                                                     {copied === 'nsec'
                                                         ? <><Check size={12} aria-hidden="true" /> Copiado</>
@@ -865,7 +917,7 @@ export default function Profile() {
                                                 type="button"
                                                 onClick={() => setNsecRevealed(v => !v)}
                                                 aria-pressed={nsecRevealed}
-                                                className="text-xs text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 font-medium flex items-center gap-1"
+                                                className="text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 font-medium flex items-center gap-1"
                                             >
                                                 {nsecRevealed
                                                     ? <><EyeOff size={12} aria-hidden="true" /> Ocultar</>
@@ -880,12 +932,12 @@ export default function Profile() {
                                             </code>
                                             <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 mt-2">
                                                 <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
-                                                Quem tiver esta chave assume a sua identidade. Guarde-a num sítio seguro e nunca a partilhe.
+                                                Quem tiver esta chave assume a tua identidade. Guarda-a num sítio seguro e nunca a partilhes.
                                             </p>
                                         </>
                                     ) : (
-                                        <p className="text-xs text-zinc-500">
-                                            Use-a para entrar na mesma conta noutro dispositivo, para manter os seus dados.
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            Usa-a para entrar na mesma conta noutro dispositivo, para manter os teus dados.
                                         </p>
                                     )}
                                 </div>
@@ -900,9 +952,9 @@ export default function Profile() {
                     <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
                             <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
-                            <p className="text-xs text-zinc-500 mt-0.5">
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                 Guarda sequências, favoritos e preferências de leitura na rede, encriptados —
-                                só os seus dispositivos os conseguem ler. O seu nome pode aparecer na lista de quem rezou hoje.
+                                só os teus dispositivos os conseguem ler. O teu nome pode aparecer na lista de quem rezou hoje.
                             </p>
                         </div>
                         <button
@@ -910,7 +962,7 @@ export default function Profile() {
                             role="switch"
                             aria-checked={shareStreaks}
                             aria-label="Sincronizar entre dispositivos"
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${shareStreaks ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${shareStreaks ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span
                                 aria-hidden="true"
@@ -926,7 +978,7 @@ export default function Profile() {
                     <div className="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-zinc-100 dark:border-zinc-800">
                         <div>
                             <p className="text-sm font-medium">{tPalavra.shareToggle}</p>
-                            <p className="text-xs text-zinc-500 mt-0.5">
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                 {tPalavra.shareToggleHelp}
                             </p>
                         </div>
@@ -935,7 +987,7 @@ export default function Profile() {
                             role="switch"
                             aria-checked={sharePalavraResults}
                             aria-label={tPalavra.shareToggle}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-600 focus:ring-offset-2 ${sharePalavraResults ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${sharePalavraResults ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span
                                 aria-hidden="true"
@@ -957,7 +1009,7 @@ export default function Profile() {
                     </button>
                 </section>
             ) : (
-                <section className="surface rounded-2xl p-6">
+                <section className="surface rounded-3xl p-6">
                     <div className="space-y-4">
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
                             {t.loginPrompt}
@@ -973,8 +1025,8 @@ export default function Profile() {
                                 <Smartphone size={15} aria-hidden="true" />
                                 Entrar com assinador
                             </p>
-                            <p className="text-xs text-zinc-500">
-                                Abre a sua aplicação de assinatura para aprovar a ligação. A chave nunca sai de lá.
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                Abre a tua aplicação de assinatura para aprovar a ligação. A chave nunca sai de lá.
                             </p>
                             <button
                                 type="button"
@@ -982,7 +1034,7 @@ export default function Profile() {
                                 disabled={signerPending}
                                 className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                             >
-                                {signerPending && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                {signerPending && <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                                 Abrir aplicação de assinatura
                             </button>
 
@@ -1002,13 +1054,13 @@ export default function Profile() {
                                 the way through, and the request that was just
                                 approved cannot be retried. */}
                             <details className="px-1" open={!!signerError}>
-                                <summary className="text-xs text-liturgy-600 dark:text-liturgy-400 cursor-pointer">
+                                <summary className="text-xs text-liturgy-700 dark:text-liturgy-400 cursor-pointer">
                                     Não resultou? Colar o endereço do assinador
                                 </summary>
                                 <div className="space-y-2 mt-2">
-                                    <p className="text-xs text-zinc-500">
-                                        No Amber (ou outro assinador): adicione uma aplicação, copie o endereço
-                                        <span className="font-mono"> bunker://</span> e cole-o aqui — também aceita
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        No Amber (ou outro assinador): adiciona uma aplicação, copia o endereço
+                                        <span className="font-mono"> bunker://</span> e cola-o aqui — também aceita
                                         um identificador NIP-05 (nome@dominio). Ligar por aqui não depende de
                                         apanhar a resposta enquanto o navegador está suspenso.
                                     </p>
@@ -1017,7 +1069,7 @@ export default function Profile() {
                                         value={bunkerUri}
                                         onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
                                         placeholder="bunker://... ou nome@dominio"
-                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none placeholder:text-zinc-400"
                                     />
                                     <button
                                         type="button"
@@ -1037,11 +1089,11 @@ export default function Profile() {
                             {signerPending && (
                                 <div aria-live="polite">
                                     <div className="flex items-center justify-between gap-2 px-1">
-                                        <p className="text-xs text-zinc-500">A ligar ao assinador...</p>
+                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">A ligar ao assinador...</p>
                                         <button
                                             type="button"
                                             onClick={handleCancelSigner}
-                                            className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 shrink-0"
+                                            className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 shrink-0"
                                         >
                                             Cancelar
                                         </button>
@@ -1054,8 +1106,8 @@ export default function Profile() {
                                         one many scanners refuse. */}
                                     {connectUri && (
                                         <div className="mt-3 space-y-2">
-                                            <p className="text-xs text-zinc-500 px-1">
-                                                Leia este código com a aplicação de assinatura do outro dispositivo:
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
+                                                Lê este código com a aplicação de assinatura do outro dispositivo:
                                             </p>
                                             <div className="bg-white p-3 rounded-xl w-fit mx-auto">
                                                 <QRCodeSVG
@@ -1087,7 +1139,7 @@ export default function Profile() {
                                 {t.loginNip07}
                             </button>
                             {!hasNip07 && (
-                                <p className="text-xs text-zinc-500 px-1">
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400 px-1">
                                     {isInstalledApp ? t.nip07MissingInApp : t.nip07Missing}
                                 </p>
                             )}
@@ -1099,7 +1151,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="surface-bg px-2 text-zinc-500">{t.or}</span>
+                                <span className="surface-bg px-2 text-zinc-500 dark:text-zinc-400">{t.or}</span>
                             </div>
                         </div>
 
@@ -1113,13 +1165,13 @@ export default function Profile() {
                                     setKeyError("");
                                 }}
                                 placeholder="Colar chave secreta (nsec ou hex)"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none placeholder:text-zinc-400"
                             />
                             {keyError && <p className="text-red-500 text-xs px-1">{keyError}</p>}
                             <button
                                 onClick={() => {
                                     if (!customKey.trim()) {
-                                        setKeyError("Por favor, introduza uma chave");
+                                        setKeyError("Por favor, introduz uma chave");
                                         return;
                                     }
                                     try {
@@ -1139,7 +1191,7 @@ export default function Profile() {
                                 <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="surface-bg px-2 text-zinc-500">{t.or}</span>
+                                <span className="surface-bg px-2 text-zinc-500 dark:text-zinc-400">{t.or}</span>
                             </div>
                         </div>
 
@@ -1149,8 +1201,8 @@ export default function Profile() {
                                 value={newIdentityName}
                                 onChange={(e) => setNewIdentityName(e.target.value)}
                                 maxLength={24}
-                                placeholder="O seu nome (opcional)"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-500 outline-none placeholder:text-zinc-400"
+                                placeholder="O teu nome (opcional)"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none placeholder:text-zinc-400"
                             />
                             <button
                                 type="button"
@@ -1161,8 +1213,8 @@ export default function Profile() {
                                 {isCreatingIdentity ? 'A criar…' : t.createKey}
                             </button>
                         </div>
-                        <p className="text-xs text-zinc-500 text-center">
-                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje» — pode mudá-lo ou deixá-lo em branco.
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje». Podes mudá-lo ou deixá-lo em branco.
                         </p>
                     </div>
                 </section>

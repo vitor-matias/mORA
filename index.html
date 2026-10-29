@@ -24,11 +24,15 @@
        top padding everywhere finally does its job. The classic cost of this
        value — white clock and icons whatever the page — is gone: iOS 26
        picks the status bar's text colour from what is under it, black on the
-       light page and white on the dark one. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+       light page and white on the dark one.
+
+       maximum-scale/user-scalable stop pinch zoom where they are honoured;
+       iOS Safari ignores them, so index.css also sets touch-action on html.
+       Text size is the app's own setting (Perfil), not the page zoom. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#FAF9F6" />
-  <title>mORA</title>
+  <meta name="theme-color" content="#F7F7F9" />
+  <title>Oremus</title>
   <script>
     // Apply theme before first paint so there is no flash of the wrong
     // theme (the React effect in Layout keeps it in sync afterwards).
@@ -42,8 +46,12 @@
         var root = document.documentElement;
         root.classList.toggle('dark', dark);
         if (state.liturgicalColor) root.setAttribute('data-theme', state.liturgicalColor);
+        // Interface text size, so the page doesn't reflow once React mounts.
+        // Same percentages as CONTENT_FONT_SCALE in src/store/app.ts.
+        var interfacePercent = { large: '112.5%', xlarge: '125%' }[state.fontSize];
+        if (interfacePercent) root.style.fontSize = interfacePercent;
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', dark ? '#121212' : '#FAF9F6');
+        if (meta) meta.setAttribute('content', dark ? '#0B0B0C' : '#F7F7F9');
       } catch (e) { /* first visit or blocked storage — defaults apply */ }
     })();
   </script>

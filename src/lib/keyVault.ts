@@ -12,7 +12,7 @@
  */
 
 // Fixed per-app input to the passkey's PRF, so the same passkey always yields
-// the same secret for mORA and a different one for any other site.
+// the same secret for Oremus and a different one for any other site.
 const PRF_SALT = new TextEncoder().encode('mora-key-vault-v1');
 const HKDF_INFO = new TextEncoder().encode('mora-nsec-encryption');
 
@@ -116,11 +116,11 @@ export async function protectKey(privkeyHex: string, accountName: string): Promi
     const credential = await navigator.credentials.create({
         publicKey: {
             challenge: randomBytes(32),
-            rp: { name: 'mORA', id: window.location.hostname },
+            rp: { name: 'Oremus', id: window.location.hostname },
             user: {
                 id: randomBytes(16),
-                name: accountName || 'mORA',
-                displayName: accountName || 'mORA',
+                name: accountName || 'Oremus',
+                displayName: accountName || 'Oremus',
             },
             // ES256 then RS256 — between them every platform authenticator.
             pubKeyCredParams: [

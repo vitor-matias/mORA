@@ -12,8 +12,6 @@ import {
 /** What a signer is handed: an event with everything but the signature. */
 export type EventTemplate = Omit<NostrEvent, 'id' | 'pubkey' | 'sig'>;
 
-export const MORA_APP_PUBKEY = 'mora_app'; // Could be used in tags to identify app
-
 // NIP-78 "Application-specific Data": addressable event, replaced per d-tag.
 // (30000 would collide with NIP-51 follow sets.)
 export const KIND_APP_STATE = 30078;
@@ -89,6 +87,18 @@ export function newestEvent(events: NostrEvent[]): NostrEvent | undefined {
 }
 
 /**
+ * The NIP-01 CLOSED prefixes that mean "not for you", as opposed to "not
+ * right now".
+ *
+ * `restricted:` is included because it is what relay.ditto.pub answers once a
+ * connection *has* authenticated but the filter names no authors. If this app
+ * ever answers AUTH challenges, Ditto's refusal changes from `auth-required:`
+ * to `restricted:`, and leaving `restricted:` out would bring back the warning
+ * this was written to remove.
+ */
+const POLICY_REFUSAL = /^(auth-required|restricted):/;
+
+/**
  * A read that says how many relays actually answered.
  *
  * `pool.query` cannot say: it swallows every abort and error and returns
@@ -107,8 +117,19 @@ export function newestEvent(events: NostrEvent[]): NostrEvent | undefined {
  * not an answer. There is no EOSE deadline beyond the caller's signal, so a
  * slow relay is waited for rather than cut off.
  *
- * What a caller does with `answered` is its own decision: a board can say the
- * totals are a floor, while a write that replaces a list must refuse outright.
+ * Some CLOSEDs are not outages, though. One prefixed `auth-required:` or
+ * `restricted:` is the relay declining this client by policy, and it will
+ * decline the same filter on every load. relay.ditto.pub, for one, serves
+ * kind 30078 only to its NIP-42-authenticated author, and this app never
+ * authenticates. Those relays are counted again in `refused`, and they are
+ * still not in `answered`. The reason only gets here because pool.ts opens
+ * relays as ReasonedRelay. NRelay1 on its own drops the CLOSED without a word.
+ *
+ * What a caller does with `answered` is its own decision. A board can say the
+ * totals are a floor, and can leave out the relays that `refused`, since no
+ * reload will change their answer. A write that replaces a list must refuse
+ * outright, refusals included, because a relay that will not serve the list
+ * may still be holding it.
  *
  * Replaceable events are not resolved here, unlike in `pool.query`. Callers
  * get the union deduplicated by id and pick, which is what the ones that care
@@ -117,7 +138,7 @@ export function newestEvent(events: NostrEvent[]): NostrEvent | undefined {
 export async function queryComplete(
     filters: NostrFilter[],
     opts: { signal: AbortSignal; relays?: string[] },
-): Promise<{ events: NostrEvent[]; answered: number; asked: number }> {
+): Promise<{ events: NostrEvent[]; answered: number; asked: number; refused: number }> {
     const urls = opts.relays ?? RELAYS;
 
     const perRelay = await Promise.all(urls.map(async (url) => {
@@ -125,14 +146,16 @@ export async function queryComplete(
         try {
             for await (const msg of pool.relay(url).req(filters, { signal: opts.signal })) {
                 if (msg[0] === 'EVENT') events.push(msg[2]);
-                if (msg[0] === 'EOSE') return { events, answered: true };
+                if (msg[0] === 'EOSE') return { events, answered: true, refused: false };
                 // Declined. What it sent first is a fragment, not a result set.
-                if (msg[0] === 'CLOSED') return { events, answered: false };
+                if (msg[0] === 'CLOSED') {
+                    return { events, answered: false, refused: POLICY_REFUSAL.test(msg[2]) };
+                }
             }
         } catch {
             // Aborted, or the socket gave out.
         }
-        return { events, answered: false };
+        return { events, answered: false, refused: false };
     }));
 
     const byId = new Map<string, NostrEvent>();
@@ -143,6 +166,7 @@ export async function queryComplete(
         events: [...byId.values()],
         answered: perRelay.filter((relay) => relay.answered).length,
         asked: urls.length,
+        refused: perRelay.filter((relay) => relay.refused).length,
     };
 }
 
@@ -186,7 +210,25 @@ export async function getSigner(): Promise<NostrSigner | null> {
     }
 }
 
+// One prompt for any number of signatures asked for at once.
+let unlocking: Promise<void> | null = null;
+
+/** A protected key still locked asks for its passkey at the moment something
+    has to be signed, rather than failing. Only signing does this: encrypted
+    backups go through getSigner and skip while locked, so background sync
+    never puts up a prompt nobody asked for. A cancelled prompt rejects. */
+export async function unlockIfNeeded(): Promise<void> {
+    const { protectedKey, isLocked, unlockWithKey } = useAuthStore.getState();
+    if (!protectedKey || !isLocked) return;
+    unlocking ??= import('@/lib/keyVault')
+        .then(({ unlockKey }) => unlockKey(protectedKey))
+        .then(unlockWithKey)
+        .finally(() => { unlocking = null; });
+    await unlocking;
+}
+
 export async function signNostrEvent(baseEvent: EventTemplate): Promise<NostrEvent> {
+    await unlockIfNeeded();
     const signer = await getSigner();
     if (!signer) throw new Error('No method available to sign the event');
     return signer.signEvent(baseEvent);
@@ -221,17 +263,18 @@ export async function fetchNostrProfile(pubkey: string): Promise<NostrProfile | 
 async function fetchRawProfile(
     pubkey: string,
 ): Promise<{ content: Record<string, unknown> } | null> {
-    let events: NostrEvent[];
-    try {
-        events = await pool.query(
-            [{ kinds: [0], authors: [pubkey], limit: 1 }],
-            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
-        );
-    } catch (error) {
-        console.warn('Could not read the current profile.', error);
+    // queryComplete, not pool.query: the pool never throws — a timeout comes
+    // back as an empty answer — so a failed read used to look like "no
+    // profile yet" and the edits were published alone.
+    const { events, answered, asked } = await queryComplete(
+        [{ kinds: [0], authors: [pubkey], limit: 1 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    if (answered * 2 <= asked) {
+        console.warn(`Only ${answered} of ${asked} relays answered for the profile; refusing to replace it.`);
         return null;
     }
-    const newest = events.sort((a, b) => b.created_at - a.created_at)[0];
+    const newest = newestEvent(matching(events, { kind: 0, author: pubkey }));
     if (!newest) return { content: {} };
     try {
         const parsed = JSON.parse(newest.content) as unknown;
@@ -279,7 +322,7 @@ export async function publishNostrProfile(
     const current = options.isNewIdentity ? { content: {} } : await fetchRawProfile(pubkey);
     if (!current) {
         throw new Error(
-            'Não foi possível ler o perfil atual, por isso não foi guardado. Tente novamente.',
+            'Não foi possível ler o perfil atual, por isso não foi guardado. Tenta outra vez.',
         );
     }
 

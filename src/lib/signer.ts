@@ -44,7 +44,7 @@ const DEFAULT_SIGNER_RELAYS = [
     Without them a signer may prompt again for every background sync. */
 const PERMS = ['sign_event', 'nip44_encrypt', 'nip44_decrypt'];
 
-const CLIENT_NAME = 'mORA';
+const CLIENT_NAME = 'Oremus';
 const CLIENT_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 /** The remote-signer arm of Nostrify's login union. The union is exported
@@ -67,20 +67,20 @@ export class SignerTimeoutError extends Error {
         // NIP-46 secrets are single-use, so if the signer did approve while
         // this page was suspended, its reply is gone and re-listening for it
         // is pointless — the bunker:// address is the way through.
-        super('Não recebemos a resposta do assinador. Cole antes o endereço bunker:// (ou o identificador NIP-05) da aplicação.');
+        super('Não recebemos a resposta do assinador. Cola antes o endereço bunker:// (ou o identificador NIP-05) da aplicação.');
         this.name = 'SignerTimeoutError';
     }
 }
 
 export class SignerRelayError extends Error {
     constructor() {
-        super('Não foi possível manter a ligação aos relays. Verifique a internet e tente novamente, ou use o endereço bunker:// da aplicação.');
+        super('Não foi possível manter a ligação aos relays. Verifica a internet e tenta outra vez, ou usa o endereço bunker:// da aplicação.');
         this.name = 'SignerRelayError';
     }
 }
 
 export class SignerUnreachableError extends Error {
-    constructor(message = 'O assinador não respondeu. Verifique se a aplicação está a correr e ligada à internet.') {
+    constructor(message = 'O assinador não respondeu. Verifica se a aplicação está a correr e ligada à internet.') {
         super(message);
         this.name = 'SignerUnreachableError';
     }
@@ -94,8 +94,8 @@ export class SignerUnreachableError extends Error {
  * either screen points at it.
  */
 export const SIGNER_APPROVAL_HINT =
-    'Sem resposta ainda. Abra a aplicação de assinatura e aprove o pedido. '
-    + 'Se não apareceu nenhuma notificação, verifique nas definições do Android se as '
+    'Sem resposta ainda. Abre a aplicação de assinatura e aprova o pedido. '
+    + 'Se não apareceu nenhuma notificação, verifica nas definições do Android se as '
     + 'notificações dessa aplicação estão ativadas — sem elas o pedido fica invisível.';
 
 /** How long to wait before offering the hint above: long enough that a prompt
@@ -324,7 +324,7 @@ export function resumeBunkerConnection(): { uri: string; qr: boolean; connected:
  */
 async function lookupNip46(input: string): Promise<{ pubkey: string; relays: string[] }> {
     const match = input.match(NIP05.regex());
-    if (!match) throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.');
+    if (!match) throw new Error('Endereço de ligação inválido. Verifica se copiaste o endereço completo.');
     const [, name = '_', domain] = match;
 
     const url = new URL('/.well-known/nostr.json', `https://${domain}/`);
@@ -338,7 +338,7 @@ async function lookupNip46(input: string): Promise<{ pubkey: string; relays: str
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         json = await response.json();
     } catch {
-        throw new Error(`Não foi possível contactar ${domain}. Verifique a internet e o identificador.`);
+        throw new Error(`Não foi possível contactar ${domain}. Verifica a internet e o identificador.`);
     }
     // Shape-checked, not just present: this is a document from a host the
     // user named, and an npub, a truncated key or a bare string where the
@@ -370,12 +370,12 @@ export async function connectWithBunkerUri(input: string): Promise<BunkerLogin> 
         return await NLogin.fromBunker(uri, pool);
     } catch (error) {
         if (error instanceof Error && /invalid bunker uri|no relay/i.test(error.message)) {
-            throw new Error('Endereço de ligação inválido. Verifique se copiou o endereço completo.', { cause: error });
+            throw new Error('Endereço de ligação inválido. Verifica se copiaste o endereço completo.', { cause: error });
         }
         throw mapSignerError(
             error,
-            'O assinador não respondeu ao pedido de ligação. Abra a aplicação e aprove-o — se não '
-            + 'recebeu nenhuma notificação, ative as notificações dessa aplicação nas definições do Android.',
+            'O assinador não respondeu ao pedido de ligação. Abre a aplicação e aprova-o — se não '
+            + 'recebeste nenhuma notificação, ativa as notificações dessa aplicação nas definições do Android.',
         );
     }
 }

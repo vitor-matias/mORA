@@ -118,24 +118,24 @@ export function PlayerSheet({ player, you, onClose }: {
                     type="button"
                     onClick={close}
                     aria-label={t.playerClose}
-                    className="pressable pressable-small shrink-0 -m-1 p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                    className="pressable pressable-small shrink-0 -m-3 p-3 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                 >
                     <X size={20} />
                 </button>
             </div>
 
             <section className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
                     {t.badgesTitle}
                 </h3>
                 {badges === null && (
-                    <p className="flex items-center gap-2 text-sm text-zinc-500 py-2">
+                    <p className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 py-2">
                         <Loader2 size={15} className="animate-spin" aria-hidden="true" />
                         {t.badgesLoading}
                     </p>
                 )}
                 {badges?.length === 0 && (
-                    <p className="text-sm text-zinc-500 py-2">
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 py-2">
                         {isYou ? t.badgesNoneYours : t.badgesNone}
                     </p>
                 )}
@@ -185,14 +185,14 @@ export function PlayerSheet({ player, you, onClose }: {
                 inside it. Duels are the payoff and nothing else in the app
                 explains where opponents come from. */}
             {!isYou && you && follows !== 'following' && (
-                <p className="flex items-start gap-1.5 text-xs text-zinc-500 -mt-2">
+                <p className="flex items-start gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
                     <Swords size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
                     {t.followWhy}
                 </p>
             )}
 
             {!you && (
-                <p className="text-xs text-zinc-500">{t.signInFollow}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{t.signInFollow}</p>
             )}
         </Sheet>
     );
@@ -217,7 +217,7 @@ function Avatar({ player }: { player: PlayerRef }) {
                     className="h-full w-full object-cover"
                     onError={() => setBroken(true)}
                 />
-                : <User size={18} className="text-zinc-400" />}
+                : <User size={18} className="text-zinc-500 dark:text-zinc-400" />}
         </span>
     );
 }

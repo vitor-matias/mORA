@@ -11,6 +11,29 @@ export interface ReminderEntry {
     time: string;
     title: string;
     body: string;
+    /** 0 (Sunday) – 6: due only on that weekday. Absent: every day. */
+    weekday?: number;
+    /** Local YYYY-MM-DD the body was written for. A push on another day
+        (the app not opened since last week) shows `staleBody` instead. */
+    date?: string;
+    staleBody?: string;
+    /** In-app route (hash path) to open when the notification is tapped. */
+    url?: string;
+}
+
+/** The server and the push tag know an entry by this: "HH:MM", or
+    "6@HH:MM" for a weekly one. */
+export function reminderKey(entry: Pick<ReminderEntry, 'time' | 'weekday'>): string {
+    return entry.weekday === undefined ? entry.time : `${entry.weekday}@${entry.time}`;
+}
+
+function localISODate(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/** The body to show at `now`: a dated one only on its own day. */
+export function reminderBody(entry: ReminderEntry, now: Date): string {
+    return entry.date && entry.date !== localISODate(now) && entry.staleBody ? entry.staleBody : entry.body;
 }
 
 /**
@@ -42,9 +65,57 @@ const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 function isReminderEntry(value: unknown): value is ReminderEntry {
     if (typeof value !== 'object' || value === null) return false;
     const entry = value as Record<string, unknown>;
+    const optionalString = (key: string) => entry[key] === undefined || typeof entry[key] === 'string';
     return typeof entry.time === 'string' && TIME_PATTERN.test(entry.time)
         && typeof entry.title === 'string'
-        && typeof entry.body === 'string';
+        && typeof entry.body === 'string'
+        && (entry.weekday === undefined || (Number.isInteger(entry.weekday) && (entry.weekday as number) >= 0 && (entry.weekday as number) <= 6))
+        && optionalString('date') && optionalString('staleBody')
+        && (entry.url === undefined || (typeof entry.url === 'string' && entry.url.startsWith('/')));
+}
+
+/**
+ * The route to open for a tapped reminder. The nonce makes every tap a new
+ * location, so a second reminder for the same Hour still registers as a
+ * navigation (an identical hash would be ignored).
+ */
+export function reminderRoute(url: string, now = Date.now()): string {
+    return `${url}${url.includes('?') ? '&' : '?'}n=${now}`;
+}
+
+/** "<date it fell due> <key>": a 23:55 reminder seen at 00:05 belongs to yesterday. */
+export function reminderMark(entry: ReminderEntry, now: Date): string {
+    const [h, m] = entry.time.split(':').map(Number);
+    const due = new Date(now);
+    if (now.getHours() * 60 + now.getMinutes() < h * 60 + m) due.setDate(due.getDate() - 1);
+    return `${localISODate(due)} ${reminderKey(entry)}`;
+}
+
+const SHOWN_URL = '/__mora-reminder-shown';
+
+/** Marks of the reminders the service worker has shown, today's and yesterday's. */
+export async function readShownReminders(): Promise<Set<string>> {
+    if (typeof caches === 'undefined') return new Set();
+    try {
+        const res = await (await caches.open(CACHE_NAME)).match(SHOWN_URL);
+        const parsed: unknown = res ? await res.json() : [];
+        return new Set(Array.isArray(parsed) ? parsed.filter((m): m is string => typeof m === 'string') : []);
+    } catch {
+        return new Set();
+    }
+}
+
+export async function recordShownReminder(mark: string, now: Date): Promise<void> {
+    if (typeof caches === 'undefined') return;
+    try {
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        const keep = [localISODate(now), localISODate(yesterday)];
+        const marks = [...await readShownReminders(), mark].filter((m) => keep.some((d) => m.startsWith(d)));
+        await (await caches.open(CACHE_NAME)).put(SHOWN_URL, new Response(JSON.stringify([...new Set(marks)])));
+    } catch {
+        // Worst case a second push repeats the first one's text.
+    }
 }
 
 export async function writeReminderSchedule(entries: ReminderEntry[]): Promise<void> {
@@ -84,7 +155,11 @@ export async function readReminderSchedule(): Promise<ReminderEntry[]> {
 export function matchReminder(
     entries: ReminderEntry[],
     now: Date,
-    windowMin = DELIVERY_WINDOW_MIN + CLOCK_SKEW_ALLOWANCE_MIN
+    windowMin = DELIVERY_WINDOW_MIN + CLOCK_SKEW_ALLOWANCE_MIN,
+    /** reminderMark()s already shown: two pushes due together (a daily
+        reminder and the weekly summary, both 22:00 on a Saturday) arrive
+        indistinguishable, so the second has to take the other entry. */
+    shown: ReadonlySet<string> = new Set()
 ): ReminderEntry | null {
     const minutes = now.getHours() * 60 + now.getMinutes();
     let best: ReminderEntry | null = null;
@@ -97,7 +172,13 @@ export function matchReminder(
         // Minutes since the reminder fell due, wrapping midnight so a 23:55
         // reminder is 10 minutes old at 00:05 rather than 1430 minutes early.
         let elapsed = minutes - (h * 60 + m);
-        if (elapsed < 0) elapsed += 1440;
+        let dueDay = now.getDay();
+        if (elapsed < 0) {
+            elapsed += 1440;
+            dueDay = (dueDay + 6) % 7;
+        }
+        if (entry.weekday !== undefined && entry.weekday !== dueDay) continue;
+        if (shown.has(reminderMark(entry, now))) continue;
         if (elapsed < bestElapsed) {
             bestElapsed = elapsed;
             best = entry;

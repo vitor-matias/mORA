@@ -7,8 +7,8 @@
 // a broken puzzle — but that only turns a silent bug into a visible one, so
 // keep these in step.
 
-import { sha256 } from '@noble/hashes/sha2';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
 export const CIPHER_SALT = 'mora-palavra-v1';
 

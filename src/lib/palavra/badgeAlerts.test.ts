@@ -44,6 +44,16 @@ describe('unannouncedBadges', () => {
     });
 });
 
+describe('unannouncedBadges with the profile list', () => {
+    // A new device has no announcement record; the profile list is what says
+    // a badge was already claimed.
+    it('drops a badge already on the profile, even on a device that never announced it', () => {
+        const onProfile = new Set([badge('july').coord]);
+        expect(unannouncedBadges([badge('july'), badge('august')], {}, PUBKEY, onProfile))
+            .toEqual([badge('august')]);
+    });
+});
+
 describe('sanitizeAnnouncedBadges', () => {
     it('keeps a well-formed entry', () => {
         const key = badgeAnnouncementKey(PUBKEY, badge('july').coord);

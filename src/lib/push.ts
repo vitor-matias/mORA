@@ -54,8 +54,8 @@ function fetchWithTimeout(url: string, init: RequestInit, ms = 8000): Promise<Re
 
 /**
  * Subscribes this browser to reminder pushes at `times` (HH:MM, user's local
- * timezone) — the daily rosary reminder plus any Liturgy of the Hours the user
- * enabled. Returns true when the server accepted it.
+ * timezone, or D@HH:MM for one weekday) — the daily rosary reminder, any
+ * Liturgy of the Hours the user enabled, and the weekly summary. Returns true when the server accepted it.
  */
 export async function enablePushReminder(times: string[]): Promise<boolean> {
     // Dedupe/sort here so the count we check against the server's ack below is

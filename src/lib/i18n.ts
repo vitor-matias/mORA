@@ -17,7 +17,7 @@ const translations = {
         intentionPope: "Intenção do Papa",
         intentionPopeLoading: "A carregar intenção do Papa…",
         rosaryTitle: "Santo Terço do Rosário",
-        rosaryDesc: "Reze e medite os mistérios diários",
+        rosaryDesc: "Reza e medita os mistérios diários",
         chapletsTitle: "Terço e Coroas",
         chapletsDesc: "As devoções que se rezam nas contas",
         devotionalTitle: "Devocionário",
@@ -30,7 +30,7 @@ const translations = {
         hoursTitle: "Liturgia das Horas",
         hoursDesc: "Ofício, Laudes, Hora Intermédia, Vésperas e Completas",
         profileTitle: "Perfil & Progresso",
-        profileDesc: "O seu Streak e configurações"
+        profileDesc: "O teu Streak e configurações"
     },
     profile: {
         title: "Perfil",
@@ -39,13 +39,13 @@ const translations = {
         pubkey: "Identificador público",
         authenticated: "Autenticado via",
         logout: "Terminar Sessão",
-        loginPrompt: "O seu progresso fica guardado neste dispositivo. Se quiser uma cópia de segurança portátil (opcional, para utilizadores avançados):",
+        loginPrompt: "O teu progresso fica guardado neste dispositivo. Se quiseres uma cópia de segurança portátil (opcional, para utilizadores avançados):",
         loginNip07: "Entrar com Extensão Nostr",
         nip07Missing: "Não foi detetada nenhuma extensão Nostr neste navegador.",
         // Android installs a PWA as its own app, and browser extensions don't
         // reach it — the extension button can never work there, so say so
         // instead of leaving a button that does nothing.
-        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis — abra o mORA no navegador para entrar com a extensão, ou use a sua chave secreta abaixo.",
+        nip07MissingInApp: "Não foi detetada nenhuma extensão Nostr. Na aplicação instalada as extensões não ficam disponíveis. Abre o Oremus no navegador para entrar com a extensão, ou usa a tua chave secreta abaixo.",
         nip07Failed: "Não foi possível entrar com a extensão.",
         or: "ou",
         createKey: "Criar identidade anónima",
@@ -57,7 +57,7 @@ const translations = {
         system: "Sistema",
         language: "Idioma",
         notifications: "Notificação Diária (Terço)",
-        notificationsOff: "Desativado",
+        notificationsOff: "Desativar",
         notificationsSet: "Definir Hora",
         rosaryMode: "Modo do Terço",
         rosaryBeginner: "Iniciante",
@@ -75,19 +75,19 @@ const translations = {
         tabGame: "Jogo",
         tabCommunity: "Comunidade",
 
-        demoMode: "Modo de demonstração — sem publicador de desafios configurado.",
-        archiveRecorded: "Já jogaste este dia — este é o teu resultado.",
-        archivePractice: "Modo de treino — não conta para o teu registo nem para as classificações.",
+        demoMode: "Modo de demonstração: sem publicador de desafios configurado.",
+        archiveRecorded: "Já jogaste este dia. Este é o teu resultado.",
+        archivePractice: "Modo de treino: não conta para o teu registo nem para as classificações.",
 
         loading: "A carregar o desafio…",
         loadFailed: "Não foi possível carregar o desafio.",
-        corrupt: "Este desafio chegou danificado. Tente novamente mais tarde.",
+        corrupt: "Este desafio chegou danificado. Tenta outra vez mais tarde.",
 
         letters: (n: number) => `${n} letras`,
         hiddenWord: (n: number) => `palavra escondida de ${n} letras`,
         wrongLength: (n: number) => `A palavra tem ${n} letras.`,
         alreadyTried: "Já tentaste essa palavra.",
-        shareHeading: (date: string, score: string) => `mORA — Palavra Bíblica do Dia ${date} ${score}`,
+        shareHeading: (date: string, score: string) => `Oremus — Palavra Bíblica do Dia ${date} ${score}`,
 
         board: "Tabuleiro de jogo",
         keyboard: "Teclado",
@@ -132,7 +132,7 @@ const translations = {
         emptyMonthArchive: "Ninguém pontuou neste mês.",
         emptyMonthFirstDay: "O mês começa hoje. Termina o jogo para ver a classificação.",
         monthPartial: "Nem todos os relays responderam. Podem faltar jogos, por isso os totais são um mínimo.",
-        monthLegend: "Cada jogo vale 6 pontos se acertar à primeira, 5 à segunda, e assim por diante até 1 à sexta. Um jogo perdido não vale pontos, e a classificação é a soma do mês — quem joga mais dias soma mais. 🔥 é a sequência de dias seguidos a acertar: é publicada por cada jogador e não conta para a classificação.",
+        monthLegend: "Cada jogo vale 6 pontos se a palavra sair à primeira, 5 à segunda, e assim por diante até 1 à sexta. Um jogo perdido não vale pontos, e a classificação é a soma do mês — quem joga mais dias soma mais. 🔥 é a sequência de dias seguidos a acertar: é publicada por cada jogador e não conta para a classificação.",
         monthLabel: (month: string) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`,
         points: (n: number) => `${n} ${n === 1 ? "pt" : "pts"}`,
         pointsAbbr: "pts",
@@ -142,6 +142,15 @@ const translations = {
         tabDuels: "Duelos",
         tabLeagues: "Ligas",
         notSharing: "Estás a ver os resultados dos outros. Para apareceres nas classificações, ativa a partilha em Perfil.",
+        resultPublishing: "A publicar o teu resultado…",
+        resultPublishingSigner: "A publicar o teu resultado. Se a aplicação de assinatura pedir, aprova o pedido.",
+        resultFailed: "Não foi possível publicar o teu resultado, por isso os outros jogadores ainda não o veem.",
+        resultFailedSigner: "Abre a aplicação de assinatura, confirma que está ligada à internet e tenta outra vez.",
+        resultUnpublished: "O teu resultado ainda não foi publicado, por isso os outros jogadores ainda não o veem.",
+        resultRetry: "Tentar outra vez",
+        resultPublishNow: "Publicar agora",
+        resultLocked: "A tua chave está bloqueada, por isso o teu resultado ainda não foi publicado e os outros jogadores ainda não o veem. Desbloqueia-a e ele é publicado a seguir.",
+        resultUnlock: "Desbloquear em Perfil",
         spoiler: "Termina o jogo de hoje para ver os resultados.",
         spoilerWhy: "As tentativas dos outros dão-te uma pista sobre a dificuldade da palavra.",
         signInHint: "Entra com uma identidade Nostr em Perfil.",
@@ -163,7 +172,7 @@ const translations = {
         badgeAwardLater: "Agora não",
         badgeAwardDone: "Fechar",
         badgeAwardClose: "Fechar",
-        badgeAwardNotificationTitle: "mORA — Nova medalha 🏅",
+        badgeAwardNotificationTitle: "Oremus — Nova medalha 🏅",
         badgeAwardNotificationBody: (names: string[]) => names.length === 1
             ? `Recebeste a medalha “${names[0]}”.`
             : `Recebeste ${names.length} medalhas: ${names.join(", ")}.`,
@@ -195,7 +204,11 @@ const translations = {
         joinLeague: "Entrar",
         copyInvite: (name: string) => `Copiar convite para ${name}`,
         leaveLeague: (name: string) => `Sair de ${name}`,
-        leagueActionFailed: "Não foi possível concluir. Tente novamente.",
+        leaveConfirmTitle: (name: string) => `Sair de «${name}»?`,
+        leaveConfirmBody: "Para voltares a entrar vais precisar de um convite.",
+        leaveConfirmCancel: "Cancelar",
+        leaveConfirmLeave: "Sair",
+        leagueActionFailed: "Não foi possível concluir. Tenta outra vez.",
         // Split so "não listada" can be emphasised — the distinction is the
         // whole point of the sentence and a user could act on getting it wrong.
         unlistedBefore: "Uma liga é ",
@@ -208,7 +221,7 @@ const translations = {
         homeStreak: (n: number) => ` · ${n} ${n === 1 ? 'seguido' : 'seguidos'}`,
         homeIdle: "Um versículo, uma palavra escondida",
         homeSolved: (tries: number, max: number) => `Resolvida em ${tries}/${max}`,
-        homeLost: "Hoje não acertou — nova palavra amanhã",
+        homeLost: "Hoje não acertaste — nova palavra amanhã",
         shareToggle: "Participar nas classificações da Palavra",
         shareToggleHelp: "Publica o teu resultado diário (tentativas e tempo) na rede Nostr, para entrares nas classificações, duelos e ligas. A palavra e as tuas tentativas nunca são publicadas.",
 

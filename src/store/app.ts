@@ -7,11 +7,19 @@ import { daysApart, formatISODate } from '@/lib/format';
 export interface StreakData {
     days: number;
     lastCompletedDate: string | null;
+    /** Recent days prayed, ascending. Optional: older builds and snapshots
+        don't carry it, and completedDates() fills in their unbroken run. */
+    history?: string[];
 }
 
-export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours';
+// liturgy_hours is the day (any Hour counts); the hour_* items are each Hour
+// on its own, so Resumo da Semana can show which were prayed. Hora Intermédia is one
+// item whether Tércia, Sexta or Noa.
+export const HOUR_STREAK_ITEMS = ['hour_oficio', 'hour_laudes', 'hour_intermedia', 'hour_vesperas', 'hour_completas'] as const;
 
-export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours'];
+export type StreakItem = 'rosary' | 'liturgy' | 'liturgy_hours' | typeof HOUR_STREAK_ITEMS[number];
+
+export const STREAK_ITEMS: readonly StreakItem[] = ['rosary', 'liturgy', 'liturgy_hours', ...HOUR_STREAK_ITEMS];
 
 export type Streaks = Record<StreakItem, StreakData>;
 
@@ -38,7 +46,7 @@ export function emptyStreak(): StreakData {
 }
 
 export function emptyStreaks(): Streaks {
-    return { rosary: emptyStreak(), liturgy: emptyStreak(), liturgy_hours: emptyStreak() };
+    return Object.fromEntries(STREAK_ITEMS.map((item) => [item, emptyStreak()])) as Streaks;
 }
 
 // A century of unbroken daily prayer. Past this the number is not a streak,
@@ -61,6 +69,25 @@ function isUsableStreak(value: unknown): value is StreakData {
     return lastCompletedDate <= formatISODate(new Date());
 }
 
+// Half a year of past weeks on Resumo da Semana. Every item full is about
+// 20 KB of snapshot, well inside NIP-44's 64 KB plaintext limit.
+const HISTORY_DAYS = 182;
+
+/** Every day this entry knows was prayed: its history plus the run its count
+    implies (a streak of 5 ending today means the last five days). */
+export function completedDates(streak: StreakData): string[] {
+    const today = formatISODate(new Date());
+    const dates = new Set((Array.isArray(streak.history) ? streak.history : [])
+        .filter((d) => typeof d === 'string' && ISO_DATE_RE.test(d) && d <= today));
+    if (streak.lastCompletedDate) {
+        const [y, m, d] = streak.lastCompletedDate.split('-').map(Number);
+        for (let i = 0; i < Math.min(streak.days, HISTORY_DAYS); i++) {
+            dates.add(formatISODate(new Date(y, m - 1, d - i)));
+        }
+    }
+    return [...dates].sort().slice(-HISTORY_DAYS);
+}
+
 /** Persisted state from an older build can predate a streak item, so an entry
     may simply be absent. */
 function localStreak(streaks: Streaks, item: StreakItem): StreakData {
@@ -69,6 +96,12 @@ function localStreak(streaks: Streaks, item: StreakItem): StreakData {
 }
 
 function mergeStreakEntry(local: StreakData, remote: StreakData): StreakData {
+    const { days, lastCompletedDate } = mergeStreakCount(local, remote);
+    const history = completedDates({ days: 0, lastCompletedDate: null, history: [...completedDates(local), ...completedDates(remote)] });
+    return { days, lastCompletedDate, history };
+}
+
+function mergeStreakCount(local: StreakData, remote: StreakData): StreakData {
     if (!remote.lastCompletedDate) return local;
     if (!local.lastCompletedDate) return remote;
     // Same day on both: whichever counted higher already accounts for the
@@ -108,7 +141,8 @@ export function streaksEqual(a: Streaks, b: Streaks): boolean {
     return STREAK_ITEMS.every((item) => {
         const x = localStreak(a, item);
         const y = localStreak(b, item);
-        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate;
+        return x.days === y.days && x.lastCompletedDate === y.lastCompletedDate
+            && completedDates(x).join() === completedDates(y).join();
     });
 }
 
@@ -402,20 +436,25 @@ export function migrateScrollSpeed(stored: unknown, version: number): AutoScroll
     return SCROLL_LABELS.includes(stored as AutoScrollSpeed) ? stored as AutoScrollSpeed : DEFAULT_SCROLL_SPEED;
 }
 
-// Single source of truth for the content (prayer/reading) text scale.
-// Each step pairs a reading size (px) with a line-height tuned for it.
-// Consumed by Layout (applies the CSS variables) and Profile (size picker preview).
-export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: number }> = {
-    small: { size: 18, lineHeight: 1.7 },
-    medium: { size: 21, lineHeight: 1.65 },
-    large: { size: 26, lineHeight: 1.6 },
-    xlarge: { size: 32, lineHeight: 1.5 },
+// Single source of truth for the text scale.
+// Each step pairs a reading size (px) with a line-height tuned for it, and an
+// interface scale: the root font size as a percentage of the reader's own
+// default, so every rem-sized label, button and gap grows with it. Pinch zoom
+// is off, so this setting is the only way to enlarge the interface text. It
+// never goes below 100% — the small step is for denser readings, not for
+// smaller labels. index.html applies the same percentages before first
+// paint; keep the two in step.
+// Consumed by Layout (applies the CSS variables) and Profile (size picker).
+export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: number; interfacePercent: number; label: string }> = {
+    small: { size: 18, lineHeight: 1.7, interfacePercent: 100, label: 'pequeno' },
+    medium: { size: 21, lineHeight: 1.65, interfacePercent: 100, label: 'médio' },
+    large: { size: 26, lineHeight: 1.6, interfacePercent: 112.5, label: 'grande' },
+    xlarge: { size: 32, lineHeight: 1.5, interfacePercent: 125, label: 'muito grande' },
 };
 
 interface AppState {
     rosaryMode: RosaryBeadMode;
     setRosaryMode: (mode: RosaryBeadMode) => void;
-    toggleRosaryMode: () => void;
     rosarySession: RosarySession | null;
     setRosarySession: (session: RosarySession | null) => void;
     /** A page is using the bottom of the screen for its own controls, so the
@@ -429,6 +468,11 @@ interface AppState {
     incrementStreak: (item: StreakItem) => void;
     /** Replaces the whole set — used by the Nostr pull after merging. */
     setStreaks: (streaks: Streaks) => void;
+    /** The identity this device's streaks and Palavra log belong to, or null
+        while nobody has signed in since they started. See claimLocalData in
+        store/auth. */
+    localDataOwner: string | null;
+    setLocalDataOwner: (pubkey: string | null) => void;
 
     /** When the synced settings last changed on this device (epoch ms).
         Settings are last-write-wins, so this is what decides a conflict. */
@@ -480,6 +524,10 @@ interface AppState {
         key means that Hour is not being reminded. */
     hourReminders: Record<string, string>;
     setHourReminder: (hourId: string, time: string | null) => void;
+    /** Saturday-night summary of the prayed week. Opt-in, device-local like
+        the other reminders. */
+    weeklySummary: boolean;
+    setWeeklySummary: (on: boolean) => void;
     // True while this browser holds a server-registered Web Push
     // subscription; the in-app reminder timer stands down then.
     pushSubscribed: boolean;
@@ -550,11 +598,6 @@ export const useAppStore = create<AppState>()(
         (set) => ({
             rosaryMode: 'beginner',
             setRosaryMode: (rosaryMode) => set({ rosaryMode, settingsUpdatedAt: Date.now(), settingsFromRemote: false }),
-            toggleRosaryMode: () => set((state) => ({
-                rosaryMode: state.rosaryMode === 'beginner' ? 'advanced' : 'beginner',
-                settingsUpdatedAt: Date.now(),
-                settingsFromRemote: false,
-            })),
             rosarySession: null,
             setRosarySession: (rosarySession) => set({ rosarySession }),
 
@@ -593,6 +636,8 @@ export const useAppStore = create<AppState>()(
                 if (time) next[hourId] = time; else delete next[hourId];
                 return { hourReminders: next };
             }),
+            weeklySummary: false,
+            setWeeklySummary: (weeklySummary) => set({ weeklySummary }),
             pushSubscribed: false,
             setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',
@@ -649,11 +694,17 @@ export const useAppStore = create<AppState>()(
                 return {
                     streaks: {
                         ...state.streaks,
-                        [item]: { days: newDays, lastCompletedDate: userToday }
+                        [item]: {
+                            days: newDays,
+                            lastCompletedDate: userToday,
+                            history: completedDates({ ...currentStreak, history: [...(currentStreak.history ?? []), userToday] }),
+                        }
                     }
                 };
             }),
             setStreaks: (streaks) => set({ streaks }),
+            localDataOwner: null,
+            setLocalDataOwner: (localDataOwner) => set({ localDataOwner }),
             settingsUpdatedAt: 0,
             settingsFromRemote: false,
             applySyncedSettings: (settings, updatedAt) => set({

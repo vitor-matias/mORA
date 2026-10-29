@@ -111,14 +111,14 @@ export default function LiturgicalDirectory() {
                 on the right; mobile keeps the stacked flow. */}
             <div className="p-6 max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto space-y-6 lg:space-y-0 flex-1 w-full flex flex-col lg:flex-row lg:gap-8 lg:items-start">
 
-            <section className="surface rounded-2xl p-3 lg:w-96 lg:shrink-0 lg:sticky lg:top-24">
+            <section className="surface rounded-3xl p-3 lg:w-96 lg:shrink-0 lg:sticky lg:top-24">
                 {/* Month navigation */}
                 <div className="flex items-center justify-between mb-2">
                     <button
                         type="button"
                         onClick={() => changeMonth(-1)}
                         aria-label="Mês anterior"
-                        className="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="p-2 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
                         <ChevronLeft size={18} />
                     </button>
@@ -130,7 +130,7 @@ export default function LiturgicalDirectory() {
                             <button
                                 type="button"
                                 onClick={goToToday}
-                                className="text-xs font-medium text-liturgy-600 dark:text-liturgy-400 hover:text-liturgy-700 px-2 py-1 rounded-lg hover:bg-liturgy-50 dark:hover:bg-liturgy-900/30 transition-colors"
+                                className="text-xs font-medium text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 px-2 py-1 rounded-lg hover:bg-liturgy-50 dark:hover:bg-liturgy-900/30 transition-colors"
                             >
                                 Hoje
                             </button>
@@ -140,7 +140,7 @@ export default function LiturgicalDirectory() {
                         type="button"
                         onClick={() => changeMonth(1)}
                         aria-label="Mês seguinte"
-                        className="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                        className="p-2 rounded-lg text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                     >
                         <ChevronRight size={18} />
                     </button>
@@ -149,7 +149,7 @@ export default function LiturgicalDirectory() {
                 {/* Weekday header */}
                 <div className="grid grid-cols-7 mb-1">
                     {WEEKDAYS.map((w, i) => (
-                        <span key={i} className="text-center text-[0.65rem] font-semibold uppercase text-zinc-400 select-none">
+                        <span key={i} className="text-center text-[0.65rem] font-semibold uppercase text-zinc-500 dark:text-zinc-400 select-none">
                             {w}
                         </span>
                     ))}
@@ -170,7 +170,7 @@ export default function LiturgicalDirectory() {
                                 aria-pressed={isSelected}
                                 className={`relative mx-auto flex h-8 w-9 flex-col items-center justify-center rounded-lg text-xs transition-colors ${
                                     isSelected
-                                        ? 'bg-liturgy-600 dark:bg-liturgy-500 text-white font-semibold'
+                                        ? 'bg-liturgy-700 text-white dark:bg-liturgy-400 dark:text-zinc-900 font-semibold' // as .cta-primary: 5.0:1 or better
                                         : isToday
                                             ? 'bg-liturgy-50 dark:bg-liturgy-900/40 text-liturgy-700 dark:text-liturgy-300 font-semibold'
                                             : inMonth
@@ -191,8 +191,8 @@ export default function LiturgicalDirectory() {
             </section>
 
             {/* Selected day details */}
-            <section className="surface surface-accent rounded-2xl p-4 lg:flex-1 lg:min-w-0">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-600 dark:text-liturgy-400 mb-1.5 capitalize">
+            <section className="surface surface-accent rounded-3xl p-4 lg:flex-1 lg:min-w-0">
+                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5 capitalize">
                     {/* The dot is the color signal; its name is already in the
                         description text, so no "Cor litúrgica" line here. */}
                     {selectedInfo && <LiturgicalColorDot color={selectedInfo.color} />}
@@ -210,6 +210,7 @@ export default function LiturgicalDirectory() {
                                 text={selectedInfo.description}
                                 sections={selectedInfo.sections}
                                 color={selectedInfo.color}
+                                notesOpen
                                 className="mt-2"
                             />
                         )}
@@ -221,7 +222,7 @@ export default function LiturgicalDirectory() {
                 ) : (
                     <div>
                         <p className="text-sm text-liturgy-800/80 dark:text-liturgy-200/70">
-                            Não foi possível carregar o calendário. Verifique a ligação à internet.
+                            Não foi possível carregar o calendário. Verifica a ligação à internet.
                         </p>
                         <button
                             type="button"

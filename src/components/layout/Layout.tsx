@@ -3,6 +3,7 @@ import { Suspense, useEffect } from "react";
 import { useAppStore, CONTENT_FONT_SCALE } from "@/store/app";
 import { useNotifications } from "@/lib/useNotifications";
 import { useNostrSync } from "@/lib/useNostrSync";
+import { useAutoUnlock } from "@/lib/useAutoUnlock";
 import { fetchLiturgicalColorFromCalendar, preloadUpcomingLiturgy } from "@/lib/liturgy";
 import { formatISODate } from "@/lib/format";
 import { useDayRollover } from "@/lib/useDayRollover";
@@ -26,7 +27,7 @@ function pageTopColor(isDark: boolean): string {
     const tint = channels('--app-wash-tint');
     const alpha = Number(css.getPropertyValue('--app-wash-top'));
     // Stylesheet not applied yet — the untinted background is the best guess.
-    if (!bg) return isDark ? '#121212' : '#FAF9F6';
+    if (!bg) return isDark ? '#0B0B0C' : '#F7F7F9';
     if (!tint || !Number.isFinite(alpha)) return `rgb(${bg.join(' ')})`;
     const mixed = bg.map((b, i) => Math.round(alpha * tint[i] + (1 - alpha) * b));
     return `rgb(${mixed.join(' ')})`;
@@ -59,6 +60,10 @@ export function Layout() {
     const { theme, liturgicalColor, liturgicalColorOverride, fontSize, fontFamily, bottomBarYielded } = useAppStore();
     useNotifications();
     useNostrSync();
+    // The first path segment, so the error boundary below starts fresh in
+    // another section but not when a prayer opens inside the Devocionário.
+    const section = useLocation().pathname.split('/')[1];
+    useAutoUnlock();
     // Badges are awarded on a relay, where nothing would tell the person they
     // won one. Announced app-wide rather than from the Palavra page: the award
     // lands whenever it lands, and hearing about it should not depend on being
@@ -168,11 +173,15 @@ export function Layout() {
             mq.addEventListener('change', onSchemeChange);
         }
 
-        // Font size — set as CSS variables so only content (prayer/reading)
-        // areas pick it up, not the UI chrome.
+        // Font size — the reading size goes in CSS variables, which only
+        // content (prayer/reading) areas read. The interface scales through
+        // the root font size, which every rem follows; the reading size is in
+        // px, so it is not scaled twice.
         const sizeConfig = CONTENT_FONT_SCALE[fontSize] || CONTENT_FONT_SCALE.medium;
         document.documentElement.style.setProperty('--content-font-size', `${sizeConfig.size}px`);
         document.documentElement.style.setProperty('--content-line-height', String(sizeConfig.lineHeight));
+        document.documentElement.style.fontSize =
+            sizeConfig.interfacePercent === 100 ? '' : `${sizeConfig.interfacePercent}%`;
 
         // Font family — set as CSS variable so only content areas pick it up (not UI)
         const familyMap: Record<string, string> = {
@@ -212,14 +221,19 @@ export function Layout() {
                 moves to the top bar and only breathing room remains.
 
                 When a page has asked the bar to stand down, the clearance goes
-                with it and only the safe-area inset stays. Holding 5.5rem for
-                a bar that isn't drawn cost Palavra 88px it needed: measured at
-                412×915 (Pixel 8a) the page overflowed by 53px, which put the
-                keyboard's bottom row under the gesture pill. */}
+                with it and only the safe-area inset (plus a little breathing
+                room, the same margin StickyActions gives its own yielded
+                state) stays. Holding 5.5rem for a bar that isn't drawn cost
+                Palavra 88px it needed: measured at 412×915 (Pixel 8a) the page
+                overflowed by 53px, which put the keyboard's bottom row under
+                the gesture pill. The bare safe-area inset alone left the
+                keyboard's last row flush against the home indicator on a real
+                iPhone — reachable but close enough to misfire against the
+                edge-swipe gesture. */}
             <main
                 className={`relative z-10 flex-1 w-full max-w-md lg:max-w-none mx-auto flex flex-col xl:pb-8 ${
                     bottomBarYielded
-                        ? 'pb-[env(safe-area-inset-bottom)]'
+                        ? 'pb-[calc(0.75rem+env(safe-area-inset-bottom))]'
                         : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
                 }`}
             >
@@ -227,8 +241,9 @@ export function Layout() {
                     a route can be missing for a beat — or fail to arrive at
                     all. Suspending and catching here rather than around the
                     router keeps the nav and the day's theme on screen either
-                    way. */}
-                <ChunkBoundary>
+                    way. Keyed by section: one page that failed to load must
+                    not leave every other tab showing the error. */}
+                <ChunkBoundary key={section}>
                     <Suspense fallback={null}>
                         <Outlet />
                     </Suspense>

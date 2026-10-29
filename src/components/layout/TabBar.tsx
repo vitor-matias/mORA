@@ -106,24 +106,30 @@ export function TabBar() {
     // translate-y-[150%] was a fraction of the bar alone, which left its top
     // edge showing over a 34px home-indicator inset.)
     const navRef = useRef<HTMLElement>(null);
+    // Styles are written to the bar inside the fixed nav, never to the nav
+    // itself: on iOS, restyling a position:fixed element mid-momentum-scroll
+    // re-places it from the main thread's stale scroll offset, so the bar
+    // rode along with the page and only snapped back once scrolling settled.
+    const barRef = useRef<HTMLDivElement>(null);
     const spring = useRef<Spring | null>(null);
     const hideRef = useRef(hide);
     useLayoutEffect(() => {
         const nav = navRef.current;
-        if (!nav) return;
+        const bar = barRef.current;
+        if (!nav || !bar) return;
         const render = (y: number) => {
             const extent = hiddenOffset(nav) || 1;
             const progress = Math.min(1, Math.max(0, y / extent));
             // Reduced motion: the same timing as a fade in place, not a slide.
             if (prefersReducedMotion()) {
-                nav.style.transform = '';
-                nav.style.opacity = String(1 - progress);
+                bar.style.transform = '';
+                bar.style.opacity = String(1 - progress);
             } else {
-                nav.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
-                nav.style.opacity = '';
+                bar.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+                bar.style.opacity = '';
             }
-            nav.style.visibility = progress >= 1 ? 'hidden' : '';
-            nav.style.pointerEvents = progress > 0.5 ? 'none' : '';
+            bar.style.visibility = progress >= 1 ? 'hidden' : '';
+            bar.style.pointerEvents = progress > 0.5 ? 'none' : '';
         };
         const s = createSpring(0, render);
         spring.current = s;
@@ -162,9 +168,9 @@ export function TabBar() {
                 ref={navRef}
                 aria-label="Navegação principal"
                 aria-hidden={hide}
-                className="xl:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40"
+                className="xl:hidden fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 pointer-events-none"
             >
-                <div className="max-w-md lg:max-w-xl mx-auto flex floating-bar rounded-3xl px-1">
+                <div ref={barRef} className="pointer-events-auto max-w-md lg:max-w-xl mx-auto flex floating-bar rounded-3xl px-1">
                     {tabs.map(({ to, label, icon: Icon, end }) => (
                         <NavLink
                             key={to}
@@ -204,14 +210,17 @@ export function TabBar() {
                 className={`hidden xl:block sticky top-0 z-40 app-bar pt-[env(safe-area-inset-top)] ${barScrolled ? 'app-bar-scrolled' : ''}`}
             >
                 <div className="max-w-5xl 2xl:max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-6">
-                    {/* Wordmark — the favicon mark, tinted by the day's
-                        liturgical color like the rest of the chrome. */}
+                    {/* Wordmark — the breviary of the favicon, tinted by the
+                        day's liturgical color like the rest of the chrome. */}
                     <NavLink to="/" end className="flex items-center gap-2.5 shrink-0">
                         <svg viewBox="0 0 64 64" className="h-7 w-7" aria-hidden="true">
                             <rect width="64" height="64" rx="14" className="fill-liturgy-600 dark:fill-liturgy-500" />
-                            <path d="M32 12v40M20 26h24" stroke="#FAF9F6" strokeWidth="7" strokeLinecap="round" />
+                            <rect x="22" y="38" width="6" height="18" fill="#FAF9F6" />
+                            <rect x="36" y="38" width="6" height="15" fill="#FAF9F6" />
+                            <rect x="17" y="8" width="30" height="34" rx="3.5" fill="#FAF9F6" />
+                            <path d="M32 15v20M25 22h14" strokeWidth="4.5" strokeLinecap="round" className="stroke-liturgy-600 dark:stroke-liturgy-500" />
                         </svg>
-                        <span className="text-lg font-bold tracking-tight page-title">mORA</span>
+                        <span className="text-lg font-bold tracking-tight page-title">Oremus</span>
                     </NavLink>
                     {/* PageHeader portals its compact title row here once the
                         page scrolls (see PageHeader). */}
