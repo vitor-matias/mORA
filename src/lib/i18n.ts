@@ -172,7 +172,7 @@ const translations = {
         badgeAwardLater: "Agora não",
         badgeAwardDone: "Fechar",
         badgeAwardClose: "Fechar",
-        badgeAwardNotificationTitle: "Oremus — Nova medalha 🏅",
+        badgeAwardNotificationTitle: "Nova medalha 🏅",
         badgeAwardNotificationBody: (names: string[]) => names.length === 1
             ? `Recebeste a medalha “${names[0]}”.`
             : `Recebeste ${names.length} medalhas: ${names.join(", ")}.`,

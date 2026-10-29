@@ -46,8 +46,8 @@ export function buildReminderSchedule(
         .map(([time, group]) => ({
             time,
             title: group.every((d) => d.isHour)
-                ? 'Oremus — Liturgia das Horas 🙏'
-                : 'Oremus — Hora da oração 🙏',
+                ? 'Liturgia das Horas 🙏'
+                : 'Hora da oração 🙏',
             body: `É hora de rezar ${joinWithE(group.map((d) => d.label))}`,
             // Two prayers due together share one notification: it opens the first.
             url: group[0].url,
@@ -57,7 +57,7 @@ export function buildReminderSchedule(
     // reminder at the same minute.
     return [...daily, {
         ...WEEKLY_SUMMARY,
-        title: 'Oremus — Resumo da Semana 🙏',
+        title: 'Resumo da Semana 🙏',
         body: weeklySummary,
         // Counted when written; this Saturday is the only day it is true.
         date: weekDates(now)[6],

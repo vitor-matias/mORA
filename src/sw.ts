@@ -35,7 +35,7 @@ self.addEventListener('push', (event) => {
             // never end up silent (browsers penalise that), so fall through to
             // the generic wording.
         }
-        await self.registration.showNotification(entry?.title ?? 'Oremus — Hora da oração 🙏', {
+        await self.registration.showNotification(entry?.title ?? 'Hora da oração 🙏', {
             body: entry ? reminderBody(entry, new Date()) : 'As leituras e orações de hoje esperam por ti.',
             icon: 'pwa-192x192.png',
             badge: 'pwa-192x192.png',
