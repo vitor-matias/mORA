@@ -54,6 +54,17 @@ describe('joinProse', () => {
         expect(joinProse(['viveu em vá-', 'rios mosteiros'])).toBe('viveu em vários mosteiros');
     });
 
+    it('keeps the hyphen of a verb and its enclitic pronoun', () => {
+        expect(joinProse(['ressuscitou dos mortos e salvou-', 'nos. Aleluia.'])).toBe('ressuscitou dos mortos e salvou-nos. Aleluia.');
+        expect(joinProse(['e disse-', 'lhes:'])).toBe('e disse-lhes:');
+        expect(joinProse(['as alegrias da bem-', 'aventurança'])).toBe('as alegrias da bem-aventurança');
+    });
+
+    it('still joins syllable splits that look like a pronoun', () => {
+        expect(joinProse(['se fos-', 'se'])).toBe('se fosse');
+        expect(joinProse(['os po-', 'vos'])).toBe('os povos');
+    });
+
     it('keeps a dash that does not follow a letter', () => {
         expect(joinProse(['morreu em 1231 -', 'diz a tradição'])).toBe('morreu em 1231 - diz a tradição');
     });
