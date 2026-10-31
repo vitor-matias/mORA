@@ -165,6 +165,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
                 .join('\n\n');
             delete block.buf;
             delete block.head;
+            delete block.verseLike;
         } else if (block.buf) {
             block.text = block.verseLike
                 ? joinVerse(block.buf as VerseLine[])
@@ -440,8 +441,9 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
                 continue;
             }
             // A stray repeat of an earlier line (Salmo 126 in the
-            // Complementar) is a typesetting leftover.
-            if (block.verses!.some((v) => v.text === text)) continue;
+            // Complementar) is a typesetting leftover — only there: real
+            // psalms repeat refrains ("é eterna a sua misericórdia").
+            if (hour?.startsWith('Série') && block.verses!.some((v) => v.text === text)) continue;
             // Lines step ≈10.5pt; a stanza break adds ≈5 more.
             const stanza = block.verses!.length > 0 && lastVerse?.p === l.p && lastVerse.y - l.y > 13.5;
             block.verses!.push({ n: pendingVerse ?? undefined, text, indent: l.x > 42 || undefined, stanza: stanza || undefined });

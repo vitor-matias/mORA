@@ -95,8 +95,9 @@ function withApiParts(sections: AssembledSection[], api: ApiParts): AssembledSec
         const ants = blocks.filter(b => b.kind === 'ant-benedictus' || b.kind === 'ant-magnificat');
         if (api.canticle && ants.length > 0) {
             const at = blocks.lastIndexOf(ants[ants.length - 1]) + 1;
-            const repeat = { kind: ants[0].kind, text: ants[0].text };
-            blocks = [...blocks.slice(0, at), { kind: 'html', text: api.canticle }, repeat, ...blocks.slice(at)];
+            // With alternatives ("Ou", per audience) the reader repeats their own choice.
+            const repeat = ants.length === 1 ? [{ kind: ants[0].kind, text: ants[0].text }] : [];
+            blocks = [...blocks.slice(0, at), { kind: 'html', text: api.canticle }, ...repeat, ...blocks.slice(at)];
         }
         return {
             ...s,
