@@ -147,6 +147,34 @@ export function mergeComumOverlay(base: ComumDoc, over: ComumDoc): ComumDoc {
     };
 }
 
+const COMPLEMENT_RUBRIC = /^Para as outras Horas, a Salmodia Complementar/;
+const isComplementRubric = (b: ComumBlock) => b.kind === 'rubrica' && COMPLEMENT_RUBRIC.test(b.text ?? '');
+
+/**
+ * The Salmodia Complementar series ("Série II") an assembled Hora
+ * Intermédia offers for this sub-hour: its own psalmody serves one Hour,
+ * "Para as outras Horas, a Salmodia Complementar, série II e III" — taken
+ * as Sexta → II, Noa → III, Tércia always proper.
+ */
+export function complementSeries(hour: AssembledHour | null | undefined, subHour: string | null): string | null {
+    if (!hour?.sections.some((s) => s.blocks.some(isComplementRubric))) return null;
+    return subHour === 'Sexta' ? 'Série II' : subHour === 'Noa' ? 'Série III' : null;
+}
+
+/** Swaps an hour's psalms for a Salmodia Complementar series'; its antiphon stays. */
+export function withPsalmody(hour: AssembledHour, series: ComumBlock[]): AssembledHour {
+    const psalms = series.filter((b) => b.kind === 'salmo');
+    return {
+        ...hour,
+        sections: hour.sections.map((s) => {
+            const at = s.blocks.findIndex((b) => b.kind === 'salmo');
+            if (at < 0 || psalms.length === 0) return s;
+            const rest = s.blocks.filter((b) => b.kind !== 'salmo' && !isComplementRubric(b));
+            return { ...s, blocks: [...rest.slice(0, at), ...psalms, ...rest.slice(at)] };
+        }),
+    };
+}
+
 /**
  * The office for one canonical hour of the page (`hourId` as used by
  * LiturgiaHoras). `entry` is null for the Ofício de Defuntos, which is a
@@ -160,15 +188,37 @@ export function assembleHour(
     subHour: string | null,
     pascal: boolean
 ): AssembledHour | null {
-    // Not in the web corpus (Ofício de Leitura) or never proper (Completas).
-    if (hourId === 'oficio' || hourId === 'completas') return null;
+    // Never proper (Completas); the Ofício de Leitura is in the web corpus
+    // only for the Defuntos — saints keep the API's.
+    if (hourId === 'completas') return null;
+    if (hourId === 'oficio' && !comum?.hours['Ofício de Leitura']) return null;
 
     const commonHour = (name: string): ComumBlock[] =>
         comum ? seasonFilter(comum.hours[name] ?? [], pascal) : [];
 
+    // "Oração como nas Laudes." points at the Laudes collect(s) — resolve it
+    // when the hour has no collect of its own, alternatives and all.
+    const laudesOracao = (): ComumBlock[] => {
+        const laudes = dropFulfilledOracaoRubric(overlay(
+            overlay(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []),
+            entry ? properBlocks(entry, 'Oração') : []
+        ));
+        const first = laudes.findIndex((b) => b.kind === 'oração');
+        return first < 0 ? [] : laudes.slice(first);
+    };
+    const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas Laudes/.test(b.text ?? '');
+    const resolveOracao = (blocks: ComumBlock[]): ComumBlock[] => {
+        const at = blocks.findIndex(isLaudesPointer);
+        if (at < 0 || blocks.some((b) => b.kind === 'oração')) return blocks;
+        const oracao = laudesOracao();
+        return oracao.length ? [...blocks.slice(0, at), ...oracao, ...blocks.slice(at + 1)] : blocks;
+    };
+
     const sections: AssembledSection[] = [];
 
-    if (hourId === 'laudes') {
+    if (hourId === 'oficio') {
+        sections.push({ title: 'Ofício de Leitura', blocks: resolveOracao(commonHour('Ofício de Leitura')) });
+    } else if (hourId === 'laudes') {
         const invitatorio = overlay(commonHour('Invitatório'), entry ? properBlocks(entry, 'Invitatório') : []);
         if (invitatorio.length > 0) sections.push({ title: 'Invitatório', blocks: invitatorio });
 
@@ -192,6 +242,11 @@ export function assembleHour(
             blocks = overlay(blocks, properBlocks(entry, 'Oração'));
         }
         blocks = dropFulfilledOracaoRubric(blocks);
+        // The pointer is printed once, after the last sub-hour (Defuntos:
+        // under Noa), but holds for all three.
+        const pointer = SUB_HOUR_VARIANTS.flatMap(commonHour).find(isLaudesPointer);
+        if (pointer && !blocks.some((b) => b.kind === 'oração' || isLaudesPointer(b))) blocks = [...blocks, pointer];
+        blocks = resolveOracao(blocks);
         if (blocks.length > 0) sections.push({ title: subHour ?? 'Hora Intermédia', blocks });
     } else if (hourId === 'vesperas') {
         // Vespers of the day itself is the commons' "Vésperas II"; some
@@ -203,7 +258,9 @@ export function assembleHour(
                 : commonHour('Vésperas')
             : [];
         let blocks = overlay(base, entry ? properBlocks(entry, 'Vésperas') : []);
-        blocks = dropFulfilledOracaoRubric(overlay(blocks, entry ? properBlocks(entry, 'Oração') : []));
+        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry ? properBlocks(entry, 'Oração') : [])))
+            // Points at the next hour, whose banner already says it.
+            .filter((b) => !(b.kind === 'rubrica' && /^Completas como/.test(b.text ?? '')));
         if (blocks.length > 0) sections.push({ title: 'Vésperas', blocks });
     }
 

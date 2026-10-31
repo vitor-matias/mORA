@@ -21,13 +21,32 @@ export function afterDespaced(text: string, n: number): string {
     return text.slice(i).trim();
 }
 
+// A line-end hyphen is usually a word split ("ani- / quilado"), but before
+// an enclitic pronoun after a verb ending it is the word's own hyphen
+// ("salvou- / nos", "dá- / nos"). The verb-ending test keeps syllable
+// splits like "fos- / se" and "po- / vos" joined. A bare -a/-e stem is
+// too often a syllable ("huma- / nos", "me- / nos"): it keeps the hyphen
+// only before "lhe(s)", which never continues a word ("disse- / lhes").
+const CLITIC_WRAP = /(?:ou|ai|ei|iu|eu|ndo|ez|[áâéêô])-$/;
+const CLITIC_NEXT = /^(?:nos|vos|lhes?|se|os?|as?|me|te)\b/;
+
+/** `prev` (ending in a wrapped hyphen) joined with the next line `t`. */
+function joinHyphen(prev: string, t: string): string {
+    const keep =
+        (CLITIC_WRAP.test(prev) && CLITIC_NEXT.test(t)) ||
+        (/[ae]-$/.test(prev) && /^lhes?\b/.test(t)) ||
+        /(?:^|\s)bem-$/i.test(prev) || // "bem- / aventurança"
+        (/(?:^|\s)(?:há|hás|hão|hei|hemos|heis)-$/i.test(prev) && /^de\b/.test(t)); // "há- / de"
+    return keep ? prev + t : prev.slice(0, -1) + t;
+}
+
 /** Joins wrapped prose lines, repairing end-of-line hyphenation. */
 export function joinProse(buf: string[]): string {
     let out = '';
     for (const raw of buf) {
         const t = raw.trim();
         if (!t) continue;
-        if (/[A-Za-zÀ-ú]-$/.test(out)) out = out.slice(0, -1) + t;
+        if (/[A-Za-zÀ-ú]-$/.test(out)) out = joinHyphen(out, t);
         else out += (out ? ' ' : '') + t;
     }
     return out;
@@ -50,7 +69,7 @@ export function joinVerse(buf: VerseLine[]): string {
         const prev = merged[merged.length - 1];
         if (prev !== undefined && (cont || /[A-Za-zÀ-ú]-$/.test(prev))) {
             merged[merged.length - 1] = /[A-Za-zÀ-ú]-$/.test(prev)
-                ? prev.slice(0, -1) + t
+                ? joinHyphen(prev, t)
                 : `${prev} ${t}`;
         } else {
             merged.push(t);

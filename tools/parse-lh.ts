@@ -76,6 +76,14 @@ function checkComum(doc: ComumDoc): string[] {
     const warnings: string[] = [];
     const hours = Object.keys(doc.hours);
     if (!doc.title) warnings.push('no title');
+    // The Salmodia Complementar is psalmody only, in three series.
+    const series = hours.filter((h) => h.startsWith('Série'));
+    if (series.length > 0) {
+        for (const h of series) {
+            if (doc.hours[h].filter((b) => b.kind === 'salmo').length !== 3) warnings.push(`${h}: not three psalms`);
+        }
+        return warnings;
+    }
     for (const required of ['Laudes']) {
         if (!hours.includes(required)) warnings.push(`missing ${required}`);
     }

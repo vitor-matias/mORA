@@ -24,11 +24,18 @@ export const COMMON_FILES: Record<string, string> = {
     'santos': '1010Santos.pdf',
     'santas': '1011Santas.pdf',
     'defuntos': '1012Defuntos.pdf',
+    // Not a common: the Salmodia Complementar (séries I–III, one per hour
+    // in the doc's `hours`), which the Defuntos' Hora Intermédia points to.
+    'complementar': '0806SalmComple.pdf',
 };
 
 export interface ComumVerse {
     n?: number;
     text: string;
+    /** Second half of a verse (after the "*"), set indented in the book. */
+    indent?: boolean;
+    /** Opens a new stanza (a wider gap above it in the book). */
+    stanza?: boolean;
 }
 
 export interface ComumBlock {
@@ -40,6 +47,13 @@ export interface ComumBlock {
     variant?: string;
     text?: string;
     verses?: ComumVerse[];
+    /**
+     * Ofício de Leitura readings: "Dos Sermões de…" attribution; psalms:
+     * the epigraph under the title ("Pacientes na tribulação… (Rom 12, 12)").
+     */
+    source?: string;
+    /** The reading's own heading, or the psalm's ("Anseio de paz"). */
+    title?: string;
 }
 
 export interface ComumDoc {
@@ -55,9 +69,9 @@ export interface ComumDoc {
     hours: Record<string, ComumBlock[]>;
 }
 
-// Plain "Vésperas" is the Defuntos office's form — the commons proper use
-// "Vésperas I/II".
-const HOURS = ['Vésperas', 'Vésperas I', 'Vésperas II', 'Invitatório', 'Laudes', 'Hora Intermédia', 'Completas'];
+// Plain "Vésperas" and the Ofício de Leitura are the Defuntos office's
+// alone — the commons proper use "Vésperas I/II" and have no readings.
+const HOURS = ['Vésperas', 'Vésperas I', 'Vésperas II', 'Invitatório', 'Ofício de Leitura', 'Laudes', 'Hora Intermédia', 'Completas'];
 const SUB_HOURS = ['Tércia', 'Sexta', 'Noa']; // left-aligned, unlike the above
 const SEASONS = [
     'Tempo Pascal', 'Fora do Tempo Pascal',
@@ -69,16 +83,27 @@ const LABELS: { re: RegExp; kind: string; skip: number }[] = [
     { re: /^salmodia/, kind: 'salmodia', skip: 8 },
     { re: /^leiturabreve/, kind: 'leitura', skip: 12 },
     { re: /^respons[óo]riobreve/, kind: 'responsório', skip: 16 },
+    // The Ofício de Leitura's: the long responsory after each reading.
+    { re: /^respons[óo]rio/, kind: 'responsório-leitura', skip: 11 },
+    { re: /^primeiraleitura/, kind: 'leitura-1', skip: 15 },
+    { re: /^segundaleitura/, kind: 'leitura-2', skip: 14 },
     { re: /^c[âa]nti[cç]oevang[ée]li[cç]o/, kind: 'evangélico', skip: 0 },
     { re: /^preces/, kind: 'preces', skip: 6 },
 ];
-const VERSE_LIKE = new Set(['responsório', 'preces', 'hino']);
+const VERSE_LIKE = new Set(['responsório', 'responsório-leitura', 'versículo', 'preces', 'hino']);
+const READINGS = new Set(['leitura-1', 'leitura-2']);
+/** Paragraph break marker inside a reading's line buffer. */
+const PARA = '\u00b6';
 
 interface OpenBlock extends ComumBlock {
     buf?: (string | VerseLine)[];
     /** Positioned hymn lines, reassembled by assembleHymn at flush. */
     hymn?: HymnLine[];
     verseLike?: boolean;
+    /** Reading still in its attribution/heading lines. */
+    head?: boolean;
+    /** Preces still in their margin-set introduction. */
+    intro?: boolean;
 }
 
 export function parseComum(lines: PdfLine[]): ComumDoc {
@@ -100,6 +125,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
     let psalmBase: string | null = null; // for bare roman-numeral divisions
     let block: OpenBlock | null = null;
     let pendingVerse: number | null = null;
+    let lastVerse: { p: number; y: number } | null = null;
 
     const blocksOf = () => (doc.hours[(hour ??= '(preâmbulo)')] ??= []);
     /** The season a new block of `kind` belongs to, ending runs as needed. */
@@ -130,12 +156,23 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             delete block.hymn;
             delete block.buf;
             delete block.verseLike;
+        } else if (block.buf && READINGS.has(block.kind)) {
+            block.text = (block.buf as string[])
+                .join('\n')
+                .split(PARA)
+                .map((para) => joinProse(para.split('\n')))
+                .filter(Boolean)
+                .join('\n\n');
+            delete block.buf;
+            delete block.head;
+            delete block.verseLike;
         } else if (block.buf) {
             block.text = block.verseLike
                 ? joinVerse(block.buf as VerseLine[])
                 : joinProse(block.buf as string[]);
             delete block.buf;
             delete block.verseLike;
+            delete block.intro;
         }
         if (block.verses?.length || block.text) {
             blocksOf().push(block);
@@ -151,6 +188,13 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
     for (const l of lines) {
         const text = l.text.replace(/\s+/g, ' ').trim();
         if (!text) continue;
+        // Superscript verse number, printed as its own tiny line. Only one
+        // at the line start numbers a psalm verse; mid-line ones (inside
+        // readings, "Aparecendo como homem, ⁸humilhou-Se") are dropped.
+        if (l.h < 6 && /^\d+$/.test(text)) {
+            if (block?.kind === 'salmo' && l.x < 35) pendingVerse = Number(text);
+            continue;
+        }
         if (/^\d+$/.test(text)) continue; // page numbers
         // Running heads: tiny type is signal enough — the uppercase test
         // would miss small-caps heads whose lowercase glyphs survive
@@ -171,18 +215,6 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             continue;
         }
 
-        // The Ofício de Leitura (only Defuntos has one) is not in the app's
-        // hour set — park it like the hymn appendix.
-        if (text === 'Ofício de Leitura') {
-            flush();
-            hour = '(ofício de leitura)';
-            season = undefined;
-            variant = undefined;
-            canticle = null;
-            psalmBase = null;
-            continue;
-        }
-
         // Hour header (centered) or sub-hour (left-aligned, h=10) — checked
         // before front matter, or the fallback title rule would swallow the
         // first hour of a document whose title lives in its running heads.
@@ -195,6 +227,19 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             psalmBase = null;
             continue;
         }
+
+        // Salmodia Complementar: "Série I (Salmodia para Tércia)" heads
+        // each series ("Série III" sets its hour on a line of its own).
+        const serie = text.match(/^Série (I{1,3})\b/);
+        if (serie && l.h >= 10 && l.x < 35) {
+            flush();
+            hour = `Série ${serie[1]}`;
+            variant = undefined;
+            canticle = null;
+            psalmBase = null;
+            continue;
+        }
+        if (/^\(Salmodia para \S+\)$/.test(text)) continue;
 
         // Front matter: an ALL-CAPS "COMUM D…"/"OFÍCIO D…" heading (possibly
         // sharing its line with an inheritance rubric), a centered subtitle
@@ -212,7 +257,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             }
             // Title wrapping onto a second ALL-CAPS line ("COMUM DA
             // DEDICAÇÃO" / "DE UMA IGREJA").
-            if (doc.title && /^[A-ZÀ-Ú ]+$/.test(text)) {
+            if (doc.title && /^[A-ZÀ-Ú ,]+$/.test(text)) {
                 doc.title += ` ${text}`;
                 continue;
             }
@@ -224,7 +269,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
                 doc.note = text;
                 continue;
             }
-            if (!doc.title && l.h >= 10 && l.x > 60) {
+            if (!doc.title && l.h >= 10 && (l.x > 60 || l.h >= 12)) {
                 doc.title = text;
                 continue;
             }
@@ -308,12 +353,6 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             continue;
         }
 
-        // Superscript verse number, printed as its own tiny line
-        if (l.h < 6 && /^\d+$/.test(text)) {
-            pendingVerse = Number(text);
-            continue;
-        }
-
         // Section label (h=10, left) — despace-tolerant small caps
         const label =
             l.h >= 10 && l.x < 90 && text.length < 60
@@ -335,6 +374,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
                 variant,
                 buf: [],
                 verseLike: VERSE_LIKE.has(label.kind),
+                head: READINGS.has(label.kind) || undefined,
             };
             continue;
         }
@@ -346,6 +386,17 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
             block = { kind: 'oração', season: seasonFor('oração'), variant, buf: [] };
             continue;
         }
+
+        // "Pai nosso" closes the preces as a bare cue line.
+        if (text === 'Pai nosso') {
+            flush();
+            blocksOf().push({ kind: 'rubrica', season: seasonFor('rubrica'), variant, text });
+            continue;
+        }
+
+        // Heading over the inline sub-hour antiphon list below — the
+        // assembler keeps only the chosen sub-hour's antiphon.
+        if (text === 'Antífona' && hour === 'Hora Intermédia') continue;
 
         // Inline sub-hour antiphon list ("Tércia Voltai-Vos para mim…"), as
         // the Ofício de Defuntos sets its Hora Intermédia.
@@ -375,8 +426,56 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
         }
 
         if (block?.kind === 'salmo') {
-            block.verses!.push({ n: pendingVerse ?? undefined, text });
+            // Small type before the first verse is the psalm's title, then
+            // its epigraph (Salmodia Complementar).
+            if (l.h === 9 && block.verses!.length === 0) {
+                if (!block.title) block.title = text;
+                else block.source = block.source ? `${block.source} ${text}` : text;
+                continue;
+            }
+            // Small type after a psalm is a rubric ("Para as outras Horas,
+            // a Salmodia Complementar…"), not a verse.
+            if (l.h === 9) {
+                flush();
+                blocksOf().push({ kind: 'rubrica', season: seasonFor('rubrica'), variant, text });
+                continue;
+            }
+            // A stray repeat of an earlier line (Salmo 126 in the
+            // Complementar) is a typesetting leftover — only there: real
+            // psalms repeat refrains ("é eterna a sua misericórdia").
+            if (hour?.startsWith('Série') && block.verses!.some((v) => v.text === text)) continue;
+            // Lines step ≈10.5pt; a stanza break adds ≈5 more.
+            const stanza = block.verses!.length > 0 && lastVerse?.p === l.p && lastVerse.y - l.y > 13.5;
+            block.verses!.push({ n: pendingVerse ?? undefined, text, indent: l.x > 42 || undefined, stanza: stanza || undefined });
             pendingVerse = null;
+            lastVerse = { p: l.p, y: l.y };
+            continue;
+        }
+
+        // A versicle after the psalmody (Ofício de Leitura) or after a
+        // sub-hour's Leitura breve: V./R. dialogue, not part of the prose.
+        if (/^V\.\s/.test(text) && block?.buf && (block.kind === 'ant' || block.kind === 'leitura')) {
+            flush();
+            block = { kind: 'versículo', season: seasonFor('versículo'), variant, buf: [], verseLike: true };
+        }
+
+        if (block?.buf && READINGS.has(block.kind)) {
+            if (block.head) {
+                // Attribution lines ("Dos Sermões de…", its small-type
+                // citation), the right-aligned chapter ref, then the
+                // centred heading that opens the reading.
+                if (l.x > 150) block.ref = prettifyRef(text);
+                else if (l.x > 50 && l.h >= 10) {
+                    block.title = text;
+                    block.head = false;
+                } else if (!block.source) block.source = text;
+                else block.source += (l.h === 9 && !block.source.includes('\n') ? '\n' : ' ') + text;
+                continue;
+            }
+            // Indented first lines (≈42pt, ≈50 after a dropped verse number)
+            // open paragraphs; running lines sit at the margin.
+            if (l.x > 40 && block.buf.length) block.buf.push(PARA);
+            block.buf.push(text);
             continue;
         }
 
@@ -403,8 +502,22 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
                 if (right) block.hymn.push({ p: l.p, y: l.y, x: rightX, t: right });
                 continue;
             }
-            if (block.verseLike) {
-                block.buf.push({ t: text, cont: l.x > 50 && !/^[VR]\.\s/.test(text) });
+            if (block.kind === 'preces') {
+                // Petitions start at the margin ("first, / — second."),
+                // their wraps indent — as does the response line, which is
+                // told apart by following a finished sentence ("…dizendo:").
+                // The intro paragraph wraps at the margin, and so does the
+                // odd petition (Um Mártir) — but only after a bare word.
+                const prev = block.buf[block.buf.length - 1] as VerseLine | undefined;
+                const ended = !!prev && /[.:!?»]$/.test(prev.t);
+                if (!prev) block.intro = l.x < 35;
+                else if (ended) block.intro = false;
+                const cont = !!prev && !text.startsWith('—') && !ended
+                    && (l.x > 35 || !!block.intro || /[A-Za-zÀ-ú]$/.test(prev.t));
+                block.buf.push({ t: text, cont });
+            } else if (block.verseLike) {
+                // Dialogue: every line that is not a new V./R. continues one.
+                block.buf.push({ t: text, cont: !/^[VR]\.\s/.test(text) });
             } else {
                 block.buf.push(text);
             }

@@ -14,10 +14,11 @@ import { getDefaultHoursDate, getHourForTime } from "@/lib/hours";
 import { formatISODate } from "@/lib/format";
 import { DateNav } from "@/components/DateNav";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
-import { saintsForDay, hasRenderableOffice, assembleHour } from "@/lib/breviary/assemble";
+import { saintsForDay, hasRenderableOffice, assembleHour, complementSeries, withPsalmody } from "@/lib/breviary/assemble";
 import type { ProprioEntry } from "@/lib/breviary/proprio";
 import type { ComumDoc } from "@/lib/breviary/comum";
-import { BreviaryBlocks } from "@/components/BreviaryBlocks";
+import { ApiHtml, BreviaryBlocks } from "@/components/BreviaryBlocks";
+import type { AssembledSection } from "@/lib/breviary/assemble";
 
 // "Salmos e cântico do Domingo I." at the commons' Laudes points at Sunday
 // Week I of the psalter. The psalter is fixed, so the psalmody of any
@@ -41,9 +42,73 @@ function cutPsalmody(html: string): string | null {
     return html.slice(start, end);
 }
 
-// Classes that make API-served HTML match the page's typography — shared by
-// every spliced render.
-const API_HTML_CLASSES = "content-text text-zinc-800 dark:text-zinc-200 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4";
+/** The API hour's `<h3>` section whose heading matches `re`, up to the next one. */
+function apiSection(html: string, re: RegExp): string | null {
+    for (const m of html.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)) {
+        if (!re.test(m[1].replace(/<[^>]+>/g, ''))) continue;
+        const end = html.indexOf('<h3', m.index + m[0].length);
+        return html.slice(m.index, end < 0 ? undefined : end);
+    }
+    return null;
+}
+
+/** The gospel canticle's own text in its API section: title line to the closing antiphon. */
+function canticleBody(section: string): string | null {
+    const start = section.search(/<p[^>]*>\s*<strong>/); // "Lc 1, 68-79"
+    const lastAnt = section.lastIndexOf('Ant.');
+    const end = lastAnt > 0 ? section.lastIndexOf('<p', lastAnt) : -1;
+    return start > 0 && end > start ? section.slice(start, end) : null;
+}
+
+interface ApiParts {
+    opening: string | null;
+    closing: string | null;
+    /** Benedictus/Magnificat text, between the antiphon and its repeat. */
+    canticle: string | null;
+    /** "Oração dominical" — the full Pai nosso the commons only cue. */
+    paiNosso: string | null;
+}
+
+/**
+ * Completes an alternative office with the fixed texts the books only
+ * imply, taken from the day's API hour: the opening and closing (the
+ * official app serves the standard ones even on All Souls), the gospel
+ * canticle and the Pai nosso. Opening goes atop the first hour section
+ * (not the Invitatório), closing at the very end.
+ */
+/**
+ * The API's own rubric ("Isto omite-se quando o Ofício de Laudes começa com
+ * o Invitatório."), which some days' Laudes lack.
+ */
+function withInvitatoryNote(opening: string, hour: string | undefined): string {
+    if (/omite-se/i.test(opening) || (hour !== 'Laudes' && hour !== 'Ofício de Leitura')) return opening;
+    const office = hour === 'Laudes' ? 'Ofício de Laudes' : 'Ofício de leitura';
+    return `${opening}<p><span style="color: #ff0000;">Isto omite-se quando o ${office} começa com o Invitatório.</span></p>`;
+}
+
+function withApiParts(sections: AssembledSection[], api: ApiParts): AssembledSection[] {
+    const first = sections.findIndex(s => s.title !== 'Invitatório');
+    const opening = api.opening && withInvitatoryNote(api.opening, sections[first]?.title);
+    return sections.map((s, i) => {
+        let blocks = s.blocks.map(b =>
+            api.paiNosso && b.kind === 'rubrica' && b.text === 'Pai nosso' ? { kind: 'html', text: api.paiNosso } : b);
+        const ants = blocks.filter(b => b.kind === 'ant-benedictus' || b.kind === 'ant-magnificat');
+        if (api.canticle && ants.length > 0) {
+            const at = blocks.lastIndexOf(ants[ants.length - 1]) + 1;
+            // With alternatives ("Ou", per audience) the reader repeats their own choice.
+            const repeat = ants.length === 1 ? [{ kind: ants[0].kind, text: ants[0].text }] : [];
+            blocks = [...blocks.slice(0, at), { kind: 'html', text: api.canticle }, ...repeat, ...blocks.slice(at)];
+        }
+        return {
+            ...s,
+            blocks: [
+                ...(opening && i === first ? [{ kind: 'html', text: opening }] : []),
+                ...blocks,
+                ...(api.closing && i === sections.length - 1 ? [{ kind: 'html', text: api.closing }] : []),
+            ],
+        };
+    });
+}
 
 // The Ofício de Defuntos prays Completas "como no domingo" — serve the most
 // recent Sunday's Compline, whatever day is being viewed. Cached per Sunday
@@ -99,6 +164,32 @@ async function findSundayIPsalmody(from: Date): Promise<string | null> {
         d.setDate(d.getDate() - 7);
     }
     return null;
+}
+
+/**
+ * Sticky "Ir para Laudes" at the foot of the Invitatório: jumps to the
+ * next section's Hino (its top when there is none).
+ */
+function SkipInvitatory({ target, onSkip }: { target: string | undefined; onSkip: () => void }) {
+    // bottom-24 clears the floating tab bar, which is hidden from xl up.
+    return (
+        <div className="sticky bottom-24 xl:bottom-4 z-20 pb-2 pt-2">
+            <button
+                onClick={() => {
+                    onSkip();
+                    const sectionEl = target ? document.getElementById(`section-${target}`) : null;
+                    if (!sectionEl) return;
+                    const hinoEl = Array.from(sectionEl.querySelectorAll('h3, h6, font[color="red"], span.text-liturgy-700'))
+                        .find(el => el.textContent?.trim().toLowerCase() === 'hino');
+                    (hinoEl ?? sectionEl).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+                className="w-full py-3 px-4 text-sm font-bold shadow-lg shadow-liturgy-900/10 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 rounded-2xl flex items-center justify-center gap-2 pressable"
+            >
+                Ir para {target || 'seguinte'}
+                <ChevronRight size={16} className="rotate-90" />
+            </button>
+        </div>
+    );
 }
 
 // The 5 canonical moments we display
@@ -255,14 +346,20 @@ export default function LiturgiaHoras() {
     // Feasts with a fully proper office have no common to load.
     const altComumId = altOffice === 'defuntos' ? 'defuntos' : altEntry?.commons[0] ?? null;
 
+    // The Hora Intermédia's "Salmodia Complementar" alternative, chosen by
+    // whoever already prayed another minor Hour with the proper psalmody.
+    const [useComplement, setUseComplement] = useState(false);
+    const neededComumId = useComplement && altComumId && altComumId in comuns ? 'complementar' : altComumId;
+
     useEffect(() => {
-        if (!altComumId || altComumId in comuns) return;
+        const id = neededComumId;
+        if (!id || id in comuns) return;
         let cancelled = false;
-        loadComum(altComumId)
-            .then((doc) => { if (!cancelled) setComuns((prev) => ({ ...prev, [altComumId]: doc })); })
-            .catch(() => { if (!cancelled) setComuns((prev) => ({ ...prev, [altComumId]: null })); });
+        loadComum(id)
+            .then((doc) => { if (!cancelled) setComuns((prev) => ({ ...prev, [id]: doc })); })
+            .catch(() => { if (!cancelled) setComuns((prev) => ({ ...prev, [id]: null })); });
         return () => { cancelled = true; };
-    }, [altComumId, comuns]);
+    }, [neededComumId, comuns]);
 
     const altComum = altComumId ? comuns[altComumId] ?? null : null;
     const altLoading = altOffice !== null && altComumId !== null && !(altComumId in comuns);
@@ -424,13 +521,20 @@ export default function LiturgiaHoras() {
     );
 
     // undefined = still loading the common; null = this hour has no
-    // alternative texts (Ofício de Leitura, Completas) and keeps the API
-    // office on screen.
-    const assembled = useMemo(() => {
+    // alternative texts (Completas; the Ofício de Leitura outside the
+    // Defuntos) and keeps the API office on screen.
+    const assembledBase = useMemo(() => {
         if (altOffice === null || !activeHour) return null;
         if (altLoading) return undefined;
         return assembleHour(altEntry, altComum, activeHour, activeSubHour, pascal);
     }, [altOffice, altLoading, altEntry, altComum, activeHour, activeSubHour, pascal]);
+
+    const complement = complementSeries(assembledBase, activeSubHour);
+    const complementDoc = comuns['complementar'];
+    const assembled = useMemo(() => {
+        if (!assembledBase || !complement || !useComplement || !complementDoc) return assembledBase;
+        return withPsalmody(assembledBase, complementDoc.hours[complement] ?? []);
+    }, [assembledBase, complement, useComplement, complementDoc]);
 
     const altActive = altOffice !== null;
 
@@ -681,6 +785,30 @@ export default function LiturgiaHoras() {
                                 </div>
                             )}
 
+                            {/* Proper or Salmodia Complementar psalmody (Defuntos' Sexta/Noa) */}
+                            {altActive && complement && (
+                                <div className="space-y-1.5">
+                                    <div className="flex gap-2" role="group" aria-label="Salmodia">
+                                        {[false, true].map(on => (
+                                            <button
+                                                key={String(on)}
+                                                onClick={() => setUseComplement(on)}
+                                                aria-pressed={useComplement === on}
+                                                className={`pressable flex-1 py-1.5 px-3 text-xs font-medium rounded-lg ${useComplement === on
+                                                    ? 'bg-liturgy-50 dark:bg-liturgy-950/30 text-liturgy-700 dark:text-liturgy-400 border border-liturgy-200 dark:border-liturgy-800'
+                                                    : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                                                    }`}
+                                            >
+                                                {on ? `Complementar (${complement.replace('Série', 'série')})` : 'Salmodia própria'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                        Se já rezaste outra Hora Intermédia hoje com a salmodia própria, reza esta com a complementar.
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Content */}
                             <div className="flex-1">
                                 {altActive && assembled === undefined ? (
@@ -721,16 +849,27 @@ export default function LiturgiaHoras() {
                                                     }
                                                 );
                                             };
-                                            const renderHtml = (html: string) => (
-                                                <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
-                                            );
+                                            const renderHtml = (html: string) => <ApiHtml html={html} />;
                                             const partHtml = (title: string) => partHtmlOf(liturgy, title);
+                                            const apiHtml = displayParts.map(p =>
+                                                [...p.verses].sort((a, b) => a.order - b.order).map(v => v.text).join(''));
+                                            const findSection = (re: RegExp) => apiHtml.map(h => apiSection(h, re)).find(Boolean) ?? null;
+                                            const canticleSection = findSection(/Cântico evangélico/i);
+                                            const api: ApiParts = {
+                                                opening: findSection(/Invocação inicial/i),
+                                                closing: findSection(/Despedida|Conclusão/i),
+                                                canticle: canticleSection && canticleBody(canticleSection),
+                                                paiNosso: findSection(/Oração dominical/i),
+                                            };
 
                                             // Hora Intermédia: the hymn and psalmody are the
                                             // day's — splice the API sub-hour up to its Leitura
                                             // breve, with the saint/common antiphon substituted.
-                                            if (activeHour === 'intermedia' && assembled.sections[0]) {
-                                                const sec = assembled.sections[0];
+                                            // The Defuntos bring their own hymn and psalms.
+                                            if (activeHour === 'intermedia' && assembled.sections[0]
+                                                && !assembled.sections[0].blocks.some(b => b.kind === 'salmo')) {
+                                                // The spliced psalmody already opens with the invocation.
+                                                const sec = withApiParts(assembled.sections, { ...api, opening: null })[0];
                                                 const secAnt = sec.blocks.find(b => b.kind.startsWith('ant'))?.text;
                                                 const bodyBlocks = sec.blocks.filter(b => !b.kind.startsWith('ant'));
                                                 const html = partHtml(activeSubHour ?? 'Tércia');
@@ -749,15 +888,17 @@ export default function LiturgiaHoras() {
                                                         </div>
                                                     );
                                                 }
-                                                return <BreviaryBlocks sections={assembled.sections} />;
+                                                return <BreviaryBlocks sections={withApiParts(assembled.sections, api)} />;
                                             }
+
+                                            const framed = withApiParts(assembled.sections, api);
 
                                             // "Salmo invitatório." in the common is a pointer to
                                             // the invitatory psalm — resolve it with the day's
                                             // Invitatório from the API, the saint's antiphon
                                             // replacing the day's.
-                                            const inv = assembled.sections.find(s => s.title === 'Invitatório');
-                                            const rest = assembled.sections.filter(s => s.title !== 'Invitatório');
+                                            const inv = framed.find(s => s.title === 'Invitatório');
+                                            const rest = framed.filter(s => s.title !== 'Invitatório');
                                             const invHtml = inv ? partHtml('Invitatório') : null;
                                             const invAnt = inv?.blocks.find(b => b.kind.startsWith('ant'))?.text;
                                             const invBlocks = inv?.blocks.filter(b => {
@@ -795,6 +936,7 @@ export default function LiturgiaHoras() {
                                                         <div className="space-y-3">
                                                             <BreviaryBlocks sections={[{ title: 'Invitatório', blocks: invBlocks }]} />
                                                             {invHtml && renderHtml(substituteAnt(invHtml, invAnt ? [{ text: invAnt }] : []))}
+                                                            {rest.length > 0 && <SkipInvitatory target={rest[0].title} onSkip={scroll.stop} />}
                                                         </div>
                                                     )}
                                                     {laudesRender}
@@ -814,7 +956,7 @@ export default function LiturgiaHoras() {
                                             <h3 className="text-sm font-bold text-liturgy-700 dark:text-liturgy-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800 pb-2">
                                                 {sundayCompline.title}
                                             </h3>
-                                            <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sundayCompline.html) }} />
+                                            <ApiHtml html={sundayCompline.html} />
                                         </div>
                                     </div>
                                 ) : (
@@ -885,33 +1027,10 @@ export default function LiturgiaHoras() {
                                                             ))}
                                                             {/* Quick scroll button — sticky at the bottom */}
                                                             {part.title === 'Invitatório' && displayParts.length > 1 && (
-                                                                <div className="sticky bottom-4 z-20 pb-2 pt-2">
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            scroll.stop();
-                                                                            const nextPart = displayParts.find(p => p.title !== 'Invitatório');
-                                                                            if (nextPart) {
-                                                                                const sectionEl = document.getElementById(`section-${nextPart.title}`);
-                                                                                if (sectionEl) {
-                                                                                    // Try to find the "Salmodia" heading inside the next section
-                                                                                    const salmodiaEl = Array.from(sectionEl.querySelectorAll('h3, h6, font[color="red"], span.text-liturgy-700'))
-                                                                                        .find(el => el.textContent?.trim().toLowerCase() === 'hino');
-
-                                                                                    if (salmodiaEl) {
-                                                                                        salmodiaEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                                    } else {
-                                                                                        // Fallback to top of the section
-                                                                                        sectionEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                        className="w-full py-3 px-4 text-sm font-bold shadow-lg shadow-liturgy-900/10 bg-liturgy-700 hover:bg-liturgy-800 dark:bg-liturgy-400 dark:hover:bg-liturgy-300 text-white dark:text-zinc-950 rounded-2xl flex items-center justify-center gap-2 pressable"
-                                                                    >
-                                                                        Ir para {displayParts.find(p => p.title !== 'Invitatório')?.title || 'seguinte'}
-                                                                        <ChevronRight size={16} className="rotate-90" />
-                                                                    </button>
-                                                                </div>
+                                                                <SkipInvitatory
+                                                                    target={displayParts.find(p => p.title !== 'Invitatório')?.title}
+                                                                    onSkip={scroll.stop}
+                                                                />
                                                             )}
                                                         </div>
                                                     )}
