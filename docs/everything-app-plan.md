@@ -128,7 +128,8 @@ from St Faustina's Diary, and the pt-PT translation may be copyrighted.
 
 **State.** Add `activePlans: { id: string; startedOn: string; daysDone: number[] }[]`
 to the app store, bump the persisted version and extend `migrateAppState`.
-Sync it in the same merged payload as the starred prayers. A novena is a
+It stays on the device until open decision 2 is settled; if it syncs, it
+rides the same merged payload as the starred prayers. A novena is a
 nine-day plan and +365 (1.4) is a 365-day one, so build the plan state once
 and both use it.
 
@@ -154,10 +155,10 @@ exists.
 **Done when** a user can start the Imaculada novena on 29 November, gets a
 daily reminder and sees "Dia N de 9" on Home.
 
-### 1.2 Confissão (by mid-December, before the Advent penitential services)
+### 1.2 Reconciliação (by mid-December, before the Advent penitential services)
 
-**Status (1 November):** v1 is built at `/confissao`, reviewed by a panel of
-six agents.
+**Status (1 November):** v1 is built at `/reconciliacao`, reviewed by a panel
+of six agents.
 
 - **What it has**, all in `src/lib/confession.ts`, in three tabs (Exame,
   Dúvidas, Como confessar) and a tile under Rezar named Reconciliação (`/reconciliacao`):
@@ -181,7 +182,7 @@ six agents.
   Francisco text; children's 6th/9th Commandment and young people's digital
   life (no sources yet).
 
-**Route:** `/confissao`, listed in Explorar.
+**Route:** `/reconciliacao`, a wide tile under Rezar.
 
 **Content**, each section from a verified source:
 
@@ -197,10 +198,13 @@ six agents.
 
 - Ticked items live in component state only: no Zustand, no `localStorage`,
   no sync, no share button.
-- Leaving the page clears them, and so does a "Limpar" button.
-- Say so on screen: "Nada do que marca aqui fica guardado."
-- A test renders the page, ticks items and asserts that `localStorage` is
-  unchanged.
+- Each exam shows only its own ticks. Leaving the page, a back-forward
+  restore, 15 minutes away from the app, or the "Limpar" button clears them.
+- Say so on screen: "Nada do que se marca aqui é guardado pela aplicação nem
+  sai deste aparelho."
+- `src/lib/confession.test.ts` pins the page's imports to an allowlist and
+  bans storage, URL and history, network, sync, share and logging APIs in its
+  source.
 
 **AI, and where it stops.** The exam is where AI is most tempting and most
 dangerous. What a penitent types is the most private thing they will ever
@@ -221,7 +225,10 @@ gets it wrong feeds either scruples or complacency. So:
   free text could point to the matching questions, and do only that.
   Revisit once such models are on most phones.
 
-**Done when** the guide works offline and the privacy test passes.
+**Done when** the guide works offline, the privacy test passes, a priest has
+reviewed the exams and the cues, and the rights holders (Opus Dei Portugal,
+LEV and the Dicastery, the SNL) have answered. Until then it ships quietly and
+isn't promoted.
 
 ### 1.3 Bíblia in the app (December)
 
@@ -367,9 +374,12 @@ Today the Mass and Hours come from the private backend of the CEP's
 
 - **Ask:** permission for a free, ad-free app to show the texts, ideally with a
   supported feed, and in return a credit line and a link to their app.
-- **If refused:** there is no clean fallback, since the liturgia.pt PDFs are
-  SNL texts too. Keep the client-side cache, keep the date validation in
-  [liturgy.ts](../src/lib/liturgy.ts), and treat this as the top risk.
+- **If the API changes or closes** while talks go on: the client-side cache
+  and the date validation in [liturgy.ts](../src/lib/liturgy.ts) keep the
+  app working for the days already fetched.
+- **If refused:** stop serving the texts, cached ones included, and say so in
+  the app. There is no clean fallback, since the liturgia.pt PDFs are SNL
+  texts too. This is the top risk.
 
 ### 2.2 Catecismo do dia (YOUCAT Daily, done our way)
 
@@ -435,10 +445,11 @@ back into Explorar.
    (tagging, proofreading, generating audio), with a human signing off.
    A model runs while the user is in the app only where a fixed corpus can't
    do the job.
-3. **Nothing personal goes to a model.** Confissão never sends anything to a
-   model. AI only helps build its question bank before release (1.2).
-   Free-text searches and intentions reach a model only through our own
-   Worker, with no logging, and the screen says so.
+3. **Nothing personal goes to a model.** Reconciliação never sends anything
+   to a model; AI only helps build its question bank before release (1.2).
+   Whether free-text searches or intentions may reach a model at all is open
+   decision 6. If the answer is yes, only with the user's consent each time,
+   through our own Worker, with no logging, and the screen says so.
 4. **No persona.** No AI priest, saint or "spiritual director". In April 2024
    Catholic Answers launched an AI priest, "Father Justin", and dropped the
    priest persona within days after it presented itself as a priest and
@@ -468,8 +479,9 @@ uses the device's own voice (`speechSynthesis`) as an accessibility feature.
 When: the Phase 3 spike, and it can move earlier.
 
 **A3. Perguntar ao Catecismo.** A question returns the matching Catechism or
-Compêndio paragraphs, quoted with their numbers. A one-paragraph summary may
-sit above them, labelled as written by AI. Needs the LEV licence (2.2). The
+Compêndio paragraphs, quoted with their numbers, and nothing else: no
+generated summary, since rule 1 keeps AI from writing what is read as
+teaching. The model only ranks the paragraphs. Needs the LEV licence (2.2). The
 alternative to building it is partnering with an existing Catholic retrieval
 service (Magisterium AI has an API; check its terms and its pt-PT quality).
 When: only after 2.2.
@@ -496,8 +508,10 @@ app in the folder does this. When: Phase 3.
 
 **N2. Terço em família à distância.** One person starts a session and shares a
 link. Everyone's bead player moves together, with the avatars of who is
-present. It runs on Nostr ephemeral events (kinds 20000 to 29999, which relays
-forward but don't store). It's built for the diaspora: families split between
+present. It runs on Nostr ephemeral events (kinds 20000 to 29999). NIP-01 only
+says relays are not expected to store them, and any relay may still log them,
+so a session carries bead positions and nothing else: no names of the dead,
+no intentions, no text. It's built for the diaspora: families split between
 Portugal, France, Switzerland and Luxembourg. Voice stays on whatever call
 they already use. When: Q2 2027.
 
@@ -517,8 +531,10 @@ so this is also how Oremus spreads. When: by late April 2027, for the
 
 **N5. Correntes de oração.** Post an intention to a closed group (a Palavra
 league, or the people you follow). Members tap "Rezei" and you see the count.
-It's encrypted to the group and nothing is public, so there's no moderation
-queue. When: Q2 2027.
+The intention is encrypted to the group's members, so relays can't read it,
+though they still see who posted, when, and to how many people. Any member can
+also screenshot or forward it, and the app should say so before posting. With
+no public posts there's no moderation queue. When: Q2 2027.
 
 **N6. Paróquia no Nostr.** Parishes publish their Mass times and notices as
 signed events, and users follow their parish. This answers "there is no data
