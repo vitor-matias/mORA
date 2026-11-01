@@ -124,13 +124,17 @@ export default function Confissao() {
                             aria-selected={tab === id}
                             aria-controls={`confissao-panel-${id}`}
                             onClick={() => setTab(id)}
-                            className={`flex-1 min-w-0 min-h-11 rounded-xl px-2 text-sm font-semibold transition-colors ${
+                            // Sized by label, not in equal thirds: «Como confessar» needs
+                            // twice the width of «Exame» on a phone.
+                            className={`flex-auto min-w-0 min-h-11 rounded-xl px-3 text-sm font-semibold transition-colors ${
                                 tab === id
                                     ? 'bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300'
                                     : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                             }`}
                         >
-                            <span className="truncate">{label}</span>
+                            {/* Wraps to two lines rather than clipping, on a narrow
+                                phone or with a large text size. */}
+                            <span className="block leading-tight">{label}</span>
                         </button>
                     ))}
                 </div>
@@ -145,7 +149,7 @@ export default function Confissao() {
                         <section aria-labelledby="exame">
                             <h2 id="exame" ref={examHeading} tabIndex={-1} className="text-lg font-bold tracking-tight mb-3 outline-none">Exame de consciência</h2>
                             {/* Chip rail: scrolls sideways on a phone, wraps on desktop. */}
-                            <div className="-mx-6 px-6 lg:mx-0 lg:px-0 overflow-x-auto lg:overflow-visible">
+                            <div className="-mx-6 px-6 lg:mx-0 lg:px-0 overflow-x-auto lg:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 <div role="group" aria-label="Escolher o exame" className="flex gap-2 w-max lg:w-auto lg:flex-wrap">
                                     {EXAMS.map((e) => (
                                         <Chip key={e.id} label={e.label} active={e.id === exam.id} onClick={() => setExamId(e.id)} />
