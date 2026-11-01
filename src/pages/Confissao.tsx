@@ -124,13 +124,17 @@ export default function Confissao() {
                             aria-selected={tab === id}
                             aria-controls={`confissao-panel-${id}`}
                             onClick={() => setTab(id)}
-                            className={`flex-1 min-w-0 min-h-11 rounded-xl px-2 text-sm font-semibold transition-colors ${
+                            // Sized by label, not in equal thirds: «Como confessar» needs
+                            // twice the width of «Exame» on a phone.
+                            className={`flex-auto min-w-0 min-h-11 rounded-xl px-3 text-sm font-semibold transition-colors ${
                                 tab === id
                                     ? 'bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300'
                                     : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                             }`}
                         >
-                            <span className="truncate">{label}</span>
+                            {/* Wraps to two lines rather than clipping, on a narrow
+                                phone or with a large text size. */}
+                            <span className="block leading-tight">{label}</span>
                         </button>
                     ))}
                 </div>
