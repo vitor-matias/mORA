@@ -159,8 +159,12 @@ daily reminder and sees "Dia N de 9" on Home.
 **Status (1 November):** v1 is built at `/confissao`, reviewed by a panel of
 six agents.
 
-- **What it has**, all in `src/lib/confession.ts`:
+- **What it has**, all in `src/lib/confession.ts`, in three tabs (Exame,
+  Dúvidas, Como confessar) and a tile under Rezar named Reconciliação (`/reconciliacao`):
   - the Opus Dei Portugal exams for children, young people and adults;
+  - the official «Esquema para o exame de consciência» of the Ritual da
+    Penitência (Apêndice III), by the Commandments: 32 items with parts for
+    parents, engaged and married couples, workers, employers and the sick;
   - Pope Francis's exam (the Dicastery's official pt-PT text);
   - five Catechism answers (grave sin, saying everything, venial sins, the
     seal, perfect contrition);
@@ -168,13 +172,11 @@ six agents.
     and the penance note.
 - **How it behaves:** each exam keeps its own list, the ticks clear after 15
   minutes away, and an import allowlist guards the privacy promise.
-- **No usable pt-PT exam found** for married couples or parents, the sick,
-  priests, or a full exam by the Commandments. The best candidates need
-  permission first:
-  - the Fundação AIS exam ("todos os direitos reservados", ~156 questions, by
-    Commandment, with spouses, parents and precepts);
-  - the Lajedo (Açores) parish exam (no named author);
-  - the Bruno Forte decalogue in D. António Marto's letter (Leiria-Fátima).
+- **Still missing:** an exam for priests and consecrated life (only Brazilian
+  copies exist). The Lajedo (Açores) parish exam that looked anonymous is the
+  Ritual's appendix. Other candidates need permission first: the Fundação AIS
+  exam ("todos os direitos reservados") and the Bruno Forte decalogue in
+  D. António Marto's letter (Leiria-Fátima).
 - **Still to do:** a priest's review; LEV/Dicastery permission for the
   Francisco text; children's 6th/9th Commandment and young people's digital
   life (no sources yet).

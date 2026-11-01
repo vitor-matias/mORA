@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, CalendarCheck, Puzzle, ExternalLink, BookMarked, Music, Book, KeyRound } from "lucide-react";
+import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, CalendarCheck, Puzzle, ExternalLink, BookMarked, Music, Book, HeartHandshake } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -89,6 +89,7 @@ export default function Home() {
         { path: "/coroas", label: t.chapletsTitle, context: `Hoje: Mistérios ${mysteryLabel}`, icon: Rosary },
         { path: "/devocionario", label: t.devotionalTitle, context: t.devotionalDesc(devotionalSuggestion.title), icon: BookMarked },
         { path: "/canticos", label: t.chantsTitle, context: t.chantsDesc, icon: Music },
+        { path: "/reconciliacao", label: "Reconciliação", context: "Exame de consciência e o que dizer", icon: HeartHandshake },
     ];
     // An entry with an `href` leaves the app: the Bíblia is read on the
     // Capuchinhos' own site rather than carried here.
@@ -97,8 +98,6 @@ export default function Home() {
         { path: "/semana", label: "Resumo da Semana", context: "Missa e Horas rezadas, dia a dia", icon: CalendarCheck },
         { path: "/diretorio", label: "Diretório Litúrgico", context: "Festas, solenidades e tempos do ano", icon: CalendarDays },
         { path: "/palavra", label: tPalavra.title, context: palavraContext, icon: Puzzle },
-        // The keys of the Kingdom: the power to bind and loose (Mt 16, 19).
-        { path: "/confissao", label: "Confissão", context: "Exame de consciência e o que dizer", icon: KeyRound },
     ];
 
     // The weekday/monthly devotions are fixed Church tradition — same every
@@ -269,15 +268,16 @@ export default function Home() {
             </section>
             </div>
 
-            {/* The hub, as Bento tiles: two columns on a phone, three on
-                desktop. Missa is the wide feature tile, so the five Rezar
-                tiles fill 2-2-2 / 3-3 with no holes. The five Explorar tiles
-                fill 2-2 plus a wide Confissão on the phone, and one row of five
-                on desktop. Every tile carries its own state for today. */}
+            {/* The hub, as Bento tiles: two columns on a phone, four on
+                desktop. Missa is the wide feature tile and Reconciliação the wide
+                last one, so the six Rezar tiles fill 2-2-2-2 on the phone and
+                two rows of four on desktop with no holes. The four Explorar
+                tiles fill 2-2 on the phone and one row of four on desktop.
+                Every tile carries its own state for today. */}
             <div className="relative z-10 space-y-3">
                 {[
-                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: null, cols: 'lg:grid-cols-3' },
-                    { title: 'Explorar', items: exploreAreas, feature: null, wide: '/confissao', cols: 'lg:grid-cols-5' },
+                    { title: 'Rezar', items: prayerAreas, feature: '/liturgia', wide: '/reconciliacao', cols: 'lg:grid-cols-4' },
+                    { title: 'Explorar', items: exploreAreas, feature: null, wide: null, cols: 'lg:grid-cols-4' },
                 ].map(({ title, items, feature, wide, cols }) => (
                     <section key={title} className="space-y-3">
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 pt-2">
@@ -304,7 +304,7 @@ export default function Home() {
                             );
                             const className = `pressable pressable-card flex flex-col justify-between gap-4 p-4 min-h-[8rem] surface rounded-3xl ${
                                 area.path === feature ? 'col-span-2' : ''
-                            } ${area.path === wide ? 'col-span-2 lg:col-span-1' : ''}`;
+                            } ${area.path === wide ? 'col-span-2' : ''}`;
                             return href ? (
                                 <a key={area.path} href={href} target="_blank" rel="noopener noreferrer" className={className}>
                                     {body}

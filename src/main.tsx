@@ -42,7 +42,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="coroas/:chapletId?" element={<Chaplets />} />
           <Route path="canticos" element={<Canticos />} />
           <Route path="semana" element={<Semana />} />
-          <Route path="confissao" element={<Confissao />} />
+          <Route path="reconciliacao" element={<Confissao />} />
           <Route path="perfil" element={<Profile />} />
         </Route>
       </Routes>

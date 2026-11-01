@@ -1,11 +1,11 @@
 import source from '../pages/Confissao.tsx?raw';
 import { describe, expect, it } from 'vitest';
 import { getPrayer } from '@/lib/devotional';
-import { CONTRITION_NOTE, DOUBTS, EXAM_NOTE, EXAMS, FOUR_CS, HOW_TO, PENANCE_NOTE, RITE, RITE_NOTE } from './confession';
+import { CONTRITION_NOTE, DOUBTS, EXAM_NOTE, EXAMS, FOUR_CS, HOW_TO, PENANCE_NOTE, RITE, RITE_NOTE, splitQuestions } from './confession';
 
 const QUESTIONS = EXAMS.flatMap((e) => e.sections.flatMap((s) => s.questions));
 const ALL_TEXT = [
-    ...EXAMS.flatMap((e) => [e.intro ?? '', ...e.sections.map((s) => s.title ?? '')]),
+    ...EXAMS.flatMap((e) => [e.intro ?? '', ...e.sections.flatMap((s) => [s.part ?? '', s.title ?? ''])]),
     ...QUESTIONS,
     HOW_TO, EXAM_NOTE, CONTRITION_NOTE, PENANCE_NOTE, RITE_NOTE,
     ...FOUR_CS.flat(),
@@ -15,10 +15,29 @@ const ALL_TEXT = [
 
 describe('exams of conscience', () => {
     it('has every exam, each with questions', () => {
-        expect(EXAMS.map((e) => e.id)).toEqual(['criancas', 'jovens', 'adultos', 'francisco']);
+        expect(EXAMS.map((e) => e.id)).toEqual(['criancas', 'jovens', 'adultos', 'mandamentos', 'francisco']);
         for (const exam of EXAMS) {
             expect(exam.sections.flatMap((s) => s.questions).length).toBeGreaterThan(10);
         }
+    });
+
+    it('splits a source line into one question per tick', () => {
+        expect(splitQuestions('Consumi álcool em excesso? Usei drogas?')).toEqual(['Consumi álcool em excesso?', 'Usei drogas?']);
+        expect(splitQuestions('Menti?')).toEqual(['Menti?']);
+    });
+
+    it('keeps a fragment that leans on the question before it', () => {
+        expect(splitQuestions('O que faço para crescer espiritualmente? Como? Quando?')).toEqual(['O que faço para crescer espiritualmente? Como? Quando?']);
+        expect(splitQuestions('Coloco o meu casamento em primeiro lugar? E os meus filhos? Tenho uma atitude aberta a novos filhos?'))
+            .toEqual(['Coloco o meu casamento em primeiro lugar? E os meus filhos?', 'Tenho uma atitude aberta a novos filhos?']);
+        expect(splitQuestions('Extingui o dom da vida? Ajudei a fazê-lo?')).toEqual(['Extingui o dom da vida? Ajudei a fazê-lo?']);
+        expect(splitQuestions('Olho os meus filhos? Ou apenas me preocupa a sua formação?')).toEqual(['Olho os meus filhos? Ou apenas me preocupa a sua formação?']);
+    });
+
+    it('loses no words in the split', () => {
+        const line = 'Furtei ou guardei injustamente coisas alheias, nomeadamente dinheiro? Restituí o que roubei, ou ainda o guardo em meu poder? Cometi fraudes?';
+        expect(splitQuestions(line)).toHaveLength(3);
+        expect(splitQuestions(line).join(' ')).toBe(line);
     });
 
     it('asks a question on every line', () => {
