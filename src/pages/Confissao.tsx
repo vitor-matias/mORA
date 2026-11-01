@@ -145,7 +145,7 @@ export default function Confissao() {
                         <section aria-labelledby="exame">
                             <h2 id="exame" ref={examHeading} tabIndex={-1} className="text-lg font-bold tracking-tight mb-3 outline-none">Exame de consciência</h2>
                             {/* Chip rail: scrolls sideways on a phone, wraps on desktop. */}
-                            <div className="-mx-6 px-6 lg:mx-0 lg:px-0 overflow-x-auto lg:overflow-visible">
+                            <div className="-mx-6 px-6 lg:mx-0 lg:px-0 overflow-x-auto lg:overflow-visible [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                                 <div role="group" aria-label="Escolher o exame" className="flex gap-2 w-max lg:w-auto lg:flex-wrap">
                                     {EXAMS.map((e) => (
                                         <Chip key={e.id} label={e.label} active={e.id === exam.id} onClick={() => setExamId(e.id)} />
