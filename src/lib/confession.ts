@@ -365,8 +365,10 @@ export const RITE_NOTE = 'As palavras do sacerdote podem variar.';
 
 /** The Dublin poster's five steps. The spoken lines are the poster's, except
     the Sign of the Cross and the act of contrition, which the Devocionário
-    carries in the form prayed in Portugal, and the absolution, which is the
-    full formula as the Catechism gives it (n.º 1449). */
+    carries in the form prayed in Portugal, and the absolution, the praise and
+    the dismissal, which are the Ritual da Penitência's own (nn. 46-47), in
+    its sense-lines. (The Catechism, n.º 1449, prints «E Eu» and «para a
+    remissão»; the priest reads the Ritual.) */
 export const RITE: readonly (readonly RiteLine[])[] = [
     [
         { who: 'nota', text: 'Depois dos cumprimentos, fazemos o sinal da cruz:' },
@@ -387,9 +389,11 @@ export const RITE: readonly (readonly RiteLine[])[] = [
     ],
     [
         { who: 'nota', text: 'Com a fórmula da absolvição, é o próprio Jesus que nos perdoa:' },
-        { who: 'sacerdote', text: 'Deus, Pai de misericórdia, que, pela morte e ressurreição de seu Filho, reconciliou o mundo consigo e enviou o Espírito Santo para a remissão dos pecados, te conceda, pelo ministério da Igreja, o perdão e a paz. E Eu te absolvo dos teus pecados em nome do Pai, e do Filho e do Espírito Santo.' },
+        { who: 'sacerdote', text: 'Deus, Pai de misericórdia,\nque, pela morte e ressurreição de seu Filho,\nreconciliou o mundo consigo\ne enviou o Espírito Santo para remissão dos pecados,\nte conceda, pelo ministério da Igreja,\no perdão e a paz.\nE eu te absolvo dos teus pecados\nem nome do Pai, e do Filho, e do Espírito Santo.' },
         { who: 'nota', text: 'Respondemos:' },
         { who: 'penitente', text: 'Amen.' },
-        { who: 'nota', text: 'No fim, o sacerdote despede-nos em paz.' },
+        { who: 'sacerdote', text: 'Dai graças ao Senhor, porque Ele é bom.' },
+        { who: 'penitente', text: 'Porque é eterna a sua misericórdia.' },
+        { who: 'sacerdote', text: 'O Senhor perdoou os teus pecados.\nVai em paz.' },
     ],
 ];

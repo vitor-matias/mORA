@@ -29,7 +29,7 @@ dilute:
 | Liturgia (CEP) | Liturgy of the Hours | **Liturgia das Horas** (`/liturgia-horas`), official audio already plays ([LiturgiaHoras.tsx:862](../src/pages/LiturgiaHoras.tsx)) | None in features. Licence (see 2.1) | 2 |
 | Pocket Terço | Rosary, novenas | **Coroas** (`/coroas`): Rosary plus eight chaplets | **Novenas** | 1 |
 | Católico | Prayers, saint of the day | **Devocionário**, SaintOfDay card | Small | none |
-| Peregrinus | Prayers, liturgy, confession, Bible | A nightly exame in [dia.ts](../src/lib/devotional/dia.ts) | **Confession guide** | 1 |
+| Peregrinus | Prayers, liturgy, confession, Bible | **Reconciliação** (`/reconciliacao`): five exams, Catechism answers, the rite (v1 built, 1.2) | A priest's review; rights holders' answers | 1 |
 | Bíblia Ave Maria | Bible | Home links out to biblia.capuchinhos.org | **Bible inside the app** | 1 |
 | Laudate | Prayers, Church documents | Devocionário | **Documents** (as links) | 1 |
 | YOUCAT Daily | Five minutes of teaching a day | Compêndio formulas only ([formulas.ts](../src/lib/devotional/formulas.ts)) | **Catechism of the day** (licence) | 2 |
@@ -169,7 +169,8 @@ of six agents.
   - Pope Francis's exam (the Dicastery's official pt-PT text);
   - five Catechism answers (grave sin, saying everything, venial sins, the
     seal, perfect contrition);
-  - the five steps with the full absolution formula (CIC 1449), the «4 C»
+  - the five steps with the absolution, praise and dismissal from the Ritual
+    (nn. 46-47), the «4 C»
     and the penance note.
 - **How it behaves:** each exam keeps its own list, the ticks clear after 15
   minutes away, and an import allowlist guards the privacy promise.
@@ -425,11 +426,11 @@ Cheapest first.
 By the end of Phase 2, Home holds, in this order and only when relevant:
 
 1. Today (feast, colour, saint).
-2. Rezar: Missa, Horas (current hour), Coroas, Devocionário, Cânticos.
+2. Rezar: Missa, Horas (current hour), Coroas, Devocionário, Cânticos,
+   Reconciliação.
 3. Active plans: a novena (1.1) or +365 (1.4), while one is running.
 4. Pergunta do dia (2.2), once licensed and started.
-5. Explorar: Bíblia, Confissão, Documentos, Resumo da Semana, Diretório,
-   Palavra.
+5. Explorar: Bíblia, Documentos, Resumo da Semana, Diretório, Palavra.
 
 Each new card has to earn its place. One that's ignored for a month gets folded
 back into Explorar.
