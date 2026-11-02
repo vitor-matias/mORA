@@ -79,6 +79,7 @@ function properBlocks(entry: ProprioEntry, hour: string): ComumBlock[] {
 
 // The PDFs print both "Laudes" and "laudes".
 const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas laudes/i.test(b.text ?? '');
+const isPsalmsRubric = (b: ComumBlock) => b.kind === 'rubrica' && /^Salmos?\b/.test(b.text ?? '');
 
 /**
  * "Oração própria. Na sua falta, como nas Laudes." and "Oração como nas
@@ -101,11 +102,11 @@ function dropFulfilledOracaoRubric(blocks: ComumBlock[]): ComumBlock[] {
  * block(s), at the position of the first replaced block; proper kinds the
  * base lacks are appended. Variant siblings ("Para um Santo Mártir" /
  * "Para uma Santa Mártir") count as one slot and are replaced together.
- * A Laudes pointer only stands in for another one, not for the common's other
- * rubrics.
+ * A Laudes or psalms pointer only stands in for another one, and other rubrics
+ * don't replace them.
  */
 function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
-    const slot = (b: ComumBlock) => (isLaudesPointer(b) ? 'laudes pointer' : b.kind);
+    const slot = (b: ComumBlock) => (isLaudesPointer(b) ? 'laudes pointer' : isPsalmsRubric(b) ? 'psalms pointer' : b.kind);
     const byKind = new Map<string, ComumBlock[]>();
     for (const b of proper) {
         const group = byKind.get(slot(b));
@@ -130,6 +131,34 @@ function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
         if (!placed.has(kind)) out.push(...group);
     }
     return out;
+}
+
+// The full psalmody some feasts print starts at "Ant. 1" and stays whole.
+const isPsalmodyPointer = (b: ComumBlock) => b.kind === 'salmodia' && /^Salmos?\b/.test(b.text ?? '');
+
+/**
+ * `overlay` for an hour whose proper psalmody is a pointer plus antiphons
+ * ("Salmos e cântico do Domingo I. Ant. 1 … Ant. 2 …"): the antiphons take
+ * their numbers' places in the common's psalmody, repeats after the psalms
+ * included. With no common they stand where printed, pointer first.
+ */
+function overlayPsalmody(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
+    const at = proper.findIndex(isPsalmodyPointer);
+    if (at < 0) return overlay(base, proper);
+
+    const [pointer, ...parts] = (proper[at].text ?? '').split(/\s*Ant\.\s*(\d)\s*/);
+    const ants = parts.flatMap((part, i) => (i % 2 ? [] : [{ kind: 'ant', n: Number(part), text: parts[i + 1] }]));
+    if (base.length === 0) {
+        return [...proper.slice(0, at), { kind: 'rubrica', text: pointer }, ...ants, ...proper.slice(at + 1)];
+    }
+
+    let current: string | undefined;
+    const substituted = base.map((b) => {
+        if (b.kind !== 'ant') return b;
+        if (b.n !== undefined) current = ants.find((a) => a.n === b.n)?.text;
+        return current === undefined ? b : { ...b, text: current };
+    });
+    return overlay(substituted, proper.filter((_, i) => i !== at));
 }
 
 /**
@@ -229,7 +258,7 @@ export function assembleHour(
         const invitatorio = properInvitatorio.length > 0 ? properInvitatorio : commonHour('Invitatório');
         if (invitatorio.length > 0) sections.push({ title: 'Invitatório', blocks: invitatorio });
 
-        let laudes = overlay(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []);
+        let laudes = overlayPsalmody(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []);
         laudes = dropFulfilledOracaoRubric(overlay(laudes, entry ? properBlocks(entry, 'Oração') : []));
         if (laudes.length > 0) sections.push({ title: 'Laudes', blocks: laudes });
     } else if (hourId === 'intermedia') {
@@ -264,7 +293,7 @@ export function assembleHour(
                 ? commonHour('Vésperas II')
                 : commonHour('Vésperas')
             : [];
-        let blocks = overlay(base, entry ? properBlocks(entry, 'Vésperas') : []);
+        let blocks = overlayPsalmody(base, entry ? properBlocks(entry, 'Vésperas') : []);
         blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry ? properBlocks(entry, 'Oração') : [])))
             // Points at the next hour, whose banner already says it.
             .filter((b) => !(b.kind === 'rubrica' && /^Completas como/.test(b.text ?? '')));

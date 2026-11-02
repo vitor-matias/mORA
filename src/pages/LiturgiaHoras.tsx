@@ -954,7 +954,7 @@ export default function LiturgiaHoras() {
                                             // common's numbered antiphons substituted in.
                                             const laudesSec = rest.find(s => s.title === 'Laudes');
                                             const psalterRubric = laudesSec?.blocks.findIndex(
-                                                b => b.kind === 'rubrica' && /^Salmos e cântico/i.test(b.text ?? '')
+                                                b => b.kind === 'rubrica' && /^Salmos?\b/i.test(b.text ?? '')
                                             ) ?? -1;
                                             let laudesRender = laudesSec ? <BreviaryBlocks sections={[laudesSec]} /> : null;
                                             if (laudesSec && psalterRubric >= 0 && sundayPsalmody) {
