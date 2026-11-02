@@ -224,7 +224,9 @@ export function assembleHour(
     if (hourId === 'oficio') {
         sections.push({ title: 'Ofício de Leitura', blocks: resolveOracao(commonHour('Ofício de Leitura')) });
     } else if (hourId === 'laudes') {
-        const invitatorio = overlay(commonHour('Invitatório'), entry ? properBlocks(entry, 'Invitatório') : []);
+        // A proper invitatory replaces the common's whole, its "Ou" alternative included.
+        const properInvitatorio = entry ? properBlocks(entry, 'Invitatório') : [];
+        const invitatorio = properInvitatorio.length > 0 ? properInvitatorio : commonHour('Invitatório');
         if (invitatorio.length > 0) sections.push({ title: 'Invitatório', blocks: invitatorio });
 
         let laudes = overlay(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []);

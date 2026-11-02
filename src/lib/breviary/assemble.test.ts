@@ -51,6 +51,30 @@ describe('a proper "Oração como nas Laudes" pointer', () => {
     });
 });
 
+describe('a proper invitatory', () => {
+    it('replaces the common\'s, alternatives and all', () => {
+        const entry: ProprioEntry = {
+            day: 15, name: 'SANTA', descriptor: null, rank: 'Memória', commons: [], bio: '',
+            hours: { Invitatório: [{ kind: 'ant', text: 'Antífona própria.' }] },
+        };
+        const comum = {
+            title: 'Comum',
+            hours: {
+                Invitatório: [
+                    { kind: 'ant', text: 'Primeira do Comum.' },
+                    { kind: 'rubrica', text: 'Ou' },
+                    { kind: 'ant', text: 'Segunda do Comum.' },
+                    { kind: 'rubrica', text: 'Salmo invitatório.' },
+                ],
+            },
+        };
+        expect(assembleHour(entry, comum, 'laudes', null, false)?.sections[0]).toEqual({
+            title: 'Invitatório',
+            blocks: [expect.objectContaining({ kind: 'ant', text: 'Antífona própria.' })],
+        });
+    });
+});
+
 describe('complementSeries', () => {
     it('maps Sexta and Noa to séries II and III, keeping Tércia proper', () => {
         expect(complementSeries(hour, 'Tércia')).toBeNull();

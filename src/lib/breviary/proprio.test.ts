@@ -62,11 +62,27 @@ describe('parseProprio Laudes pointer', () => {
     });
 });
 
+describe('parseProprio invitatory', () => {
+    const line = (text: string, h = 10, x = 28): PdfLine => ({ p: 1, y: 0, x, h, text, items: [] });
+
+    it.each(['Salmo invitatório.', 'Salmo invitatório: pp. 846 ss.'])('keeps the antiphon before "%s"', (pointer) => {
+        const [entry] = parseProprio([
+            line('2 de Outubro', 10, 130),
+            line('SANTOS ANJOS', 10, 90),
+            line('Invitatório', 10, 130),
+            line('Ant. Na presença dos Anjos, adoremos'),
+            line(`o Senhor. ${pointer}`),
+        ], 'Outubro');
+        expect(entry.hours['Invitatório']).toEqual([{ kind: 'ant', text: 'Na presença dos Anjos, adoremos o Senhor.' }]);
+    });
+});
+
 describe('parseCommonsPointer', () => {
     it('maps a single common to its id', () => {
         expect(parseCommonsPointer('Comum dos Pastores')).toEqual(['pastores']);
         expect(parseCommonsPointer('Comum das Virgens')).toEqual(['virgens']);
         expect(parseCommonsPointer('Comum de Nossa Senhora')).toEqual(['nossa-senhora']);
+        expect(parseCommonsPointer('Comum de N. Senhora, excepto:')).toEqual(['nossa-senhora']);
         expect(parseCommonsPointer('Tudo do Comum dos Apóstolos')).toEqual(['apostolos']);
         expect(parseCommonsPointer('Ofício de Defuntos')).toEqual(['defuntos']);
     });

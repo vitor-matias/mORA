@@ -61,7 +61,7 @@ const LABELS: { re: RegExp; kind: string; skip: number; verseLike?: boolean }[] 
 const COMMON_IDS: [RegExp, string][] = [
     [/defuntos/i, 'defuntos'],
     [/dedicação/i, 'dedicacao-igreja'],
-    [/nossa senhora/i, 'nossa-senhora'],
+    [/(?:nossa|n\.) senhora/i, 'nossa-senhora'],
     [/apóstolos/i, 'apostolos'],
     [/vários mártires/i, 'varios-martires'],
     [/(?:um|uma) mártir|mártir(?!es)/i, 'um-martir'],
@@ -121,6 +121,8 @@ function tryName(cur: ProprioEntry, text: string): boolean {
 const ERRATA: { month: Month; day: number; find: string; replace: string }[] = [
     // S. Inês' second Vespers psalm antiphon is misprinted "Ant. 3".
     { month: 'Janeiro', day: 21, find: 'Ant. 3 Só a Ele', replace: 'Ant. 2 Só a Ele' },
+    // A stray full stop before the mark would leave "Maria.." outside Eastertide.
+    { month: 'Maio', day: 31, find: 'Maria. (T. P.', replace: 'Maria (T. P.' },
 ];
 
 interface OpenSub {
@@ -171,7 +173,10 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         if (sub.kind === 'bio') {
             cur.bio = cur.bio ? `${cur.bio}\n${text}` : text;
         } else if (section) {
-            (cur.hours[section] ??= []).push({ kind: sub.kind, ref: sub.ref, text });
+            // "Ant. … Salmo invitatório." is the antiphon plus a pointer to the
+            // psalm, which the page takes from the API.
+            const invAnt = section === 'Invitatório' ? text.match(/^Ant\.\s*(.*?)\s*Salmo invitatório/) : null;
+            (cur.hours[section] ??= []).push(invAnt ? { kind: 'ant', text: invAnt[1] } : { kind: sub.kind, ref: sub.ref, text });
         }
         sub = null;
     };
