@@ -95,6 +95,18 @@ function properBlocks(entry: ProprioEntry, hour: string): ComumBlock[] {
     }));
 }
 
+/**
+ * The entry's Vespers of the day itself: feasts that print both pray the second.
+ * Those printing "Hino: como nas Vésperas I." come without a hymn, as the parser
+ * drops that line.
+ */
+function properVesperas(entry: ProprioEntry): ComumBlock[] {
+    const second = properBlocks(entry, 'Vésperas II');
+    if (second.length === 0) return properBlocks(entry, 'Vésperas');
+    const isHino = (b: ComumBlock) => b.kind === 'hino';
+    return second.some(isHino) ? second : [...properBlocks(entry, 'Vésperas I').filter(isHino), ...second];
+}
+
 // The PDFs print both "Laudes" and "laudes".
 const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas laudes/i.test(b.text ?? '');
 const isPsalmsRubric = (b: ComumBlock) => b.kind === 'rubrica' && /^Salmos?\b/.test(b.text ?? '');
@@ -159,7 +171,7 @@ function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
  */
 export function psalmsCommonId(entry: ProprioEntry): string | null {
     if (entry.commons.length > 0) return null;
-    const pointer = entry.hours['Vésperas']?.find(isPsalmodyPointer);
+    const pointer = (entry.hours['Vésperas'] ?? entry.hours['Vésperas II'])?.find(isPsalmodyPointer);
     return pointer ? parseCommonsPointer(pointer.text)[0] ?? null : null;
 }
 
@@ -324,8 +336,11 @@ export function assembleHour(
                 : commonHour('Vésperas')
             : [];
         const psalms = seasonFilter(psalmsComum?.hours['Vésperas II'] ?? [], pascal).filter((b) => b.kind === 'ant' || b.kind === 'salmo');
-        let blocks = overlayPsalmody(base, entry ? properBlocks(entry, 'Vésperas') : [], psalms);
-        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry ? properBlocks(entry, 'Oração') : [])))
+        let blocks = overlayPsalmody(base, entry ? properVesperas(entry) : [], psalms);
+        // Vésperas I, Laudes and Vésperas II can each print a collect, all under
+        // "Oração"; the last one printed is this hour's.
+        const oracao = entry ? properBlocks(entry, 'Oração') : [];
+        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry?.hours['Vésperas II'] ? oracao.slice(-1) : oracao)))
             // Points at the next hour, whose banner already says it.
             .filter((b) => !(b.kind === 'rubrica' && /^Completas como/.test(b.text ?? '')));
         if (blocks.length > 0) sections.push({ title: 'Vésperas', blocks });
