@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assembleHour, complementSeries, psalmsCommonId, withPsalmody, type AssembledHour } from './assemble.ts';
+import type { ComumDoc } from './comum.ts';
 import type { ProprioBlock, ProprioEntry } from './proprio.ts';
 
 const hour: AssembledHour = {
@@ -229,6 +230,38 @@ describe('a Vespers psalmody pointing at a common the entry does not have', () =
         expect(blocks?.map((b) => b.text)).toEqual([
             'Hino próprio', pointer, 'Primeira própria.', 'Segunda própria.', 'Leitura própria',
         ]);
+    });
+});
+
+describe('an entry printing both Vespers', () => {
+    const entry = (second: ProprioBlock[]): ProprioEntry => ({
+        day: 15, name: 'SANTA', descriptor: null, rank: 'Solenidade', commons: [], bio: '',
+        hours: {
+            'Vésperas I': [{ kind: 'hino', text: 'Hino de I' }, { kind: 'preces', text: 'Preces de I' }],
+            Oração: [{ kind: 'oração', text: 'Coleta de I' }, { kind: 'oração', text: 'Coleta do dia' }],
+            'Vésperas II': second,
+        },
+    });
+    const texts = (proper: ProprioEntry, comum: ComumDoc | null = null) =>
+        assembleHour(proper, null, 'vesperas', null, false, comum)?.sections[0].blocks.map((b) => b.text ?? b.ref);
+
+    it('prays the second, with the last collect printed', () => {
+        const proper = entry([{ kind: 'hino', text: 'Hino de II' }, { kind: 'preces', text: 'Preces de II' }]);
+        expect(texts(proper)).toEqual(['Hino de II', 'Preces de II', 'Coleta do dia']);
+    });
+
+    it('takes the hymn of the first when the second has none', () => {
+        expect(texts(entry([{ kind: 'preces', text: 'Preces de II' }]))).toEqual(['Hino de I', 'Preces de II', 'Coleta do dia']);
+    });
+
+    it('takes the psalms of the common its pointer names', () => {
+        const proper = entry([{ kind: 'salmodia', text: 'Salmos e cântico do Comum dos Santos. Ant. 1 Própria.' }]);
+        expect(psalmsCommonId(proper)).toBe('santos');
+        const santos = {
+            title: 'Comum',
+            hours: { 'Vésperas II': [{ kind: 'ant', n: 1, text: 'Do Comum.' }, { kind: 'salmo', ref: 'Salmo 14' }] },
+        };
+        expect(texts(proper, santos)).toEqual(['Hino de I', 'Própria.', 'Salmo 14', 'Coleta do dia']);
     });
 });
 
