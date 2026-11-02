@@ -198,7 +198,7 @@ const DIVISIONS: Division[] = [
                 toc: true,
                 note: 'Antes de tudo o resto, a verdade sobre nós. Não é para nos sentirmos mal mas para '
                     + 'chegarmos a Deus sem máscaras, que é a única maneira de lá chegar. E não há aqui '
-                    + 'casos perdidos: «Deus nunca se cansa de perdoar», insiste o Papa Francisco, «somos '
+                    + 'casos perdidos: «Deus nunca Se cansa de perdoar», insiste o Papa Francisco, «somos '
                     + 'nós que nos cansamos de pedir a sua misericórdia». Guarda-se um silêncio, e vale '
                     + 'a pena usá-lo a sério. Ao dizermos «por minha culpa», batemos levemente no '
                     + 'peito. Há três fórmulas; esta é a mais usada.',
@@ -306,7 +306,7 @@ const DIVISIONS: Division[] = [
         intro: 'Até aqui falámos nós, agora fala Ele. Quando as leituras são proclamadas, não se '
             + 'recorda a história de um ausente, é Cristo vivo a dirigir-se à assembleia, e '
             + 'dentro dela a cada um. Foi o que aconteceu aos dois discípulos de Emaús, que iam embora '
-            + 'desiludidos quando Ele Se pôs a caminhar ao lado deles e a abria as '
+            + 'desiludidos quando Ele Se pôs a caminhar ao lado deles e a abrir-lhes as '
             + 'Escrituras: «Não nos ardia o coração?», deram-se conta depois. A mesma frase, '
             + 'ouvida por duzentos, tem maneira de acertar em cada um no sítio certo. Palavra e '
             + 'Eucaristia são duas mesas de uma só refeição, e é a esta que nos sentamos '
@@ -383,12 +383,12 @@ const DIVISIONS: Division[] = [
         intro: 'Na véspera de morrer, Jesus não deixou um livro nem um monumento: deixou uma '
             + 'refeição, para poder ficar. «Desejei ardentemente comer esta Páscoa convosco», '
             + 'disse nessa noite, e o desejo era d\'Ele antes de ser nosso. «Fazei isto em '
-            + 'memória de Mim»: este memorial torna-o presente. A entrega '
-            + 'da cruz atravessa o tempo inteiro e chega intacta a este altar. E a Igreja '
+            + 'memória de Mim»: este memorial não recorda a entrega da cruz, torna-a '
+            + 'presente. Ela atravessa o tempo inteiro e chega intacta a este altar. E a Igreja '
             + 'acredita à letra no que aqui se dá: o pão e o vinho tornam-se realmente o Corpo e '
             + 'o Sangue de Cristo. Se não for verdade, nada disto interessa; se for verdade, não '
             + 'há nesta semana nada mais importante do que o que se segue, o mais perto que Ele '
-            + 'consegue estar de alguém neste mundo.',
+            + 'quis estar de alguém neste mundo.',
         parts: [
             {
                 id: 'apresentacao-dons',
@@ -447,7 +447,7 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 note: 'A palavra Eucaristia quer dizer acção de graças, e é aqui que ela começa. '
                     + '«Corações ao alto» não é enfeite: é o pedido para largarmos, por uns minutos, '
-                    + 'tudo o que trazemos na cabeça. São Pier Giorgio Frassati, '
+                    + 'tudo o que trazemos na cabeça. São Pier Giorgio Frassati '
                     + 'escreveu o mesmo numa fotografia da sua última escalada, aos 24 anos: «verso '
                     + 'l\'alto», para o alto. O texto muda conforme o dia ou o tempo litúrgico.',
                 lines: [
@@ -506,7 +506,7 @@ const DIVISIONS: Division[] = [
                         + 'e deu-o aos seus discípulos, dizendo:\n'
                         + 'Tomai, todos, e bebei:\neste é o cálice do meu sangue,\n'
                         + 'o sangue da nova e eterna aliança,\nque será derramado por vós e por todos\n'
-                        + 'para remissão dos pecados.\nFazei isto em memória de mim.',
+                        + 'para remissão dos pecados.\nFazei isto em memória de Mim.',
                 },
             },
             {
@@ -580,8 +580,8 @@ const DIVISIONS: Division[] = [
                     {
                         who: 'sacerdote',
                         text: 'Por Cristo, com Cristo, em Cristo,\na Vós, Deus Pai todo-poderoso,\n'
-                            + 'na unidade do Espírito Santo,\ntoda a honra e toda a glória\n'
-                            + 'agora e para sempre.',
+                            + 'na unidade do Espírito Santo,\ntoda a honra e toda a glória,\n'
+                            + 'por todos os séculos dos séculos.',
                     },
                     { who: 'todos', text: 'Amen.' },
                 ],
@@ -595,8 +595,8 @@ const DIVISIONS: Division[] = [
             + 'comida», muitos discípulos acharam a palavra dura demais e deixaram de caminhar com '
             + 'Ele. E Ele não a suavizou, não disse que era só uma metáfora: deixou-os ir, e aos '
             + 'Doze perguntou se também queriam partir. Pedro respondeu pelos que ficaram: para '
-            + 'quem iríamos? «Só tu tens palavras de vida eterna.» Qualquer outro alimento se torna '
-            + 'parte de quem o come; este inverte a lógica, quem O recebe que é '
+            + 'quem iríamos? Só «Tu tens palavras de vida eterna.» Qualquer outro alimento se torna '
+            + 'parte de quem o come; este inverte a lógica: é quem O recebe que é '
             + 'transformado n\'Ele. O mesmo Pedro deixou mais tarde escrita a promessa inteira '
             + '(2 Pe 1, 4): somos chamados a tomar parte na natureza divina, e o que Ele é por '
             + 'natureza dá-no-lo por dom. Vem inteiro a cada pessoa, uma por uma, como se fosse '
@@ -707,7 +707,7 @@ const DIVISIONS: Division[] = [
                 posture: 'fila',
                 note: 'Vamos em fila até ao altar, como cristãos fazem desde o ano 155, que é a data do '
                     + 'primeiro relato escrito de uma Missa. São Carlo Acutis '
-                    + 'chamava a isto de «a minha auto-estrada para o Céu». E '
+                    + 'chamava a isto «a minha auto-estrada para o Céu». E '
                     + 'ninguém vai na fila por ser perfeito: a Eucaristia, escreveu o Papa Francisco, '
                     + '«não é um prémio para os perfeitos, mas um remédio generoso e um alimento para '
                     + 'os fracos». No fim da fila está Ele, que sabe o nome de cada um que se '
@@ -731,7 +731,7 @@ const DIVISIONS: Division[] = [
                 posture: 'pe',
                 note: 'Guarda-se silêncio, e para muita gente é a melhor parte da Missa: Deus acabou '
                     + 'de entrar em nós e não há nada a dizer. Santa Teresinha escreveu que Jesus não '
-                    + 'desce do céu para ficar numa pixide de ouro, mas para encontrar outro céu: a '
+                    + 'desce do céu para ficar numa píxide de ouro, mas para encontrar outro céu: a '
                     + 'nossa alma. O silêncio não é vazio, é o Espírito a trabalhar. Depois o sacerdote '
                     + 'reza a oração que fecha a comunhão.',
                 proper: 'poscomunhao',
@@ -1175,8 +1175,8 @@ const READING_FRAMES: Record<ReadingKind, {
     leitura: {
         posture: 'sentado',
         label: 'Leitura',
-        note: 'Sentamo-nos para escutar. Estas mesmas leituras são ouvidas hoje em todas as '
-            + 'igrejas do mundo, na mesma ordem: nenhum algoritmo as escolheu a pensar em nós, '
+        note: 'Sentamo-nos para escutar. Estas mesmas leituras são ouvidas hoje nas igrejas '
+            + 'de rito romano do mundo inteiro, na mesma ordem: nenhum algoritmo as escolheu a pensar em nós, '
             + 'e é isso que impede a Palavra de ser só aquilo que já pensávamos. No fim, o '
             + 'leitor aclama e respondemos.',
         ending: { has: /Palavra do Senhor/i, line: { who: 'leitor', text: 'Palavra do Senhor.' } },
@@ -1201,7 +1201,7 @@ const READING_FRAMES: Record<ReadingKind, {
         label: 'Aleluia',
         note: 'Levantamo-nos, que é como se recebe alguém que chega. «Aleluia» é hebraico e quer '
             + 'dizer «louvai o Senhor»: a aclamação saúda Cristo antes de O ouvirmos falar. Na '
-            + 'Quaresma cala-se durante quarenta dias, e a falta que faz é intencional: usa-se '
+            + 'Quaresma cala-se do princípio ao fim, e a falta que faz é intencional: usa-se '
             + 'outra aclamação.',
     },
     evangelho: {
