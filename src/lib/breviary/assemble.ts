@@ -109,6 +109,7 @@ function properVesperas(entry: ProprioEntry): ComumBlock[] {
 
 // The PDFs print both "Laudes" and "laudes".
 const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas laudes/i.test(b.text ?? '');
+const isOu = (b: ComumBlock) => b.kind === 'rubrica' && b.text === 'Ou';
 const isPsalmsRubric = (b: ComumBlock) => b.kind === 'rubrica' && /^Salmos?\b/.test(b.text ?? '');
 // The full psalmody some feasts print starts at "Ant. 1" and stays whole.
 const isPsalmodyPointer = (b: ComumBlock) => b.kind === 'salmodia' && /^Salmos?\b/.test(b.text ?? '');
@@ -135,7 +136,7 @@ function dropFulfilledOracaoRubric(blocks: ComumBlock[]): ComumBlock[] {
  * base lacks are appended. Variant siblings ("Para um Santo Mártir" /
  * "Para uma Santa Mártir") count as one slot and are replaced together.
  * A Laudes or psalms pointer only stands in for another one, and other rubrics
- * don't replace them.
+ * don't replace them. An "Ou" goes with the alternatives it separated.
  */
 function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
     const slot = (b: ComumBlock) => (isLaudesPointer(b) ? 'laudes pointer' : isPsalmsRubric(b) ? 'psalms pointer' : b.kind);
@@ -148,10 +149,11 @@ function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
 
     const out: ComumBlock[] = [];
     const placed = new Set<string>();
-    for (const b of base) {
+    for (const [i, b] of base.entries()) {
         const replacement = byKind.get(slot(b));
         if (!replacement) {
-            out.push(b);
+            const orphaned = i > 0 && isOu(b) && byKind.has(slot(base[i - 1]));
+            if (!orphaned) out.push(b);
             continue;
         }
         if (!placed.has(slot(b))) {

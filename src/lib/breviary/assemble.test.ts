@@ -76,6 +76,39 @@ describe('a proper invitatory', () => {
     });
 });
 
+describe('an "Ou" in the common', () => {
+    const ou = { kind: 'rubrica', text: 'Ou' };
+    const comum = {
+        title: 'Comum',
+        hours: {
+            'Vésperas II': [
+                { kind: 'ant-magnificat', text: 'Primeira do Comum.' },
+                ou,
+                { kind: 'ant-magnificat', text: 'Segunda do Comum.' },
+                { kind: 'preces', text: 'Preces do Comum.' },
+                ou,
+                { kind: 'preces', text: 'Outras preces do Comum.' },
+            ],
+        },
+    };
+    const texts = (hours: Record<string, ProprioBlock[]>) => assembleHour(
+        { day: 15, name: 'SANTA', descriptor: null, rank: 'Memória', commons: [], bio: '', hours },
+        comum, 'vesperas', null, false
+    )?.sections[0].blocks.map((b) => b.text);
+
+    it('goes when the entry replaces its alternatives', () => {
+        expect(texts({ Vésperas: [{ kind: 'ant-magnificat', text: 'Própria.' }] })).toEqual([
+            'Própria.', 'Preces do Comum.', 'Ou', 'Outras preces do Comum.',
+        ]);
+    });
+
+    it('stays while they stand', () => {
+        expect(texts({ Vésperas: [{ kind: 'preces', text: 'Preces próprias.' }] })).toEqual([
+            'Primeira do Comum.', 'Ou', 'Segunda do Comum.', 'Preces próprias.',
+        ]);
+    });
+});
+
 describe('a proper psalmody pointer', () => {
     const salmodia = (pointer: string): ProprioBlock => ({
         kind: 'salmodia',
