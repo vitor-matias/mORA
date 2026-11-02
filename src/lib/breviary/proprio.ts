@@ -191,11 +191,22 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
         commonsOpen = false;
 
+        // A movable or regional celebration closes the entry before it and is
+        // dropped until the next date: a day number can't place it, and
+        // saintsForDay would show it to everyone. Hymn lines like "Em Vós se
+        // reuniu…:" are h=10.
+        if (l.h === 9 && /^Em .+:$|^Sábado depois do Domingo /.test(text)) {
+            flushSub();
+            cur = null;
+            section = null;
+            continue;
+        }
+
         // Secondary entries can share their line with the saint's heading
         // ("No mesmo dia 16 de Novembro S. GERTRUDES, virgem Nasceu…") —
         // split the heading (and any biography start) out of the date line.
         const composite = text.match(compositeRe);
-        if (composite && cur) {
+        if (composite) {
             flushSub();
             cur = {
                 day: Number(composite[2]),

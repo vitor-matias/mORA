@@ -115,3 +115,46 @@ describe('fixSmallCapsWords', () => {
         expect(fixSmallCapsWords('Santa Maria de Jesus')).toBe('Santa Maria de Jesus');
     });
 });
+
+describe('parseProprio movable and regional celebrations', () => {
+    const line = (text: string, h = 10, x = 28): PdfLine => ({ p: 1, y: 0, x, h, text, items: [] });
+    const collect = 'Deus eterno, ouvi-nos. Por Nosso Senhor.';
+    const parse = (...rest: PdfLine[]) => parseProprio([
+        line('28 de Outubro', 10, 130),
+        line('S. SIMÃO E S. JUDAS', 10, 90),
+        line('Festa', 9, 130),
+        line('Tudo do Comum dos Apóstolos, excepto:', 9, 43),
+        line(collect),
+        ...rest,
+    ], 'Outubro');
+
+    it.each([
+        ['Sábado depois do Domingo II depois de Pentecostes', 59],
+        ['Em Angola e São Tomé e Príncipe:', 28],
+    ])('leaves the entry before "%s" alone and drops what follows', (heading, x) => {
+        const entries = parse(
+            line(heading, 9, x),
+            line('IMACULADO CORAÇÃO DE MARIA', 10, 71),
+            line('Solenidade', 9, 133),
+            line('Comum de Nossa Senhora, excepto:', 9, 43),
+            line('Senhor nosso Deus. Por Nosso Senhor.'),
+            line('Vésperas', 10, 134),
+            line('Ant. Magnif. O meu coração exulta.', 10, 43),
+        );
+        expect(entries).toHaveLength(1);
+        expect(entries[0].rank).toBe('Festa');
+        expect(entries[0].commons).toEqual(['apostolos']);
+        expect(entries[0].hours).toEqual({ Oração: [{ kind: 'oração', text: collect }] });
+    });
+
+    it.each(['30 de Outubro', 'No mesmo dia 28 de Outubro S. OUTRO SANTO'])('resumes at "%s"', (next) => {
+        const entries = parse(line('Em S. Tomé e Príncipe:', 9), line('No mesmo dia, 28 de Outubro', 10, 88), line(next, 10, 100));
+        expect(entries).toHaveLength(2);
+        expect(entries[0].rank).toBe('Festa');
+    });
+
+    it('keeps a hymn line that reads like a regional heading', () => {
+        const [entry] = parse(line('Laudes', 10, 134), line('Hino'), line('Em Vós se reuniu todo o fulgor dos Céus:', 10, 71));
+        expect(Object.keys(entry.hours)).toEqual(['Oração', 'Laudes']);
+    });
+});
