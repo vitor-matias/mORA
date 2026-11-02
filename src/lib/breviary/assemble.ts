@@ -4,7 +4,7 @@
 // feasts, whole hours). Proper ▸ common is the breviary's own precedence;
 // the psalter/ferial parts stay with the API office the page already shows.
 
-import type { ProprioEntry } from './proprio.ts';
+import { parseCommonsPointer, type ProprioBlock, type ProprioEntry } from './proprio.ts';
 import type { ComumBlock, ComumDoc } from './comum.ts';
 
 export interface AssembledSection {
@@ -69,21 +69,65 @@ function resolveMarks(blocks: ComumBlock[], pascal: boolean): ComumBlock[] {
     });
 }
 
+// "Preces do Comum dos Apóstolos: p. 1887." — what it points at is already on
+// screen, and any choice it adds ("; ou do dia ferial…") stays with the common,
+// its first option.
+const COMMON_POINTER = /^(?:Preces|Hino|Leitura breve)\b.*\b(?:do|ao) Comum\b/;
+
+/** Resolves the book's pointers within the entry; the rest stands as printed. */
+function resolvePointer(entry: ProprioEntry, b: ProprioBlock): ProprioBlock[] {
+    if (b.kind !== 'rubrica') return [b];
+    const laudes = entry.hours['Laudes'] ?? [];
+    if (/Antífonas como nas Laudes/i.test(b.text)) {
+        const ants = laudes.find(isPsalmodyPointer)?.text.match(/Ant\.\s*1\b.*/s)?.[0];
+        // Named as printed, for when the common fails to load and the pointer shows.
+        const common = b.text.match(/do Comum[^:.,]*/)?.[0] ?? 'do Comum';
+        return ants ? [{ kind: 'salmodia', text: `Salmos e cântico ${common}. ${ants}` }] : [];
+    }
+    // Between the entry's own hymn and the common's, the first option offered.
+    if (/^Hino: como nas Laudes/i.test(b.text)) return laudes.filter((l) => l.kind === 'hino');
+    return COMMON_POINTER.test(b.text) ? [] : [b];
+}
+
 function properBlocks(entry: ProprioEntry, hour: string): ComumBlock[] {
-    return (entry.hours[hour] ?? []).map((b) => ({
+    return (entry.hours[hour] ?? []).flatMap((b) => resolvePointer(entry, b)).map((b) => ({
         kind: PROPER_KIND[b.kind] ?? b.kind,
         ref: b.ref,
         text: b.text,
     }));
 }
 
-// The PDFs print both "Laudes" and "laudes".
-const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas laudes/i.test(b.text ?? '');
-const isPsalmsRubric = (b: ComumBlock) => b.kind === 'rubrica' && /^Salmos?\b/.test(b.text ?? '');
+/**
+ * The entry's collect(s). Vésperas I, Laudes and Vésperas II can each print one,
+ * all under "Oração"; the first is then the eve's and the last the day's.
+ */
+function properOracao(entry: ProprioEntry): ComumBlock[] {
+    const oracao = properBlocks(entry, 'Oração');
+    return entry.hours['Vésperas I'] ? oracao.slice(-1) : oracao;
+}
 
 /**
- * "Oração própria. Na sua falta, como nas Laudes." and "Oração como nas
- * Laudes." are pointer rubrics — once a collect is actually present they are
+ * The entry's Vespers of the day itself: feasts that print both pray the second.
+ * Those printing "Hino: como nas Vésperas I." come without a hymn, as the parser
+ * drops that line.
+ */
+function properVesperas(entry: ProprioEntry): ComumBlock[] {
+    const second = properBlocks(entry, 'Vésperas II');
+    if (second.length === 0) return properBlocks(entry, 'Vésperas');
+    const isHino = (b: ComumBlock) => b.kind === 'hino';
+    return second.some(isHino) ? second : [...properBlocks(entry, 'Vésperas I').filter(isHino), ...second];
+}
+
+// The PDFs print both "Laudes" and "laudes".
+const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas laudes/i.test(b.text ?? '');
+const isOu = (b: ComumBlock) => b.kind === 'rubrica' && b.text === 'Ou';
+const isPsalmsRubric = (b: ComumBlock) => b.kind === 'rubrica' && /^Salmos?\b/.test(b.text ?? '');
+// The full psalmody some feasts print starts at "Ant. 1" and stays whole.
+const isPsalmodyPointer = (b: ComumBlock) => b.kind === 'salmodia' && /^Salmos?\b/.test(b.text ?? '');
+
+/**
+ * "Oração própria. Na sua falta, como nas Laudes.", "Oração: no Próprio dos
+ * Santos." and "Oração como nas Laudes." are pointer rubrics — once a collect is actually present they are
  * fulfilled and must not render. The collect also ends the hour: whatever
  * trails the last oração (variant labels and "Ou" separators of the common's
  * fallback collects, orphaned when the overlay replaced them) is fallback
@@ -94,7 +138,7 @@ function dropFulfilledOracaoRubric(blocks: ComumBlock[]): ComumBlock[] {
     if (lastOracao < 0) return blocks;
     return blocks
         .slice(0, lastOracao + 1)
-        .filter((b) => !(b.kind === 'rubrica' && /^Oração própria/.test(b.text ?? '')) && !isLaudesPointer(b));
+        .filter((b) => !(b.kind === 'rubrica' && /^Oração(?: própria|: no Próprio)/.test(b.text ?? '')) && !isLaudesPointer(b));
 }
 
 /**
@@ -103,7 +147,7 @@ function dropFulfilledOracaoRubric(blocks: ComumBlock[]): ComumBlock[] {
  * base lacks are appended. Variant siblings ("Para um Santo Mártir" /
  * "Para uma Santa Mártir") count as one slot and are replaced together.
  * A Laudes or psalms pointer only stands in for another one, and other rubrics
- * don't replace them.
+ * don't replace them. An "Ou" goes with the alternatives it separated.
  */
 function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
     const slot = (b: ComumBlock) => (isLaudesPointer(b) ? 'laudes pointer' : isPsalmsRubric(b) ? 'psalms pointer' : b.kind);
@@ -116,10 +160,11 @@ function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
 
     const out: ComumBlock[] = [];
     const placed = new Set<string>();
-    for (const b of base) {
+    for (const [i, b] of base.entries()) {
         const replacement = byKind.get(slot(b));
         if (!replacement) {
-            out.push(b);
+            const orphaned = i > 0 && isOu(b) && byKind.has(slot(base[i - 1]));
+            if (!orphaned) out.push(b);
             continue;
         }
         if (!placed.has(slot(b))) {
@@ -133,32 +178,40 @@ function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
     return out;
 }
 
-// The full psalmody some feasts print starts at "Ant. 1" and stays whole.
-const isPsalmodyPointer = (b: ComumBlock) => b.kind === 'salmodia' && /^Salmos?\b/.test(b.text ?? '');
+/**
+ * The common whose psalms an entry's Vespers borrow without otherwise using it
+ * ("Salmos e cântico do Comum dos Apóstolos." on a feast with a proper office).
+ */
+export function psalmsCommonId(entry: ProprioEntry): string | null {
+    if (entry.commons.length > 0) return null;
+    const pointer = (entry.hours['Vésperas'] ?? entry.hours['Vésperas II'])?.find(isPsalmodyPointer);
+    return pointer ? parseCommonsPointer(pointer.text)[0] ?? null : null;
+}
 
 /**
  * `overlay` for an hour whose proper psalmody is a pointer plus antiphons
  * ("Salmos e cântico do Domingo I. Ant. 1 … Ant. 2 …"): the antiphons take
  * their numbers' places in the common's psalmody, repeats after the psalms
- * included. With no common they stand where printed, pointer first.
+ * included. With no common they go in `psalms`, the psalmody of the common the
+ * pointer names, where printed; failing that, they stand there, pointer first.
  */
-function overlayPsalmody(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
+function overlayPsalmody(base: ComumBlock[], proper: ComumBlock[], psalms: ComumBlock[] = []): ComumBlock[] {
     const at = proper.findIndex(isPsalmodyPointer);
     if (at < 0) return overlay(base, proper);
 
     const [pointer, ...parts] = (proper[at].text ?? '').split(/\s*Ant\.\s*(\d)\s*/);
     const ants = parts.flatMap((part, i) => (i % 2 ? [] : [{ kind: 'ant', n: Number(part), text: parts[i + 1] }]));
-    if (base.length === 0) {
-        return [...proper.slice(0, at), { kind: 'rubrica', text: pointer }, ...ants, ...proper.slice(at + 1)];
-    }
-
     let current: string | undefined;
-    const substituted = base.map((b) => {
+    const substitute = (b: ComumBlock) => {
         if (b.kind !== 'ant') return b;
         if (b.n !== undefined) current = ants.find((a) => a.n === b.n)?.text;
         return current === undefined ? b : { ...b, text: current };
-    });
-    return overlay(substituted, proper.filter((_, i) => i !== at));
+    };
+    if (base.length === 0) {
+        const printed = psalms.length > 0 ? psalms.map(substitute) : [{ kind: 'rubrica', text: pointer }, ...ants];
+        return [...proper.slice(0, at), ...printed, ...proper.slice(at + 1)];
+    }
+    return overlay(base.map(substitute), proper.filter((_, i) => i !== at));
 }
 
 /**
@@ -214,14 +267,16 @@ export function withPsalmody(hour: AssembledHour, series: ComumBlock[]): Assembl
  * The office for one canonical hour of the page (`hourId` as used by
  * LiturgiaHoras). `entry` is null for the Ofício de Defuntos, which is a
  * complete office of its own. Returns null for hours prayed as on the
- * ferial day (the caller keeps the API content).
+ * ferial day (the caller keeps the API content). `psalmsComum` is the common
+ * named by `psalmsCommonId`, when there is one.
  */
 export function assembleHour(
     entry: ProprioEntry | null,
     comum: ComumDoc | null,
     hourId: string,
     subHour: string | null,
-    pascal: boolean
+    pascal: boolean,
+    psalmsComum: ComumDoc | null = null
 ): AssembledHour | null {
     // Never proper (Completas); the Ofício de Leitura is in the web corpus
     // only for the Defuntos — saints keep the API's.
@@ -236,7 +291,7 @@ export function assembleHour(
     const laudesOracao = (): ComumBlock[] => {
         const laudes = dropFulfilledOracaoRubric(overlay(
             overlay(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []),
-            entry ? properBlocks(entry, 'Oração') : []
+            entry ? properOracao(entry) : []
         ));
         const first = laudes.findIndex((b) => b.kind === 'oração');
         return first < 0 ? [] : laudes.slice(first);
@@ -259,7 +314,7 @@ export function assembleHour(
         if (invitatorio.length > 0) sections.push({ title: 'Invitatório', blocks: invitatorio });
 
         let laudes = overlayPsalmody(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []);
-        laudes = dropFulfilledOracaoRubric(overlay(laudes, entry ? properBlocks(entry, 'Oração') : []));
+        laudes = dropFulfilledOracaoRubric(overlay(laudes, entry ? properOracao(entry) : []));
         if (laudes.length > 0) sections.push({ title: 'Laudes', blocks: laudes });
     } else if (hourId === 'intermedia') {
         // Shared psalmody/rubrics live under "Hora Intermédia"; the reading
@@ -275,7 +330,7 @@ export function assembleHour(
         if (entry) {
             blocks = overlay(blocks, properBlocks(entry, 'Hora Intermédia'));
             blocks = overlay(blocks, properBlocks(entry, subHour ?? 'Tércia'));
-            blocks = overlay(blocks, properBlocks(entry, 'Oração'));
+            blocks = overlay(blocks, properOracao(entry));
         }
         blocks = dropFulfilledOracaoRubric(blocks);
         // The pointer is printed once, after the last sub-hour (Defuntos:
@@ -293,8 +348,9 @@ export function assembleHour(
                 ? commonHour('Vésperas II')
                 : commonHour('Vésperas')
             : [];
-        let blocks = overlayPsalmody(base, entry ? properBlocks(entry, 'Vésperas') : []);
-        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry ? properBlocks(entry, 'Oração') : [])))
+        const psalms = seasonFilter(psalmsComum?.hours['Vésperas II'] ?? [], pascal).filter((b) => b.kind === 'ant' || b.kind === 'salmo');
+        let blocks = overlayPsalmody(base, entry ? properVesperas(entry) : [], psalms);
+        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry ? properOracao(entry) : [])))
             // Points at the next hour, whose banner already says it.
             .filter((b) => !(b.kind === 'rubrica' && /^Completas como/.test(b.text ?? '')));
         if (blocks.length > 0) sections.push({ title: 'Vésperas', blocks });
