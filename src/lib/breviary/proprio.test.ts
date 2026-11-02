@@ -36,6 +36,32 @@ describe('parseProprio collect endings', () => {
     });
 });
 
+describe('parseProprio Laudes pointer', () => {
+    const line = (text: string, h = 10, x = 28): PdfLine => ({ p: 1, y: 0, x, h, text, items: [] });
+    const hour = (...rest: PdfLine[]) => parseProprio([
+        line('2 de Agosto', 10, 130),
+        line('SANTO DE TESTE', 10, 90),
+        line('Vésperas', 10, 134),
+        ...rest,
+    ], 'Agosto')[0].hours['Vésperas'];
+
+    it.each(['Oração como nas Laudes.', 'Oração como nas laudes.', 'Oração como nas Laudes', 'Oração como nas laudes'])(
+        'closes the open block at "%s"',
+        (pointer) => {
+            expect(hour(line('Ant. Magnif. Caminhai na caridade.', 10, 43), line(pointer, 9, 43))).toEqual([
+                { kind: 'ant-magnificat', text: 'Caminhai na caridade.' },
+                { kind: 'rubrica', text: pointer },
+            ]);
+        },
+    );
+
+    it('leaves no reading behind when the reading is only a pointer to the common', () => {
+        expect(hour(line('Leitura breve do Comum dos Apóstolos.', 9, 43), line('Oração como nas Laudes.', 9, 43))).toEqual([
+            { kind: 'rubrica', text: 'Oração como nas Laudes.' },
+        ]);
+    });
+});
+
 describe('parseCommonsPointer', () => {
     it('maps a single common to its id', () => {
         expect(parseCommonsPointer('Comum dos Pastores')).toEqual(['pastores']);

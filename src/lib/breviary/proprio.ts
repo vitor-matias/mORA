@@ -321,6 +321,13 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
 
         if (section && section !== 'bio') {
+            // Printed "Laudes" or "laudes", with or without the full stop. It
+            // ends the block before it, and nothing wraps onto it.
+            if (/^Oração como nas laudes\.?$/i.test(text)) {
+                flushSub();
+                (cur.hours[section] ??= []).push({ kind: 'rubrica', text });
+                continue;
+            }
             const ant = text.match(/^Ant\.\s*(Bened|Magn(?:if)?)\.?\s*(.*)$/);
             if (ant) {
                 flushSub();
