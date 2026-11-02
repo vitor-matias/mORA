@@ -77,20 +77,23 @@ function properBlocks(entry: ProprioEntry, hour: string): ComumBlock[] {
     }));
 }
 
+// The PDFs print both "Laudes" and "laudes".
+const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas laudes/i.test(b.text ?? '');
+
 /**
- * "Oração própria. Na sua falta, como nas Laudes." is a pointer rubric —
- * once the proper collect is actually present it is fulfilled and must not
- * render. The collect also ends the hour: whatever trails the last oração
- * (variant labels and "Ou" separators of the common's fallback collects,
- * orphaned when the overlay replaced them) is fallback apparatus, not
- * prayer.
+ * "Oração própria. Na sua falta, como nas Laudes." and "Oração como nas
+ * Laudes." are pointer rubrics — once a collect is actually present they are
+ * fulfilled and must not render. The collect also ends the hour: whatever
+ * trails the last oração (variant labels and "Ou" separators of the common's
+ * fallback collects, orphaned when the overlay replaced them) is fallback
+ * apparatus, not prayer.
  */
 function dropFulfilledOracaoRubric(blocks: ComumBlock[]): ComumBlock[] {
     const lastOracao = blocks.map((b) => b.kind).lastIndexOf('oração');
     if (lastOracao < 0) return blocks;
     return blocks
         .slice(0, lastOracao + 1)
-        .filter((b) => !(b.kind === 'rubrica' && /^Oração própria/.test(b.text ?? '')));
+        .filter((b) => !(b.kind === 'rubrica' && /^Oração própria/.test(b.text ?? '')) && !isLaudesPointer(b));
 }
 
 /**
@@ -98,25 +101,28 @@ function dropFulfilledOracaoRubric(blocks: ComumBlock[]): ComumBlock[] {
  * block(s), at the position of the first replaced block; proper kinds the
  * base lacks are appended. Variant siblings ("Para um Santo Mártir" /
  * "Para uma Santa Mártir") count as one slot and are replaced together.
+ * A Laudes pointer only stands in for another one, not for the common's other
+ * rubrics.
  */
 function overlay(base: ComumBlock[], proper: ComumBlock[]): ComumBlock[] {
+    const slot = (b: ComumBlock) => (isLaudesPointer(b) ? 'laudes pointer' : b.kind);
     const byKind = new Map<string, ComumBlock[]>();
     for (const b of proper) {
-        const group = byKind.get(b.kind);
+        const group = byKind.get(slot(b));
         if (group) group.push(b);
-        else byKind.set(b.kind, [b]);
+        else byKind.set(slot(b), [b]);
     }
 
     const out: ComumBlock[] = [];
     const placed = new Set<string>();
     for (const b of base) {
-        const replacement = byKind.get(b.kind);
+        const replacement = byKind.get(slot(b));
         if (!replacement) {
             out.push(b);
             continue;
         }
-        if (!placed.has(b.kind)) {
-            placed.add(b.kind);
+        if (!placed.has(slot(b))) {
+            placed.add(slot(b));
             out.push(...replacement);
         }
     }
@@ -206,7 +212,6 @@ export function assembleHour(
         const first = laudes.findIndex((b) => b.kind === 'oração');
         return first < 0 ? [] : laudes.slice(first);
     };
-    const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas Laudes/.test(b.text ?? '');
     const resolveOracao = (blocks: ComumBlock[]): ComumBlock[] => {
         const at = blocks.findIndex(isLaudesPointer);
         if (at < 0 || blocks.some((b) => b.kind === 'oração')) return blocks;
@@ -219,7 +224,9 @@ export function assembleHour(
     if (hourId === 'oficio') {
         sections.push({ title: 'Ofício de Leitura', blocks: resolveOracao(commonHour('Ofício de Leitura')) });
     } else if (hourId === 'laudes') {
-        const invitatorio = overlay(commonHour('Invitatório'), entry ? properBlocks(entry, 'Invitatório') : []);
+        // A proper invitatory replaces the common's whole, its "Ou" alternative included.
+        const properInvitatorio = entry ? properBlocks(entry, 'Invitatório') : [];
+        const invitatorio = properInvitatorio.length > 0 ? properInvitatorio : commonHour('Invitatório');
         if (invitatorio.length > 0) sections.push({ title: 'Invitatório', blocks: invitatorio });
 
         let laudes = overlay(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []);

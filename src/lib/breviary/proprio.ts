@@ -61,7 +61,7 @@ const LABELS: { re: RegExp; kind: string; skip: number; verseLike?: boolean }[] 
 const COMMON_IDS: [RegExp, string][] = [
     [/defuntos/i, 'defuntos'],
     [/dedicação/i, 'dedicacao-igreja'],
-    [/nossa senhora/i, 'nossa-senhora'],
+    [/(?:nossa|n\.) senhora/i, 'nossa-senhora'],
     [/apóstolos/i, 'apostolos'],
     [/vários mártires/i, 'varios-martires'],
     [/(?:um|uma) mártir|mártir(?!es)/i, 'um-martir'],
@@ -121,6 +121,8 @@ function tryName(cur: ProprioEntry, text: string): boolean {
 const ERRATA: { month: Month; day: number; find: string; replace: string }[] = [
     // S. Inês' second Vespers psalm antiphon is misprinted "Ant. 3".
     { month: 'Janeiro', day: 21, find: 'Ant. 3 Só a Ele', replace: 'Ant. 2 Só a Ele' },
+    // A stray full stop before the mark would leave "Maria.." outside Eastertide.
+    { month: 'Maio', day: 31, find: 'Maria. (T. P.', replace: 'Maria (T. P.' },
 ];
 
 interface OpenSub {
@@ -171,7 +173,10 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         if (sub.kind === 'bio') {
             cur.bio = cur.bio ? `${cur.bio}\n${text}` : text;
         } else if (section) {
-            (cur.hours[section] ??= []).push({ kind: sub.kind, ref: sub.ref, text });
+            // "Ant. … Salmo invitatório." is the antiphon plus a pointer to the
+            // psalm, which the page takes from the API.
+            const invAnt = section === 'Invitatório' ? text.match(/^Ant\.\s*(.*?)\s*Salmo invitatório/) : null;
+            (cur.hours[section] ??= []).push(invAnt ? { kind: 'ant', text: invAnt[1] } : { kind: sub.kind, ref: sub.ref, text });
         }
         sub = null;
     };
@@ -191,11 +196,22 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
         commonsOpen = false;
 
+        // A movable or regional celebration closes the entry before it and is
+        // dropped until the next date: a day number can't place it, and
+        // saintsForDay would show it to everyone. Hymn lines like "Em Vós se
+        // reuniu…:" are h=10.
+        if (l.h === 9 && /^Em .+:$|^Sábado depois do Domingo /.test(text)) {
+            flushSub();
+            cur = null;
+            section = null;
+            continue;
+        }
+
         // Secondary entries can share their line with the saint's heading
         // ("No mesmo dia 16 de Novembro S. GERTRUDES, virgem Nasceu…") —
         // split the heading (and any biography start) out of the date line.
         const composite = text.match(compositeRe);
-        if (composite && cur) {
+        if (composite) {
             flushSub();
             cur = {
                 day: Number(composite[2]),
@@ -321,6 +337,13 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
 
         if (section && section !== 'bio') {
+            // Printed "Laudes" or "laudes", with or without the full stop. It
+            // ends the block before it, and nothing wraps onto it.
+            if (/^Oração como nas laudes\.?$/i.test(text)) {
+                flushSub();
+                (cur.hours[section] ??= []).push({ kind: 'rubrica', text });
+                continue;
+            }
             const ant = text.match(/^Ant\.\s*(Bened|Magn(?:if)?)\.?\s*(.*)$/);
             if (ant) {
                 flushSub();
