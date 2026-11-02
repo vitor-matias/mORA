@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assembleHour, complementSeries, withPsalmody, type AssembledHour } from './assemble.ts';
+import { assembleHour, complementSeries, psalmsCommonId, withPsalmody, type AssembledHour } from './assemble.ts';
 import type { ProprioBlock, ProprioEntry } from './proprio.ts';
 
 const hour: AssembledHour = {
@@ -108,7 +108,7 @@ describe('a proper psalmody pointer', () => {
         ]);
     });
 
-    it('keeps the common\'s pointer when the entry prints another rubric', () => {
+    it('keeps the common\'s pointer when the entry prints it with a page number', () => {
         const comum = {
             title: 'Comum',
             hours: {
@@ -119,13 +119,11 @@ describe('a proper psalmody pointer', () => {
                 ],
             },
         };
-        const proper = entry({
-            Laudes: [salmodia('Salmos e cântico do Domingo I: p. 879.'), { kind: 'rubrica', text: 'Preces do Comum: p. 1887.' }],
-        });
+        const proper = entry({ Laudes: [salmodia('Salmos e cântico do Domingo I: p. 879.')] });
         expect(assembleHour(proper, comum, 'laudes', null, false)?.sections[0].blocks).toEqual([
             expect.objectContaining({ kind: 'rubrica', text: 'Salmos e cântico do Domingo I.' }),
             expect.objectContaining({ kind: 'ant', n: 1, text: 'Primeira própria.' }),
-            expect.objectContaining({ kind: 'rubrica', text: 'Preces do Comum: p. 1887.' }),
+            expect.objectContaining({ kind: 'rubrica', text: 'Ou' }),
         ]);
     });
 
@@ -177,6 +175,132 @@ describe('a proper psalmody pointer', () => {
         expect(assembleHour(proper, null, 'vesperas', null, false)?.sections[0].blocks).toEqual([
             expect.objectContaining({ kind: 'salmodia', text }),
         ]);
+    });
+});
+
+describe('a Vespers psalmody pointing at a common the entry does not have', () => {
+    const entry = (commons: string[], text: string): ProprioEntry => ({
+        day: 25, name: 'SANTO', descriptor: null, rank: 'Festa', commons, bio: '',
+        hours: {
+            Vésperas: [
+                { kind: 'hino', text: 'Hino próprio' },
+                { kind: 'salmodia', text: `${text} Ant. 1 Primeira própria. Ant. 2 Segunda própria.` },
+                { kind: 'leitura breve', text: 'Leitura própria' },
+            ],
+        },
+    });
+    const apostolos = {
+        title: 'Comum dos Apóstolos',
+        hours: {
+            'Vésperas II': [
+                { kind: 'hino', text: 'Hino do Comum' },
+                { kind: 'ant', n: 1, text: 'Primeira do Comum.' },
+                { kind: 'salmo', ref: 'Salmo 115' },
+                { kind: 'ant', text: 'Primeira do Comum.' },
+                { kind: 'ant', n: 2, text: 'Segunda do Comum.' },
+                { kind: 'salmo', ref: 'Salmo 125' },
+                { kind: 'ant', text: 'Segunda do Comum.' },
+                { kind: 'leitura', text: 'Leitura do Comum' },
+                { kind: 'preces', text: 'Preces do Comum' },
+            ],
+        },
+    };
+    const pointer = 'Salmos e cântico do Comum dos Apóstolos, p. 1890.';
+
+    it('names the common only when the entry has none', () => {
+        expect(psalmsCommonId(entry([], pointer))).toBe('apostolos');
+        expect(psalmsCommonId(entry([], 'Salmo e cântico do Comum de N. Senhora.'))).toBe('nossa-senhora');
+        expect(psalmsCommonId(entry(['apostolos'], pointer))).toBeNull();
+        expect(psalmsCommonId(entry([], 'Salmos e cântico do Domingo I.'))).toBeNull();
+    });
+
+    it('takes only the psalms of that common, under the entry\'s antiphons', () => {
+        const blocks = assembleHour(entry([], pointer), null, 'vesperas', null, false, apostolos)?.sections[0].blocks;
+        expect(blocks?.map((b) => b.text ?? b.ref)).toEqual([
+            'Hino próprio',
+            'Primeira própria.', 'Salmo 115', 'Primeira própria.',
+            'Segunda própria.', 'Salmo 125', 'Segunda própria.',
+            'Leitura própria',
+        ]);
+    });
+
+    it('falls back to the pointer when that common is not at hand', () => {
+        const blocks = assembleHour(entry([], pointer), null, 'vesperas', null, false)?.sections[0].blocks;
+        expect(blocks?.map((b) => b.text)).toEqual([
+            'Hino próprio', pointer, 'Primeira própria.', 'Segunda própria.', 'Leitura própria',
+        ]);
+    });
+});
+
+describe('a rubric pointing at the printed book', () => {
+    const entry = (hours: Record<string, ProprioBlock[]>): ProprioEntry => ({
+        day: 3, name: 'SANTO', descriptor: null, rank: 'Festa', commons: ['apostolos'], bio: '', hours,
+    });
+    const rubrica = (text: string): ProprioBlock => ({ kind: 'rubrica', text });
+    const comum = {
+        title: 'Comum',
+        hours: {
+            Sexta: [{ kind: 'leitura', text: 'Leitura do Comum' }],
+            'Vésperas II': [
+                { kind: 'hino', text: 'Hino do Comum' },
+                { kind: 'ant', n: 1, text: 'Primeira do Comum.' },
+                { kind: 'salmo', ref: 'Salmo 115' },
+                { kind: 'ant', text: 'Primeira do Comum.' },
+                { kind: 'preces', text: 'Preces do Comum' },
+                { kind: 'rubrica', text: 'Ou' },
+                { kind: 'preces', text: 'Outras preces do Comum' },
+                { kind: 'rubrica', text: 'Pai nosso' },
+                { kind: 'rubrica', text: 'Oração: no Próprio dos Santos.' },
+            ],
+        },
+    };
+    const vesperas = [
+        'Hino do Comum', 'Primeira do Comum.', 'Salmo 115', 'Primeira do Comum.',
+        'Preces do Comum', 'Ou', 'Outras preces do Comum', 'Pai nosso', 'Oração: no Próprio dos Santos.',
+    ];
+    const texts = (proper: ProprioEntry, hour = 'vesperas', sub: string | null = null) =>
+        assembleHour(proper, comum, hour, sub, false)?.sections[0].blocks.map((b) => b.text ?? b.ref);
+
+    it.each([
+        'Preces do Comum dos Apóstolos: p. 1893.',
+        'Preces ao Comum dos Santos: p. 1976.',
+        'Preces do Comum das Santas, p. 1999; ou do dia ferial correspondente.',
+        'Hino: do Comum dos Apóstolos, p. 1889 ou 1894.',
+    ])('gives way to the common, its other rubrics intact: %s', (text) => {
+        expect(texts(entry({ Vésperas: [rubrica(text)] }))).toEqual(vesperas);
+    });
+
+    it('gives way to the common\'s reading', () => {
+        const proper = entry({ 'Hora Intermédia': [rubrica('Leitura breve do Comum dos Apóstolos: p. 1888.')] });
+        expect(texts(proper, 'intermedia', 'Sexta')).toEqual(['Leitura do Comum']);
+    });
+
+    it('takes the entry\'s Laudes hymn when offered the choice', () => {
+        const proper = entry({
+            Laudes: [{ kind: 'hino', text: 'Hino das Laudes' }],
+            Vésperas: [rubrica('Hino: como nas Laudes ou do Comum dos Santos, p. 1616 ou 1973.')],
+        });
+        expect(texts(proper)).toEqual(['Hino das Laudes', ...vesperas.slice(1)]);
+    });
+
+    it('leaves the common\'s hymn when the Laudes has none', () => {
+        const proper = entry({ Vésperas: [rubrica('Hino: como nas Laudes ou do Comum, p. 1737 ou 1869.')] });
+        expect(texts(proper)).toEqual(vesperas);
+    });
+
+    it('takes the entry\'s Laudes antiphons for the common\'s psalms', () => {
+        const proper = entry({
+            Laudes: [{ kind: 'salmodia', text: 'Salmos e cântico do Domingo I p. 879. Ant. 1 Primeira das Laudes.' }],
+            Vésperas: [rubrica('Hino, salmos e cântico do Comum dos Apóstolos: p. 1889. Antífonas como nas Laudes: p. 1593.')],
+        });
+        expect(texts(proper)).toEqual([
+            'Hino do Comum', 'Primeira das Laudes.', 'Salmo 115', 'Primeira das Laudes.', ...vesperas.slice(4),
+        ]);
+    });
+
+    it('drops "Oração: no Próprio dos Santos." once the collect is there', () => {
+        const proper = entry({ Oração: [{ kind: 'oração', text: 'Coleta própria' }] });
+        expect(texts(proper)).toEqual([...vesperas.slice(0, -1), 'Coleta própria']);
     });
 });
 

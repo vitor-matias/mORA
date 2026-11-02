@@ -14,7 +14,7 @@ import { getDefaultHoursDate, getHourForTime } from "@/lib/hours";
 import { formatISODate } from "@/lib/format";
 import { DateNav } from "@/components/DateNav";
 import { loadProprio, loadComum } from "@/lib/breviary/data";
-import { saintsForDay, hasRenderableOffice, assembleHour, complementSeries, withPsalmody } from "@/lib/breviary/assemble";
+import { saintsForDay, hasRenderableOffice, assembleHour, complementSeries, psalmsCommonId, withPsalmody } from "@/lib/breviary/assemble";
 import type { ProprioEntry } from "@/lib/breviary/proprio";
 import type { ComumDoc } from "@/lib/breviary/comum";
 import { ApiHtml, BreviaryBlocks } from "@/components/BreviaryBlocks";
@@ -366,11 +366,12 @@ export default function LiturgiaHoras() {
     const altEntry = typeof altOffice === 'number' ? saints[altOffice] ?? null : null;
     // Feasts with a fully proper office have no common to load.
     const altComumId = altOffice === 'defuntos' ? 'defuntos' : altEntry?.commons[0] ?? null;
+    const psalmsComumId = altEntry ? psalmsCommonId(altEntry) : null;
 
     // The Hora Intermédia's "Salmodia Complementar" alternative, chosen by
     // whoever already prayed another minor Hour with the proper psalmody.
     const [useComplement, setUseComplement] = useState(false);
-    const neededComumId = useComplement && altComumId && altComumId in comuns ? 'complementar' : altComumId;
+    const neededComumId = useComplement && altComumId && altComumId in comuns ? 'complementar' : altComumId ?? psalmsComumId;
 
     useEffect(() => {
         const id = neededComumId;
@@ -383,7 +384,9 @@ export default function LiturgiaHoras() {
     }, [neededComumId, comuns]);
 
     const altComum = altComumId ? comuns[altComumId] ?? null : null;
-    const altLoading = altOffice !== null && altComumId !== null && !(altComumId in comuns);
+    const psalmsComum = psalmsComumId ? comuns[psalmsComumId] ?? null : null;
+    const altLoadingId = altComumId ?? psalmsComumId;
+    const altLoading = altOffice !== null && altLoadingId !== null && !(altLoadingId in comuns);
 
     // Sunday Week I psalmody for the commons' Laudes (see findSundayIPsalmody).
     const [sundayPsalmody, setSundayPsalmody] = useState<string | null>(sundayIPsalmodyCache);
@@ -547,8 +550,8 @@ export default function LiturgiaHoras() {
     const assembledBase = useMemo(() => {
         if (altOffice === null || !activeHour) return null;
         if (altLoading) return undefined;
-        return assembleHour(altEntry, altComum, activeHour, activeSubHour, pascal);
-    }, [altOffice, altLoading, altEntry, altComum, activeHour, activeSubHour, pascal]);
+        return assembleHour(altEntry, altComum, activeHour, activeSubHour, pascal, psalmsComum);
+    }, [altOffice, altLoading, altEntry, altComum, activeHour, activeSubHour, pascal, psalmsComum]);
 
     const complement = complementSeries(assembledBase, activeSubHour);
     const complementDoc = comuns['complementar'];
