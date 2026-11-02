@@ -52,7 +52,14 @@ const TP_MARK = /\s*\(T\.\s*P\.\s*Aleluia\.?\)/gi;
 function paschalize(text: string, pascal: boolean): string {
     return text.replace(TP_MARK, pascal ? ', aleluia' : '');
 }
-function resolveMarks(blocks: ComumBlock[], pascal: boolean): ComumBlock[] {
+
+// The books abbreviate a collect's conclusion to "Por Nosso Senhor."; the
+// official app writes it out, long at the major Hours, short at the minor.
+const ABBREVIATED_ENDING = /\bPor Nosso Senhor\.(?=\s|$)/g;
+const LONG_ENDING = 'Por nosso Senhor Jesus Cristo, vosso Filho, que é Deus e convosco vive e reina, na unidade do Espírito Santo, por todos os séculos dos séculos.';
+const SHORT_ENDING = 'Por Cristo nosso Senhor.';
+
+function resolveMarks(blocks: ComumBlock[], pascal: boolean, ending: string): ComumBlock[] {
     return blocks.map((b) => {
         let text = b.text === undefined ? undefined : paschalize(b.text, pascal);
         // Source erratum (e.g. Pastores Vésperas II): a stray "Aleluia,
@@ -61,6 +68,7 @@ function resolveMarks(blocks: ComumBlock[], pascal: boolean): ComumBlock[] {
         if (text && b.kind === 'responsório' && b.season === 'Fora do Tempo Pascal') {
             text = text.replace(/\.\s*Aleluia,?\s*Aleluia\.?$/gm, '.');
         }
+        if (text && b.kind === 'oração') text = text.replace(ABBREVIATED_ENDING, ending);
         return {
             ...b,
             text,
@@ -209,7 +217,9 @@ export function assembleHour(
     const isLaudesPointer = (b: ComumBlock) => b.kind === 'rubrica' && /^Oração como nas Laudes/.test(b.text ?? '');
     const resolveOracao = (blocks: ComumBlock[]): ComumBlock[] => {
         const at = blocks.findIndex(isLaudesPointer);
-        if (at < 0 || blocks.some((b) => b.kind === 'oração')) return blocks;
+        if (at < 0) return blocks;
+        // A proper collect already fulfils the pointer.
+        if (blocks.some((b) => b.kind === 'oração')) return blocks.filter((b) => !isLaudesPointer(b));
         const oracao = laudesOracao();
         return oracao.length ? [...blocks.slice(0, at), ...oracao, ...blocks.slice(at + 1)] : blocks;
     };
@@ -270,7 +280,8 @@ export function assembleHour(
             note: 'Sem textos próprios para esta hora — reza-se como no Ofício do dia.',
         };
     }
+    const ending = hourId === 'intermedia' ? SHORT_ENDING : LONG_ENDING;
     return {
-        sections: sections.map((s) => ({ ...s, blocks: resolveMarks(s.blocks, pascal) })),
+        sections: sections.map((s) => ({ ...s, blocks: resolveMarks(s.blocks, pascal, ending) })),
     };
 }

@@ -8,6 +8,7 @@ describe('parseCommonsPointer', () => {
         expect(parseCommonsPointer('Comum de Nossa Senhora')).toEqual(['nossa-senhora']);
         expect(parseCommonsPointer('Tudo do Comum dos Apóstolos')).toEqual(['apostolos']);
         expect(parseCommonsPointer('Ofício de Defuntos')).toEqual(['defuntos']);
+        expect(parseCommonsPointer('Como no Ofício de Defuntos')).toEqual(['defuntos']);
     });
 
     it('keeps "ou" alternatives in the order the entry offers them', () => {

@@ -95,8 +95,8 @@ function withApiParts(sections: AssembledSection[], api: ApiParts): AssembledSec
         const ants = blocks.filter(b => b.kind === 'ant-benedictus' || b.kind === 'ant-magnificat');
         if (api.canticle && ants.length > 0) {
             const at = blocks.lastIndexOf(ants[ants.length - 1]) + 1;
-            // With alternatives ("Ou", per audience) the reader repeats their own choice.
-            const repeat = ants.length === 1 ? [{ kind: ants[0].kind, text: ants[0].text }] : [];
+            // The whole run, as the API does: alternatives keep their "Ou" and labels.
+            const repeat = blocks.slice(blocks.indexOf(ants[0]), at);
             blocks = [...blocks.slice(0, at), { kind: 'html', text: api.canticle }, ...repeat, ...blocks.slice(at)];
         }
         return {
@@ -381,12 +381,12 @@ export default function LiturgiaHoras() {
         ? sundayComplineState
         : sundayComplineCache.get(sundayKey) ?? null;
     useEffect(() => {
-        if (altOffice !== 'defuntos' || sundayCompline) return;
+        if (altComumId !== 'defuntos' || sundayCompline) return;
         let cancelled = false;
         findSundayCompline(new Date(selectedDateStr + 'T00:00:00'))
             .then((r) => { if (!cancelled && r) setSundayComplineState(r); });
         return () => { cancelled = true; };
-    }, [altOffice, sundayCompline, selectedDateStr]);
+    }, [altComumId, sundayCompline, selectedDateStr]);
 
     useEffect(() => {
         let cancelled = false;
@@ -945,7 +945,7 @@ export default function LiturgiaHoras() {
                                             );
                                         })()}
                                     </div>
-                                ) : altActive && altOffice === 'defuntos' && activeHour === 'completas' && sundayCompline ? (
+                                ) : altActive && altComumId === 'defuntos' && activeHour === 'completas' && sundayCompline ? (
                                     <div className="space-y-4">
                                         {/* The office's own rubric, surfaced as the banner */}
                                         <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-liturgy-50/60 dark:bg-liturgy-950/20 text-liturgy-700 dark:text-liturgy-300 text-sm">

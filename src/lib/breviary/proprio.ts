@@ -273,9 +273,9 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
 
         // Commons pointer, in any of its phrasings ("Comum dos Pastores…",
-        // "Comum aos…", "Do/Tudo do/Ofício do Comum…", "Ofício de
+        // "Comum aos…", "Do/Tudo do/Ofício do Comum…", "(Como no) Ofício de
         // Defuntos"), possibly wrapping onto an "ou dos …" second line.
-        if (l.h === 9 && /^(?:(?:Tudo do|Do|Ofício do) )?Comum\b|^Ofício de Defuntos\b/.test(text)) {
+        if (l.h === 9 && /^(?:(?:Tudo do|Do|Ofício do) )?Comum\b|^(?:Como no )?Ofício de Defuntos\b/.test(text)) {
             flushSub();
             const raw = text.replace(/\.$/, '');
             cur.commonsText = raw;
@@ -375,5 +375,9 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
         }
     }
 
+    // 2 November states no rank, and it is no optional memorial.
+    for (const e of entries) {
+        if (e.name?.startsWith('COMEMORAÇÃO')) e.rank = 'Comemoração';
+    }
     return entries;
 }
