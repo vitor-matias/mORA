@@ -1,5 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { fixSmallCapsWords, parseCommonsPointer } from './proprio.ts';
+import type { PdfLine } from './pdfLines.ts';
+import { fixSmallCapsWords, parseCommonsPointer, parseProprio } from './proprio.ts';
+
+describe('parseProprio collect endings', () => {
+    const line = (text: string, h = 10, x = 28): PdfLine => ({ p: 1, y: 0, x, h, text, items: [] });
+    const collect = 'Deus eterno, ouvi-nos. Por Nosso Senhor.';
+    const entry = (...rest: PdfLine[]) => [
+        line('2 de Agosto', 10, 130),
+        line('SANTO DE TESTE', 10, 90),
+        line('Oração', 9, 130),
+        line(collect),
+        ...rest,
+        line('3 de Agosto', 10, 130),
+        line('OUTRO SANTO', 10, 90),
+    ];
+
+    it.each(['OUTROS HINOS', 'OUTRO HINO', 'OUTROS HiNOS', 'OUTRO HiNO'])('ends the collect at "%s"', (heading) => {
+        const [first, second] = parseProprio(entry(line(heading, 9, 120), line('I', 9, 151), line('Rainha dos Anjos pura,', 10, 99)), 'Agosto');
+        expect(first.hours).toEqual({ Oração: [{ kind: 'oração', text: collect }] });
+        expect(first.bio).toBe('');
+        expect(second.name).toBe('OUTRO SANTO');
+    });
+
+    it('drops the Completas rubric and picks up at the next hour', () => {
+        const [first] = parseProprio(entry(
+            line('No fim das Completas, é melhor dizer a antífona Deus Vos salve,', 9, 43),
+            line('Rainha dos Céus.', 9),
+            line('Laudes', 10, 130),
+            line('Ant. Bened. Bendita sejais.', 10, 43),
+        ), 'Agosto');
+        expect(first.hours).toEqual({
+            Oração: [{ kind: 'oração', text: collect }],
+            Laudes: [{ kind: 'ant-benedictus', text: 'Bendita sejais.' }],
+        });
+    });
+});
 
 describe('parseCommonsPointer', () => {
     it('maps a single common to its id', () => {

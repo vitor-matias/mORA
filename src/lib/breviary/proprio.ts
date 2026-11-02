@@ -46,6 +46,7 @@ const HOURS = [
     'Vésperas', 'Vésperas I', 'Vésperas II', 'Oração',
 ];
 const RANKS = ['Memória', 'Memória facultativa', 'Festa', 'Solenidade'];
+const APPENDIX = '(outros hinos)';
 
 // Subsection labels within an hour, matched on despaced text (see text.ts).
 const LABELS: { re: RegExp; kind: string; skip: number; verseLike?: boolean }[] = [
@@ -271,6 +272,17 @@ export function parseProprio(lines: PdfLine[], month: Month): ProprioEntry[] {
             if (text === 'Oração') sub = { kind: 'oração', buf: [] };
             continue;
         }
+
+        // Appendix of alternative hymns after the last hour, and the rubric
+        // about Completas that trails a feast's Vésperas: neither belongs to
+        // the hour before it, so skip them until the next hour or entry.
+        const despaced = despace(text);
+        if (/^outros?hinos?$/.test(despaced) || /^nofimdascompletas/.test(despaced)) {
+            flushSub();
+            section = APPENDIX;
+            continue;
+        }
+        if (section === APPENDIX) continue;
 
         // Commons pointer, in any of its phrasings ("Comum dos Pastores…",
         // "Comum aos…", "Do/Tudo do/Ofício do Comum…", "Ofício de
