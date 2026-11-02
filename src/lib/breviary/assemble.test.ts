@@ -371,6 +371,16 @@ describe('a rubric pointing at the printed book', () => {
         ]);
     });
 
+    it('still names the common when it failed to load', () => {
+        const proper = entry({
+            Laudes: [{ kind: 'salmodia', text: 'Salmos e cântico do Domingo I p. 879. Ant. 1 Primeira das Laudes.' }],
+            Vésperas: [rubrica('Hino, salmos e cântico do Comum dos Apóstolos: p. 1889. Antífonas como nas Laudes: p. 1593.')],
+        });
+        expect(assembleHour(proper, null, 'vesperas', null, false)?.sections[0].blocks.map((b) => b.text)).toEqual([
+            'Salmos e cântico do Comum dos Apóstolos.', 'Primeira das Laudes.',
+        ]);
+    });
+
     it('drops "Oração: no Próprio dos Santos." once the collect is there', () => {
         const proper = entry({ Oração: [{ kind: 'oração', text: 'Coleta própria' }] });
         expect(texts(proper)).toEqual([...vesperas.slice(0, -1), 'Coleta própria']);

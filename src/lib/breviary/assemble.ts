@@ -80,7 +80,9 @@ function resolvePointer(entry: ProprioEntry, b: ProprioBlock): ProprioBlock[] {
     const laudes = entry.hours['Laudes'] ?? [];
     if (/Antífonas como nas Laudes/i.test(b.text)) {
         const ants = laudes.find(isPsalmodyPointer)?.text.match(/Ant\.\s*1\b.*/s)?.[0];
-        return ants ? [{ kind: 'salmodia', text: `Salmos e cântico do Comum. ${ants}` }] : [];
+        // Named as printed, for when the common fails to load and the pointer shows.
+        const common = b.text.match(/do Comum[^:.,]*/)?.[0] ?? 'do Comum';
+        return ants ? [{ kind: 'salmodia', text: `Salmos e cântico ${common}. ${ants}` }] : [];
     }
     // Between the entry's own hymn and the common's, the first option offered.
     if (/^Hino: como nas Laudes/i.test(b.text)) return laudes.filter((l) => l.kind === 'hino');
