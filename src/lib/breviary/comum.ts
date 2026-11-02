@@ -361,6 +361,9 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
         if (label) {
             flush();
             canticle = null;
+            // An audience lasts its section: "Para um Santo Educador" under the
+            // canticle's antiphons says nothing about the preces after them.
+            variant = undefined;
             if (label.kind === 'evangélico') {
                 // The content is the Ant. that follows; remember which canticle.
                 canticle = /magnificat/.test(despaced) ? 'Magnificat' : 'Benedictus';
@@ -383,6 +386,7 @@ export function parseComum(lines: PdfLine[]): ComumDoc {
         if (text === 'Oração' && l.x > 90) {
             flush();
             canticle = null;
+            variant = undefined;
             block = { kind: 'oração', season: seasonFor('oração'), variant, buf: [] };
             continue;
         }
