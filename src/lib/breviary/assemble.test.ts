@@ -75,6 +75,111 @@ describe('a proper invitatory', () => {
     });
 });
 
+describe('a proper psalmody pointer', () => {
+    const salmodia = (pointer: string): ProprioBlock => ({
+        kind: 'salmodia',
+        text: `${pointer} Ant. 1 Primeira própria. Ant. 2 Segunda própria.`,
+    });
+    const entry = (hours: Record<string, ProprioBlock[]>): ProprioEntry => ({
+        day: 15, name: 'SANTA', descriptor: null, rank: 'Memória', commons: [], bio: '', hours,
+    });
+
+    it('puts its antiphons in the common\'s Laudes, keeping the common\'s pointer', () => {
+        const comum = {
+            title: 'Comum',
+            hours: {
+                Laudes: [
+                    { kind: 'rubrica', text: 'Salmos e cântico do Domingo I.' },
+                    { kind: 'ant', n: 1, text: 'Primeira do Comum.' },
+                    { kind: 'ant', n: 2, text: 'Segunda do Comum.' },
+                    { kind: 'ant', n: 3, text: 'Terceira do Comum.' },
+                    { kind: 'rubrica', text: 'Ou' },
+                ],
+            },
+        };
+        const proper = entry({ Laudes: [salmodia('Salmos e cântico do Domingo I.')] });
+        expect(assembleHour(proper, comum, 'laudes', null, false)?.sections[0].blocks).toEqual([
+            expect.objectContaining({ kind: 'rubrica', text: 'Salmos e cântico do Domingo I.' }),
+            expect.objectContaining({ kind: 'ant', n: 1, text: 'Primeira própria.' }),
+            expect.objectContaining({ kind: 'ant', n: 2, text: 'Segunda própria.' }),
+            // An antiphon the entry doesn't give stays the common's.
+            expect.objectContaining({ kind: 'ant', n: 3, text: 'Terceira do Comum.' }),
+            expect.objectContaining({ kind: 'rubrica', text: 'Ou' }),
+        ]);
+    });
+
+    it('keeps the common\'s pointer when the entry prints another rubric', () => {
+        const comum = {
+            title: 'Comum',
+            hours: {
+                Laudes: [
+                    { kind: 'rubrica', text: 'Salmos e cântico do Domingo I.' },
+                    { kind: 'ant', n: 1, text: 'Primeira do Comum.' },
+                    { kind: 'rubrica', text: 'Ou' },
+                ],
+            },
+        };
+        const proper = entry({
+            Laudes: [salmodia('Salmos e cântico do Domingo I: p. 879.'), { kind: 'rubrica', text: 'Preces do Comum: p. 1887.' }],
+        });
+        expect(assembleHour(proper, comum, 'laudes', null, false)?.sections[0].blocks).toEqual([
+            expect.objectContaining({ kind: 'rubrica', text: 'Salmos e cântico do Domingo I.' }),
+            expect.objectContaining({ kind: 'ant', n: 1, text: 'Primeira própria.' }),
+            expect.objectContaining({ kind: 'rubrica', text: 'Preces do Comum: p. 1887.' }),
+        ]);
+    });
+
+    it('repeats its antiphons after the common\'s Vespers psalms and drops the pointer', () => {
+        const comum = {
+            title: 'Comum',
+            hours: {
+                'Vésperas II': [
+                    { kind: 'ant', n: 1, text: 'Primeira do Comum.' },
+                    { kind: 'salmo', ref: 'Salmo 121' },
+                    { kind: 'ant', text: 'Primeira do Comum.' },
+                    { kind: 'ant', n: 2, text: 'Segunda do Comum.' },
+                    { kind: 'salmo', ref: 'Salmo 126' },
+                    { kind: 'ant', n: 2, text: 'Segunda do Comum.' },
+                ],
+            },
+        };
+        const proper = entry({ Vésperas: [salmodia('Salmos e cântico do Comum.')] });
+        expect(assembleHour(proper, comum, 'vesperas', null, false)?.sections[0].blocks).toEqual([
+            expect.objectContaining({ kind: 'ant', n: 1, text: 'Primeira própria.' }),
+            expect.objectContaining({ kind: 'salmo', ref: 'Salmo 121' }),
+            expect.objectContaining({ kind: 'ant', text: 'Primeira própria.' }),
+            expect.objectContaining({ kind: 'ant', n: 2, text: 'Segunda própria.' }),
+            expect.objectContaining({ kind: 'salmo', ref: 'Salmo 126' }),
+            expect.objectContaining({ kind: 'ant', n: 2, text: 'Segunda própria.' }),
+        ]);
+    });
+
+    it('stands where printed when there is no common', () => {
+        const proper = entry({
+            Laudes: [
+                { kind: 'hino', text: 'Hino' },
+                salmodia('Salmo e cântico do Domingo I.'),
+                { kind: 'leitura breve', text: 'Leitura' },
+            ],
+        });
+        expect(assembleHour(proper, null, 'laudes', null, false)?.sections[0].blocks).toEqual([
+            expect.objectContaining({ kind: 'hino' }),
+            expect.objectContaining({ kind: 'rubrica', text: 'Salmo e cântico do Domingo I.' }),
+            expect.objectContaining({ kind: 'ant', n: 1, text: 'Primeira própria.' }),
+            expect.objectContaining({ kind: 'ant', n: 2, text: 'Segunda própria.' }),
+            expect.objectContaining({ kind: 'leitura' }),
+        ]);
+    });
+
+    it('leaves a psalmody printed in full whole', () => {
+        const text = 'Ant. 1 Própria. Salmo 140 Senhor, a Vós clamo. Ant. Própria.';
+        const proper = entry({ Vésperas: [{ kind: 'salmodia', text }] });
+        expect(assembleHour(proper, null, 'vesperas', null, false)?.sections[0].blocks).toEqual([
+            expect.objectContaining({ kind: 'salmodia', text }),
+        ]);
+    });
+});
+
 describe('complementSeries', () => {
     it('maps Sexta and Noa to séries II and III, keeping Tércia proper', () => {
         expect(complementSeries(hour, 'Tércia')).toBeNull();
