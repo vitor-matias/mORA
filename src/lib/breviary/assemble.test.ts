@@ -287,6 +287,13 @@ describe('an entry printing both Vespers', () => {
         expect(texts(entry([{ kind: 'preces', text: 'Preces de II' }]))).toEqual(['Hino de I', 'Preces de II', 'Coleta do dia']);
     });
 
+    it('prays the day\'s collect at the other hours too', () => {
+        const proper = entry([]);
+        for (const [hour, sub] of [['laudes', null], ['intermedia', 'Sexta']] as const) {
+            expect(assembleHour(proper, null, hour, sub, false)?.sections[0].blocks.map((b) => b.text)).toEqual(['Coleta do dia']);
+        }
+    });
+
     it('takes the psalms of the common its pointer names', () => {
         const proper = entry([{ kind: 'salmodia', text: 'Salmos e cântico do Comum dos Santos. Ant. 1 Própria.' }]);
         expect(psalmsCommonId(proper)).toBe('santos');

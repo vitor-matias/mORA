@@ -96,6 +96,15 @@ function properBlocks(entry: ProprioEntry, hour: string): ComumBlock[] {
 }
 
 /**
+ * The entry's collect(s). Vésperas I, Laudes and Vésperas II can each print one,
+ * all under "Oração"; the first is then the eve's and the last the day's.
+ */
+function properOracao(entry: ProprioEntry): ComumBlock[] {
+    const oracao = properBlocks(entry, 'Oração');
+    return entry.hours['Vésperas I'] ? oracao.slice(-1) : oracao;
+}
+
+/**
  * The entry's Vespers of the day itself: feasts that print both pray the second.
  * Those printing "Hino: como nas Vésperas I." come without a hymn, as the parser
  * drops that line.
@@ -280,7 +289,7 @@ export function assembleHour(
     const laudesOracao = (): ComumBlock[] => {
         const laudes = dropFulfilledOracaoRubric(overlay(
             overlay(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []),
-            entry ? properBlocks(entry, 'Oração') : []
+            entry ? properOracao(entry) : []
         ));
         const first = laudes.findIndex((b) => b.kind === 'oração');
         return first < 0 ? [] : laudes.slice(first);
@@ -303,7 +312,7 @@ export function assembleHour(
         if (invitatorio.length > 0) sections.push({ title: 'Invitatório', blocks: invitatorio });
 
         let laudes = overlayPsalmody(commonHour('Laudes'), entry ? properBlocks(entry, 'Laudes') : []);
-        laudes = dropFulfilledOracaoRubric(overlay(laudes, entry ? properBlocks(entry, 'Oração') : []));
+        laudes = dropFulfilledOracaoRubric(overlay(laudes, entry ? properOracao(entry) : []));
         if (laudes.length > 0) sections.push({ title: 'Laudes', blocks: laudes });
     } else if (hourId === 'intermedia') {
         // Shared psalmody/rubrics live under "Hora Intermédia"; the reading
@@ -319,7 +328,7 @@ export function assembleHour(
         if (entry) {
             blocks = overlay(blocks, properBlocks(entry, 'Hora Intermédia'));
             blocks = overlay(blocks, properBlocks(entry, subHour ?? 'Tércia'));
-            blocks = overlay(blocks, properBlocks(entry, 'Oração'));
+            blocks = overlay(blocks, properOracao(entry));
         }
         blocks = dropFulfilledOracaoRubric(blocks);
         // The pointer is printed once, after the last sub-hour (Defuntos:
@@ -339,10 +348,7 @@ export function assembleHour(
             : [];
         const psalms = seasonFilter(psalmsComum?.hours['Vésperas II'] ?? [], pascal).filter((b) => b.kind === 'ant' || b.kind === 'salmo');
         let blocks = overlayPsalmody(base, entry ? properVesperas(entry) : [], psalms);
-        // Vésperas I, Laudes and Vésperas II can each print a collect, all under
-        // "Oração"; the last one printed is this hour's.
-        const oracao = entry ? properBlocks(entry, 'Oração') : [];
-        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry?.hours['Vésperas II'] ? oracao.slice(-1) : oracao)))
+        blocks = resolveOracao(dropFulfilledOracaoRubric(overlay(blocks, entry ? properOracao(entry) : [])))
             // Points at the next hour, whose banner already says it.
             .filter((b) => !(b.kind === 'rubrica' && /^Completas como/.test(b.text ?? '')));
         if (blocks.length > 0) sections.push({ title: 'Vésperas', blocks });
