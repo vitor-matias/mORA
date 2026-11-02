@@ -179,7 +179,12 @@ export default function Home() {
                             </p>
                         </a>
                     </li>
-                ) : null}
+                ) : (
+                    <li>
+                        <p className="text-xs font-semibold text-liturgy-700 dark:text-liturgy-400 mb-0.5">{t.intentionPope}</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-snug">{t.intentionPopeUnavailable}</p>
+                    </li>
+                )}
             </ul>
         </>
     );

@@ -16,6 +16,7 @@ const translations = {
         intentionThisMonth: "Este mês",
         intentionPope: "Intenção do Papa",
         intentionPopeLoading: "A carregar intenção do Papa…",
+        intentionPopeUnavailable: "Ainda não disponível",
         rosaryTitle: "Santo Terço do Rosário",
         rosaryDesc: "Reza e medita os mistérios diários",
         chapletsTitle: "Terço e Coroas",
