@@ -71,6 +71,10 @@ describe('parseCommonsPointer', () => {
         expect(parseCommonsPointer('Ofício de Defuntos')).toEqual(['defuntos']);
     });
 
+    it('reads the abbreviated "N. Senhora" as the Marian common', () => {
+        expect(parseCommonsPointer('Comum de N. Senhora, excepto:')).toEqual(['nossa-senhora']);
+    });
+
     it('keeps "ou" alternatives in the order the entry offers them', () => {
         expect(parseCommonsPointer('Comum dos Pastores ou dos Doutores da Igreja')).toEqual(['pastores', 'doutores']);
         expect(parseCommonsPointer('Comum dos Doutores da Igreja ou dos Pastores')).toEqual(['doutores', 'pastores']);

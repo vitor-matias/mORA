@@ -61,7 +61,7 @@ const LABELS: { re: RegExp; kind: string; skip: number; verseLike?: boolean }[] 
 const COMMON_IDS: [RegExp, string][] = [
     [/defuntos/i, 'defuntos'],
     [/dedicação/i, 'dedicacao-igreja'],
-    [/nossa senhora/i, 'nossa-senhora'],
+    [/(?:nossa|n\.)\s*senhora/i, 'nossa-senhora'],
     [/apóstolos/i, 'apostolos'],
     [/vários mártires/i, 'varios-martires'],
     [/(?:um|uma) mártir|mártir(?!es)/i, 'um-martir'],
