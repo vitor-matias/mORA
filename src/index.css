@@ -217,7 +217,10 @@
      slab between the tinted status bar above and the tinted content below.
      So the bar paints the same wash over its frosted fill: stuck at top-0 its
      gradient lines up with .app-ambient's, and the bar reads as the page's
-     own background with the reading blurred underneath — not a lid on it. */
+     own background with the reading blurred underneath — not a lid on it.
+
+     Never write -webkit-backdrop-filter by hand: the minifier adds it, and given
+     both it keeps only the prefixed one, which Chrome and Firefox ignore. */
   .app-bar {
     backdrop-filter: blur(20px) saturate(1.4);
     background: var(--app-wash), rgb(var(--app-bg) / 0.8);
