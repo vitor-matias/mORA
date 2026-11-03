@@ -567,7 +567,7 @@ export default function Palavra() {
             // The same link the Nostr note carries. Wherever this lands — a
             // chat, a timeline — a grid with no way to reach the game is a
             // dead end for whoever reads it.
-            appUrl(),
+            `${appUrl()}#/palavra`,
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
