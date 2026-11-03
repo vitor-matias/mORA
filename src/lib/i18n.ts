@@ -11,6 +11,8 @@ const translations = {
     home: {
         greeting: "Bom dia.",
         whatToPray: "O que vamos rezar hoje?",
+        install: "Instalar a aplicação",
+        installHintIOS: "Para instalar, toca em Partilhar e depois em Adicionar ao ecrã principal.",
         intentions: "Intenções",
         intentionToday: "Hoje",
         intentionThisMonth: "Este mês",
