@@ -374,8 +374,14 @@ variable uses and which this accepts too — to where the app is served, e.g.
 reads its own URL off `window.location`, which is no help here. Left unset,
 definitions are published with no image — valid NIP-58, and better than a
 definition carrying a broken URL that clients will cache. Because definitions
-are addressable, art can be added or moved later without reissuing a single
-award: the awards point at the coordinate, not at a picture.
+are addressable, art can be moved later without reissuing a single award: the
+awards point at the coordinate, not at a picture.
+
+With the URL set, a place whose art isn't being served as an image is held back
+and the run fails, so it shows up. The next day's run awards it, because a run
+skips a place once it is awarded and so could never add the art afterwards. If a
+place is still held when its month ends, the job moves on to the next month, so
+award it by hand with its `YYYY-MM`.
 
 ## Scheduling the awards
 

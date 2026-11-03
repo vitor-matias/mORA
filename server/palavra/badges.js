@@ -121,7 +121,7 @@ const MONTH_THEMES = [
 ];
 
 /** Easter moves, so whichever of March or April holds it wears its medal. */
-const monthTheme = (month) => (isEasterMonth(month)
+export const monthTheme = (month) => (isEasterMonth(month)
     ? 'Mês da Páscoa'
     : MONTH_THEMES[Number(month.slice(5)) - 1]);
 
@@ -148,7 +148,7 @@ const monthTheme = (month) => (isEasterMonth(month)
 const configuredAppUrl = (process.env.PALAVRA_APP_URL || process.env.BASE_URL || '').trim();
 const APP_URL = configuredAppUrl ? configuredAppUrl.replace(/\/*$/, '/') : '';
 
-const artUrls = (month, place) => {
+export const artUrls = (month, place) => {
     const theme = isEasterMonth(month) ? 'pascoa' : month.slice(5);
     return {
         image: `${APP_URL}badges/palavra-${theme}-${place}.png`,
@@ -156,15 +156,20 @@ const artUrls = (month, place) => {
     };
 };
 
+/** A status alone doesn't show the art is there: a single-page host can answer
+    a missing file with its app page and a 200. */
+export const servedAsImage = (response) =>
+    response.ok && (response.headers.get('content-type') ?? '').startsWith('image/');
+
 /**
- * The art tags for each place, dropped for any whose files aren't actually
- * being served yet.
+ * The art tags for each place, or null for any whose files aren't actually
+ * being served yet, which the caller holds back for a later run.
  *
- * NIP-58 allows a definition with no image, and a definition carrying a
- * *broken* one is worse than that: clients cache what they fetch, 404s
- * included, so a badge published a few minutes before its art went live can
- * show an empty tile in someone's client long after the file appears. Checking
- * first costs one HEAD per URL, once a month.
+ * Holding back costs a day, because the job runs daily. Publishing anyway would
+ * cost the art for good: a later run skips a place once it is awarded, so a
+ * definition signed without its image stays that way. One carrying a *broken*
+ * image is no better, because clients cache what they fetch, 404s included.
+ * Checking first costs one HEAD per URL, once a month.
  *
  * This is not a hypothetical ordering worry. The art is served by the app's own
  * deployment, so the very first run after a release is exactly the moment the
@@ -179,7 +184,7 @@ async function artTagsByPlace(month, places) {
                 method: 'HEAD',
                 signal: AbortSignal.timeout(RELAY_TIMEOUT_MS),
             });
-            return response.ok;
+            return servedAsImage(response);
         } catch {
             // Unreachable is not "missing", but it is not "confirmed serving"
             // either, and only the latter justifies baking the URL into a
@@ -194,10 +199,10 @@ async function artTagsByPlace(month, places) {
         if (!imageOk || !thumbOk) {
             console.warn(
                 `The art for place ${place} is not being served yet (${image}), `
-                + 'so its badge is published without an image. Because a definition is '
-                + 'addressable, republishing later adds the art without reissuing the award.',
+                + 'so its award waits for a later run. Awarding it now would leave it without '
+                + 'art for good, because a later run skips a place once it is awarded.',
             );
-            return [place, []];
+            return [place, null];
         }
         return [place, [['image', image, '512x512'], ['thumb', thumb, '128x128']]];
     }));
@@ -629,7 +634,7 @@ async function main() {
     });
 
     const art = await artTagsByPlace(month, podium.map((_, index) => index + 1));
-    const withArt = [...art.values()].filter((tags) => tags.length > 0).length;
+    const withArt = [...art.values()].filter((tags) => tags?.length > 0).length;
     console.log(
         `\n${withArt} of ${podium.length} badges would carry art`
         + `${APP_URL ? '' : ' (no app URL configured)'}.`,
@@ -668,6 +673,11 @@ async function main() {
         const place = index + 1;
         if (awarded.has(place)) {
             console.log(`Place ${place} for ${month} is already awarded; leaving it alone.`);
+            continue;
+        }
+        if (art.get(place) === null) {
+            console.error(`Holding place ${place} for ${month} until its art is served.`);
+            failed = true;
             continue;
         }
 
