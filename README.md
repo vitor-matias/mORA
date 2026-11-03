@@ -26,6 +26,8 @@ It tracks prayer **streaks** and can optionally sync them, your starred prayers 
 - `vite-plugin-pwa` for offline/installable support
 - `DOMPurify` to sanitize the remote liturgy HTML before rendering
 
+Supported browsers: Safari/iOS 16.4+, Chrome/Edge 111+ and Firefox 114+ (Vite's default build target).
+
 ## Getting started
 
 ```bash
