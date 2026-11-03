@@ -32,7 +32,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Don't leave the token in .git/config for later steps to find.
           persist-credentials: false
