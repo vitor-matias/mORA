@@ -33,6 +33,13 @@ jobs:
         run: npx tsc -b
       - name: Lint
         run: npm run lint
+      # The tests import the publishers' code. Without their own node_modules
+      # those imports fall through to the root's, whose versions differ, so a
+      # bump to a publisher's dependencies would never be exercised.
+      - name: Install publishers
+        run: |
+          npm ci --prefix server/agenda
+          npm ci --prefix server/palavra
       - name: Test
         run: npm test
       - name: Build
