@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, CalendarCheck, Puzzle, ExternalLink, BookMarked, Music, Book, HeartHandshake } from "lucide-react";
+import { BookOpen, Clock, User, Lock, LockOpen, HandHeart, ArrowRight, CalendarDays, CalendarCheck, Puzzle, ExternalLink, BookMarked, Music, Book, HeartHandshake, Download } from "lucide-react";
 import { Rosary } from "@/components/icons";
 import { useAppStore } from "@/store/app";
 import { useAuthStore } from "@/store/auth";
@@ -14,6 +14,7 @@ import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { COLOR_DOTS } from "@/lib/dayInfo";
+import { isIOS, promptInstall, useCanInstall } from "@/lib/useInstallPrompt";
 
 export default function Home() {
     const { liturgicalColor, liturgicalDayName, liturgicalSections, liturgicalColorDate } = useAppStore();
@@ -30,6 +31,9 @@ export default function Home() {
         window.matchMedia?.('(display-mode: standalone)').matches
         || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
     );
+    const canInstall = useCanInstall();
+    const installByHand = !isInstalledApp && isIOS();
+    const [installHintOpen, setInstallHintOpen] = useState(false);
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);
     const hasProtectedKey = useAuthStore((s) => Boolean(s.protectedKey));
     const isLocked = useAuthStore((s) => s.isLocked);
@@ -219,24 +223,44 @@ export default function Home() {
                             : <LockOpen size={20} className="text-liturgy-700 dark:text-liturgy-400" aria-hidden="true" />}
                     </button>
                 )}
-                {/* xl:hidden — the global top bar already carries Perfil, and
-                    a launcher shouldn't duplicate the chrome above it. */}
-                <Link
-                    to="/perfil"
-                    aria-label="Perfil e configurações"
-                    className="pressable pressable-small xl:hidden shrink-0 h-12 w-12 rounded-full surface overflow-hidden flex items-center justify-center"
-                >
-                    {profile?.picture ? (
-                        <img
-                            src={profile.picture}
-                            alt={displayName || 'Perfil'}
-                            className="h-full w-full object-cover"
-                        />
-                    ) : (
-                        <User size={22} className="text-zinc-500 dark:text-zinc-400" />
+                {/* xl:contents — with the profile link hidden there, an empty
+                    column would still take up a gap in the header. */}
+                <div className="shrink-0 flex flex-col gap-2 xl:contents">
+                    {/* xl:hidden — the global top bar already carries Perfil, and
+                        a launcher shouldn't duplicate the chrome above it. */}
+                    <Link
+                        to="/perfil"
+                        aria-label="Perfil e configurações"
+                        className="pressable pressable-small xl:hidden shrink-0 h-12 w-12 rounded-full surface overflow-hidden flex items-center justify-center"
+                    >
+                        {profile?.picture ? (
+                            <img
+                                src={profile.picture}
+                                alt={displayName || 'Perfil'}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <User size={22} className="text-zinc-500 dark:text-zinc-400" />
+                        )}
+                    </Link>
+                    {(canInstall || installByHand) && (
+                        <button
+                            type="button"
+                            onClick={() => canInstall ? promptInstall() : setInstallHintOpen((open) => !open)}
+                            aria-label={t.install}
+                            aria-expanded={canInstall ? undefined : installHintOpen}
+                            className="pressable pressable-small shrink-0 h-12 w-12 rounded-full surface flex items-center justify-center"
+                        >
+                            <Download size={20} className="text-liturgy-700 dark:text-liturgy-400" aria-hidden="true" />
+                        </button>
                     )}
-                </Link>
+                </div>
             </header>
+            {installByHand && installHintOpen && (
+                <p className="relative z-10 surface rounded-3xl px-5 py-4 text-sm text-zinc-700 dark:text-zinc-300">
+                    {t.installHintIOS}
+                </p>
+            )}
 
             {/* Desktop: the day and the intentions share a row */}
             <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-stretch relative z-10">
