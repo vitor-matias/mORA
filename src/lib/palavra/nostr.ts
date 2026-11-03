@@ -399,7 +399,7 @@ export async function sharePalavraNote({
         '',
         grid,
         '',
-        appUrl(),
+        `${appUrl()}#/palavra`,
     ];
     const event = await signNostrEvent({
         kind: 1,
