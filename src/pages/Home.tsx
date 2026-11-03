@@ -14,7 +14,8 @@ import { suggestedPrayer } from "@/lib/devotional/suggestion";
 import { getDefaultMassDate } from "@/lib/liturgy";
 import { fetchMonthlyIntention, getMonthlyDevotion, getWeekdayDevotion, type Intention } from "@/lib/intentions";
 import { COLOR_DOTS } from "@/lib/dayInfo";
-import { isIOS, promptInstall, useCanInstall } from "@/lib/useInstallPrompt";
+import { isIOS } from "@/lib/platform";
+import { promptInstall, useCanInstall } from "@/lib/useInstallPrompt";
 
 export default function Home() {
     const { liturgicalColor, liturgicalDayName, liturgicalSections, liturgicalColorDate } = useAppStore();
@@ -32,6 +33,8 @@ export default function Home() {
         || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
     );
     const canInstall = useCanInstall();
+    // iOS has no install prompt: adding to the home screen is only ever done
+    // by hand, from the share sheet.
     const installByHand = !isInstalledApp && isIOS();
     const [installHintOpen, setInstallHintOpen] = useState(false);
     const pubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey);

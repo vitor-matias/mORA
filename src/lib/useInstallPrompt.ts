@@ -39,11 +39,3 @@ export function promptInstall() {
     setDeferred(null);
     event?.prompt();
 }
-
-// iOS has no install prompt: adding to the home screen is only ever done by
-// hand, from the share sheet. iPadOS reports itself as a Mac, so touch tells
-// them apart.
-export function isIOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent)
-        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
