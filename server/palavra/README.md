@@ -327,11 +327,39 @@ A third, kind 30008, is deliberately absent. NIP-58 has the **recipient**
 publish that to show a badge on their profile, so it belongs to the app and to
 the winner's choice. Nothing here writes to anyone else's profile.
 
-The art is an open book in gold, silver and bronze, rendered by
-`npm run make-badge-art` in the repo root and committed to `public/badges/`.
-The shape is Material Symbols `menu_book` (Apache-2.0), path data verbatim from
-`google/material-design-icons` — not the 📖 emoji, whose good renderings live in
-proprietary fonts, which makes a PNG traced from one a licensing problem.
+The art is one shape per month in gold, silver and bronze, rendered by
+`npm run make-badge-art` in the repo root and committed to `public/badges/` as
+`palavra-{MM}-{place}.png`. Each month carries a theme, which also opens the
+badge's description:
+
+| Month | Theme | Shape |
+| --- | --- | --- |
+| 01 | Santíssimo Nome de Jesus | IHS |
+| 02 | Sagrada Família | family with halos |
+| 03 | Quaresma | crown of thorns |
+| 04 | Santíssimo Sacramento | chalice and host |
+| 05 | Maria | Our Lady of Fátima |
+| 06 | Sagrado Coração de Jesus | the heart with flames, thorns, cross and blood |
+| 07 | Antigo Testamento | Noah's ark under the rainbow |
+| 08 | Imaculado Coração de Maria | heart with a flame and a wreath of roses |
+| 09 | Antigo Testamento | the Tablets of the Law |
+| 10 | Santo Rosário | rosary |
+| 11 | Almas | candle |
+| 12 | Natal | star of Bethlehem |
+
+Easter moves, so the month holding Easter Sunday wears `palavra-pascoa-{place}.png`
+("Mês da Páscoa", the cross in a burst of light) in place of its usual medal:
+March in a year like 2027, April in most. The date comes from
+`src/lib/palavra/easter.ts`.
+
+Months awarded before these existed keep the open book at
+`palavra-{place}.png`, so those files must stay: signed definitions point at
+them.
+
+The shapes are Material Symbols (Apache-2.0), path data verbatim from
+`google/material-design-icons`, plus plain geometry where Material has no sign
+for it — not emoji, whose good renderings live in proprietary fonts, which makes
+a PNG traced from one a licensing problem.
 
 PNG rather than SVG because a good number of Nostr clients refuse SVG, and an
 image format half the audience won't render defeats the point of putting badges
@@ -346,8 +374,14 @@ variable uses and which this accepts too — to where the app is served, e.g.
 reads its own URL off `window.location`, which is no help here. Left unset,
 definitions are published with no image — valid NIP-58, and better than a
 definition carrying a broken URL that clients will cache. Because definitions
-are addressable, art can be added or moved later without reissuing a single
-award: the awards point at the coordinate, not at a picture.
+are addressable, art can be moved later without reissuing a single award: the
+awards point at the coordinate, not at a picture.
+
+With the URL set, a place whose art isn't being served as an image is held back
+and the run fails, so it shows up. The next day's run awards it, because a run
+skips a place once it is awarded and so could never add the art afterwards. If a
+place is still held when its month ends, the job moves on to the next month, so
+award it by hand with its `YYYY-MM`.
 
 ## Scheduling the awards
 
