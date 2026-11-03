@@ -109,6 +109,18 @@
        overscroll area paint from here, and left at the UA default they would
        flash white under a dark page. */
     background: rgb(var(--app-bg));
+    /* The app's own theme, declared to the browser. Everything the UA paints
+       for us reads this and nothing else: the always-on scrollbar above, the
+       overscroll glow, and the native widgets the app does use — the date
+       picker in DateNav, the time pickers in Perfil, checkboxes. Without it
+       the UA assumed `light` whatever the page looked like, so Imersivo got
+       a white scrollbar track and a white calendar pop-up; a phone set to
+       dark with the app left on the light theme got the mirror image.
+       The `.dark` rule below flips it, from the same class the rest of the
+       theme hangs on. It is also the one signal a browser has about the
+       page's darkness besides theme-color — see the Android note in
+       Layout.tsx for how far that reaches into the system bars. */
+    color-scheme: light;
   }
   /* With viewport-fit=cover the page also extends under a display cutout in
      landscape; keep content clear of it. The top inset is taken by each
@@ -707,6 +719,11 @@ html[data-theme="rosa"] {
 }
 
 .dark {
+  /* Pairs with `color-scheme: light` on html (@layer base, so this unlayered
+     rule wins whatever the specificity): UA-painted surfaces follow the app's
+     theme, not the phone's. */
+  color-scheme: dark;
+
   /* Imersivo: near-black, with zinc-900 tiles. */
   --app-bg: 11 11 12;
   --surface-bg: 24 24 27;

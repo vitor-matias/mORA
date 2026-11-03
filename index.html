@@ -32,6 +32,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#F7F7F9" />
+  <!-- The page's scheme for the moment before index.css loads: the OS
+       preference, which is what the app follows by default. index.css then
+       declares the app's actual theme (html/.dark { color-scheme }) and wins,
+       so a stored light theme on a dark phone — or the reverse — settles on
+       the app's own choice. -->
+  <meta name="color-scheme" content="light dark" />
   <title>Oremus</title>
   <script>
     // Apply theme before first paint so there is no flash of the wrong
