@@ -35,8 +35,8 @@ import { parseIcsToDays } from '../../src/lib/icsCalendar.ts';
 import WebSocket from 'ws';
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
 import { nip19 } from 'nostr-tools';
-import { sha256 } from '@noble/hashes/sha2';
-import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
 
 const configuredRelays = (process.env.AGENDA_RELAYS ?? '')
     .split(',')
@@ -50,6 +50,13 @@ const RELAYS = configuredRelays.length > 0 ? configuredRelays : DEFAULT_RELAYS;
 const KIND = 30078; // NIP-78 app-specific data, same as Palavra uses.
 const TOPIC = 'moraagenda';
 const RELAY_TIMEOUT_MS = 15_000;
+
+/**
+ * How many days one read asks for. Two years of days outrun what relays hand
+ * back to a single REQ (several stop at exactly 500), and what they leave out
+ * looks missing, so the read goes by `d` tag, a chunk at a time.
+ */
+const READ_CHUNK = 50;
 
 /**
  * Sent in batches this size, with a breath between them: a year is 365
@@ -147,7 +154,8 @@ async function fetchVaticanTheme(month) {
 // ── Relays ───────────────────────────────────────────────────────────────
 
 /**
- * What this publisher already has on one relay: d tag → content hash.
+ * What this publisher already has on one relay, of the given d tags: d tag →
+ * content hash.
  *
  * `complete` says whether the relay actually finished answering (EOSE) as
  * opposed to timing out or dropping the connection. The difference matters:
@@ -155,26 +163,37 @@ async function fetchVaticanTheme(month) {
  * while one that never answered says nothing about what it holds. Both hand
  * back an empty map, so without this flag they are indistinguishable — and a
  * newly added, still-empty relay would be quietly skipped forever.
+ *
+ * One socket for all the chunks, each asked for once the last has ended:
+ * opening a connection per chunk is what gets a reader cut off.
  */
-function publishedHashesOn(url, pubkey) {
+export function publishedHashesOn(url, pubkey, dTags) {
     return new Promise((resolve) => {
         const found = new Map();
         let settled = false;
+        let timer;
         const finish = (complete) => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             try { socket.close(); } catch { /* already closing */ }
-            resolve({ hashes: found, complete });
+            resolve({ url, hashes: found, complete });
         };
         const socket = new WebSocket(url);
-        const timer = setTimeout(() => finish(false), RELAY_TIMEOUT_MS);
-        // A year of days plus the themes, with room to spare. Relays cap
-        // `limit` themselves; whatever comes back is treated as "what this
-        // relay has", and anything missing simply gets republished.
-        socket.on('open', () => socket.send(JSON.stringify(
-            ['REQ', 'agenda', { kinds: [KIND], authors: [pubkey], '#t': [TOPIC], limit: 500 }],
-        )));
+        let next = 0;
+        const askNext = () => {
+            if (next >= dTags.length) return finish(true);
+            const chunk = dTags.slice(next, next + READ_CHUNK);
+            next += READ_CHUNK;
+            clearTimeout(timer);
+            timer = setTimeout(() => finish(false), RELAY_TIMEOUT_MS);
+            // The same subscription id each time: NIP-01 has it replace the last.
+            socket.send(JSON.stringify(
+                ['REQ', 'agenda', { kinds: [KIND], authors: [pubkey], '#d': chunk, limit: chunk.length }],
+            ));
+        };
+        timer = setTimeout(() => finish(false), RELAY_TIMEOUT_MS);
+        socket.on('open', askNext);
         socket.on('message', (raw) => {
             try {
                 const msg = JSON.parse(raw.toString());
@@ -187,7 +206,8 @@ function publishedHashesOn(url, pubkey) {
                         ?? (typeof msg[2]?.content === 'string' ? hashOf(msg[2].content) : null);
                     if (d && hash) found.set(d, hash);
                 }
-                if (msg[0] === 'EOSE') finish(true);
+                if (msg[0] === 'EOSE') askNext();
+                if (msg[0] === 'CLOSED') finish(false);
             } catch { /* not for us */ }
         });
         socket.on('error', () => finish(false));
@@ -219,7 +239,7 @@ function sendTo(url, event) {
     });
 }
 
-async function publish(entry, secretKey, dryRun) {
+async function publish(entry, secretKey, dryRun, acceptedBy) {
     const event = finalizeEvent({
         kind: KIND,
         created_at: Math.floor(Date.now() / 1000),
@@ -235,9 +255,13 @@ async function publish(entry, secretKey, dryRun) {
 
     if (dryRun) return true;
 
-    const results = await Promise.all(RELAYS.map((url) => sendTo(url, event)));
+    const results = await Promise.all(entry.targets.map(async (url) => {
+        const ok = await sendTo(url, event);
+        if (ok) acceptedBy.set(url, (acceptedBy.get(url) ?? 0) + 1);
+        return ok;
+    }));
     const accepted = results.filter(Boolean).length;
-    if (accepted === 0) console.warn(`  ${entry.dTag} reached no relay`);
+    if (accepted === 0 && !entry.held) console.warn(`  ${entry.dTag} reached no relay`);
     // One relay is enough for the app to find it; zero means nothing shipped.
     return accepted > 0;
 }
@@ -273,6 +297,27 @@ export async function buildEntries(ics, theme, themeMonth) {
     }
 
     return entries;
+}
+
+/**
+ * Which relays an entry still has to go to, and whether any already holds it.
+ *
+ * Each relay gets only what it lacks. Requiring every relay to hold every day
+ * before calling an entry done never finishes, since some relays keep only a
+ * fraction of two years, and it re-sent the calendar to all the ones that had
+ * it. A relay that didn't finish answering waits for a run where it does,
+ * unless none did: then publish rather than assume, since a redundant write
+ * beats a day the app can't find.
+ */
+export function planEntry(entry, perRelay) {
+    const hash = hashOf(entry.content);
+    const answered = perRelay.filter(({ complete }) => complete);
+    const asked = answered.length > 0 ? answered : perRelay;
+    return {
+        ...entry,
+        targets: asked.filter(({ hashes }) => hashes.get(entry.dTag) !== hash).map(({ url }) => url),
+        held: perRelay.some(({ hashes }) => hashes.get(entry.dTag) === hash),
+    };
 }
 
 async function main() {
@@ -313,24 +358,20 @@ async function main() {
     if (entries.length === 0) throw new Error('the calendar feed parsed to no days at all');
     console.log(`Feed has ${entries.length} entries (${ics.length} bytes in)`);
 
+    // --force reads nothing, which plans the same as every relay being empty.
+    const dTags = entries.map(({ dTag }) => dTag);
     const perRelay = force
-        ? []
-        : await Promise.all(RELAYS.map((url) => publishedHashesOn(url, pubkey)));
-    // "Answered" means finished answering, empty-handed or not — a relay with
-    // nothing on it is precisely the one that needs everything.
-    const answered = perRelay.filter(({ complete }) => complete);
+        ? RELAYS.map((url) => ({ url, hashes: new Map(), complete: true }))
+        : await Promise.all(RELAYS.map((url) => publishedHashesOn(url, pubkey, dTags)));
+    if (!force) {
+        for (const { url, hashes, complete } of perRelay) {
+            console.log(`  ${url}: ${hashes.size}/${entries.length}${complete ? '' : ' (did not finish answering)'}`);
+        }
+    }
 
-    const stale = entries.filter((entry) => {
-        if (force) return true;
-        // Nothing answered: publish rather than assume. Better a redundant
-        // write than a day the app can't find.
-        if (answered.length === 0) return true;
-        const hash = hashOf(entry.content);
-        // Republish unless every relay that answered already has this exact
-        // content — otherwise a relay that dropped an event, or one added to
-        // the list later, would never be filled in.
-        return !answered.every(({ hashes }) => hashes.get(entry.dTag) === hash);
-    });
+    const stale = entries
+        .map((entry) => planEntry(entry, perRelay))
+        .filter(({ targets }) => targets.length > 0);
 
     if (stale.length === 0) {
         console.log('Nothing changed — nothing to publish.');
@@ -362,18 +403,27 @@ async function main() {
 
     let sent = 0;
     let failed = 0;
+    const acceptedBy = new Map();
     for (let i = 0; i < batch.length; i += BATCH_SIZE) {
         const slice = batch.slice(i, i + BATCH_SIZE);
-        const outcomes = await Promise.all(slice.map((entry) => publish(entry, secretKey, dryRun)));
+        const outcomes = await Promise.all(slice.map((entry) => publish(entry, secretKey, dryRun, acceptedBy)));
         sent += outcomes.filter(Boolean).length;
-        failed += outcomes.filter((ok) => !ok).length;
+        // Refused by the relay that lacks it, but on another: the app finds it.
+        failed += slice.filter((entry, j) => !outcomes[j] && !entry.held).length;
         if (i + BATCH_SIZE < batch.length) await sleep(BATCH_PAUSE_MS);
     }
 
+    for (const url of RELAYS) {
+        const asked = batch.filter(({ targets }) => targets.includes(url)).length;
+        if (asked > 0) {
+            console.log(`  ${url}: ${dryRun ? `would send ${asked}` : `accepted ${acceptedBy.get(url) ?? 0}/${asked}`}`);
+        }
+    }
     console.log(`Published ${sent}/${batch.length}${failed ? ` (${failed} reached no relay)` : ''}`);
-    // Some failures are ordinary — one relay down, one event refused. All of
-    // them failing means the run achieved nothing, and CI should say so.
-    if (sent === 0) throw new Error('nothing reached any relay');
+    // Some failures are ordinary — one relay down, one event refused. An entry
+    // reaching no relay when nothing got through at all means the run achieved
+    // nothing, and CI should say so.
+    if (sent === 0 && failed > 0) throw new Error('nothing reached any relay');
 }
 
 // Only when run directly: buildEntries is exported for the tests, and

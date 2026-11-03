@@ -5,8 +5,8 @@ name: Publish Liturgical Calendar
 # every public proxy this app relied on eventually died. See server/agenda.
 #
 # The feed is a whole year published up front and corrected occasionally, so
-# there is nothing to catch up on hour by hour: once a day is plenty, and a
-# run that finds nothing changed publishes nothing at all.
+# there is nothing to catch up on hour by hour: once a day is plenty, and each
+# relay is sent only what it lacks (unless `force` republishes everything).
 on:
   schedule:
     - cron: '20 4 * * *'
