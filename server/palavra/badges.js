@@ -52,6 +52,7 @@ import {
     shiftMonth,
     tallyMonth,
 } from '../../src/lib/palavra/scoring.ts';
+import { isEasterMonth } from '../../src/lib/palavra/easter.ts';
 
 // Deduplicated: a repeated URL in PALAVRA_RELAYS would otherwise inflate
 // RELAYS.length and count the same relay's answer as two independent votes,
@@ -110,6 +111,20 @@ const MONTH_NAMES = [
 
 const PLACE_NAMES = ['1.º lugar', '2.º lugar', '3.º lugar'];
 
+/** The month's theme. Goes with its shape in
+    tools/make-badge-art.js, so a change here wants a look at the art there. */
+const MONTH_THEMES = [
+    'Mês do Santíssimo Nome de Jesus', 'Mês da Sagrada Família', 'Mês da Quaresma',
+    'Mês do Santíssimo Sacramento', 'Mês de Maria', 'Mês do Sagrado Coração de Jesus',
+    'Mês do Antigo Testamento', 'Mês do Imaculado Coração de Maria', 'Mês do Antigo Testamento',
+    'Mês do Santo Rosário', 'Mês das Almas', 'Mês do Natal',
+];
+
+/** Easter moves, so whichever of March or April holds it wears its medal. */
+const monthTheme = (month) => (isEasterMonth(month)
+    ? 'Mês da Páscoa'
+    : MONTH_THEMES[Number(month.slice(5)) - 1]);
+
 /**
  * Where the badge art is served from, e.g. https://mora.app/.
  *
@@ -133,10 +148,13 @@ const PLACE_NAMES = ['1.º lugar', '2.º lugar', '3.º lugar'];
 const configuredAppUrl = (process.env.PALAVRA_APP_URL || process.env.BASE_URL || '').trim();
 const APP_URL = configuredAppUrl ? configuredAppUrl.replace(/\/*$/, '/') : '';
 
-const artUrls = (place) => ({
-    image: `${APP_URL}badges/palavra-${place}.png`,
-    thumb: `${APP_URL}badges/palavra-${place}-thumb.png`,
-});
+const artUrls = (month, place) => {
+    const theme = isEasterMonth(month) ? 'pascoa' : month.slice(5);
+    return {
+        image: `${APP_URL}badges/palavra-${theme}-${place}.png`,
+        thumb: `${APP_URL}badges/palavra-${theme}-${place}-thumb.png`,
+    };
+};
 
 /**
  * The art tags for each place, dropped for any whose files aren't actually
@@ -152,7 +170,7 @@ const artUrls = (place) => ({
  * deployment, so the very first run after a release is exactly the moment the
  * two can disagree.
  */
-async function artTagsByPlace(places) {
+async function artTagsByPlace(month, places) {
     if (!APP_URL) return new Map(places.map((place) => [place, []]));
 
     const reachable = async (url) => {
@@ -171,7 +189,7 @@ async function artTagsByPlace(places) {
     };
 
     const checked = await Promise.all(places.map(async (place) => {
-        const { image, thumb } = artUrls(place);
+        const { image, thumb } = artUrls(month, place);
         const [imageOk, thumbOk] = await Promise.all([reachable(image), reachable(thumb)]);
         if (!imageOk || !thumbOk) {
             console.warn(
@@ -505,12 +523,13 @@ function definitionEvent(month, place, art, secretKey) {
     return finalizeEvent({
         kind: KIND_BADGE_DEFINITION,
         created_at: Math.floor(Date.now() / 1000),
-        // An open book in gold, silver or bronze — tools/make-badge-art.js
+        // The month's shape in gold, silver or bronze — tools/make-badge-art.js
         // renders them, public/badges/ holds them, the app serves them.
         tags: [
             ['d', badgeDTag(month, place)],
             ['name', badgeName(month)],
-            ['description', `${PLACE_NAMES[place - 1]} da classificação mensal da Palavra Bíblica do Dia`],
+            // Theme first: the app truncates this to one line.
+            ['description', `${monthTheme(month)} — ${PLACE_NAMES[place - 1]} da classificação mensal da Palavra Bíblica do Dia`],
             ...art,
             ['t', PALAVRA_TOPIC],
         ],
@@ -609,7 +628,7 @@ async function main() {
         console.log(`  ${i + 1}. ${row.pubkey.slice(0, 12)}…  ${row.points} pts over ${row.played} days`);
     });
 
-    const art = await artTagsByPlace(podium.map((_, index) => index + 1));
+    const art = await artTagsByPlace(month, podium.map((_, index) => index + 1));
     const withArt = [...art.values()].filter((tags) => tags.length > 0).length;
     console.log(
         `\n${withArt} of ${podium.length} badges would carry art`

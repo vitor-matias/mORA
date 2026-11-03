@@ -47,14 +47,14 @@ Oremus is a companion for daily Catholic prayer in European Portuguese. It gathe
 | App icon | `tools/icon-master.svg` → `tools/icon-master-512.png` → `public/pwa-*.png`, `apple-touch-icon.png` | A breviary: red-brown leather (#8E4130) with a gold cross (#E8C27A), four ribbon markers in the liturgical colours (red, green, purple, gold), on a full-bleed warm cream field (#F6E8D4) | Home screens, app switchers, install prompts |
 | Favicon | `public/favicon.svg` | The same breviary, simplified to the book, the cross and two ribbons, on a cream rounded square | Browser tabs |
 | Wordmark | `src/components/layout/TabBar.tsx` | The breviary in cream on the day's liturgical colour, the cross in that colour, followed by "Oremus" in Inter Bold, tight tracking | Desktop top bar (xl and up) |
-| Medals | `public/badges/palavra-{1,2,3}.png` | Material Symbols `menu_book`, gold, silver and bronze gradients | Palavra podium badges on Nostr |
+| Medals | `public/badges/palavra-{MM}-{1,2,3}.png` | One shape per month for its theme, plus `palavra-pascoa-{1,2,3}.png` for the month holding Easter, Material Symbols and plain geometry, gold, silver and bronze gradients. The earlier `palavra-{1,2,3}.png` book stays for past awards | Palavra podium badges on Nostr |
 
 ### Rules
 
 - Edit `tools/icon-master.svg`, export it to `tools/icon-master-512.png` (512×512, 8-bit RGB, no alpha), then run `npm run make-app-icons -- --exported`, which records which SVG the PNG came from (a later run refuses to use a PNG the SVG has moved on from). Never edit the PNGs in `public/` by hand.
 - Keep the mark inside the central 80% of the master, the part a circular crop keeps.
 - The app icon stays full bleed. The launcher supplies the shape; a mark with its own corners ends up on a white plate on Android.
-- Medal art stays PNG and stays derived from an Apache-2.0 shape, never an emoji font. Other Nostr clients refuse SVG, and emoji fonts are proprietary.
+- Medal art stays PNG and stays derived from an Apache-2.0 shape or plain geometry, never an emoji font. Other Nostr clients refuse SVG, and emoji fonts are proprietary.
 - The wordmark is the only place the mark changes colour, and only with the liturgical palette.
 - Clear space around any mark: at least a quarter of its own height.
 - Minimum size: 48px for the full breviary with four ribbons; below that, use the favicon's simplified book with two ribbons, which holds to 16px.
