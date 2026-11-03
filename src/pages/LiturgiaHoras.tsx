@@ -647,7 +647,7 @@ export default function LiturgiaHoras() {
                 <ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform ${chooserOpen ? 'rotate-180' : ''}`} />
             </button>
             {chooserOpen && (
-                <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg dark:shadow-none border border-zinc-100 dark:border-zinc-800 overflow-hidden">
                     <button
                         type="button"
                         onClick={() => selectOffice(null)}
