@@ -30,7 +30,7 @@ function splitSaintDescription(html: string): { bio: string; others: string | nu
 }
 
 const BODY_HTML_CLASSES = `
-    text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 space-y-2 break-words
+    text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 space-y-2 wrap-break-word
     [&_strong]:font-semibold [&_strong]:text-zinc-800 dark:[&_strong]:text-zinc-100
     [&_.seculo]:text-xs [&_.seculo]:text-zinc-400 dark:[&_.seculo]:text-zinc-500 [&_.seculo]:whitespace-nowrap
 `;

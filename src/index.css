@@ -1,6 +1,76 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' source(none);
+@source '../index.html';
+@source '../src';
+
+@plugin 'tailwindcss-animate';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --color-liturgy-50: rgb(var(--liturgy-50));
+  --color-liturgy-100: rgb(var(--liturgy-100));
+  --color-liturgy-200: rgb(var(--liturgy-200));
+  --color-liturgy-300: rgb(var(--liturgy-300));
+  --color-liturgy-400: rgb(var(--liturgy-400));
+  --color-liturgy-500: rgb(var(--liturgy-500));
+  --color-liturgy-600: rgb(var(--liturgy-600));
+  --color-liturgy-700: rgb(var(--liturgy-700));
+  --color-liturgy-800: rgb(var(--liturgy-800));
+  --color-liturgy-900: rgb(var(--liturgy-900));
+  --color-liturgy-950: rgb(var(--liturgy-950));
+}
 
 /* ------------------------------------------------------------------ */
 /* Design primitives. These classes ARE the design system — new       */
@@ -14,6 +84,16 @@
 /* ------------------------------------------------------------------ */
 
 @layer base {
+  /* Tailwind 4's preflight no longer sets these two. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
   /* Always reserve the scrollbar's space (classic, non-overlay scrollbars).
      Otherwise the viewport width flips as routes and loading states toggle
      page overflow, and everything centered — including the top bar's
@@ -140,7 +220,6 @@
      own background with the reading blurred underneath — not a lid on it. */
   .app-bar {
     backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
     background: var(--app-wash), rgb(var(--app-bg) / 0.8);
     border-bottom: 1px solid transparent;
   }
@@ -219,7 +298,6 @@
   .floating-bar {
     background: rgb(var(--surface-bg) / 0.8);
     backdrop-filter: blur(24px) saturate(1.6);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
     border: 1px solid rgb(24 24 27 / 0.08);
     box-shadow: 0 10px 30px -12px rgb(24 24 27 / 0.2);
   }
@@ -233,7 +311,6 @@
   .glass-control {
     background: rgb(24 24 27 / 0.6);
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
   }
   .dark .glass-control { background: rgb(39 39 42 / 0.6); }
   .dark .glass-control-invert { background: rgb(244 244 245 / 0.7); }
@@ -243,7 +320,6 @@
   .scrim {
     background: rgb(0 0 0 / 0.5);
     backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
   }
 
   /* Press feedback. One behaviour for everything tappable, answered on
@@ -307,7 +383,6 @@
      at the foot of the viewport --app-bg alone is what the page is. */
   .action-rail {
     backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
     background: rgb(var(--app-bg) / 0.85);
   }
 
@@ -453,7 +528,6 @@
 @media (prefers-reduced-transparency: reduce) {
   .app-bar, .action-rail, .floating-bar, .glass-control, .scrim {
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   .app-bar { background: var(--app-wash), rgb(var(--app-bg)); }
   .action-rail { background: rgb(var(--app-bg)); }
@@ -483,8 +557,8 @@
 
 /* ------------------------------------------------------------------ */
 /* Liturgical dynamic colors — switched via data-theme on <html>      */
-/* Stored as "R G B" channel triplets (no rgb() wrapper) so Tailwind  */
-/* can apply opacity modifiers: rgb(var(--liturgy-x) / <alpha-value>) */
+/* Stored as "R G B" channel triplets (no rgb() wrapper) so @theme    */
+/* and hand-written rules can both wrap them: rgb(var(--liturgy-x))   */
 /* ------------------------------------------------------------------ */
 
 /* Default: Verde (Emerald) */
@@ -564,7 +638,7 @@ html[data-theme="rosa"] {
 
 /* ------------------------------------------------------------------ */
 /* shadcn design tokens — HSL triplets (without hsl() wrapper)        */
-/* Tailwind config wraps them: hsl(var(--primary))                    */
+/* @theme above wraps them: hsl(var(--primary))                       */
 /* ------------------------------------------------------------------ */
 
 /* Page and card backgrounds, as "R G B" channels so they take opacity
@@ -712,7 +786,8 @@ html[data-theme="rosa"] {
   }
 }
 
-/* Paragraph rhythm */
+/* Paragraph rhythm. Unlayered, so it beats any utility short of an important
+   one: that is why the office's API HTML sets its own with [&_p]:mb-3!. */
 .content-text p {
   margin-bottom: 0.6em;
 }

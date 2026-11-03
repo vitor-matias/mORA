@@ -182,7 +182,7 @@ export function TabBar() {
                             // needs the extra contrast (zinc-400 on white was
                             // 2.6:1).
                             className={({ isActive }) =>
-                                `pressable pressable-small flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-[3.5rem] text-[0.65rem] font-medium ${
+                                `pressable pressable-small flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-14 text-[0.65rem] font-medium ${
                                     isActive
                                         ? 'text-liturgy-700 dark:text-liturgy-400'
                                         : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'

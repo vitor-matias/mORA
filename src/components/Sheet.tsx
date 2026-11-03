@@ -334,12 +334,12 @@ export function Sheet({
                 aria-labelledby={labelledBy}
                 tabIndex={-1}
                 onKeyDown={onKeyDown}
-                className={`surface relative flex flex-col shadow-2xl outline-none ${
+                className={`surface relative flex flex-col shadow-2xl dark:shadow-none outline-hidden ${
                     bottomSheet
                         // The page under a sheet that bounces past its
                         // resting place must not show: the ::after runs the
                         // sheet's own surface on down past the screen edge.
-                        ? "w-full rounded-t-3xl border-b-0 max-h-[92dvh] pb-[env(safe-area-inset-bottom)] after:content-[''] after:absolute after:inset-x-[-1px] after:top-full after:h-screen after:bg-[rgb(var(--surface-bg))]"
+                        ? "w-full rounded-t-3xl border-b-0 max-h-[92dvh] pb-[env(safe-area-inset-bottom)] after:content-[''] after:absolute after:-inset-x-px after:top-full after:h-screen after:bg-[rgb(var(--surface-bg))]"
                         : 'w-full max-w-sm rounded-3xl max-h-[85vh]'
                 }`}
             >

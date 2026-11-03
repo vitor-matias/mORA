@@ -461,7 +461,7 @@ export default function Liturgy() {
                     <nav
                         ref={chipsRef}
                         aria-label="Secções das leituras"
-                        className="lg:hidden max-w-5xl mx-auto px-6 mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        className="lg:hidden max-w-5xl mx-auto px-6 mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] scrollbar-none [&::-webkit-scrollbar]:hidden"
                     >
                         {sections.map(({ id, label }) => (
                             <button
@@ -500,7 +500,7 @@ export default function Liturgy() {
                                 type="button"
                                 aria-label="Voltar ao início"
                                 onClick={() => navigate('/')}
-                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-1.5"
+                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-xs transition-all shrink-0 p-1.5"
                             >
                                 <ChevronLeft size={18} />
                             </button>

@@ -192,7 +192,7 @@ export default function LiturgicalDirectory() {
 
             {/* Selected day details */}
             <section className="surface surface-accent rounded-3xl p-4 lg:flex-1 lg:min-w-0">
-                <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5 capitalize">
+                <p className="flex items-center gap-2 text-xs font-bold tracking-widest text-liturgy-700 dark:text-liturgy-400 mb-1.5 capitalize">
                     {/* The dot is the color signal; its name is already in the
                         description text, so no "Cor litúrgica" line here. */}
                     {selectedInfo && <LiturgicalColorDot color={selectedInfo.color} />}

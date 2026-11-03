@@ -2,7 +2,7 @@
 
 > Last updated: 2026-10-28
 > Status: Draft. Written down from what the app already does; section 9 lists the decisions still open.
-> Tokens live in `src/index.css` and `tailwind.config.cjs`. This document describes them; it does not replace them.
+> Tokens live in `src/index.css`. This document describes them; it does not replace them.
 
 ## Quick Reference
 

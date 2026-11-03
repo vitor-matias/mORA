@@ -478,7 +478,7 @@ export default function Profile() {
             <section className="surface rounded-3xl p-6">
                 <div className="flex items-center gap-2 mb-6">
                     <Settings className="text-zinc-500 dark:text-zinc-400" size={20} />
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.settings}</h2>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 wrap-anywhere">{t.settings}</h2>
                 </div>
 
                 <div className="space-y-6">
@@ -579,7 +579,7 @@ export default function Profile() {
                                 type="time"
                                 value={notificationTime || ''}
                                 onChange={handleNotificationChange}
-                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-zinc-900 dark:text-zinc-100 flex-1 min-w-0 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
+                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 min-h-11 text-zinc-900 dark:text-zinc-100 flex-1 min-w-0 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
                             />
                             <button
                                 type="button"
@@ -617,11 +617,11 @@ export default function Profile() {
                                             aria-checked={enabled}
                                             aria-label={`Lembrete: ${hour.label}`}
                                             onClick={() => setHourTime(hour.id, enabled ? null : hour.defaultTime)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                                         >
                                             <span
                                                 aria-hidden="true"
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
                                             />
                                         </button>
                                         <span className="text-sm flex-1 min-w-0 truncate">{hour.label}</span>
@@ -631,7 +631,7 @@ export default function Profile() {
                                             disabled={!enabled}
                                             aria-label={`Hora do lembrete: ${hour.label}`}
                                             onChange={(e) => setHourTime(hour.id, e.target.value || null)}
-                                            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
+                                            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 min-h-8 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
                                         />
                                     </div>
                                 );
@@ -656,11 +656,11 @@ export default function Profile() {
                                 setWeeklySummary(!weeklySummary);
                                 syncReminders(notificationTime, hourReminders, !weeklySummary);
                             }}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${weeklySummary ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${weeklySummary ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span
                                 aria-hidden="true"
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${weeklySummary ? 'translate-x-5' : 'translate-x-0'}`}
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${weeklySummary ? 'translate-x-5' : 'translate-x-0'}`}
                             />
                         </button>
                     </div>
@@ -670,7 +670,7 @@ export default function Profile() {
             {pubkey ? (
                 <section className="surface rounded-3xl p-6">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 [overflow-wrap:anywhere]">{t.identity}</h2>
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 wrap-anywhere">{t.identity}</h2>
                         {!isEditingProfile && (
                             <button onClick={() => setIsEditingProfile(true)} className="text-xs text-liturgy-700 dark:text-liturgy-400 hover:text-liturgy-800 font-medium flex items-center gap-1">
                                 Editar Perfil
@@ -705,7 +705,7 @@ export default function Profile() {
                                     value={profileName}
                                     onChange={e => setProfileName(e.target.value)}
                                     placeholder="O teu nome..."
-                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
+                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
                                 />
                             </div>
                             <div>
@@ -757,7 +757,7 @@ export default function Profile() {
                                     value={profilePicture.startsWith('data:') ? '' : profilePicture}
                                     onChange={e => setProfilePicture(e.target.value)}
                                     placeholder={profilePicture.startsWith('data:') ? 'A usar a imagem carregada' : 'https://'}
-                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none"
+                                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
                                 />
                             </div>
                             <div className="flex gap-2 pt-2">
@@ -871,11 +871,11 @@ export default function Profile() {
                                                 role="switch"
                                                 aria-checked={autoUnlock}
                                                 aria-label="Desbloquear ao abrir"
-                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${autoUnlock ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${autoUnlock ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                                             >
                                                 <span
                                                     aria-hidden="true"
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${autoUnlock ? 'translate-x-5' : 'translate-x-0'}`}
+                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${autoUnlock ? 'translate-x-5' : 'translate-x-0'}`}
                                                 />
                                             </button>
                                         </div>
@@ -962,11 +962,11 @@ export default function Profile() {
                             role="switch"
                             aria-checked={shareStreaks}
                             aria-label="Sincronizar entre dispositivos"
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${shareStreaks ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${shareStreaks ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span
                                 aria-hidden="true"
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${shareStreaks ? 'translate-x-5' : 'translate-x-0'}`}
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${shareStreaks ? 'translate-x-5' : 'translate-x-0'}`}
                             />
                         </button>
                     </div>
@@ -987,11 +987,11 @@ export default function Profile() {
                             role="switch"
                             aria-checked={sharePalavraResults}
                             aria-label={tPalavra.shareToggle}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${sharePalavraResults ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${sharePalavraResults ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
                             <span
                                 aria-hidden="true"
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${sharePalavraResults ? 'translate-x-5' : 'translate-x-0'}`}
+                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${sharePalavraResults ? 'translate-x-5' : 'translate-x-0'}`}
                             />
                         </button>
                     </div>
@@ -1069,7 +1069,7 @@ export default function Profile() {
                                         value={bunkerUri}
                                         onChange={e => { setBunkerUri(e.target.value); setSignerError(""); }}
                                         placeholder="bunker://... ou nome@dominio"
-                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none placeholder:text-zinc-400"
+                                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
                                     />
                                     <button
                                         type="button"
@@ -1165,7 +1165,7 @@ export default function Profile() {
                                     setKeyError("");
                                 }}
                                 placeholder="Colar chave secreta (nsec ou hex)"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none placeholder:text-zinc-400"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
                             />
                             {keyError && <p className="text-red-500 text-xs px-1">{keyError}</p>}
                             <button
@@ -1202,7 +1202,7 @@ export default function Profile() {
                                 onChange={(e) => setNewIdentityName(e.target.value)}
                                 maxLength={24}
                                 placeholder="O teu nome (opcional)"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-none placeholder:text-zinc-400"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
                             />
                             <button
                                 type="button"
