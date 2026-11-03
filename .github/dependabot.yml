@@ -7,6 +7,12 @@ updates:
       - /server/palavra
     schedule:
       interval: weekly
+    groups:
+      # react-dom refuses to run against any other version of react.
+      react:
+        patterns:
+          - react
+          - react-dom
 
   - package-ecosystem: github-actions
     directory: /
