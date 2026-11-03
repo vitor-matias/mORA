@@ -6,7 +6,7 @@ name: Publish Liturgical Calendar
 #
 # The feed is a whole year published up front and corrected occasionally, so
 # there is nothing to catch up on hour by hour: once a day is plenty, and each
-# relay is sent only what it lacks.
+# relay is sent only what it lacks (unless `force` republishes everything).
 on:
   schedule:
     - cron: '20 4 * * *'

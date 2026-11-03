@@ -55,9 +55,10 @@ returns, and sends each relay only what it lacks. Relays that keep the whole
 calendar get nothing on a normal day. Some keep only a fraction of it
 (`relay.damus.io`, `nostr.bitcoiner.social`), so they are offered the rest on
 every run and a run rarely publishes literally nothing; the log shows how much
-each relay holds and accepted. A run publishes everything that is missing,
-sent in small batches with a pause between them, since firing 365 events at
-eight relays at once is how a publisher gets dropped.
+each relay holds and accepted. A relay that doesn't finish answering waits for
+a later run. Everything else that is missing goes out in small batches with a
+pause between them, since firing 365 events at eight relays at once is how a
+publisher gets dropped.
 
 Entries go out today first, then forward, then back into the past. That only
 shows when a run cannot finish, which is exactly when it matters: the home
