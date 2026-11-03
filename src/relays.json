@@ -1,10 +1,10 @@
 [
   "wss://relay.damus.io",
   "wss://nos.lol",
-  "wss://relay.primal.net",
   "wss://nostr.mom",
-  "wss://relay.ditto.pub",
   "wss://relay.nostr.com",
   "wss://nostr.bitcoiner.social",
-  "wss://relay.wisp.talk"
+  "wss://relay.wisp.talk",
+  "wss://relay.mostr.pub",
+  "wss://relay.momostr.pink"
 ]
