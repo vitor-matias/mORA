@@ -219,7 +219,7 @@ export function PageHeader({
                         type="button"
                         aria-label="Voltar ao início"
                         onClick={() => navigate(backTo)}
-                        className="pressable pressable-small bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm shrink-0 p-1"
+                        className="pressable pressable-small bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-xs shrink-0 p-1"
                     >
                         <ChevronRight className="rotate-180" size={16} />
                     </button>
@@ -267,7 +267,7 @@ export function PageHeader({
                             type="button"
                             aria-label="Voltar ao início"
                             onClick={() => navigate(backTo)}
-                            className="pressable pressable-small block bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:bg-zinc-200 dark:active:bg-zinc-700 rounded-full shadow-sm p-2"
+                            className="pressable pressable-small block bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 active:bg-zinc-200 dark:active:bg-zinc-700 rounded-full shadow-xs p-2"
                         >
                             <ChevronRight className="rotate-180" size={24} />
                         </button>

@@ -647,7 +647,7 @@ export default function LiturgiaHoras() {
                 <ChevronDown size={14} aria-hidden="true" className={`shrink-0 transition-transform ${chooserOpen ? 'rotate-180' : ''}`} />
             </button>
             {chooserOpen && (
-                <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                <div className="absolute z-30 mt-2 w-full rounded-2xl surface shadow-lg dark:shadow-none border border-zinc-100 dark:border-zinc-800 overflow-hidden">
                     <button
                         type="button"
                         onClick={() => selectOffice(null)}
@@ -717,7 +717,7 @@ export default function LiturgiaHoras() {
                                 type="button"
                                 aria-label="Voltar ao início"
                                 onClick={() => navigate('/')}
-                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-sm transition-all shrink-0 p-1.5"
+                                className="bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full shadow-xs transition-all shrink-0 p-1.5"
                             >
                                 <ChevronLeft size={18} />
                             </button>
@@ -782,7 +782,7 @@ export default function LiturgiaHoras() {
                             <p className="text-zinc-500 dark:text-zinc-400">A obter a liturgia de hoje...</p>
                         </div>
                     ) : canonicalHours.length > 0 ? (
-                        <div className="space-y-5 flex-1 flex flex-col">
+                        <div className="space-y-5 lg:pt-5 flex-1 flex flex-col">
                             {/* Mobile: date + office controls in the flow; on
                                 lg+ both live in the sidebar, like Missa. */}
                             <div className="lg:hidden space-y-5 shrink-0">
@@ -802,7 +802,7 @@ export default function LiturgiaHoras() {
                                         onClick={() => selectHour(moment.id)} aria-label={moment.label}
                                         aria-pressed={activeHour === moment.id}
                                         className={`pressable pressable-small min-w-0 flex flex-col items-center gap-1 py-2.5 px-0.5 rounded-2xl ${activeHour === moment.id
-                                            ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-sm'
+                                            ? 'bg-liturgy-100 dark:bg-liturgy-900/60 border border-liturgy-200 dark:border-liturgy-800 text-liturgy-700 dark:text-liturgy-300 shadow-xs'
                                             : 'surface text-zinc-500 dark:text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'
                                             }`}
                                     >
@@ -1060,7 +1060,7 @@ export default function LiturgiaHoras() {
                                                                         className="
                                                                         content-text
                                                                         text-zinc-800 dark:text-zinc-200
-                                                                        [&_p]:mb-3 [&_p:last-child]:mb-0
+                                                                        [&_p]:mb-3! [&_p:last-child]:mb-0!
                                                                         [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2
                                                                         [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4
                                                                         [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100

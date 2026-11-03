@@ -9,7 +9,7 @@ import type { ComumBlock } from "@/lib/breviary/comum";
 
 // Classes that make API-served HTML match the page's typography — shared by
 // every spliced render.
-const API_HTML_CLASSES = "content-text text-zinc-800 dark:text-zinc-200 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4 [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100 [&_em]:italic";
+const API_HTML_CLASSES = "content-text text-zinc-800 dark:text-zinc-200 [&_p]:mb-3! [&_p:last-child]:mb-0! [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4 [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100 [&_em]:italic";
 
 /** API office HTML, sanitized and styled like the rest of the page. */
 export function ApiHtml({ html }: { html: string }) {

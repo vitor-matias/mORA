@@ -376,7 +376,7 @@ export default function Rosary() {
                     variant="alert"
                     dismissible={false}
                     labelledBy="rosary-finish-title"
-                    className="text-center space-y-5 !p-8"
+                    className="text-center space-y-5 p-8!"
                     onClose={() => {
                         setShowFinish(false);
                         setCurrentStepIndex(0);

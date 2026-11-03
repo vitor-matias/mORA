@@ -92,7 +92,7 @@ export default function Devocionario() {
                             onChange={(e) => setQuery(e.target.value)}
                             placeholder="Procurar oração…"
                             aria-label="Procurar oração"
-                            className="w-full surface rounded-2xl pl-10 pr-10 py-3 text-sm bg-transparent focus:border-liturgy-700 dark:focus:border-liturgy-400 transition-colors [&::-webkit-search-cancel-button]:appearance-none"
+                            className="w-full surface rounded-2xl pl-10 pr-10 py-3 text-sm bg-transparent [appearance:textfield] focus:border-liturgy-700 dark:focus:border-liturgy-400 transition-colors [&::-webkit-search-cancel-button]:appearance-none"
                         />
                         {query && (
                             <button
@@ -198,7 +198,7 @@ export default function Devocionario() {
                             onToggleFavourite={() => toggleFavourite(prayer.id)}
                         />
                     ) : (
-                        <div className="surface rounded-3xl px-6 py-16 text-center lg:min-h-[28rem] lg:flex lg:flex-col lg:items-center lg:justify-center">
+                        <div className="surface rounded-3xl px-6 py-16 text-center lg:min-h-112 lg:flex lg:flex-col lg:items-center lg:justify-center">
                             <BookMarked size={28} className="mx-auto text-liturgy-700 dark:text-liturgy-400 mb-3" aria-hidden="true" />
                             <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto leading-relaxed text-balance">
                                 Escolhe uma oração da lista ou procura pelo nome ou conteúdo.

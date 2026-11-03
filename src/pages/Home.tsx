@@ -319,7 +319,7 @@ export default function Home() {
                                 </div>
                             </>
                             );
-                            const className = `pressable pressable-card flex flex-col justify-between gap-4 p-4 min-h-[8rem] surface rounded-3xl ${
+                            const className = `pressable pressable-card flex flex-col justify-between gap-4 p-4 min-h-32 surface rounded-3xl ${
                                 area.path === feature ? 'col-span-2' : ''
                             } ${area.path === wide ? 'col-span-2' : ''}`;
                             return href ? (
