@@ -782,7 +782,7 @@ export default function LiturgiaHoras() {
                             <p className="text-zinc-500 dark:text-zinc-400">A obter a liturgia de hoje...</p>
                         </div>
                     ) : canonicalHours.length > 0 ? (
-                        <div className="space-y-5 flex-1 flex flex-col">
+                        <div className="space-y-5 lg:pt-5 flex-1 flex flex-col">
                             {/* Mobile: date + office controls in the flow; on
                                 lg+ both live in the sidebar, like Missa. */}
                             <div className="lg:hidden space-y-5 shrink-0">
