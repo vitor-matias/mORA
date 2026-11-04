@@ -159,6 +159,7 @@ const translations = {
         spoilerWhy: "As tentativas dos outros dão-te uma pista sobre a dificuldade da palavra.",
         signInHint: "Entra com uma identidade Nostr em Perfil.",
         signInToPublish: "Para publicares os teus resultados e participares nas classificações, tens de entrar com uma identidade Nostr.",
+        signInAgainToPublish: "Para publicares este resultado e participares nas classificações, volta a entrar com a identidade que usavas neste dispositivo. Uma identidade nova começa do zero e este jogo perde-se.",
         signInToPublishLink: "Entrar em Perfil",
         signInDuels: "Os duelos comparam-te com quem segues no Nostr.",
         signInLeagues: "As ligas precisam de uma identidade Nostr para saber de quais fazes parte.",
