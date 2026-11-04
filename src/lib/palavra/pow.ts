@@ -26,7 +26,8 @@ export const POW_TARGET = 20;
  */
 export const POW_MINIMUM = 16;
 
-/** How long to let mining run before giving up and publishing unmined. */
+/** How long one mining attempt runs before dropping to `POW_MINIMUM`, or, at
+    the minimum, giving up. */
 const MINE_TIMEOUT_MS = 15_000;
 
 export function meetsPow(id: string): boolean {
@@ -67,12 +68,20 @@ export async function minePalavraEvent(
 
     try {
         return await new Promise<EventTemplate>((resolve) => {
-            const finish = (result: EventTemplate) => {
+            const finish = (result: EventTemplate | Promise<EventTemplate>) => {
                 window.clearTimeout(timer);
                 worker.terminate();
                 resolve(result);
             };
             const timer = window.setTimeout(() => {
+                // Each hash is an independent draw, so run times vary widely
+                // and a slow phone can miss this often. Readers accept the
+                // minimum, which is 16 times cheaper to reach.
+                if (difficulty > POW_MINIMUM) {
+                    console.warn('PoW mining timed out; trying again at the minimum readers accept.');
+                    finish(minePalavraEvent(template, pubkey, POW_MINIMUM));
+                    return;
+                }
                 console.warn('PoW mining timed out; the result will not be published.');
                 finish(template);
             }, MINE_TIMEOUT_MS);

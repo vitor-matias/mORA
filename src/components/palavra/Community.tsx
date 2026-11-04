@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Trophy, Crown, Swords, Users, Loader2 } from 'lucide-react';
 import { useTranslations } from '@/lib/i18n';
+import { unlockIfNeeded } from '@/lib/nostr';
 import type { PublishState } from '@/lib/palavra/publishStatus';
 import { Leaderboard } from './Leaderboard';
 import { PointsBoard } from './PointsBoard';
@@ -205,6 +205,7 @@ function OwnResultNotice({ state, remoteSigner, onRetry }: {
     onRetry: () => void;
 }) {
     const t = useTranslations().palavra;
+    const [unlockFailed, setUnlockFailed] = useState(false);
     if (state === 'publishing') {
         return (
             <p role="status" className="flex items-start gap-2 text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-500/5 rounded-xl px-3 py-2">
@@ -215,12 +216,17 @@ function OwnResultNotice({ state, remoteSigner, onRetry }: {
     }
     const actionClass = 'inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors';
     if (state === 'locked') {
-        // Unlocking re-runs the catch-up (useNostrSync), so the result goes
-        // out without the player having to come back and ask.
+        // Unlocking re-runs the catch-up (useNostrSync), which publishes after
+        // merging the other devices' games. A locked session hasn't merged
+        // them, so publishing from here could send a stale streak.
+        const unlock = () => {
+            setUnlockFailed(false);
+            unlockIfNeeded().catch(() => setUnlockFailed(true));
+        };
         return (
             <div role="status" className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-xl px-3 py-2">
-                <p>{t.resultLocked}</p>
-                <Link to="/perfil" className={actionClass}>{t.resultUnlock}</Link>
+                <p>{unlockFailed ? t.resultUnlockFailed : t.resultLocked}</p>
+                <button type="button" onClick={unlock} className={actionClass}>{t.resultUnlock}</button>
             </div>
         );
     }

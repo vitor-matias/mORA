@@ -1,7 +1,57 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { NostrEvent, NRelay } from '@nostrify/nostrify';
+// @ts-expect-error ws ships no types and this is the only typed file using it
+import { WebSocketServer } from 'ws';
 import { pool } from './pool';
 
 const RealWebSocket = globalThis.WebSocket;
+
+describe('a connection that stopped answering', () => {
+    const event = { id: 'a'.repeat(64), kind: 1, tags: [], content: '' } as unknown as NostrEvent;
+
+    /** A relay whose first connection stays open and says nothing, and whose
+        later ones answer. Hands the test the relay and what reached them. */
+    async function withDeadConnection(test: (relay: NRelay, received: unknown[][], connections: () => number) => Promise<void>) {
+        const server = new WebSocketServer({ port: 0 });
+        await new Promise((resolve) => server.once('listening', resolve));
+        let connections = 0;
+        const received: unknown[][] = [];
+        server.on('connection', (socket: { on(type: string, listener: (raw: unknown) => void): void; send(data: string): void }) => {
+            if (++connections === 1) return;
+            socket.on('message', (raw) => {
+                const message = JSON.parse(String(raw));
+                received.push(message);
+                if (message[0] === 'EVENT') socket.send(JSON.stringify(['OK', message[1].id, true, '']));
+            });
+        });
+        const { port } = server.address() as { port: number };
+        const relay = pool.relay(`ws://127.0.0.1:${port}`);
+        try {
+            await test(relay, received, () => connections);
+        } finally {
+            await relay.close();
+            await new Promise((resolve) => server.close(resolve));
+        }
+    }
+
+    it('is replaced once a publish gets no answer', () => withDeadConnection(async (relay, _received, connections) => {
+        await expect(relay.event(event, { signal: AbortSignal.timeout(200) })).rejects.toThrow();
+        await expect(relay.event(event, { signal: AbortSignal.timeout(2000) })).resolves.toBeUndefined();
+        expect(connections()).toBe(2);
+    }));
+
+    it('carries an open subscription over to the new connection', () => withDeadConnection(async (relay, received) => {
+        const reading = new AbortController();
+        const subscription = relay.req([{ kinds: [7] }], { signal: reading.signal })[Symbol.asyncIterator]();
+        const pending = subscription.next().catch(() => undefined);
+
+        await expect(relay.event(event, { signal: AbortSignal.timeout(200) })).rejects.toThrow();
+        await vi.waitFor(() => expect(received.some(([type]) => type === 'REQ')).toBe(true), { timeout: 3000 });
+
+        reading.abort();
+        await pending;
+    }));
+});
 
 /** What a browser does with a URL it refuses outright — `new WebSocket`
     throws where it stands, rather than failing on a later event. */
