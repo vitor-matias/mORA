@@ -41,8 +41,17 @@ export default defineConfig(({ command, mode }) => {
           name: 'Oremus — Oração diária',
           short_name: 'Oremus',
           description: 'A tua companhia de oração diária: Santo Terço, leituras da Missa e Liturgia das Horas.',
-          theme_color: '#F7F7F9',
-          background_color: '#F7F7F9',
+          // Imersivo's page colour, in both fields and in both themes. On
+          // Android this is what paints the installed app's gesture-navigation
+          // bar (Chromium 0a6ab4f, Aug 2026) and, before that bar is painted,
+          // the splash. The manifest holds one value — its dark counterparts
+          // were an experiment Chrome's parser dropped — so this cannot follow
+          // the theme the user picked: Imersivo matches it, Bento gets a dark
+          // strip under a near-white page. Dark both ways, because a lit strip
+          // ruins the dark page while a dark one under the light page still
+          // reads as chrome.
+          theme_color: '#0B0B0C',
+          background_color: '#0B0B0C',
           // Both purposes, deliberately. Without a `maskable` entry Android
           // cannot crop the icon to the launcher's shape, so it shrinks the
           // `any` one onto a white circle instead — the artwork ends up a small

@@ -140,27 +140,24 @@ export function Layout() {
             // this colour (its icon tint follows it) but on Android 15+ paints
             // the bar through Window.setStatusBarColor, which the OS now
             // ignores, so the strip shows whatever sits behind it — the
-            // manifest's light launch colour. Chrome's fix
+            // manifest's launch colour, dark since the note below. Chrome's fix
             // (WebAppShortEdgesCutoutMode) lets an installed app draw under
             // the bar when the page opts in with viewport-fit=cover, which
             // index.html does; until it ships, nothing written here moves
             // that bar.
             //
             // The gesture-navigation bar at the foot of the screen is the
-            // same story and does not even track the page's darkness.
-            // Sampled from a screenshot of the installed app on an Android
-            // tablet, Imersivo on screen: the status strip came out #2A3738
-            // and the navigation strip #FAF9F6. Neither is a colour this app
-            // names — the page there is #0B0B0C and the manifest's
-            // theme_color/background_color are #F7F7F9 — so both are Chrome's
-            // own surface colours. Chrome does see that the app is dark (it
-            // reached for its dark surface at the top) and simply leaves the
-            // bottom bar on the light one: crbug 40759522, fixed upstream
-            // behind the WebAppNavigationBarThemeColor flag. So there is
-            // nothing to set here, in index.html or in the manifest that
-            // colours it; changing the manifest's theme_color only decides
-            // what that bar becomes once the fix reaches the user's Chrome,
-            // and a static value cannot follow a theme the user switches.
+            // manifest's, not ours: Chrome paints it with theme_color
+            // (Chromium 0a6ab4f, Aug 2026, closing crbug 40759522) and, with
+            // none, lets the window behind it — background_color — show. The
+            // light strip under Imersivo was read here once as a Chrome
+            // surface because #FAF9F6 is no colour this app still names; it
+            // is this app's own launch colour from before the redesign, left
+            // in the installed copy until Chrome refreshes the WebAPK. Both
+            // manifest fields are Imersivo's #0B0B0C now (vite.config.ts),
+            // which is the whole of the fix: one static value, so Bento gets
+            // a dark strip and nothing written here reaches that bar.
+            //
             // What the page can state — and now does, in index.css — is
             // color-scheme, which is what every UA-painted surface inside the
             // viewport reads.

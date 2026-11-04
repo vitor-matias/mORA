@@ -68,11 +68,11 @@ Oremus is a companion for daily Catholic prayer in European Portuguese. It gathe
 
 | Name | Hex | RGB | Usage |
 |------|-----|-----|-------|
-| Page Light | #F7F7F9 | rgb(247,247,249) | Page background, status-bar strip, PWA theme colour |
+| Page Light | #F7F7F9 | rgb(247,247,249) | Page background, status-bar strip |
 | Surface Light | #FFFFFF | rgb(255,255,255) | Cards (`.surface`), sheets |
 | Ink Light | #18181B | rgb(24,24,27) | Headings, body text (zinc-900) |
 | Secondary Light | #71717A | rgb(113,113,122) | Supporting text (zinc-500) |
-| Page Dark | #0B0B0C | rgb(11,11,12) | Page background in dark mode |
+| Page Dark | #0B0B0C | rgb(11,11,12) | Page background in dark mode; PWA theme/launch colour, both themes |
 | Surface Dark | #18181B | rgb(24,24,27) | Tiles in dark mode (zinc-900) |
 | Ink Dark | #FAFAFA | rgb(250,250,250) | Headings, body text (zinc-50) |
 | Secondary Dark | #A1A1AA | rgb(161,161,170) | Supporting text (zinc-400) |
