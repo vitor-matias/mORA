@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CircleHelp, ExternalLink, Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
@@ -88,6 +89,9 @@ export default function Palavra() {
 
     const myPubkey = useAuthStore((s) => s.login?.pubkey ?? s.lockedPubkey ?? null);
     const signedIn = Boolean(myPubkey);
+    // Survives sign-out: a different identity signing in here clears the log,
+    // this game included (claimLocalData), so point back at the owner instead.
+    const deviceHasOwner = useAppStore((s) => Boolean(s.localDataOwner));
     const sharing = usePalavraStore((s) => sharesResults(s, myPubkey));
     const plays = usePalavraStore((s) => s.plays);
     const practice = usePalavraStore((s) => s.practice);
@@ -397,7 +401,9 @@ export default function Palavra() {
         // animation doesn't replay on every switch), but this listener is on
         // window — without the guard, typing while reading the leaderboard
         // would fill in a board nobody can see.
-        if (pageTab !== 'game') return;
+        // Over, too: nothing is left to type, and the blur below would swallow
+        // Enter on the result sheet's own link and buttons.
+        if (pageTab !== 'game' || over) return;
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.metaKey || event.ctrlKey || event.altKey) return;
             // DateNav renders a date input on this tab. Typing in it also
@@ -430,7 +436,7 @@ export default function Palavra() {
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onEnter, onBackspace, onLetter, pageTab]);
+    }, [onEnter, onBackspace, onLetter, pageTab, over]);
 
     // How tall a tile may be, measured rather than assumed.
     //
@@ -828,9 +834,9 @@ export default function Palavra() {
                                 stats={stats}
                                 shareText={shareText}
                                 archive={isArchive}
-                                actions={signedIn && !isArchive ? (
-                                    // Archive runs are practice and carry no
-                                    // proof, so there is nothing worth posting.
+                                // Archive runs are practice and carry no
+                                // proof, so there is nothing worth posting.
+                                actions={isArchive ? undefined : signedIn ? (
                                     <ShareToNostr
                                         alreadyShared={Boolean(sharedNotes[challenge.date])}
                                         onShare={async () => {
@@ -847,7 +853,15 @@ export default function Palavra() {
                                             markNoteShared(challenge.date);
                                         }}
                                     />
-                                ) : undefined}
+                                ) : (
+                                    <div className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-500 px-1 pt-1">
+                                        <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                                        <p>
+                                            {deviceHasOwner ? t.signInAgainToPublish : t.signInToPublish}{' '}
+                                            <Link to="/perfil" className="font-semibold underline">{t.signInToPublishLink}</Link>
+                                        </p>
+                                    </div>
+                                )}
                             />
                         )}
 
