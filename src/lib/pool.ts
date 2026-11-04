@@ -1,7 +1,7 @@
 import defaultRelays from '@/relays.json';
 import {
     NPool, NRelay1,
-    type NostrFilter, type NostrRelayCLOSED, type NostrRelayEOSE, type NostrRelayEVENT, type NostrRelayMsg,
+    type NostrEvent, type NostrFilter, type NostrRelayCLOSED, type NostrRelayEOSE, type NostrRelayEVENT, type NostrRelayMsg,
     type NRelay,
 } from '@nostrify/nostrify';
 
@@ -93,6 +93,39 @@ class ReasonedRelay extends NRelay1 {
             this.closedWith.delete(first);
             yield closed;
         }
+    }
+
+    /**
+     * A connection the network dropped can still read as OPEN (a phone coming
+     * back from the background, say), and NRelay1 keeps writing into it. Every
+     * publish then times out until the app restarts. No answer at all gets the
+     * socket closed, the same way the idle timer closes one, so the next send
+     * dials a new one.
+     */
+    override async event(event: NostrEvent, opts?: { signal?: AbortSignal }): Promise<void> {
+        try {
+            await super.event(event, opts);
+        } catch (error) {
+            if (opts?.signal?.aborted) await this.closeSocket();
+            throw error;
+        }
+    }
+
+    /**
+     * Waits for the close to land: NRelay1's close handler closes whichever
+     * socket is current when it fires, so a retry dialled before then would
+     * lose its new socket.
+     *
+     * shortcut: a dead network can report the close after the 1s cap and cost
+     * one more failed attempt, which the next retry recovers from.
+     */
+    private closeSocket(): Promise<unknown> {
+        const closing = this.socket.underlyingWebsocket;
+        this.socket.close();
+        return new Promise((resolve) => {
+            closing?.addEventListener('close', resolve, { once: true });
+            setTimeout(resolve, 1000);
+        });
     }
 }
 

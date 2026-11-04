@@ -1,7 +1,36 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import type { NostrEvent } from '@nostrify/nostrify';
+// @ts-expect-error ws ships no types and this is the only typed file using it
+import { WebSocketServer } from 'ws';
 import { pool } from './pool';
 
 const RealWebSocket = globalThis.WebSocket;
+
+describe('a connection that stopped answering', () => {
+    it('is replaced once a publish gets no answer', async () => {
+        const server = new WebSocketServer({ port: 0 });
+        await new Promise((resolve) => server.once('listening', resolve));
+        let connections = 0;
+        server.on('connection', (socket: { on(type: string, listener: (raw: unknown) => void): void; send(data: string): void }) => {
+            // The first one is the dead one: it stays open and says nothing.
+            if (++connections === 1) return;
+            socket.on('message', (raw) => {
+                const [, event] = JSON.parse(String(raw));
+                socket.send(JSON.stringify(['OK', event.id, true, '']));
+            });
+        });
+        const { port } = server.address() as { port: number };
+        const relay = pool.relay(`ws://127.0.0.1:${port}`);
+        const event = { id: 'a'.repeat(64), kind: 1, tags: [], content: '' } as unknown as NostrEvent;
+
+        await expect(relay.event(event, { signal: AbortSignal.timeout(200) })).rejects.toThrow();
+        await expect(relay.event(event, { signal: AbortSignal.timeout(2000) })).resolves.toBeUndefined();
+        expect(connections).toBe(2);
+
+        await relay.close();
+        server.close();
+    });
+});
 
 /** What a browser does with a URL it refuses outright — `new WebSocket`
     throws where it stands, rather than failing on a later event. */
