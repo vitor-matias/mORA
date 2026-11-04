@@ -326,6 +326,8 @@ async function sendResult(date: string, play: PalavraPlay, pubkey: string): Prom
             tags,
             content,
         }, pubkey);
+        // Mining can take many seconds, and the player may have opted out since.
+        if (!sharesResults(usePalavraStore.getState(), pubkey)) return false;
         const event = await signNostrEvent(mined);
         // The signer is the last place the identity can change — a NIP-46
         // bunker or an extension can sign as whoever it is currently pointed

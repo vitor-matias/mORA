@@ -216,12 +216,12 @@ function OwnResultNotice({ state, remoteSigner, onRetry }: {
     }
     const actionClass = 'inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors';
     if (state === 'locked') {
-        // Publishes straight after, rather than leaving it to the catch-up
-        // unlocking also starts: that one waits for every sync to finish first,
-        // and this notice would offer "publish now" in the meantime.
+        // Unlocking re-runs the catch-up (useNostrSync), which publishes after
+        // merging the other devices' games. A locked session hasn't merged
+        // them, so publishing from here could send a stale streak.
         const unlock = () => {
             setUnlockFailed(false);
-            unlockIfNeeded().then(onRetry).catch(() => setUnlockFailed(true));
+            unlockIfNeeded().catch(() => setUnlockFailed(true));
         };
         return (
             <div role="status" className="text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-xl px-3 py-2">
