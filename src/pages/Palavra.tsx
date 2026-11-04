@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CircleHelp, ExternalLink, Gamepad2, History, Loader2, TriangleAlert, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateNav } from '@/components/DateNav';
 import { ShareToNostr } from '@/components/palavra/ShareToNostr';
@@ -828,9 +829,9 @@ export default function Palavra() {
                                 stats={stats}
                                 shareText={shareText}
                                 archive={isArchive}
-                                actions={signedIn && !isArchive ? (
-                                    // Archive runs are practice and carry no
-                                    // proof, so there is nothing worth posting.
+                                // Archive runs are practice and carry no
+                                // proof, so there is nothing worth posting.
+                                actions={isArchive ? undefined : signedIn ? (
                                     <ShareToNostr
                                         alreadyShared={Boolean(sharedNotes[challenge.date])}
                                         onShare={async () => {
@@ -847,7 +848,15 @@ export default function Palavra() {
                                             markNoteShared(challenge.date);
                                         }}
                                     />
-                                ) : undefined}
+                                ) : (
+                                    <div className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500 px-1 pt-1">
+                                        <TriangleAlert size={13} className="shrink-0 mt-0.5" aria-hidden="true" />
+                                        <p>
+                                            {t.signInToPublish}{' '}
+                                            <Link to="/perfil" className="font-semibold underline">{t.signInToPublishLink}</Link>
+                                        </p>
+                                    </div>
+                                )}
                             />
                         )}
 

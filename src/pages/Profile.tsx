@@ -1015,6 +1015,77 @@ export default function Profile() {
                             {t.loginPrompt}
                         </p>
 
+                        <div className="space-y-2">
+                            <input
+                                type="text"
+                                value={newIdentityName}
+                                onChange={(e) => setNewIdentityName(e.target.value)}
+                                maxLength={24}
+                                placeholder="O teu nome (opcional)"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
+                            />
+                            <button
+                                type="button"
+                                onClick={handleCreateIdentity}
+                                disabled={isCreatingIdentity}
+                                className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors disabled:opacity-60"
+                            >
+                                {isCreatingIdentity ? 'A criar…' : t.createKey}
+                            </button>
+                        </div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
+                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje». Podes mudá-lo ou deixá-lo em branco.
+                        </p>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs">
+                                <span className="surface-bg px-2 text-zinc-500 dark:text-zinc-400">{t.or}</span>
+                            </div>
+                        </div>
+
+                        {/* Custom Key Login */}
+                        <div className="space-y-2">
+                            <input
+                                type="password"
+                                value={customKey}
+                                onChange={e => {
+                                    setCustomKey(e.target.value);
+                                    setKeyError("");
+                                }}
+                                placeholder="Colar chave secreta (nsec ou hex)"
+                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
+                            />
+                            {keyError && <p className="text-red-500 text-xs px-1">{keyError}</p>}
+                            <button
+                                onClick={() => {
+                                    if (!customKey.trim()) {
+                                        setKeyError("Por favor, introduz uma chave");
+                                        return;
+                                    }
+                                    try {
+                                        loginWithPrivateKey(customKey.trim());
+                                    } catch (e) {
+                                        setKeyError(e instanceof Error ? e.message : "Chave inválida");
+                                    }
+                                }}
+                                className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors box-border"
+                            >
+                                Entrar com Chave Privada
+                            </button>
+                        </div>
+
+                        <div className="relative pt-2">
+                            <div className="absolute inset-0 flex flex-col justify-center">
+                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
+                            </div>
+                            <div className="relative flex justify-center text-xs">
+                                <span className="surface-bg px-2 text-zinc-500 dark:text-zinc-400">{t.or}</span>
+                            </div>
+                        </div>
+
                         {/* Signer apps are the phone's answer — they are not
                             extensions and never inject window.nostr. Three
                             ways in, in order of how little the user has to do:
@@ -1032,7 +1103,7 @@ export default function Profile() {
                                 type="button"
                                 onClick={() => handleSignerConnect('app')}
                                 disabled={signerPending}
-                                className="w-full py-3 px-4 cta-primary rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+                                className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
                             >
                                 {signerPending && <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />}
                                 Abrir aplicação de assinatura
@@ -1145,77 +1216,6 @@ export default function Profile() {
                             )}
                             {nip07Error && <p className="text-red-500 text-xs px-1">{nip07Error}</p>}
                         </div>
-
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs">
-                                <span className="surface-bg px-2 text-zinc-500 dark:text-zinc-400">{t.or}</span>
-                            </div>
-                        </div>
-
-                        {/* Custom Key Login */}
-                        <div className="space-y-2">
-                            <input
-                                type="password"
-                                value={customKey}
-                                onChange={e => {
-                                    setCustomKey(e.target.value);
-                                    setKeyError("");
-                                }}
-                                placeholder="Colar chave secreta (nsec ou hex)"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
-                            />
-                            {keyError && <p className="text-red-500 text-xs px-1">{keyError}</p>}
-                            <button
-                                onClick={() => {
-                                    if (!customKey.trim()) {
-                                        setKeyError("Por favor, introduz uma chave");
-                                        return;
-                                    }
-                                    try {
-                                        loginWithPrivateKey(customKey.trim());
-                                    } catch (e) {
-                                        setKeyError(e instanceof Error ? e.message : "Chave inválida");
-                                    }
-                                }}
-                                className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors box-border"
-                            >
-                                Entrar com Chave Privada
-                            </button>
-                        </div>
-
-                        <div className="relative pt-2">
-                            <div className="absolute inset-0 flex flex-col justify-center">
-                                <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
-                            </div>
-                            <div className="relative flex justify-center text-xs">
-                                <span className="surface-bg px-2 text-zinc-500 dark:text-zinc-400">{t.or}</span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <input
-                                type="text"
-                                value={newIdentityName}
-                                onChange={(e) => setNewIdentityName(e.target.value)}
-                                maxLength={24}
-                                placeholder="O teu nome (opcional)"
-                                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden placeholder:text-zinc-400"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleCreateIdentity}
-                                disabled={isCreatingIdentity}
-                                className="w-full py-3 px-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-xl font-medium transition-colors disabled:opacity-60"
-                            >
-                                {isCreatingIdentity ? 'A criar…' : t.createKey}
-                            </button>
-                        </div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje». Podes mudá-lo ou deixá-lo em branco.
-                        </p>
                     </div>
                 </section>
             )}
