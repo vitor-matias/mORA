@@ -504,7 +504,7 @@ export default function Liturgy() {
                             >
                                 <ChevronLeft size={18} />
                             </button>
-                            <h1 className="text-xl font-bold tracking-tight page-title truncate">
+                            <h1 className="text-xl font-reading font-semibold page-title truncate">
                                 Missa Diária
                             </h1>
                         </div>

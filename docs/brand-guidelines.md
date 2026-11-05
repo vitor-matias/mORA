@@ -111,6 +111,7 @@ How to use them:
 | Palavra present | #B45309, white letter | #FBBF24, ink letter | Right letter, wrong place |
 | Palavra absent | #71717A, white letter | #52525B, white letter | Letter not in the word |
 | Destructive | red-600 | red-400 | Leaving a league, removing (some older sites still use red-500) |
+| Rubric (`--rubric`, `text-rubric`) | #B3261E (6.1:1) | #FF8A80 (8.6:1) | What the book prints in red: Ant., V./R., the mediant `*`, the office's directions. The API's inline `#ff0000` is repainted with it |
 
 On the Palavra board the colour *is* the feedback, so it can't turn purple in Advent. The colours also match the shared emoji grid (🟩🟨).
 
@@ -127,18 +128,20 @@ On the Palavra board the colour *is* the feedback, so it can't turn purple in Ad
 ### Font stack
 
 ```css
---font-heading: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
---font-body: 'Inter', -apple-system, sans-serif;
---font-reading: var(--content-font-family, 'Lora', Georgia, serif);
+--font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+--font-reading: Lora, 'Lora Fallback', 'Lora Fallback Android', Georgia, 'Times New Roman', serif;
 ```
 
-One sans for everything around the prayer, one serif for the prayer itself. The serif is the voice of the text being prayed; the sans is the app speaking.
+Both live in `@theme` in `src/index.css`, so they are also the `font-ui` and `font-reading` utilities; Tailwind's `--font-sans` points at `--font-ui`. Never paste a stack: CSS reads `var(--font-ui)`, components use the utility. A reading's own family is `--content-font-family`, which Layout sets from the Perfil choice and which falls back to `--font-reading`.
+
+One sans for everything around the prayer, one serif for the prayer itself and for the names it is prayed under (the feast, the day, the hour). The serif is the voice of the text being prayed; the sans is the app speaking, and it keeps the dense interface: tabs, buttons, labels, Palavra. Inter tops out at 700; nothing sets 800.
 
 ### Interface scale
 
 | Element | Class | Size | Weight | Notes |
 |---------|-------|------|--------|-------|
-| Page title | `text-3xl` | 30px | 800 | Extra-bold, tight tracking; collapses to `text-xl` on scroll |
+| Page title | `text-3xl font-reading` | 30px | 600 | Lora semi-bold; collapses to 20px on scroll |
+| Feast / day / hour name | `text-2xl`–`text-xl font-reading` | 20–24px | 600 | Lora semi-bold, never below 20px (Home day card, Rosary, DayCard) |
 | Section heading | `text-sm` uppercase | 14px | 600 | `tracking-wider`, secondary colour |
 | Card title | `text-lg` | 18px | 600–700 | |
 | Body | `text-sm` / `text-base` | 14–16px | 400–500 | |
@@ -152,17 +155,17 @@ Each option is shown as an "A" drawn at that size (`CONTENT_FONT_SCALE` in `src/
 | Setting | Reading size | Line height | Interface |
 |---------|------|-------------|-----------|
 | Pequeno | 18px | 1.70 | 100% |
-| Médio (default) | 21px | 1.65 | 100% |
-| Grande | 26px | 1.60 | 112.5% |
-| Muito grande | 32px | 1.50 | 125% |
+| Médio (default) | 21px | 1.70 | 100% |
+| Grande | 26px | 1.70 | 112.5% |
+| Muito grande | 32px | 1.70 | 125% |
 
 Touch targets are fixed at 44px and don't grow with the interface.
 
-Reading text is ragged right with no hyphenation (most of it is verse), uses old-style figures (`onum`) and `text-wrap: pretty`. Labels inside a reading (Oração coleta, Leitura I) switch to Inter small caps so the prayer stays the only serif on the page.
+Reading text is ragged right with no hyphenation (most of it is verse), uses old-style figures (`onum`) in prose but lining, tabular ones in references and rubrics (`Sl 118`, `Ant. 2`), and `text-wrap: pretty`. Line height stays at 1.7 at every size; it never tightens as the type grows. Labels inside a reading (Oração coleta, Leitura I) switch to Inter small caps so the prayer stays the only serif on the page.
 
 ### Loading
 
-Inter 400–800 and Lora 400–600 (plus italics 400, 500) come from Google Fonts with `display=swap` (`index.html`).
+Inter and Lora are self-hosted variable fonts (`@fontsource-variable/*`, Latin and Latin Extended only), declared in `src/index.css` with `display: swap` and precached by the service worker, so they work offline after one visit. Lora's roman Latin file is preloaded in `index.html`. Until Lora arrives, readings use `Lora Fallback`: Georgia scaled to Lora's width and line box, so the swap doesn't reflow the text. Android has no Georgia, so `Lora Fallback Android` does the same with Noto Serif. Inter has no italic file; the interface's rare italics are the browser's slanted roman.
 
 ---
 

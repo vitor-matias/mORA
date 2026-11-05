@@ -204,7 +204,7 @@ export default function Home() {
         <div className="p-6 pt-[calc(3rem+env(safe-area-inset-top))] xl:pt-12 space-y-6 h-full relative overflow-hidden max-w-md lg:max-w-5xl 2xl:max-w-6xl mx-auto w-full">
             <header className="flex items-start justify-between relative z-10 w-full gap-4">
                 <div className="flex-1">
-                    <h1 className="text-3xl font-extrabold tracking-tight page-title mb-1">
+                    <h1 className="text-3xl font-reading font-semibold page-title mb-1">
                         {greeting}
                     </h1>
                     <p className="text-zinc-600 dark:text-zinc-400 text-lg">{t.whatToPray}</p>
@@ -282,7 +282,7 @@ export default function Home() {
                         {formatDisplayDate(new Date())}
                         {infoIsToday && <span className="sr-only"> · Cor litúrgica: {COLOR_DOTS[liturgicalColor].label}</span>}
                     </p>
-                    <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight line-clamp-3">
+                    <h2 className="mt-2 text-2xl font-reading font-semibold leading-tight line-clamp-3">
                         {todayHeadline || 'A liturgia de hoje'}
                     </h2>
                     {todayWeekday && <p className="mt-1 text-sm font-medium">{todayWeekday}</p>}

@@ -44,6 +44,9 @@ describe('sanitizeSyncedSettings', () => {
 
     it('drops values outside the known sets rather than passing them to the UI', () => {
         expect(sanitizeSyncedSettings({ fontFamily: 'comic', rosaryMode: 'expert' })).toEqual({});
+        // An older device still publishes the retired 'system' family.
+        expect(sanitizeSyncedSettings({ fontFamily: 'system', rosaryMode: 'beginner' }))
+            .toEqual({ fontFamily: 'sans', rosaryMode: 'beginner' });
     });
 
     it('treats a non-object payload as empty', () => {
@@ -397,7 +400,7 @@ describe('migrateAppState', () => {
     // the shortlist it was handed.
     it('keeps the logs a later build persisted, rather than seeding over them', () => {
         const prayers = { angelus: { at: Date.now(), on: true } };
-        const migrated = migrateAppState({ prayerFavourites: prayers, chantFavourites: {} }, 4);
+        const migrated = migrateAppState({ prayerFavourites: prayers, chantFavourites: {} }, 5);
 
         expect(migrated.prayerFavourites).toEqual(prayers);
         expect(migrated.chantFavourites).toEqual({});
@@ -405,8 +408,17 @@ describe('migrateAppState', () => {
 
     it('leaves a device that never starred anything with empty logs, not undefined', () => {
         expect(migrateAppState({}, 2).prayerFavourites).toEqual({});
-        expect(migrateAppState({}, 4).chantFavourites).toEqual({});
+        expect(migrateAppState({}, 5).chantFavourites).toEqual({});
         expect(migrateAppState(null, 2).prayerFavourites).toEqual({});
+    });
+
+    // 'system' ("Predefinido") rendered as Inter, so its readers keep the sans.
+    it('folds the retired system font family into sans, and junk into the serif default', () => {
+        expect(migrateAppState({ fontFamily: 'system' }, 3).fontFamily).toBe('sans');
+        expect(migrateAppState({ fontFamily: 'sans' }, 3).fontFamily).toBe('sans');
+        expect(migrateAppState({ fontFamily: 'serif' }, 3).fontFamily).toBe('serif');
+        expect(migrateAppState({ fontFamily: 'comic' }, 3).fontFamily).toBe('serif');
+        expect(migrateAppState({}, 3).fontFamily).toBe('serif');
     });
 
     it('still resolves a scroll speed persisted as an index into an older scale', () => {

@@ -4,23 +4,26 @@
 // styled by the same classes, so both renders cannot drift apart.
 
 import DOMPurify from "dompurify";
+import { officeTypography } from "@/lib/officeTypography";
 import type { AssembledSection } from "@/lib/breviary/assemble";
 import type { ComumBlock } from "@/lib/breviary/comum";
 
 // Classes that make API-served HTML match the page's typography — shared by
 // every spliced render.
-const API_HTML_CLASSES = "content-text text-zinc-800 dark:text-zinc-200 [&_p]:mb-3! [&_p:last-child]:mb-0! [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4 [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100 [&_em]:italic";
+// The antiphon stands a little apart from the psalm it frames (mb-3 is 0.75rem).
+const API_HTML_CLASSES = "office content-text [&_p.antiphon]:mb-5! [&_p.antiphon:not(:first-child)]:mt-5 text-zinc-800 dark:text-zinc-200 [&_p]:mb-3! [&_p:last-child]:mb-0! [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2 [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4 [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100 [&_em]:italic";
 
 /** API office HTML, sanitized and styled like the rest of the page. */
 export function ApiHtml({ html }: { html: string }) {
-    return <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />;
+    return <div className={API_HTML_CLASSES} dangerouslySetInnerHTML={{ __html: officeTypography(DOMPurify.sanitize(html)) }} />;
 }
 
 // --- The API's markup vocabulary. It paints rubrics with literal inline
-// --- red (#ff0000), so ours do too.
+// --- red (#ff0000); ours take the .rubric class, and index.css paints both
+// --- with the --rubric token.
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const red = (html: string) => `<span style="color: #ff0000;">${html}</span>`;
+const red = (html: string) => `<span class="rubric">${html}</span>`;
 const h3 = (html: string) => `<h3>${red(html)}</h3>`;
 const p = (html: string) => `<p>${html}</p>`;
 const lines = (text: string) => text.split('\n').map(esc).join('<br />\n');

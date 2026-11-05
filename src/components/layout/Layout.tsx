@@ -199,17 +199,12 @@ export function Layout() {
         document.documentElement.style.fontSize =
             sizeConfig.interfacePercent === 100 ? '' : `${sizeConfig.interfacePercent}%`;
 
-        // Font family — set as CSS variable so only content areas pick it up (not UI)
-        const familyMap: Record<string, string> = {
-            // "Predefinido" matches the app chrome, so readings and UI are one
-            // family by default. "Serifada" opts into Lora, a screen-optimised
-            // reading serif loaded in index.html. (These two used to resolve to
-            // the same serif, which made the setting look broken.)
-            system: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            serif: '"Lora", Georgia, "Times New Roman", serif',
-            sans: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        };
-        document.documentElement.style.setProperty('--content-font-family', familyMap[fontFamily] || 'inherit');
+        // Font family — set as CSS variables so only content areas pick it
+        // up, not the UI. Sans takes Inter's tailed l (cv05), so "Il" and "1l"
+        // stay apart in a reading.
+        const sans = fontFamily === 'sans';
+        document.documentElement.style.setProperty('--content-font-family', sans ? 'var(--font-ui)' : 'var(--font-reading)');
+        document.documentElement.style.setProperty('--content-font-features', sans ? '"cv05"' : 'normal');
 
         return () => {
             mq.removeEventListener('change', onSchemeChange);

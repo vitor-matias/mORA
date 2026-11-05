@@ -242,7 +242,7 @@ export default function Rosary() {
                     and marks the mystery being prayed. */}
                 <section className={`${atStart && !showFinish ? '' : 'hidden lg:block'} lg:sticky lg:top-24 rounded-3xl p-5 mb-4 lg:mb-0 bg-liturgy-700 dark:bg-liturgy-800 text-white`}>
                     <p className="text-xs font-bold uppercase tracking-widest">Hoje rezamos</p>
-                    <h2 className="mt-1 text-2xl font-extrabold tracking-tight">
+                    <h2 className="mt-1 text-2xl font-reading font-semibold">
                         Mistérios {MYSTERY_LABELS[todayMysteryClass]}
                     </h2>
                     <ol className="mt-3 space-y-1.5 text-sm">
