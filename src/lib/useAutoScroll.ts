@@ -138,7 +138,12 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
             window.clearTimeout(m.settle);
             m.settle = window.setTimeout(endManual, SETTLE_MS);
         };
-        const onTouchStart = () => { touching = true; };
+        // A finger landing mid-settle (catching the momentum) must hold the
+        // pause; with no manual scroll under way, a tap on the controls is a no-op.
+        const onTouchStart = () => {
+            touching = true;
+            window.clearTimeout(manualRef.current?.settle);
+        };
         const onTouchEnd = () => { touching = false; settle(); };
         const onWheel = () => { move(); settle(); };
         window.addEventListener('touchstart', onTouchStart, { passive: true });
