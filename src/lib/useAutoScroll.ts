@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAppStore, SCROLL_LEVELS, scrollLevelIndex, scrollSpeedAt } from '@/store/app';
 
+/** Quiet time after the gesture (and its momentum) before auto-scroll resumes. */
+const SETTLE_MS = 200;
+
 export interface AutoScroll {
     isScrolling: boolean;
     /** Index into SCROLL_LEVELS. */
@@ -43,13 +46,22 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
     // Speed kept in a ref so changes apply to the running loop immediately.
     const speedRef = useRef(speed);
     useEffect(() => { speedRef.current = speed; }, [speed]);
+    // Set while the reader is moving the page by hand: the loop holds off
+    // instead of fighting their drag or its momentum.
+    const manualRef = useRef<{ fromY: number; settle?: number } | null>(null);
+
+    const endManual = useCallback(() => {
+        window.clearTimeout(manualRef.current?.settle);
+        manualRef.current = null;
+    }, []);
 
     const stop = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
         lastTimeRef.current = null;
+        endManual();
         setIsScrolling(false);
-    }, []);
+    }, [endManual]);
 
     const start = useCallback(() => {
         // A double-tap can call this twice before `isScrolling` re-renders;
@@ -63,7 +75,10 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
         lastTimeRef.current = null;
 
         const step = (time: number) => {
-            if (lastTimeRef.current !== null) {
+            if (manualRef.current) {
+                // Follow the reader's position so we resume from where they left it.
+                scrollAccRef.current = window.scrollY;
+            } else if (lastTimeRef.current !== null) {
                 // Cap elapsed so a backgrounded tab doesn't leap on return.
                 const elapsed = Math.min((time - lastTimeRef.current) / 1000, 0.1);
                 const pxPerSec = SCROLL_LEVELS[speedRef.current].pps;
@@ -102,19 +117,50 @@ export function useAutoScroll(contentKey: unknown): AutoScroll {
     const slower = useCallback(() => stepSpeed(-1), [stepSpeed]);
     const faster = useCallback(() => stepSpeed(1), [stepSpeed]);
 
-    // Pause when the user manually scrolls (touchmove = drag, not tap).
-    // Using touchmove rather than touchstart means tapping speed/stop
-    // controls won't accidentally cancel the scroll mid-session.
+    // A manual scroll that moves the page less than a screen (a nudge to catch
+    // up with, or wait for, the text) only pauses the loop until the page
+    // settles; moving it further means the reader is navigating, so it stops.
+    // Judged by distance, not time, so slow nudges and trackpad inertia count.
+    // touchmove rather than touchstart, so tapping the controls changes nothing.
     useEffect(() => {
         if (!isScrolling) return;
-        const onManualScroll = () => stop();
-        window.addEventListener('wheel', onManualScroll, { passive: true });
-        window.addEventListener('touchmove', onManualScroll, { passive: true });
-        return () => {
-            window.removeEventListener('wheel', onManualScroll);
-            window.removeEventListener('touchmove', onManualScroll);
+        let touching = false;
+        const move = () => {
+            if (!manualRef.current) manualRef.current = { fromY: window.scrollY };
+            window.clearTimeout(manualRef.current.settle);
         };
-    }, [isScrolling, stop]);
+        // Resume once input and momentum have both been quiet for a moment.
+        const settle = () => {
+            const m = manualRef.current;
+            if (!m) return;
+            if (Math.abs(window.scrollY - m.fromY) > window.innerHeight) { stop(); return; }
+            if (touching) return;
+            window.clearTimeout(m.settle);
+            m.settle = window.setTimeout(endManual, SETTLE_MS);
+        };
+        // A finger landing mid-settle (catching the momentum) must hold the
+        // pause; with no manual scroll under way, a tap on the controls is a no-op.
+        const onTouchStart = () => {
+            touching = true;
+            window.clearTimeout(manualRef.current?.settle);
+        };
+        const onTouchEnd = () => { touching = false; settle(); };
+        const onWheel = () => { move(); settle(); };
+        window.addEventListener('touchstart', onTouchStart, { passive: true });
+        window.addEventListener('touchmove', move, { passive: true });
+        window.addEventListener('touchend', onTouchEnd, { passive: true });
+        window.addEventListener('touchcancel', onTouchEnd, { passive: true });
+        window.addEventListener('wheel', onWheel, { passive: true });
+        window.addEventListener('scroll', settle, { passive: true });
+        return () => {
+            window.removeEventListener('touchstart', onTouchStart);
+            window.removeEventListener('touchmove', move);
+            window.removeEventListener('touchend', onTouchEnd);
+            window.removeEventListener('touchcancel', onTouchEnd);
+            window.removeEventListener('wheel', onWheel);
+            window.removeEventListener('scroll', settle);
+        };
+    }, [isScrolling, stop, endManual]);
 
     // Keep the screen awake while autoscrolling — otherwise the phone dims
     // and locks mid-reading. The browser releases the lock whenever the tab
