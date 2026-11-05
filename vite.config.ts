@@ -35,7 +35,9 @@ export default defineConfig(({ command, mode }) => {
         // offices and the commons. The default glob only takes js/css/html, so
         // without this those offices failed offline.
         injectManifest: {
-          globPatterns: ['**/*.{js,css,html}', 'lh/*.json'],
+          // woff2: the self-hosted fonts, or an office read offline falls
+          // back to Georgia and the interface to the system sans.
+          globPatterns: ['**/*.{js,css,html,woff2}', 'lh/*.json'],
         },
         manifest: {
           name: 'Oremus — Oração diária',

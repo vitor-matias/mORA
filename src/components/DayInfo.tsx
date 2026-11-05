@@ -188,7 +188,7 @@ export function DayCard({ dateLabel, color, title, description, sections, classN
                         {/* The header's colour is the colour signal; this says it. */}
                         {color && <span className="sr-only"> · Cor litúrgica: {COLOR_DOTS[color].label}</span>}
                     </span>
-                    <span className="block text-base font-bold leading-snug">
+                    <span className="block font-reading text-xl font-semibold leading-snug">
                         {title}
                     </span>
                 </span>

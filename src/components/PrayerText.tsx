@@ -1,9 +1,9 @@
 import { Fragment } from 'react';
 import { splitVersicle, VERSICLE_GLYPH } from '@/lib/versicles';
 
-// Rubrics are red in every printed book. The breviary view paints its V./R.
-// markers with the API's literal red so both renders match; this matches it.
-const RUBRIC = 'text-[#ff0000]';
+// Rubrics are red in every printed book: the same --rubric token as the
+// breviary view's V./R. markers.
+const RUBRIC = 'text-rubric';
 
 /**
  * A prayer body with its "V." / "R." markers shown as the liturgical ℣ and ℟

@@ -511,7 +511,7 @@ export default function Profile() {
                             <p className="text-sm font-medium">Tipo de Letra</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {([['system', 'Predefinido'], ['serif', 'Serifada'], ['sans', 'Sem Serifa']] as [FontFamily, string][]).map(([fam, label]) => (
+                            {([['serif', 'Serifada'], ['sans', 'Sem Serifa']] as [FontFamily, string][]).map(([fam, label]) => (
                                 <button
                                     key={fam}
                                     onClick={() => setFontFamily(fam)}
@@ -520,7 +520,8 @@ export default function Profile() {
                                         : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-600 dark:text-zinc-400 border border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800'
                                         }`}
                                 >
-                                    <span className={`text-xs font-medium ${fam === 'serif' ? 'font-serif' : fam === 'sans' ? 'font-sans' : ''}`}>{label}</span>
+                                    {/* Each label in its own face, so the choice is visible before it is made. */}
+                                    <span className={`text-xs font-medium ${fam === 'serif' ? 'font-reading' : 'font-ui [font-feature-settings:"cv05"]'}`}>{label}</span>
                                 </button>
                             ))}
                         </div>

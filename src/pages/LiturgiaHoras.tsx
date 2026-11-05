@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronLeft, ChevronDown, Clock, Cross, BookOpenText, Sunrise, Sun, Sunset, MoonStar, CheckCircle2, RotateCcw, Info } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import DOMPurify from "dompurify";
 import { fetchDailyLiturgy } from "@/lib/liturgy";
 import type { DailyLiturgy, LiturgyHourPart } from "@/lib/liturgy";
 import { useAppStore, isCompletedToday, STREAK_ITEMS, type StreakItem } from "@/store/app";
@@ -83,7 +82,7 @@ interface ApiParts {
 function withInvitatoryNote(opening: string, hour: string | undefined): string {
     if (/omite-se/i.test(opening) || (hour !== 'Laudes' && hour !== 'Ofício de Leitura')) return opening;
     const office = hour === 'Laudes' ? 'Ofício de Laudes' : 'Ofício de leitura';
-    return `${opening}<p><span style="color: #ff0000;">Isto omite-se quando o ${office} começa com o Invitatório.</span></p>`;
+    return `${opening}<p><span class="rubric">Isto omite-se quando o ${office} começa com o Invitatório.</span></p>`;
 }
 
 function withApiParts(sections: AssembledSection[], api: ApiParts): AssembledSection[] {
@@ -721,7 +720,7 @@ export default function LiturgiaHoras() {
                             >
                                 <ChevronLeft size={18} />
                             </button>
-                            <h1 className="text-xl font-bold tracking-tight page-title truncate">
+                            <h1 className="text-xl font-reading font-semibold page-title truncate">
                                 Liturgia das Horas
                             </h1>
                         </div>
@@ -1056,18 +1055,7 @@ export default function LiturgiaHoras() {
                                                                             <a href={verse.audio_url}>Ouvir áudio</a>
                                                                         </audio>
                                                                     )}
-                                                                    <div
-                                                                        className="
-                                                                        content-text
-                                                                        text-zinc-800 dark:text-zinc-200
-                                                                        [&_p]:mb-3! [&_p:last-child]:mb-0!
-                                                                        [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-liturgy-600 dark:[&_h3]:text-liturgy-400 [&_h3]:mt-6 [&_h3]:mb-2
-                                                                        [&_h6]:text-sm [&_h6]:font-semibold [&_h6]:text-zinc-500 [&_h6]:mb-4
-                                                                        [&_strong]:font-bold [&_strong]:text-zinc-900 dark:[&_strong]:text-zinc-100
-                                                                        [&_em]:italic
-                                                                    "
-                                                                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(verse.text) }}
-                                                                    />
+                                                                    <ApiHtml html={verse.text} />
                                                                 </div>
                                                             ))}
                                                             {/* Quick scroll button — sticky at the bottom */}

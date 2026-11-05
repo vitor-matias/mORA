@@ -169,7 +169,14 @@ export interface SyncedSettings {
     rosaryMode: RosaryBeadMode;
 }
 
-const FONT_FAMILIES: FontFamily[] = ['system', 'serif', 'sans'];
+const FONT_FAMILIES: FontFamily[] = ['serif', 'sans'];
+
+/** Until v4 there was a third family, 'system' ("Predefinido"), and it
+    rendered as Inter — so a reader who picked it keeps the sans. Applied to
+    persisted state and to snapshots an older device still publishes. */
+function upgradeFontFamily(value: unknown): unknown {
+    return value === 'system' ? 'sans' : value;
+}
 const ROSARY_MODES: RosaryBeadMode[] = ['beginner', 'advanced'];
 
 /** The interface's keys, at runtime — a snapshot is compared and checked for
@@ -186,7 +193,8 @@ export function sanitizeSyncedSettings(raw: unknown): Partial<SyncedSettings> {
     if (!raw || typeof raw !== 'object') return {};
     const input = raw as Record<string, unknown>;
     const out: Partial<SyncedSettings> = {};
-    if (FONT_FAMILIES.includes(input.fontFamily as FontFamily)) out.fontFamily = input.fontFamily as FontFamily;
+    const fontFamily = upgradeFontFamily(input.fontFamily) as FontFamily;
+    if (FONT_FAMILIES.includes(fontFamily)) out.fontFamily = fontFamily;
     if (ROSARY_MODES.includes(input.rosaryMode as RosaryBeadMode)) out.rosaryMode = input.rosaryMode as RosaryBeadMode;
     return out;
 }
@@ -353,7 +361,7 @@ export function seedFavouriteLog(ids: unknown): FavouriteLog {
 export type ChapletMode = 'guiado' | 'resumido';
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
-export type FontFamily = 'system' | 'serif' | 'sans';
+export type FontFamily = 'serif' | 'sans';
 
 /** How much of the day's Mass the Missa page shows.
       leituras — the readings alone
@@ -445,11 +453,13 @@ export function migrateScrollSpeed(stored: unknown, version: number): AutoScroll
 // smaller labels. index.html applies the same percentages before first
 // paint; keep the two in step.
 // Consumed by Layout (applies the CSS variables) and Profile (size picker).
+// Leading never tightens as the type grows: the large steps are for readers
+// who need help seeing the text, and a cramped line box is the opposite help.
 export const CONTENT_FONT_SCALE: Record<FontSize, { size: number; lineHeight: number; interfacePercent: number; label: string }> = {
     small: { size: 18, lineHeight: 1.7, interfacePercent: 100, label: 'pequeno' },
-    medium: { size: 21, lineHeight: 1.65, interfacePercent: 100, label: 'médio' },
-    large: { size: 26, lineHeight: 1.6, interfacePercent: 112.5, label: 'grande' },
-    xlarge: { size: 32, lineHeight: 1.5, interfacePercent: 125, label: 'muito grande' },
+    medium: { size: 21, lineHeight: 1.7, interfacePercent: 100, label: 'médio' },
+    large: { size: 26, lineHeight: 1.7, interfacePercent: 112.5, label: 'grande' },
+    xlarge: { size: 32, lineHeight: 1.7, interfacePercent: 125, label: 'muito grande' },
 };
 
 interface AppState {
@@ -561,7 +571,7 @@ interface AppState {
 /** The shape this build persists. Bumping it runs `migrateAppState` on every
     device holding an older one — and on any holding a newer one, which is the
     less obvious half. */
-const PERSIST_VERSION = 3;
+const PERSIST_VERSION = 4;
 
 /**
  * Reads state persisted by a different version of this build.
@@ -585,9 +595,12 @@ export function migrateAppState(persisted: unknown, version: number): AppState {
     // delete the logs it already had — and would do the same to everyone the
     // day this version is bumped to 4 for something unrelated.
     const beforeLogs = version < 3;
+    const fontFamily = upgradeFontFamily(state.fontFamily) as FontFamily;
     return {
         ...state,
         autoScrollSpeed: migrateScrollSpeed(state.autoScrollSpeed, version),
+        // Any version: a rolled-back build may still have written 'system'.
+        fontFamily: FONT_FAMILIES.includes(fontFamily) ? fontFamily : 'serif',
         prayerFavourites: beforeLogs ? seedFavouriteLog(favouritePrayers) : state.prayerFavourites ?? {},
         chantFavourites: beforeLogs ? seedFavouriteLog(favouriteChants) : state.chantFavourites ?? {},
     } as AppState;
@@ -728,7 +741,8 @@ export const useAppStore = create<AppState>()(
             // v1 inserted ¼ and ¾ into SCROLL_LEVELS and v2 stopped storing
             // autoScrollSpeed as an index into it — see migrateScrollSpeed.
             // v3 turned the two favourites arrays into logs — see
-            // seedFavouriteLog.
+            // seedFavouriteLog. v4 folded the 'system' font family into
+            // 'sans' — see upgradeFontFamily.
             version: PERSIST_VERSION,
             migrate: migrateAppState,
         }
