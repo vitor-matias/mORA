@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     answerHash,
+    blankAnswer,
     deobfuscateAnswer,
     emojiGrid,
     isSolved,
@@ -8,6 +9,7 @@ import {
     matchesAnswerHash,
     normalizeWord,
     obfuscateAnswer,
+    revealWords,
     scoreGuess,
 } from './game.ts';
 import type { Mark } from './types.ts';
@@ -160,5 +162,47 @@ describe('the answer in transit', () => {
         expect(matchesAnswerHash('2026-08-08', 'PASTOS', hash)).toBe(false);
         // Same word, different day, different hash.
         expect(matchesAnswerHash('2026-08-09', 'PASTOR', hash)).toBe(false);
+    });
+});
+
+describe('revealWords', () => {
+    const verse = 'Deus criou o ser humano à sua imagem, criou-o à imagem de Deus; Ele os criou homem e {{blank}}.';
+    const shown = (v: string, n: number, over = false) =>
+        revealWords(v, n, over).filter((w) => w.shown).map((w) => w.word).join(' ');
+
+    it('shows only the words next to the blank before the first guess', () => {
+        expect(shown(verse, 0)).toBe('e {{blank}}.');
+    });
+
+    it('widens with each wrong guess and ends on the whole verse', () => {
+        expect(shown(verse, 1)).toBe('criou homem e {{blank}}.');
+        expect(shown(verse, 3)).toBe(verse);
+        expect(shown(verse, 1, true)).toBe(verse);
+    });
+
+    it('counts from every blank of a repeated word', () => {
+        expect(shown('No princípio havia o {{blank}}; o {{blank}} estava em Deus; e o {{blank}} era Deus.', 0))
+            .toBe('o {{blank}}; o {{blank}} estava o {{blank}} era');
+    });
+
+    it('returns every word, so the card can blur the hidden ones in place', () => {
+        expect(revealWords(verse, 0).map((w) => w.word).join(' ')).toBe(verse);
+    });
+});
+
+describe('blankAnswer', () => {
+    it('marks the accented answer in the whole verse, ignoring case', () => {
+        expect(blankAnswer('Deus criou o ser humano à sua imagem… homem e mulher.', 'MULHER'))
+            .toBe('Deus criou o ser humano à sua imagem… homem e {{blank}}.');
+        expect(blankAnswer('A minha Salvação vem do Senhor.', 'SALVAÇÃO')).toBe('A minha {{blank}} vem do Senhor.');
+    });
+
+    it('marks whole words only, and every occurrence', () => {
+        expect(blankAnswer('o Verbo; o Verbo estava em Deus; Verbos', 'VERBO')).toBe('o {{blank}}; o {{blank}} estava em Deus; Verbos');
+    });
+
+    it('returns null when the word is not there, so the excerpt is used', () => {
+        expect(blankAnswer('Nada a ver.', 'PASTOR')).toBeNull();
+        expect(blankAnswer('Nada a ver.', '')).toBeNull();
     });
 });

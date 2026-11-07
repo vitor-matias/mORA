@@ -13,11 +13,13 @@ import { Keyboard } from '@/components/palavra/Keyboard';
 import { ResultSheet } from '@/components/palavra/ResultSheet';
 import { fetchDailyChallenge, PALAVRA_IS_MOCK } from '@/lib/palavra/api';
 import {
+    blankAnswer,
     deobfuscateAnswer,
     emojiGrid,
     keyboardState,
     matchesAnswerHash,
     normalizeWord,
+    revealWords,
     scoreGuess,
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
@@ -577,8 +579,13 @@ export default function Palavra() {
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
-    // The verse split on every blank: n parts means n-1 gaps to render.
-    const verseParts = challenge ? challenge.verse.split(BLANK_MARKER) : [''];
+    // The whole verse is laid out from the start, but only the words around
+    // the blank are legible; each wrong guess unblurs more, the end all of it.
+    // Once over, the whole verse (`full`) rather than the puzzle's excerpt.
+    const verseText = challenge
+        ? (over && challenge.full && blankAnswer(challenge.full, answerDisplay)) || challenge.verse
+        : '';
+    const verseWords = challenge ? revealWords(verseText, play.guesses.length, over) : [];
 
     // Rendered twice — in the desktop sidebar and in the mobile flow — the way
     // Missa and Horas handle their own date nav. Each DateNav instance owns
@@ -776,27 +783,48 @@ export default function Palavra() {
                             or the answer would sit in plain sight beside its
                             own gap. They all fill together on the reveal. */}
                         <blockquote className="surface surface-accent rounded-3xl p-4 text-[1.05rem] leading-relaxed">
-                            {verseParts.map((part, i) => (
-                                <Fragment key={i}>
-                                    {part}
-                                    {i < verseParts.length - 1 && (
+                            {verseWords.map(({ word, shown }, w) => {
+                                const parts = word.split(BLANK_MARKER);
+                                return (
+                                    <Fragment key={w}>
+                                        {w > 0 && ' '}
                                         <span
-                                            // Only while it is a blank: after
-                                            // the reveal it is ordinary text.
-                                            // A plain span is `generic`, which
-                                            // ARIA gives no accessible name,
-                                            // so the label below could be
-                                            // dropped without a role here.
-                                            role={over ? undefined : 'img'}
-                                            className="inline-block align-baseline border-b-2 border-liturgy-600 dark:border-liturgy-400 text-liturgy-700 dark:text-liturgy-300 font-semibold px-1 text-center"
-                                            style={over ? undefined : { minWidth: `${challenge.length * 0.72}em` }}
-                                            aria-label={over ? undefined : t.hiddenWord(challenge.length)}
+                                            // Blurred words are unreadable, so
+                                            // they are kept from screen readers
+                                            // and text selection too.
+                                            className={shown ? 'palavra-verse-word' : 'palavra-verse-word palavra-verse-hidden'}
+                                            aria-hidden={shown ? undefined : true}
                                         >
-                                            {over ? answerDisplay : ' '}
+                                            {parts.map((part, i) => (
+                                                <Fragment key={i}>
+                                                    {part}
+                                                    {i < parts.length - 1 && (
+                                                    <span
+                                                        // Only while it is a blank: after
+                                                        // the reveal it is ordinary text.
+                                                        // A plain span is `generic`, which
+                                                        // ARIA gives no accessible name,
+                                                        // so the label below could be
+                                                        // dropped without a role here.
+                                                        role={over ? undefined : 'img'}
+                                                        className="inline-block align-baseline border-b-2 border-liturgy-600 dark:border-liturgy-400 text-liturgy-700 dark:text-liturgy-300 font-semibold px-1 text-center"
+                                                        style={over ? undefined : { minWidth: `${challenge.length * 0.72}em` }}
+                                                        aria-label={over ? undefined : t.hiddenWord(challenge.length)}
+                                                    >
+                                                        {over ? answerDisplay : ' '}
+                                                    </span>
+                                                    )}
+                                                </Fragment>
+                                            ))}
                                         </span>
-                                    )}
-                                </Fragment>
-                            ))}
+                                    </Fragment>
+                                );
+                            })}
+                            {/* The blurred words are hidden from screen readers,
+                                so say that the verse goes on. */}
+                            {verseWords.some((w) => !w.shown) && (
+                                <span className="sr-only"> {t.verseStillHidden}</span>
+                            )}
                             <cite className="block not-italic text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-2">
                                 {over && (
                                     <>
