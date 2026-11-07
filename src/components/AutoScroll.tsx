@@ -73,8 +73,9 @@ export function AutoScrollSpeedRow({ scroll }: { scroll: AutoScroll }) {
 
 /** Floating start button / speed pill — mobile and tablet only. */
 export function AutoScrollFab({ scroll }: { scroll: AutoScroll }) {
+    // Same safe-area inset the tab bar floats above, or the bar covers it on iPhones with a home indicator.
     return (
-        <div className="lg:hidden fixed bottom-24 right-4 z-40">
+        <div className="lg:hidden fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-40">
             {scroll.isScrolling ? (
                 /* One cohesive pill: speed on the left, pause on the right.
                    Semi-transparent so text scrolling behind it stays
