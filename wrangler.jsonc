@@ -15,6 +15,13 @@
   // `wrangler preview`, which refuses to run without this block. Empty is
   // enough: assets and compatibility settings stay at the top level.
   "previews": {},
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
   "assets": {
     "directory": "./dist",
     // Routing is hash-based, so this only matters for a mistyped path.
