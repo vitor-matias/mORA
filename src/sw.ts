@@ -17,17 +17,26 @@ clientsClaim();
 // Pages built before src/lib/swUpdate.ts have nothing that reloads them when
 // this worker takes over, so they would keep the old JS until the app is next
 // cold-started. Pages that have it answer this ping and reload themselves at a
-// safe moment; the rest are reloaded here. Not under waitUntil: fetches wait
-// while the worker is activating. Once every page answers, this is a no-op.
-self.addEventListener('activate', () => {
-    self.clients.claim().then(() => self.clients.matchAll({ type: 'window' })).then((clients) => {
-        for (const client of clients) {
+// safe moment; the rest are reloaded here. The wait is under waitUntil so the
+// browser cannot stop the worker before the timer fires; it ends as soon as
+// every page answers, because fetches stall while the worker is activating.
+// The navigation itself is not awaited: it would wait on this activation.
+// Once every page answers, this is a no-op.
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim().then(() => self.clients.matchAll({ type: 'window' })).then((clients) =>
+        Promise.all(clients.map((client) => new Promise<void>((resolve) => {
             const channel = new MessageChannel();
-            const timer = setTimeout(() => client.navigate(client.url).catch(() => {}), 3000);
-            channel.port1.onmessage = () => clearTimeout(timer);
+            const timer = setTimeout(() => {
+                client.navigate(client.url).catch(() => {});
+                resolve();
+            }, 3000);
+            channel.port1.onmessage = () => {
+                clearTimeout(timer);
+                resolve();
+            };
             client.postMessage('mora-reloads-itself?', [channel.port2]);
-        }
-    });
+        })))
+    ));
 });
 
 cleanupOutdatedCaches();
