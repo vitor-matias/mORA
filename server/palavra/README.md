@@ -434,10 +434,10 @@ repeated a verse on **140 days of a 365-day year** while never showing about
 150 of them at all.
 
 Instead, days are counted from a fixed epoch and the pool is walked in a
-permuted order. Each complete pass through all 1115 verses is **reshuffled with
+permuted order. Each complete pass through all 1482 verses is **reshuffled with
 a new seed**, so every verse appears exactly once per cycle and the next cycle
-deals a different order. With 1115 entries that's a fresh verse every day for
-about 3.1 years before anything recurs.
+deals a different order. With 1482 entries that's a fresh verse every day for
+about 4.1 years before anything recurs.
 
 It stays a pure function of the date, which is what makes backfilling safe: any
 republish of the same day produces byte-identical output.
@@ -452,9 +452,14 @@ change under them. Append-only, and let the next cycle pick up the additions.
 
 Two rules, in this order.
 
-**It must be inferable from the clause.** `PASTOR` in Salmo 23,1 is guessable;
-a proper noun buried in a genealogy is not. If three different words would fill
-the gap equally well, the verse is unusable — six guesses become six coin flips.
+**It must be reachable, but not obvious.** A proper noun buried in a genealogy
+is unreachable. But a word the clause hands over is a first-guess solve, and the
+early pool was full of them: more than a third of days fell on guess one. The
+tells are the last word of a fixed phrase (`homem e mulher`, `pães sem
+fermento`), a word echoed nearby (`bênção` beside `Abençoa-me`), or the one noun
+the whole clause points at. Aim for context that narrows the answer to a handful
+of plausible words, three to six, and let the coloured letters decide among
+them. Knowing the text should still give you the edge.
 
 **It should carry theological or scriptural weight, in the large majority of
 cases.** The game is *Palavra Bíblica do Dia*; the word revealed at the end
@@ -473,7 +478,7 @@ What doesn't qualify: ordinary nouns that merely happen to sit in a verse
 `alguma`, `nenhuma`) — those are unguessable as well as uninteresting.
 
 Aim for roughly 70% weighted rather than 100%. Where the two rules conflict,
-**inferability wins**.
+**reachability wins**.
 
 An excerpt is marked with `…` where it was cut, and must be a contiguous,
 verbatim span — never a paraphrase or a stitched-together shortening.

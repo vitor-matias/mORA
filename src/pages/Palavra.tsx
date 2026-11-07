@@ -18,6 +18,7 @@ import {
     keyboardState,
     matchesAnswerHash,
     normalizeWord,
+    revealVerse,
     scoreGuess,
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
@@ -577,8 +578,11 @@ export default function Palavra() {
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
-    // The verse split on every blank: n parts means n-1 gaps to render.
-    const verseParts = challenge ? challenge.verse.split(BLANK_MARKER) : [''];
+    // The verse split on every blank: n parts means n-1 gaps to render. While
+    // playing, each wrong guess reveals more of it; the end shows it whole.
+    const verseParts = challenge
+        ? (over ? challenge.verse : revealVerse(challenge.verse, play.guesses.length)).split(BLANK_MARKER)
+        : [''];
 
     // Rendered twice — in the desktop sidebar and in the mobile flow — the way
     // Missa and Horas handle their own date nav. Each DateNav instance owns

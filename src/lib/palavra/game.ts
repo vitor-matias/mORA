@@ -6,7 +6,7 @@
 
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import type { Mark } from './types';
+import { BLANK_MARKER, type Mark } from './types';
 
 /**
  * A word reduced to the 26 letters the keyboard offers.
@@ -100,6 +100,33 @@ const MARK_EMOJI: Record<Mark, string> = {
 /** The shareable board — the only part of a result that travels as text. */
 export function emojiGrid(rows: Mark[][]): string {
     return rows.map((row) => row.map((mark) => MARK_EMOJI[mark]).join('')).join('\n');
+}
+
+// Words shown either side of the blank before each guess; past the end of
+// the list the whole verse is shown. Seeing the full clause up front made the
+// word a first-guess solve on more than a third of days.
+const REVEAL_RADIUS = [1, 3, 6];
+
+/**
+ * The verse as far as it is revealed after `guessesMade` wrong guesses: only
+ * the words within the radius of a blank, with each hidden run collapsed to
+ * one "…", and "(…)" at either end while part of the verse is still hidden.
+ * The result still carries BLANK_MARKER, so it renders the same way.
+ */
+export function revealVerse(verse: string, guessesMade: number): string {
+    const radius = REVEAL_RADIUS[guessesMade];
+    if (radius === undefined) return verse;
+    const words = verse.split(' ');
+    const blanks = words.flatMap((word, i) => (word.includes(BLANK_MARKER) ? [i] : []));
+    const shown = words
+        .map((word, i) => (blanks.some((b) => Math.abs(b - i) <= radius) ? word : '…'))
+        .join(' ');
+    if (shown === verse) return verse;
+    return shown
+        .replace(/…(?: …)+/g, '…') // a hidden run is one ellipsis…
+        .replace(/…+/g, '…') // …even where it meets the excerpt's own
+        .replace(/^…\s*/, '(…) ')
+        .replace(/\s*…$/, ' (…)');
 }
 
 // ── The answer, in transit ───────────────────────────────────────────────

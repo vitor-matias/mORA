@@ -8,6 +8,7 @@ import {
     matchesAnswerHash,
     normalizeWord,
     obfuscateAnswer,
+    revealVerse,
     scoreGuess,
 } from './game.ts';
 import type { Mark } from './types.ts';
@@ -160,5 +161,23 @@ describe('the answer in transit', () => {
         expect(matchesAnswerHash('2026-08-08', 'PASTOS', hash)).toBe(false);
         // Same word, different day, different hash.
         expect(matchesAnswerHash('2026-08-09', 'PASTOR', hash)).toBe(false);
+    });
+});
+
+describe('revealVerse', () => {
+    const verse = 'Deus criou o ser humano à sua imagem, criou-o à imagem de Deus; Ele os criou homem e {{blank}}.';
+
+    it('shows only the words next to the blank before the first guess', () => {
+        expect(revealVerse(verse, 0)).toBe('(…) e {{blank}}.');
+    });
+
+    it('widens with each wrong guess and ends on the whole verse', () => {
+        expect(revealVerse(verse, 1)).toBe('(…) criou homem e {{blank}}.');
+        expect(revealVerse(verse, 3)).toBe(verse);
+    });
+
+    it('keeps every blank of a repeated word, with one ellipsis per hidden run', () => {
+        expect(revealVerse('No princípio havia o {{blank}}; o {{blank}} estava em Deus; e o {{blank}} era Deus.', 0))
+            .toBe('(…) o {{blank}}; o {{blank}} estava … o {{blank}} era (…)');
     });
 });

@@ -236,7 +236,7 @@ const translations = {
         // reachable afterwards from the header.
         howToPlayTitle: "Como jogar",
         howToPlayClose: "Fechar",
-        howToPlayIntro: "Descobre a palavra que o versículo de hoje esconde. Tens 6 tentativas.",
+        howToPlayIntro: "Descobre a palavra que o versículo de hoje esconde. Tens 6 tentativas, e cada uma que falhes revela mais do versículo.",
         howToPlaySubmit: "Cada tentativa é uma palavra com o mesmo número de letras da palavra escondida, entre 5 e 8, consoante o versículo do dia. Escreve e confirma com o Enter ⏎.",
         howToPlayColors: "Depois de cada tentativa, a cor das letras muda para mostrar o quão perto estás da solução.",
         howToPlayExamples: "Exemplos",

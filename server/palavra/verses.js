@@ -1,4 +1,4 @@
-// The verse pool — 1115 entries, a bit over three years of daily puzzles
+// The verse pool — 1482 entries, about four years of daily puzzles
 // before the shuffled cycle (see README, "How a day gets its verse") repeats.
 //
 // Text is the **Bíblia dos Capuchinhos** (Difusora Bíblica), taken verbatim
@@ -1385,4 +1385,519 @@ export const VERSES = [
     { ref: '2 Macabeus 10,2', full: `Destruíram os altares que os gentios tinham edificado nas praças públicas, assim como os troncos sagrados.`, verse: `Destruíram os {{blank}} que os gentios tinham edificado nas praças públicas, assim como os troncos sagrados.`, answer: 'altares' },
     { ref: '2 Macabeus 11,3', full: `a submeter o templo a um tributo como os templos pagãos e a pôr à venda, cada ano, a dignidade de Sumo Sacerdote.`, verse: `a submeter o templo a um tributo como os {{blank}} pagãos e a pôr à venda, cada ano,…`, answer: 'templos' },
     { ref: '2 Macabeus 13,16', full: `Por fim, espalharam pelo campo o terror e a confusão, e retiraram-se, triunfantes.`, verse: `Por fim, espalharam pelo campo o terror e a {{blank}}, e retiraram-se, triunfantes.`, answer: 'confusão' },
+
+    // ════ Harder additions, Antigo Testamento ════
+    // The clause narrows the gap to a handful of plausible words; the board
+    // decides. See README, "Choosing the hidden word".
+    // ── Génesis ──
+    { ref: 'Génesis 4,13', full: `Caim disse ao Senhor: «A minha culpa é excessivamente grande para ser suportada.`, verse: `Caim disse ao Senhor: «A minha {{blank}} é excessivamente grande para ser suportada.`, answer: 'culpa' },
+    { ref: 'Génesis 14,20', full: `Bendito seja o Deus Altíssimo, que entregou os teus inimigos nas tuas mãos!» E Abrão deu-lhe o dízimo de tudo.`, verse: `…que entregou os teus inimigos nas tuas mãos!» E Abrão deu-lhe o {{blank}} de tudo.`, answer: 'dízimo' },
+    { ref: 'Génesis 15,1', full: `Após estes acontecimentos, o Senhor disse a Abrão numa visão: «Nada temas, Abrão! Eu sou o teu escudo, a tua recompensa será muito grande.»`, verse: `…«Nada temas, Abrão! Eu sou o teu {{blank}}, a tua recompensa será muito grande.»`, answer: 'escudo' },
+    { ref: 'Génesis 22,8', full: `Abraão respondeu: «Deus proverá quanto à vítima para o holocausto, meu filho.» E os dois prosseguiram juntos.`, verse: `Abraão respondeu: «Deus proverá quanto à {{blank}} para o holocausto, meu filho.»…`, answer: 'vítima' },
+    { ref: 'Génesis 37,34', full: `E Jacob rasgou as suas vestes, pôs um cilício sobre os rins e usou luto por seu filho, durante muito tempo.`, verse: `E Jacob rasgou as suas vestes, pôs um {{blank}} sobre os rins e usou luto por seu filho, durante muito tempo.`, answer: 'cilício' },
+
+    // ── Êxodo ──
+    { ref: 'Êxodo 6,30', full: `Mas Moisés disse ao Senhor: «Eis que eu sou incircunciso de lábios. Como me escutará o faraó?»`, verse: `Mas Moisés disse ao Senhor: «Eis que eu sou incircunciso de {{blank}}. Como me escutará o faraó?»`, answer: 'lábios' },
+    { ref: 'Êxodo 12,11', full: `Comê-la-eis desta maneira: os rins cingidos, as sandálias nos pés e o cajado na mão. Comê-la-eis à pressa. É a Páscoa em honra do Senhor.`, verse: `…Comê-la-eis à pressa. É a {{blank}} em honra do Senhor.`, answer: 'páscoa' },
+    { ref: 'Êxodo 20,21', full: `O povo manteve-se à distância e Moisés aproximou-se da nuvem escura, onde estava Deus.`, verse: `O povo manteve-se à distância e Moisés aproximou-se da {{blank}} escura, onde estava Deus.`, answer: 'nuvem' },
+    { ref: 'Êxodo 22,25', full: `Se penhorares o manto do teu próximo, devolver-lho-ás até ao pôr-do-sol,`, verse: `Se penhorares o {{blank}} do teu próximo, devolver-lho-ás até ao pôr-do-sol,`, answer: 'manto' },
+    { ref: 'Êxodo 25,30', full: `Colocarás sobre esta mesa os pães da oferenda, que estarão permanentemente diante de mim.»`, verse: `Colocarás sobre esta mesa os pães da {{blank}}, que estarão permanentemente diante de mim.»`, answer: 'oferenda' },
+    { ref: 'Êxodo 31,13', full: `«Diz aos filhos de Israel: Guardai o meu sábado, porque é um sinal perpétuo entre mim e vós, em todas as vossas gerações, para que se saiba que sou Eu, o Senhor, quem vos santifica.`, verse: `…Guardai o meu {{blank}}, porque é um sinal perpétuo entre mim e vós, em todas as vossas gerações,…`, answer: 'sábado' },
+    { ref: 'Êxodo 32,16', full: `As tábuas eram obra de Deus e o que estava gravado nas tábuas fora escrito por Deus.`, verse: `As {{blank}} eram obra de Deus e o que estava gravado nas {{blank}} fora escrito por Deus.`, answer: 'tábuas' },
+    { ref: 'Êxodo 34,6', full: `O Senhor passou em frente dele e exclamou: «Senhor! Senhor! Deus misericordioso e clemente, vagaroso na ira, cheio de bondade e de fidelidade,`, verse: `…«Senhor! Senhor! Deus misericordioso e {{blank}}, vagaroso na ira, cheio de bondade e de fidelidade,`, answer: 'clemente' },
+    { ref: 'Êxodo 34,18', full: `Observa a festa dos ázimos: comerás, sete dias, pão sem fermento, durante o mês de Abib, como te ordenei, porque foi nesse mês que saíste do Egito.`, verse: `Observa a festa dos {{blank}}: comerás, sete dias, pão sem fermento,…`, answer: 'ázimos' },
+    { ref: 'Êxodo 40,29', full: `Colocou o altar dos holocaustos à entrada do santuário, da tenda de reunião, e ali ofereceu o holocausto e a oblação, como o Senhor tinha ordenado a Moisés.`, verse: `…e ali ofereceu o holocausto e a {{blank}}, como o Senhor tinha ordenado a Moisés.`, answer: 'oblação' },
+
+    // ── Levítico ──
+    { ref: 'Levítico 1,4', full: `Imporá a mão sobre a cabeça da vítima, para que seja aceite favoravelmente, servindo de expiação por ele.`, verse: `Imporá a mão sobre a cabeça da {{blank}}, para que seja aceite favoravelmente, servindo de expiação por ele.`, answer: 'vítima' },
+    { ref: 'Levítico 16,31', full: `Este será para vós um sábado, um sábado solene, durante o qual jejuareis: é uma lei perpétua.`, verse: `Este será para vós um {{blank}}, um {{blank}} solene, durante o qual jejuareis: é uma lei perpétua.`, answer: 'sábado' },
+    { ref: 'Levítico 19,18', full: `Não te vingarás nem guardarás rancor aos filhos do teu povo, mas amarás o teu próximo como a ti mesmo. Eu sou o Senhor.`, verse: `Não te vingarás nem guardarás {{blank}} aos filhos do teu povo, mas amarás o teu próximo como a ti mesmo.…`, answer: 'rancor' },
+    { ref: 'Levítico 19,32', full: `Levanta-te perante uma cabeça branca e honra a pessoa do ancião. Teme o teu Deus. Eu sou o Senhor.`, verse: `Levanta-te perante uma cabeça branca e {{blank}} a pessoa do ancião.…`, answer: 'honra' },
+    { ref: 'Levítico 25,10', full: `Santificareis o quinquagésimo ano, proclamando na vossa terra a liberdade de todos os que a habitam. Este ano será para vós um Jubileu; cada um de vós voltará à sua propriedade, e à sua família.`, verse: `…Este ano será para vós um {{blank}}; cada um de vós voltará à sua propriedade, e à sua família.`, answer: 'jubileu' },
+
+    // ── Números ──
+    { ref: 'Números 3,9', full: `Entregarás os levitas a Aarão e a seus filhos, dados a ele como dádiva de entre os filhos de Israel.`, verse: `Entregarás os levitas a Aarão e a seus filhos, dados a ele como {{blank}} de entre os filhos de Israel.`, answer: 'dádiva' },
+    { ref: 'Números 8,14', full: `Separarás, então, os levitas do meio dos filhos de Israel, e os levitas serão meus.`, verse: `Separarás, então, os {{blank}} do meio dos filhos de Israel, e os {{blank}} serão meus.`, answer: 'levitas' },
+    { ref: 'Números 16,18', full: `Cada um tomou o seu turíbulo, deitou-lhe fogo cobrindo-o de incenso e colocou-se à entrada da tenda da reunião com Moisés e Aarão.`, verse: `Cada um tomou o seu {{blank}}, deitou-lhe fogo cobrindo-o de incenso…`, answer: 'turíbulo' },
+    { ref: 'Números 24,4', full: `oráculo do que escuta as palavras de Deus, que tem a visão do Omnipotente, que se prostra, mas de olhos abertos.`, verse: `{{blank}} do que escuta as palavras de Deus, que tem a visão do Omnipotente,…`, answer: 'oráculo' },
+    { ref: 'Números 35,31', full: `Não aceitareis resgate em troca da vida de um homicida, se ele for culpado e digno de morte: é necessário que morra.`, verse: `Não aceitareis {{blank}} em troca da vida de um homicida,…`, answer: 'resgate' },
+
+    // ── Deuteronómio ──
+    { ref: 'Deuteronómio 4,4', full: `Mas vós, que permanecestes fiéis ao Senhor, vosso Deus, estais hoje todos vivos!`, verse: `Mas vós, que permanecestes {{blank}} ao Senhor, vosso Deus, estais hoje todos vivos!`, answer: 'fiéis' },
+    { ref: 'Deuteronómio 14,27', full: `Não deves esquecer o levita que estiver dentro dos muros da tua cidade, porque ele não tem parte nem herança como tu.`, verse: `Não deves esquecer o {{blank}} que estiver dentro dos muros da tua cidade,…`, answer: 'levita' },
+    { ref: 'Deuteronómio 15,3', full: `Ao estrangeiro poderás exigir, mas quanto às dívidas do teu irmão farás a remissão.`, verse: `Ao estrangeiro poderás exigir, mas quanto às dívidas do teu irmão farás a {{blank}}.`, answer: 'remissão' },
+    { ref: 'Deuteronómio 24,6', full: `Não receberás em penhor o par de mós, nem sequer a mó de cima, pois seria receber em penhor a própria vida.`, verse: `Não receberás em {{blank}} o par de mós, nem sequer a mó de cima,…`, answer: 'penhor' },
+    { ref: 'Deuteronómio 24,17', full: `Não violarás o direito do estrangeiro e do órfão, nem receberás como penhor o vestido de uma viúva.`, verse: `Não violarás o direito do estrangeiro e do órfão, nem receberás como {{blank}} o vestido de uma viúva.`, answer: 'penhor' },
+    { ref: 'Deuteronómio 32,35', full: `A mim pertencem a vingança e a retribuição, quando o pé deles resvalar, pois está próximo o dia da sua ruína; depressa virá o seu destino.`, verse: `A mim pertencem a {{blank}} e a retribuição, quando o pé deles resvalar,…`, answer: 'vingança' },
+
+    // ── Josué ──
+    { ref: 'Josué 24,14', full: `Temei, portanto, o Senhor, e servi-o com toda a retidão e verdade. Afastai esses deuses a quem os vossos pais serviram do outro lado do rio e no Egito, e servi o Senhor.`, verse: `Temei, portanto, o Senhor, e servi-o com toda a {{blank}} e verdade.…`, answer: 'retidão' },
+
+    // ── Juízes ──
+    { ref: 'Juízes 2,10', full: `Depois, toda esta geração se foi juntar a seus pais; surgiu então, depois dela, outra geração que não conhecia o Senhor, nem a obra que o Senhor havia feito em favor de Israel.`, verse: `…surgiu então, depois dela, outra {{blank}} que não conhecia o Senhor,…`, answer: 'geração' },
+
+    // ── Rute ──
+    { ref: 'Rute 3,9', full: `E disse-lhe: «Quem és tu?» Ela respondeu: «Sou Rute, a tua serva. Estende o teu manto sobre a tua serva, porque tens o direito de resgate.»`, verse: `…Estende o teu manto sobre a tua serva, porque tens o direito de {{blank}}.»`, answer: 'resgate' },
+
+    // ── 1 Samuel ──
+    { ref: '1 Samuel 8,17', full: `Cobrará igualmente o dízimo dos vossos rebanhos. E vós próprios sereis seus servos.`, verse: `Cobrará igualmente o {{blank}} dos vossos rebanhos. E vós próprios sereis seus servos.`, answer: 'dízimo' },
+    { ref: '1 Samuel 9,9', full: `Antigamente, em Israel, todo aquele que ia consultar a Deus, costumava dizer assim: «Vinde, vamos ao vidente.» Chamava-se, então, «vidente» ao que hoje se chama «profeta.»`, verse: `…Chamava-se, então, «{{blank}}» ao que hoje se chama «profeta.»`, answer: 'vidente' },
+    { ref: '1 Samuel 25,33', full: `Bendita seja a tua prudência! E bendita sejas tu própria, porque me impediste hoje de derramar sangue e de exercer vingança por minhas mãos!`, verse: `…porque me impediste hoje de derramar sangue e de exercer {{blank}} por minhas mãos!`, answer: 'vingança' },
+
+    // ── 2 Samuel ──
+    { ref: '2 Samuel 22,8', full: `A terra, sacudida, tremeu; estremeceram os fundamentos dos céus e vacilaram por causa do seu furor.`, verse: `A terra, sacudida, tremeu; estremeceram os fundamentos dos céus e vacilaram por causa do seu {{blank}}.`, answer: 'furor' },
+
+    // ── 1 Reis ──
+    { ref: '1 Reis 8,12', full: `Disse então Salomão: «O Senhor escolheu habitar em nuvem escura!`, verse: `Disse então Salomão: «O Senhor escolheu habitar em {{blank}} escura!`, answer: 'nuvem' },
+    { ref: '1 Reis 19,6', full: `Olhou e viu à sua cabeceira um pão cozido sob a cinza e um copo de água. Comeu, bebeu e tornou a dormir.`, verse: `Olhou e viu à sua cabeceira um pão cozido sob a {{blank}} e um copo de água.…`, answer: 'cinza' },
+    { ref: '1 Reis 19,12', full: `Passou o tremor de terra e ateou-se um fogo; mas nem no fogo se encontrava o Senhor. Depois do fogo, ouviu-se o murmúrio de uma brisa suave.`, verse: `…Depois do fogo, ouviu-se o {{blank}} de uma brisa suave.`, answer: 'murmúrio' },
+    { ref: '1 Reis 19,18', full: `Mesmo assim, deixarei com vida em Israel sete mil homens que não ajoelharam perante Baal, e cujos lábios o não beijaram.»`, verse: `…sete mil homens que não ajoelharam perante Baal, e cujos {{blank}} o não beijaram.»`, answer: 'lábios' },
+    { ref: '1 Reis 22,5', full: `Depois, Josafat disse ao rei de Israel: «Consulta primeiro o oráculo do Senhor.»`, verse: `Depois, Josafat disse ao rei de Israel: «Consulta primeiro o {{blank}} do Senhor.»`, answer: 'oráculo' },
+
+    // ── 2 Reis ──
+    { ref: '2 Reis 23,21', full: `O rei ordenou a todo o povo: «Celebrareis a Páscoa em honra do Senhor, vosso Deus, segundo as prescrições deste Livro da Aliança.»`, verse: `…«Celebrareis a Páscoa em honra do Senhor, vosso Deus, segundo as prescrições deste {{blank}} da Aliança.»`, answer: 'livro' },
+
+    // ── 1 Crónicas ──
+    { ref: '1 Crónicas 16,25', full: `Pois o Senhor é grande, digno de todo o louvor, e mais temível que todos os deuses.`, verse: `Pois o Senhor é grande, digno de todo o {{blank}}, e mais temível que todos os deuses.`, answer: 'louvor' },
+    { ref: '1 Crónicas 29,23', full: `Salomão tomou posse do trono do Senhor como rei, no lugar de David seu pai; prosperou e todo o Israel lhe obedeceu.`, verse: `Salomão tomou posse do {{blank}} do Senhor como rei, no lugar de David seu pai;…`, answer: 'trono' },
+
+    // ── 2 Crónicas ──
+    { ref: '2 Crónicas 6,19', full: `Contudo, Senhor, meu Deus, atende a súplica do teu servo, acolhe o clamor e a oração que ele te dirige.`, verse: `Contudo, Senhor, meu Deus, atende a {{blank}} do teu servo, acolhe o clamor e a oração que ele te dirige.`, answer: 'súplica' },
+
+    // ── Esdras ──
+    { ref: 'Esdras 6,19', full: `Os repatriados celebraram a Páscoa no dia catorze do primeiro mês.`, verse: `Os repatriados celebraram a {{blank}} no dia catorze do primeiro mês.`, answer: 'páscoa' },
+    { ref: 'Esdras 10,19', full: `estes juraram repudiar as suas mulheres e ofereceram um carneiro pela expiação da sua falta;`, verse: `estes juraram repudiar as suas mulheres e ofereceram um {{blank}} pela expiação da sua falta;`, answer: 'carneiro' },
+
+    // ── Neemias ──
+    { ref: 'Neemias 8,8', full: `E liam, clara e distintamente, o livro da Lei de Deus e explicavam o seu sentido, de modo que se pudesse compreender a leitura.`, verse: `E liam, clara e distintamente, o {{blank}} da Lei de Deus e explicavam o seu sentido,…`, answer: 'livro' },
+    { ref: 'Neemias 9,14', full: `Deste-lhes a conhecer o teu santo sábado e, por meio de Moisés, teu servo, prescreveste-lhes os mandamentos, os preceitos e a Lei.`, verse: `Deste-lhes a conhecer o teu santo {{blank}} e, por meio de Moisés, teu servo,…`, answer: 'sábado' },
+    { ref: 'Neemias 9,16', full: `Mas eles e os nossos pais encheram-se de orgulho, endureceram a cerviz e não observaram os teus mandamentos.`, verse: `Mas eles e os nossos pais encheram-se de {{blank}}, endureceram a cerviz e não observaram os teus mandamentos.`, answer: 'orgulho' },
+
+    // ── Ester ──
+    { ref: 'Ester 4,16', full: `«Vai reunir todos os judeus de Susa e jejuai por mim, sem comer nem beber, durante três dias e três noites. Eu farei a mesma coisa com as minhas servas. Depois disso, e apesar da proibição, irei ter com o rei. Se tiver de morrer, morrerei.»`, verse: `«Vai reunir todos os judeus de Susa e {{blank}} por mim, sem comer nem beber,…`, answer: 'jejuai' },
+
+    // ── Job ──
+    { ref: 'Job 4,17', full: `‘Pode um homem ser justo na presença de Deus, ou um mortal ser puro diante do seu Criador?’`, verse: `‘Pode um homem ser justo na presença de Deus, ou um mortal ser puro diante do seu {{blank}}?’`, answer: 'criador' },
+    { ref: 'Job 8,13', full: `Esta é a sorte dos que esquecem a Deus. A esperança do ímpio desvanecer-se-á.`, verse: `Esta é a sorte dos que esquecem a Deus. A esperança do {{blank}} desvanecer-se-á.`, answer: 'ímpio' },
+    { ref: 'Job 11,12', full: `Assim, o néscio adquire sensatez, e o estúpido burro selvagem se humaniza.`, verse: `Assim, o néscio adquire {{blank}}, e o estúpido burro selvagem se humaniza.`, answer: 'sensatez' },
+    { ref: 'Job 20,29', full: `Esta é a sorte que Deus reserva ao ímpio e a herança que o Omnipotente lhe destina.»`, verse: `Esta é a {{blank}} que Deus reserva ao ímpio e a herança que o Omnipotente lhe destina.»`, answer: 'sorte' },
+    { ref: 'Job 23,10', full: `Mas já que Ele conhece o meu caminho, ponha-me à prova, que eu sairei dela como o ouro no crisol.`, verse: `Mas já que Ele conhece o meu caminho, ponha-me à prova, que eu sairei dela como o ouro no {{blank}}.`, answer: 'crisol' },
+    { ref: 'Job 31,1', full: `Eu fiz um pacto com os meus olhos: de nem sequer olhar para uma donzela.`, verse: `Eu fiz um {{blank}} com os meus olhos: de nem sequer olhar para uma donzela.`, answer: 'pacto' },
+    { ref: 'Job 35,10', full: `Mas ninguém diz: ‘Onde está Deus que me criou, e que inspira cânticos de louvor, na noite,`, verse: `…‘Onde está Deus que me criou, e que inspira {{blank}} de louvor, na noite,`, answer: 'cânticos' },
+    { ref: 'Job 38,11', full: `dizendo: ‘Chegarás até aqui; não mais além; aqui se quebrará o orgulho das tuas ondas.’`, verse: `…‘Chegarás até aqui; não mais além; aqui se quebrará o {{blank}} das tuas ondas.’`, answer: 'orgulho' },
+
+    // ── Salmo ──
+    { ref: 'Salmo 16,10', full: `Pois Tu não me entregarás à morada dos mortos, nem deixarás o teu fiel conhecer a sepultura.`, verse: `Pois Tu não me entregarás à {{blank}} dos mortos, nem deixarás o teu fiel conhecer a sepultura.`, answer: 'morada' },
+    { ref: 'Salmo 30,6', full: `A sua indignação dura apenas um instante, mas a sua benevolência é para toda a vida. Ao cair da noite, vem o pranto; e, ao amanhecer, volta a alegria.`, verse: `…Ao cair da noite, vem o {{blank}}; e, ao amanhecer, volta a alegria.`, answer: 'pranto' },
+    { ref: 'Salmo 30,12', full: `Tu converteste o meu pranto em festa, tiraste-me o luto e vestiste-me de júbilo.`, verse: `Tu converteste o meu pranto em festa, tiraste-me o luto e vestiste-me de {{blank}}.`, answer: 'júbilo' },
+    { ref: 'Salmo 32,1', full: `De David. Poema. Feliz aquele a quem é perdoada a culpa e absolvido o pecado.`, verse: `…Feliz aquele a quem é perdoada a {{blank}} e absolvido o pecado.`, answer: 'culpa' },
+    { ref: 'Salmo 36,7', full: `A tua justiça é como os montes altíssimos, os teus juízos são como o abismo profundo. Tu, Senhor, salvas os homens e os animais.`, verse: `A tua justiça é como os montes altíssimos, os teus {{blank}} são como o abismo profundo.…`, answer: 'juízos' },
+    { ref: 'Salmo 49,9', full: `O resgate da sua vida é muito caro e nunca se pagaria o suficiente;`, verse: `O {{blank}} da sua vida é muito caro e nunca se pagaria o suficiente;`, answer: 'resgate' },
+    { ref: 'Salmo 50,5', full: `«Reuni junto a mim os que me são fiéis, os que selaram a minha aliança com um sacrifício.»`, verse: `«Reuni junto a mim os que me são {{blank}}, os que selaram a minha aliança com um sacrifício.»`, answer: 'fiéis' },
+    { ref: 'Salmo 51,9', full: `Purifica-me com o hissope e ficarei puro, lava-me e ficarei mais branco do que a neve.`, verse: `Purifica-me com o {{blank}} e ficarei puro, lava-me e ficarei mais branco do que a neve.`, answer: 'hissope' },
+    { ref: 'Salmo 69,32', full: `Isto agradará mais a Deus do que o sacrifício de um touro, do que uma vítima perfeita e sem mancha.`, verse: `Isto agradará mais a Deus do que o sacrifício de um touro, do que uma {{blank}} perfeita e sem mancha.`, answer: 'vítima' },
+    { ref: 'Salmo 75,11', full: `Ele destrói a altivez dos ímpios, mas o poder dos justos será exaltado.`, verse: `Ele destrói a {{blank}} dos ímpios, mas o poder dos justos será exaltado.`, answer: 'altivez' },
+    { ref: 'Salmo 81,12', full: `Mas o meu povo não quis ouvir-me; Israel não quis obedecer.`, verse: `Mas o meu povo não quis ouvir-me; Israel não quis {{blank}}.`, answer: 'obedecer' },
+    { ref: 'Salmo 84,7', full: `Ao atravessarem o Vale do Pranto farão dele um oásis, que as primeiras chuvas cobrirão de dádivas.`, verse: `Ao atravessarem o Vale do {{blank}} farão dele um oásis,…`, answer: 'pranto' },
+    { ref: 'Salmo 95,2', full: `Vamos à sua presença com hinos de louvor, saudemo-lo com cânticos jubilosos.`, verse: `Vamos à sua presença com {{blank}} de louvor, saudemo-lo com cânticos jubilosos.`, answer: 'hinos' },
+    { ref: 'Salmo 119,20', full: `A minha alma suspira sem cessar, desejando conhecer os teus juízos.`, verse: `A minha alma suspira sem cessar, desejando conhecer os teus {{blank}}.`, answer: 'juízos' },
+
+    // ── Provérbios ──
+    { ref: 'Provérbios 3,7', full: `Não sejas sábio aos teus próprios olhos, teme o Senhor e evita o mal.`, verse: `Não sejas {{blank}} aos teus próprios olhos, teme o Senhor e evita o mal.`, answer: 'sábio' },
+    { ref: 'Provérbios 10,7', full: `A memória do justo será abençoada, o nome dos ímpios, porém, desaparecerá.`, verse: `A {{blank}} do justo será abençoada, o nome dos ímpios, porém, desaparecerá.`, answer: 'memória' },
+    { ref: 'Provérbios 10,19', full: `O falador não evita o pecado; o que modera os seus lábios é um homem prudente.`, verse: `O falador não evita o pecado; o que modera os seus lábios é um homem {{blank}}.`, answer: 'prudente' },
+    { ref: 'Provérbios 11,1', full: `A balança fraudulenta é abominável aos olhos do Senhor, mas o peso justo é-lhe agradável.`, verse: `A {{blank}} fraudulenta é abominável aos olhos do Senhor, mas o peso justo é-lhe agradável.`, answer: 'balança' },
+    { ref: 'Provérbios 14,11', full: `A habitação dos ímpios será destruída, mas a tenda dos justos florescerá.`, verse: `A habitação dos ímpios será destruída, mas a {{blank}} dos justos florescerá.`, answer: 'tenda' },
+    { ref: 'Provérbios 14,31', full: `O que oprime o pobre, injuria o seu criador; honra-o aquele que se compadece do indigente.`, verse: `O que oprime o pobre, injuria o seu {{blank}}; honra-o aquele que se compadece do indigente.`, answer: 'criador' },
+    { ref: 'Provérbios 14,32', full: `O ímpio será derrubado, por causa da sua malícia; o justo, porém, mesmo na morte, conserva a confiança.`, verse: `O ímpio será derrubado, por causa da sua {{blank}}; o justo, porém, mesmo na morte, conserva a confiança.`, answer: 'malícia' },
+    { ref: 'Provérbios 16,2', full: `Todos os caminhos parecem puros ao homem, mas o Senhor é quem pesa os corações.`, verse: `Todos os caminhos parecem {{blank}} ao homem, mas o Senhor é quem pesa os corações.`, answer: 'puros' },
+    { ref: 'Provérbios 19,11', full: `O homem sábio sabe dominar a sua ira, e a sua honra é passar por cima de uma ofensa.`, verse: `O homem sábio sabe dominar a sua ira, e a sua {{blank}} é passar por cima de uma ofensa.`, answer: 'honra' },
+    { ref: 'Provérbios 20,25', full: `É um laço para o homem declarar: «Consagrado», e só refletir depois de fazer os seus votos.`, verse: `É um laço para o homem declarar: «Consagrado», e só refletir depois de fazer os seus {{blank}}.`, answer: 'votos' },
+    { ref: 'Provérbios 21,14', full: `A dádiva feita em segredo extingue a ira, e um presente oferecido às ocultas acalma o furor violento.`, verse: `A {{blank}} feita em segredo extingue a ira, e um presente oferecido às ocultas acalma o furor violento.`, answer: 'dádiva' },
+    { ref: 'Provérbios 21,30', full: `Não há sabedoria, nem inteligência, nem conselho que prevaleçam contra o Senhor.`, verse: `Não há sabedoria, nem inteligência, nem {{blank}} que prevaleçam contra o Senhor.`, answer: 'conselho' },
+    { ref: 'Provérbios 22,4', full: `O prémio da humildade é o temor do Senhor, a riqueza, a glória e a vida.`, verse: `O {{blank}} da humildade é o temor do Senhor, a riqueza, a glória e a vida.`, answer: 'prémio' },
+    { ref: 'Provérbios 30,5', full: `Toda a palavra de Deus é provada ao fogo, é um escudo para aqueles que confiam nele.`, verse: `Toda a palavra de Deus é provada ao fogo, é um {{blank}} para aqueles que confiam nele.`, answer: 'escudo' },
+    { ref: 'Provérbios 30,18', full: `Há três coisas que são um mistério para mim, e uma quarta que não compreendo:`, verse: `Há três coisas que são um {{blank}} para mim, e uma quarta que não compreendo:`, answer: 'mistério' },
+
+    // ── Eclesiastes ──
+    { ref: 'Eclesiastes 2,13', full: `E reconheci que a sabedoria leva vantagem sobre a loucura, como a luz leva vantagem sobre as trevas.`, verse: `E reconheci que a sabedoria leva vantagem sobre a {{blank}}, como a luz leva vantagem sobre as trevas.`, answer: 'loucura' },
+    { ref: 'Eclesiastes 7,1', full: `Mais vale um bom nome do que um bom perfume, mais vale o dia da morte que o dia do nascimento.`, verse: `Mais vale um bom nome do que um bom {{blank}}, mais vale o dia da morte que o dia do nascimento.`, answer: 'perfume' },
+    { ref: 'Eclesiastes 7,7', full: `Pois a opressão torna o sábio insensato e o suborno corrompe o coração.`, verse: `Pois a opressão torna o sábio insensato e o {{blank}} corrompe o coração.`, answer: 'suborno' },
+    { ref: 'Eclesiastes 8,11', full: `Porque a sentença contra o que pratica o mal não é executada imediatamente, então, o coração dos homens enche-se de desejos de fazer mal.`, verse: `Porque a {{blank}} contra o que pratica o mal não é executada imediatamente,…`, answer: 'sentença' },
+    { ref: 'Eclesiastes 10,1', full: `Uma mosca morta infeta e estraga o azeite perfumado. Um pouco de loucura é suficiente para corromper a sabedoria.`, verse: `…Um pouco de {{blank}} é suficiente para corromper a sabedoria.`, answer: 'loucura' },
+    { ref: 'Eclesiastes 12,14', full: `Deus pedirá contas, no dia do juízo, de tudo o que está oculto, quer seja bom, quer seja mau.`, verse: `Deus pedirá contas, no dia do {{blank}}, de tudo o que está oculto, quer seja bom, quer seja mau.`, answer: 'juízo' },
+
+    // ── Cântico dos Cânticos ──
+    { ref: 'Cântico dos Cânticos 1,13', full: `Uma bolsinha de mirra é o meu amado para mim, que repousa entre os meus seios;`, verse: `Uma bolsinha de {{blank}} é o meu amado para mim, que repousa entre os meus seios;`, answer: 'mirra' },
+    { ref: 'Cântico dos Cânticos 4,12', full: `És um jardim fechado, minha irmã e minha esposa, um jardim fechado, uma fonte selada.`, verse: `És um jardim fechado, minha irmã e minha esposa, um jardim fechado, uma {{blank}} selada.`, answer: 'fonte' },
+
+    // ── Isaías ──
+    { ref: 'Isaías 1,16', full: `Lavai-vos, purificai-vos, tirai da frente dos meus olhos a malícia das vossas ações. Cessai de fazer o mal,`, verse: `Lavai-vos, purificai-vos, tirai da frente dos meus olhos a {{blank}} das vossas ações.…`, answer: 'malícia' },
+    { ref: 'Isaías 1,22', full: `Eras como a prata, que agora se converteu em escória; eras como bom vinho, que agora se misturou com água.`, verse: `Eras como a prata, que agora se converteu em {{blank}}; eras como bom vinho, que agora se misturou com água.`, answer: 'escória' },
+    { ref: 'Isaías 6,6', full: `Um dos serafins voou na minha direção; trazia na mão uma brasa viva, que tinha tomado do altar com uma tenaz.`, verse: `Um dos {{blank}} voou na minha direção; trazia na mão uma brasa viva,…`, answer: 'serafins' },
+    { ref: 'Isaías 6,7', full: `Tocou na minha boca e disse: «Repara bem, isto tocou os teus lábios; foi afastada a tua culpa e apagado o teu pecado!»`, verse: `…«Repara bem, isto tocou os teus lábios; foi afastada a tua {{blank}} e apagado o teu pecado!»`, answer: 'culpa' },
+    { ref: 'Isaías 40,7', full: `A erva seca e a flor murcha, quando o sopro do Senhor passa sobre elas. Verdadeiramente o povo é semelhante à erva.`, verse: `A erva seca e a flor murcha, quando o {{blank}} do Senhor passa sobre elas.…`, answer: 'sopro' },
+    { ref: 'Isaías 48,9', full: `Por amor ao meu nome, contenho a minha cólera, domino-a, pela minha honra, para não vos aniquilar.`, verse: `Por amor ao meu nome, contenho a minha {{blank}}, domino-a, pela minha honra, para não vos aniquilar.`, answer: 'cólera' },
+    { ref: 'Isaías 48,10', full: `Passei-vos pelo cadinho da prova como a prata, provei-vos no crisol da tribulação.`, verse: `Passei-vos pelo {{blank}} da prova como a prata, provei-vos no crisol da tribulação.`, answer: 'cadinho' },
+    { ref: 'Isaías 55,8', full: `Os meus planos não são os vossos planos, os vossos caminhos não são os meus caminhos. –Oráculo do Senhor.`, verse: `Os meus {{blank}} não são os vossos {{blank}}, os vossos caminhos não são os meus caminhos.…`, answer: 'planos' },
+    { ref: 'Isaías 61,2', full: `para proclamar um ano da graça do Senhor, o dia da vingança da parte do nosso Deus; para consolar os tristes,`, verse: `para proclamar um ano da graça do Senhor, o dia da {{blank}} da parte do nosso Deus;…`, answer: 'vingança' },
+    { ref: 'Isaías 63,3', full: `– Trabalhei sozinho no lagar, e ninguém entre os povos me auxiliou. Pisei os povos com a minha ira, esmaguei-os com o meu furor. O seu sangue salpicou as minhas vestes, com ele manchei todas as minhas roupas.`, verse: `– Trabalhei sozinho no {{blank}}, e ninguém entre os povos me auxiliou.…`, answer: 'lagar' },
+
+    // ── Jeremias ──
+    { ref: 'Jeremias 7,16', full: `«Tu, porém, não intercedas por este povo, não faças súplicas nem orações em favor deles, não insistas comigo, porque não te escutarei.`, verse: `«Tu, porém, não intercedas por este povo, não faças {{blank}} nem orações em favor deles,…`, answer: 'súplicas' },
+    { ref: 'Jeremias 8,23', full: `Oh! Tivesse eu na minha cabeça um manancial, e nos meus olhos uma fonte de lágrimas! Dia e noite choraria as chagas do meu povo.`, verse: `Oh! Tivesse eu na minha cabeça um manancial, e nos meus olhos uma {{blank}} de lágrimas!…`, answer: 'fonte' },
+    { ref: 'Jeremias 9,6', full: `Por isso, eis o que diz o Senhor do universo: «Vou fundi-los no crisol para os provar. Que outra coisa poderei fazer com o meu povo?`, verse: `…«Vou fundi-los no {{blank}} para os provar. Que outra coisa poderei fazer com o meu povo?`, answer: 'crisol' },
+    { ref: 'Jeremias 11,3', full: `Diz-lhes: Assim fala o Senhor, Deus de Israel: Maldito o homem que não obedecer às prescrições desta aliança,`, verse: `…Maldito o homem que não {{blank}} às prescrições desta aliança,`, answer: 'obedecer' },
+    { ref: 'Jeremias 18,2', full: `«Vai, desce à casa do oleiro, e ali escutarás a minha palavra.»`, verse: `«Vai, desce à casa do {{blank}}, e ali escutarás a minha palavra.»`, answer: 'oleiro' },
+    { ref: 'Jeremias 22,12', full: `Morrerá no lugar do seu exílio; não verá jamais esta terra.»`, verse: `Morrerá no lugar do seu {{blank}}; não verá jamais esta terra.»`, answer: 'exílio' },
+
+    // ── Lamentações ──
+    { ref: 'Lamentações 3,26', full: `Bom é esperar em silêncio a salvação do Senhor.`, verse: `Bom é esperar em {{blank}} a salvação do Senhor.`, answer: 'silêncio' },
+    { ref: 'Lamentações 3,29', full: `que ponha a sua boca na cinza, talvez encontre esperança;`, verse: `que ponha a sua boca na {{blank}}, talvez encontre esperança;`, answer: 'cinza' },
+    { ref: 'Lamentações 3,44', full: `Te envolveste numa nuvem para impedir que as súplicas chegassem.`, verse: `Te envolveste numa nuvem para impedir que as {{blank}} chegassem.`, answer: 'súplicas' },
+    { ref: 'Lamentações 5,19', full: `Tu, porém, Senhor, permaneces para sempre e o teu trono subsistirá de geração em geração.`, verse: `Tu, porém, Senhor, permaneces para sempre e o teu {{blank}} subsistirá de geração em geração.`, answer: 'trono' },
+
+    // ── Ezequiel ──
+    { ref: 'Ezequiel 18,16', full: `não oprime ninguém, restitui o penhor, não comete furtos, dá o pão ao faminto e cobre o nu,`, verse: `não oprime ninguém, restitui o {{blank}}, não comete furtos, dá o pão ao faminto e cobre o nu,`, answer: 'penhor' },
+    { ref: 'Ezequiel 18,23', full: `Porventura me hei de comprazer com a morte do pecador – oráculo do Senhor Deus – e não com o facto de ele se converter e viver?`, verse: `…com a {{blank}} do pecador – oráculo do Senhor Deus – e não com o facto de ele se converter e viver?`, answer: 'morte' },
+    { ref: 'Ezequiel 20,37', full: `Hei de fazer-vos passar sob o cajado e fazer-vos entrar na aliança.`, verse: `Hei de fazer-vos passar sob o {{blank}} e fazer-vos entrar na aliança.`, answer: 'cajado' },
+    { ref: 'Ezequiel 28,3', full: `Consideras-te mais sábio do que Daniel: nenhum mistério te é obscuro.`, verse: `Consideras-te mais sábio do que Daniel: nenhum {{blank}} te é obscuro.`, answer: 'mistério' },
+
+    // ── Daniel ──
+    { ref: 'Daniel 3,31', full: `Em todos os males que mandaste sobre nós, em tudo o que nos infligiste, foi uma sentença justa que aplicaste.`, verse: `Em todos os males que mandaste sobre nós, em tudo o que nos infligiste, foi uma {{blank}} justa que aplicaste.`, answer: 'sentença' },
+    { ref: 'Daniel 3,51', full: `Os três jovens, então, não tiveram senão uma só voz para louvar, glorificar e bendizer a Deus, na fornalha, com este cântico:`, verse: `…não tiveram senão uma só voz para louvar, glorificar e bendizer a Deus, na {{blank}}, com este cântico:`, answer: 'fornalha' },
+    { ref: 'Daniel 9,3', full: `Voltei-me para o Senhor Deus, a fim de lhe dirigir uma súplica, jejuando e cobrindo-me de saco e cinza.`, verse: `Voltei-me para o Senhor Deus, a fim de lhe dirigir uma {{blank}}, jejuando e cobrindo-me de saco e cinza.`, answer: 'súplica' },
+    { ref: 'Daniel 12,3', full: `Os que tiverem sido sensatos resplandecerão como a luminosidade do firmamento, e os que tiverem levado muitos aos caminhos da justiça brilharão como estrelas com um esplendor eterno.`, verse: `Os que tiverem sido {{blank}} resplandecerão como a luminosidade do firmamento,…`, answer: 'sensatos' },
+
+    // ── Oseias ──
+    { ref: 'Oseias 6,4', full: `Que posso fazer por ti, ó Efraim? Que posso fazer por ti, ó Judá? O vosso amor é como a nuvem da manhã, como o orvalho matutino que logo se dissipa.`, verse: `…O vosso amor é como a {{blank}} da manhã, como o orvalho matutino que logo se dissipa.`, answer: 'nuvem' },
+    { ref: 'Oseias 10,7', full: `Samaria está aniquilada, o seu rei é como uma palha à deriva sobre a superfície da água.`, verse: `Samaria está aniquilada, o seu rei é como uma {{blank}} à deriva sobre a superfície da água.`, answer: 'palha' },
+    { ref: 'Oseias 14,3', full: `Tomai convosco palavras de arrependimento. Convertei-vos ao Senhor, dizendo-lhe: «Perdoa toda a iniquidade, aceita o que é bom e te oferecemos, o fruto dos nossos lábios.»`, verse: `…«Perdoa toda a iniquidade, aceita o que é bom e te oferecemos, o fruto dos nossos {{blank}}.»`, answer: 'lábios' },
+    { ref: 'Oseias 14,6', full: `Serei para Israel como o orvalho: florescerá como um lírio e deitará raízes como um cedro do Líbano.`, verse: `Serei para Israel como o orvalho: florescerá como um {{blank}} e deitará raízes como um cedro do Líbano.`, answer: 'lírio' },
+
+    // ── Joel ──
+    { ref: 'Joel 2,13', full: `Rasgai os vossos corações e não as vossas vestes, convertei-vos ao Senhor, vosso Deus, porque Ele é clemente e compassivo, paciente e rico em misericórdia.`, verse: `Rasgai os vossos corações e não as vossas {{blank}}, convertei-vos ao Senhor, vosso Deus,…`, answer: 'vestes' },
+
+    // ── Amós ──
+    { ref: 'Amós 2,12', full: `Mas vós obrigastes os nazireus a beber vinho e proibistes os profetas de profetizarem.`, verse: `Mas vós obrigastes os {{blank}} a beber vinho e proibistes os profetas de profetizarem.`, answer: 'nazireus' },
+    { ref: 'Amós 5,10', full: `«Eles detestam o que repreende no tribunal e odeiam o que fala com retidão.`, verse: `«Eles detestam o que repreende no tribunal e odeiam o que fala com {{blank}}.`, answer: 'retidão' },
+    { ref: 'Amós 5,13', full: `Por isso, o prudente cala-se neste tempo, porque este tempo é mau.`, verse: `Por isso, o {{blank}} cala-se neste tempo, porque este tempo é mau.`, answer: 'prudente' },
+    { ref: 'Amós 5,15', full: `Detestai o mal, amai o bem, fazei reinar a justiça no tribunal. Talvez, então, o Senhor, Deus do universo, tenha compaixão do resto de José.»`, verse: `…Talvez, então, o Senhor, Deus do universo, tenha compaixão do {{blank}} de José.»`, answer: 'resto' },
+    { ref: 'Amós 5,23', full: `Afastai de mim o vozear dos vossos cânticos, não quero ouvir mais a música das vossas harpas.`, verse: `Afastai de mim o vozear dos vossos {{blank}}, não quero ouvir mais a música das vossas harpas.`, answer: 'cânticos' },
+    { ref: 'Amós 8,12', full: `Vaguearão de um mar a outro mar, indo à toa desde o Norte até ao Oriente, à procura da palavra do Senhor, e não a encontrarão.`, verse: `…indo à toa desde o Norte até ao Oriente, à procura da {{blank}} do Senhor, e não a encontrarão.`, answer: 'palavra' },
+
+    // ── Abdias ──
+    { ref: 'Abdias 1,17', full: `Mas sobre o monte Sião haverá um resto de sobreviventes que será santo, e os da casa de Jacob despojarão aqueles que os despojarem.`, verse: `Mas sobre o monte Sião haverá um {{blank}} de sobreviventes que será santo,…`, answer: 'resto' },
+
+    // ── Jonas ──
+    { ref: 'Jonas 2,3', full: `dizendo: «Na minha aflição invoquei o Senhor, e Ele ouviu-me. Clamei a ti do meio da morada dos mortos, e Tu ouviste a minha voz.`, verse: `…Clamei a ti do meio da {{blank}} dos mortos, e Tu ouviste a minha voz.`, answer: 'morada' },
+    { ref: 'Jonas 2,10', full: `Eu, porém, oferecer-te-ei sacrifícios, com cânticos de louvor e cumprirei os votos que tiver feito, pois do Senhor vem a salvação.»`, verse: `Eu, porém, oferecer-te-ei sacrifícios, com {{blank}} de louvor e cumprirei os votos que tiver feito,…`, answer: 'cânticos' },
+    { ref: 'Jonas 3,6', full: `A notícia chegou ao conhecimento do rei de Nínive; ele levantou-se do seu trono, tirou o seu manto, cobriu-se de saco e sentou-se sobre a cinza.`, verse: `…ele levantou-se do seu trono, tirou o seu manto, cobriu-se de saco e sentou-se sobre a {{blank}}.`, answer: 'cinza' },
+    { ref: 'Jonas 4,7', full: `Ao outro dia, porém, ao romper da manhã, enviou Deus um verme que roeu as raízes do rícino, e este secou.`, verse: `…enviou Deus um {{blank}} que roeu as raízes do rícino, e este secou.`, answer: 'verme' },
+
+    // ── Miqueias ──
+    { ref: 'Miqueias 3,8', full: `Eu, porém, estou cheio de força, do espírito do Senhor, da justiça e da fortaleza, para anunciar a Jacob a sua maldade, e a Israel o seu pecado.`, verse: `Eu, porém, estou cheio de {{blank}}, do espírito do Senhor, da justiça e da fortaleza,…`, answer: 'força' },
+    { ref: 'Miqueias 7,18', full: `Qual é o Deus que, como Tu, apaga a iniquidade e perdoa o pecado do resto da sua herança? Não se obstina na sua cólera, porque prefere a bondade.`, verse: `…Não se obstina na sua {{blank}}, porque prefere a bondade.`, answer: 'cólera' },
+
+    // ── Naum ──
+    { ref: 'Naum 1,3', full: `O Senhor é paciente e grande em poder, mas a ninguém deixa impune. Move-se na tempestade e no vento impetuoso, as nuvens são a poeira dos seus pés.`, verse: `O Senhor é paciente e grande em {{blank}}, mas a ninguém deixa impune.…`, answer: 'poder' },
+    { ref: 'Naum 1,10', full: `Entrelaçados como espinhos, ébrios do seu vinho, serão consumidos como palha bem seca.`, verse: `Entrelaçados como espinhos, ébrios do seu vinho, serão consumidos como {{blank}} bem seca.`, answer: 'palha' },
+
+    // ── Habacuc ──
+    { ref: 'Habacuc 2,2', full: `Então o Senhor respondeu-me: «Escreve a visão, grava-a em tabuínhas, para que possa ser lida facilmente.`, verse: `Então o Senhor respondeu-me: «Escreve a {{blank}}, grava-a em tabuínhas, para que possa ser lida facilmente.`, answer: 'visão' },
+    { ref: 'Habacuc 2,18', full: `Ai daquele que diz à madeira: «Desperta!» E à pedra silenciosa: «Acorda! Ensina!» Ei-la coberta de ouro e de prata, mas sem qualquer sopro de vida.`, verse: `…Ei-la coberta de ouro e de prata, mas sem qualquer {{blank}} de vida.`, answer: 'sopro' },
+
+    // ── Sofonias ──
+    { ref: 'Sofonias 1,7', full: `Silêncio diante do Senhor Deus, porque o Dia do Senhor está próximo! O Senhor preparou um sacrifício, santificou os seus convidados.`, verse: `{{blank}} diante do Senhor Deus, porque o Dia do Senhor está próximo!…`, answer: 'silêncio' },
+
+    // ── Zacarias ──
+    { ref: 'Zacarias 10,12', full: `A sua força estará no Senhor e, pelo seu nome, se gloriarão» – oráculo do Senhor.`, verse: `A sua {{blank}} estará no Senhor e, pelo seu nome, se gloriarão» – oráculo do Senhor.`, answer: 'força' },
+    { ref: 'Zacarias 11,10', full: `Depois tomei o meu cajado ‘Benevolência’ e parti-o, para indicar que anulava a aliança que tinha feito com todos os povos.`, verse: `Depois tomei o meu {{blank}} ‘Benevolência’ e parti-o,…`, answer: 'cajado' },
+    { ref: 'Zacarias 12,10', full: `Mas derramarei sobre a casa de David e sobre os habitantes de Jerusalém um espírito de benevolência e de súplica. Eles contemplarão aquele a quem traspassaram; chorarão por ele como se chora um filho único e lamentá-lo-ão como se lamenta um primogénito.`, verse: `…um espírito de benevolência e de {{blank}}. Eles contemplarão aquele a quem traspassaram;…`, answer: 'súplica' },
+    { ref: 'Zacarias 13,1', full: `Naquele dia, haverá uma fonte aberta para a casa de David e para os habitantes de Jerusalém, para a purificação do pecado e da impureza.`, verse: `Naquele dia, haverá uma {{blank}} aberta para a casa de David e para os habitantes de Jerusalém,…`, answer: 'fonte' },
+
+    // ── Malaquias ──
+    { ref: 'Malaquias 1,11', full: `Porém, do nascente ao poente, o meu nome é grande entre as nações, e em todos os lugares é oferecido ao meu nome um sacrifício de incenso e uma oferenda pura. Na verdade o meu nome, é grande entre as nações – diz o Senhor do universo.`, verse: `…em todos os lugares é oferecido ao meu nome um sacrifício de {{blank}} e uma oferenda pura.…`, answer: 'incenso' },
+    { ref: 'Malaquias 3,10', full: `Pagai integralmente os dízimos ao tesouro do templo, para que haja alimento em minha casa. Ponde-me à prova – diz o Senhor do universo – e vereis se não vos abro os reservatórios do céu e não espalho em vosso favor a bênção em abundância.`, verse: `Pagai integralmente os {{blank}} ao tesouro do templo, para que haja alimento em minha casa.…`, answer: 'dízimos' },
+
+    // ── Tobite ──
+    { ref: 'Tobite 4,10', full: `De facto, a esmola liberta da morte e não permite que a alma desça para as trevas.`, verse: `De facto, a {{blank}} liberta da morte e não permite que a alma desça para as trevas.`, answer: 'esmola' },
+    { ref: 'Tobite 4,11', full: `A esmola é, aos olhos do Altíssimo, uma dádiva sagrada de grande valor, que aproveita a todos os que a oferecem.»`, verse: `A {{blank}} é, aos olhos do Altíssimo, uma dádiva sagrada de grande valor,…`, answer: 'esmola' },
+    { ref: 'Tobite 4,17', full: `Põe o teu pão e o teu vinho sobre a sepultura do justo e não comas nem bebas com os pecadores.`, verse: `Põe o teu pão e o teu vinho sobre a sepultura do {{blank}} e não comas nem bebas com os pecadores.`, answer: 'justo' },
+    { ref: 'Tobite 8,3', full: `O cheiro do peixe afastou o demónio que fugiu para o Alto Egito. Rafael seguiu-o e prendeu-o.`, verse: `O cheiro do peixe afastou o {{blank}} que fugiu para o Alto Egito. Rafael seguiu-o e prendeu-o.`, answer: 'demónio' },
+    { ref: 'Tobite 12,8', full: `É boa a oração feita com verdade e a esmola, acompanhada pela justiça. Melhor é pouco com justiça, do que muito com iniquidade. Melhor é dar esmolas do que acumular tesouros,`, verse: `…Melhor é dar {{blank}} do que acumular tesouros,`, answer: 'esmolas' },
+
+    // ── Judite ──
+    { ref: 'Judite 9,14', full: `Faz com que todas as nações e todas as tribos reconheçam que Tu és o Deus detentor de todo o poder e que mais nenhum outro guarda Israel, senão Tu.»`, verse: `…reconheçam que Tu és o Deus detentor de todo o {{blank}} e que mais nenhum outro guarda Israel, senão Tu.»`, answer: 'poder' },
+
+    // ── Sabedoria ──
+    { ref: 'Sabedoria 1,13', full: `Deus não é o autor da morte nem se compraz com a destruição dos vivos.`, verse: `Deus não é o autor da {{blank}} nem se compraz com a destruição dos vivos.`, answer: 'morte' },
+    { ref: 'Sabedoria 2,18', full: `Porque, se o justo é filho de Deus, Deus há de ampará-lo e tirá-lo das mãos dos seus adversários.`, verse: `Porque, se o {{blank}} é filho de Deus, Deus há de ampará-lo e tirá-lo das mãos dos seus adversários.`, answer: 'justo' },
+    { ref: 'Sabedoria 2,24', full: `Por inveja do diabo é que a morte entrou no mundo, e hão de prová-la os que pertencem ao diabo.`, verse: `Por inveja do diabo é que a {{blank}} entrou no mundo,…`, answer: 'morte' },
+    { ref: 'Sabedoria 3,6', full: `Ele os provou como ouro no crisol e aceitou-os como um holocausto.`, verse: `Ele os provou como ouro no {{blank}} e aceitou-os como um holocausto.`, answer: 'crisol' },
+    { ref: 'Sabedoria 3,7', full: `No tempo da intervenção de Deus, os justos resplandecerão e propagar-se-ão como centelhas através da palha.`, verse: `…os justos resplandecerão e propagar-se-ão como centelhas através da {{blank}}.`, answer: 'palha' },
+    { ref: 'Sabedoria 5,5', full: `Como é ele contado entre os filhos de Deus e partilha da sorte dos santos?`, verse: `Como é ele contado entre os filhos de Deus e partilha da {{blank}} dos santos?`, answer: 'sorte' },
+    { ref: 'Sabedoria 7,25', full: `Ela é um sopro do poder de Deus, uma irradiação pura da glória do Omnipotente, pelo que nada de impuro entra nela.`, verse: `Ela é um {{blank}} do poder de Deus, uma irradiação pura da glória do Omnipotente,…`, answer: 'sopro' },
+    { ref: 'Sabedoria 9,4', full: `dá-me a sabedoria que se senta junto do teu trono e não me excluas do número dos teus filhos.`, verse: `dá-me a sabedoria que se senta junto do teu {{blank}} e não me excluas do número dos teus filhos.`, answer: 'trono' },
+    { ref: 'Sabedoria 9,15', full: `porque o corpo corruptível é um peso para a alma, e esta tenda terrena oprime a mente cheia de cuidados.`, verse: `porque o corpo corruptível é um peso para a alma, e esta {{blank}} terrena oprime a mente cheia de cuidados.`, answer: 'tenda' },
+    { ref: 'Sabedoria 12,16', full: `Pois o teu poder é o princípio da justiça e o teu domínio sobre tudo te torna indulgente para com todos.`, verse: `Pois o teu {{blank}} é o princípio da justiça e o teu domínio sobre tudo te torna indulgente para com todos.`, answer: 'poder' },
+    { ref: 'Sabedoria 16,13', full: `Tu tens poder sobre a vida e a morte, fazes descer até às portas do Abismo e de lá fazes regressar.`, verse: `Tu tens poder sobre a vida e a morte, fazes descer até às portas do {{blank}} e de lá fazes regressar.`, answer: 'abismo' },
+    { ref: 'Sabedoria 17,1', full: `Grandes e impenetráveis são os teus juízos. Por isso, as almas ignorantes se extraviam.`, verse: `Grandes e impenetráveis são os teus {{blank}}. Por isso, as almas ignorantes se extraviam.`, answer: 'juízos' },
+    { ref: 'Sabedoria 18,14', full: `Quando um silêncio profundo envolvia todas as coisas e a noite ia a meio do seu curso,`, verse: `Quando um {{blank}} profundo envolvia todas as coisas e a noite ia a meio do seu curso,`, answer: 'silêncio' },
+
+    // ── Ben Sira ──
+    { ref: 'Ben Sira 2,5', full: `porque no fogo se prova o ouro e os eleitos de Deus, no cadinho da humilhação. Nas doenças e na pobreza, confia nele.`, verse: `porque no fogo se prova o ouro e os eleitos de Deus, no {{blank}} da humilhação.…`, answer: 'cadinho' },
+    { ref: 'Ben Sira 3,30', full: `A água apaga o fogo ardente, e a esmola expia o pecado.`, verse: `A água apaga o fogo ardente, e a {{blank}} expia o pecado.`, answer: 'esmola' },
+    { ref: 'Ben Sira 7,17', full: `Humilha profundamente o teu espírito, porque o fogo e o verme serão o castigo do ímpio.`, verse: `Humilha profundamente o teu espírito, porque o fogo e o {{blank}} serão o castigo do ímpio.`, answer: 'verme' },
+    { ref: 'Ben Sira 9,12', full: `Não te alegres com a satisfação dos ímpios; lembra-te de que serão punidos antes de irem para a morada dos mortos.`, verse: `…lembra-te de que serão punidos antes de irem para a morada dos {{blank}}.`, answer: 'mortos' },
+    { ref: 'Ben Sira 10,12', full: `O princípio do orgulho do homem é afastar-se do Senhor, e ter o seu coração longe do Criador;`, verse: `O princípio do {{blank}} do homem é afastar-se do Senhor, e ter o seu coração longe do Criador;`, answer: 'orgulho' },
+    { ref: 'Ben Sira 14,1', full: `Feliz o homem que não transgrediu por palavras da sua boca, e que não foi atormentado pelo remorso dos pecados.`, verse: `…que não transgrediu por palavras da sua boca, e que não foi atormentado pelo {{blank}} dos pecados.`, answer: 'remorso' },
+    { ref: 'Ben Sira 15,9', full: `O louvor não fica bem na boca do pecador, porque não lhe foi concedido pelo Senhor.`, verse: `O {{blank}} não fica bem na boca do pecador, porque não lhe foi concedido pelo Senhor.`, answer: 'louvor' },
+    { ref: 'Ben Sira 15,14', full: `Desde o princípio, Ele criou o homem, e entregou-o ao seu próprio juízo.`, verse: `Desde o princípio, Ele criou o homem, e entregou-o ao seu próprio {{blank}}.`, answer: 'juízo' },
+    { ref: 'Ben Sira 18,2', full: `Só o Senhor será proclamado justo e não há outro além dele.`, verse: `Só o Senhor será proclamado {{blank}} e não há outro além dele.`, answer: 'justo' },
+    { ref: 'Ben Sira 18,20', full: `Antes do juízo, examina-te a ti mesmo e encontrarás misericórdia na hora de prestar contas.`, verse: `Antes do {{blank}}, examina-te a ti mesmo e encontrarás misericórdia na hora de prestar contas.`, answer: 'juízo' },
+    { ref: 'Ben Sira 20,7', full: `O sábio guarda silêncio até um tempo oportuno, mas o leviano e o imprudente não esperam pela ocasião.`, verse: `O {{blank}} guarda silêncio até um tempo oportuno,…`, answer: 'sábio' },
+    { ref: 'Ben Sira 23,1', full: `Senhor, Pai soberano da minha vida, não me abandones ao conselho dos meus lábios, nem permitas que eles me façam sucumbir.`, verse: `Senhor, Pai soberano da minha vida, não me abandones ao {{blank}} dos meus lábios,…`, answer: 'conselho' },
+    { ref: 'Ben Sira 27,5', full: `A fornalha prova as jarras do oleiro, e a prova do homem são os seus pensamentos.`, verse: `A {{blank}} prova as jarras do oleiro, e a prova do homem são os seus pensamentos.`, answer: 'fornalha' },
+    { ref: 'Ben Sira 27,8', full: `Se procurares a justiça, encontrá-la-ás e dela te revestirás como de um manto de glória.`, verse: `Se procurares a justiça, encontrá-la-ás e dela te revestirás como de um {{blank}} de glória.`, answer: 'manto' },
+    { ref: 'Ben Sira 32,19', full: `Nada faças sem conselho, e não te arrependerás, depois de ter agido.`, verse: `Nada faças sem {{blank}}, e não te arrependerás, depois de ter agido.`, answer: 'conselho' },
+    { ref: 'Ben Sira 33,2', full: `O sábio não aborrece a Lei, mas quem finge observá-la será como um navio na tempestade.`, verse: `O {{blank}} não aborrece a Lei, mas quem finge observá-la será como um navio na tempestade.`, answer: 'sábio' },
+    { ref: 'Ben Sira 34,19', full: `O Altíssimo não aprova as dádivas dos ímpios; nem é pela abundância de sacrifícios que Ele perdoa os pecados.`, verse: `O Altíssimo não aprova as {{blank}} dos ímpios; nem é pela abundância de sacrifícios…`, answer: 'dádivas' },
+    { ref: 'Ben Sira 34,20', full: `Imola o filho em presença do pai aquele que oferece sacrifícios com os bens dos pobres.`, verse: `Imola o filho em presença do pai aquele que oferece sacrifícios com os bens dos {{blank}}.`, answer: 'pobres' },
+    { ref: 'Ben Sira 35,5', full: `A oblação do justo enriquece o altar, e o seu perfume sobe ao Altíssimo.`, verse: `A {{blank}} do justo enriquece o altar, e o seu perfume sobe ao Altíssimo.`, answer: 'oblação' },
+    { ref: 'Ben Sira 35,17', full: `A oração do humilde chegará às nuvens, e não se consolará, enquanto ela não chegar até Deus.`, verse: `A oração do {{blank}} chegará às nuvens, e não se consolará, enquanto ela não chegar até Deus.`, answer: 'humilde' },
+    { ref: 'Ben Sira 38,11', full: `Oferece incenso, a oblação de flor de farinha, e imola vítimas gordas segundo as tuas posses.`, verse: `Oferece {{blank}}, a oblação de flor de farinha, e imola vítimas gordas segundo as tuas posses.`, answer: 'incenso' },
+    { ref: 'Ben Sira 39,29', full: `O fogo, o granizo, a fome e a morte, todas estas coisas foram criadas para castigo.`, verse: `O fogo, o granizo, a fome e a morte, todas estas coisas foram criadas para {{blank}}.`, answer: 'castigo' },
+
+    // ── Baruc ──
+    { ref: 'Baruc 4,1', full: `Ela é o livro dos mandamentos de Deus e a lei que permanece para sempre. Todos os que a guardam, alcançarão a vida, e os que a abandonam, morrerão.`, verse: `Ela é o {{blank}} dos mandamentos de Deus e a lei que permanece para sempre.…`, answer: 'livro' },
+    { ref: 'Baruc 4,7', full: `Irritastes o vosso criador, oferecendo sacrifícios aos demónios e não a Deus.`, verse: `Irritastes o vosso {{blank}}, oferecendo sacrifícios aos demónios e não a Deus.`, answer: 'criador' },
+    { ref: 'Baruc 4,23', full: `Entre lágrimas e pranto vos vi partir; Deus, porém, vos fará voltar a mim com gozo e eterna alegria.`, verse: `Entre lágrimas e {{blank}} vos vi partir; Deus, porém, vos fará voltar a mim com gozo e eterna alegria.`, answer: 'pranto' },
+    { ref: 'Baruc 4,34', full: `Aniquilarei a altivez da sua numerosa população, e a sua arrogância se converterá em pranto.`, verse: `Aniquilarei a {{blank}} da sua numerosa população, e a sua arrogância se converterá em pranto.`, answer: 'altivez' },
+    { ref: 'Baruc 5,2', full: `Cobre-te com o manto da justiça que vem de Deus, e põe sobre a tua cabeça o diadema da glória do Eterno,`, verse: `Cobre-te com o {{blank}} da justiça que vem de Deus, e põe sobre a tua cabeça o diadema da glória do Eterno,`, answer: 'manto' },
+
+    // ── 1 Macabeus ──
+    { ref: '1 Macabeus 2,60', full: `Daniel, na sua retidão, foi preservado da boca dos leões.`, verse: `Daniel, na sua {{blank}}, foi preservado da boca dos leões.`, answer: 'retidão' },
+    { ref: '1 Macabeus 3,8', full: `Percorreu as cidades de Judá, expulsou delas os malfeitores, e afastou de Israel o castigo de Deus.`, verse: `Percorreu as cidades de Judá, expulsou delas os malfeitores, e afastou de Israel o {{blank}} de Deus.`, answer: 'castigo' },
+    { ref: '1 Macabeus 4,24', full: `No regresso, cantavam hinos e elevavam ao céu os louvores ao Senhor: «Porque Ele é bom e o seu amor é eterno.»`, verse: `No regresso, cantavam {{blank}} e elevavam ao céu os louvores ao Senhor:…`, answer: 'hinos' },
+
+    // ── 2 Macabeus ──
+    { ref: '2 Macabeus 1,2', full: `Deus vos cubra de bens, e que Ele se lembre da sua aliança com Abraão, Isaac e Jacob, seus fiéis servidores.`, verse: `…que Ele se lembre da sua aliança com Abraão, Isaac e Jacob, seus {{blank}} servidores.`, answer: 'fiéis' },
+    { ref: '2 Macabeus 1,5', full: `Que Ele atenda as vossas súplicas, vos seja misericordioso e não vos abandone nas tribulações.`, verse: `Que Ele atenda as vossas {{blank}}, vos seja misericordioso e não vos abandone nas tribulações.`, answer: 'súplicas' },
+    { ref: '2 Macabeus 6,19', full: `Mas ele, preferindo morrer com honra a viver na infâmia, voluntariamente caminhava para o suplício,`, verse: `Mas ele, preferindo morrer com {{blank}} a viver na infâmia, voluntariamente caminhava para o suplício,`, answer: 'honra' },
+    { ref: '2 Macabeus 7,38', full: `Em mim e nos meus irmãos se aplacará a cólera do Omnipotente que se desencadeou justamente sobre toda a nossa raça.»`, verse: `Em mim e nos meus irmãos se aplacará a {{blank}} do Omnipotente que se desencadeou justamente…`, answer: 'cólera' },
+
+    // ════ Harder additions, Novo Testamento ════
+    // The clause narrows the gap to a handful of plausible words; the board
+    // decides. See README, "Choosing the hidden word".
+    // ── Mateus ──
+    { ref: 'Mateus 6,14', full: `Porque, se perdoardes aos homens as suas ofensas, também o vosso Pai celeste vos perdoará a vós.`, verse: `Porque, se perdoardes aos homens as suas {{blank}}, também o vosso Pai celeste vos perdoará a vós.`, answer: 'ofensas' },
+    { ref: 'Mateus 8,22', full: `Jesus, porém, respondeu-lhe: «Segue-me e deixa os mortos sepultar os seus mortos.»`, verse: `Jesus, porém, respondeu-lhe: «Segue-me e deixa os {{blank}} sepultar os seus {{blank}}.»`, answer: 'mortos' },
+    { ref: 'Mateus 10,28', full: `Não temais os que matam o corpo e não podem matar a alma. Temei antes aquele que pode fazer perecer na Geena o corpo e a alma.`, verse: `…Temei antes aquele que pode fazer perecer na {{blank}} o corpo e a alma.`, answer: 'geena' },
+    { ref: 'Mateus 10,34', full: `Não penseis que vim trazer a paz à terra; não vim trazer a paz, mas a espada.`, verse: `Não penseis que vim trazer a paz à terra; não vim trazer a paz, mas a {{blank}}.`, answer: 'espada' },
+    { ref: 'Mateus 11,25', full: `Naquela ocasião, Jesus tomou a palavra e disse: «Bendigo-te, ó Pai, Senhor do Céu e da Terra, porque escondeste estas coisas aos sábios e aos entendidos e as revelaste aos pequeninos.`, verse: `…porque escondeste estas coisas aos {{blank}} e aos entendidos e as revelaste aos pequeninos.`, answer: 'sábios' },
+    { ref: 'Mateus 12,20', full: `Não há de quebrar a cana fendida, nem apagar a mecha que fumega, até conduzir a minha vontade à vitória.`, verse: `Não há de quebrar a cana fendida, nem apagar a {{blank}} que fumega, até conduzir a minha vontade à vitória.`, answer: 'mecha' },
+    { ref: 'Mateus 13,50', full: `para os lançarem na fornalha ardente: ali haverá choro e ranger de dentes.»`, verse: `para os lançarem na {{blank}} ardente: ali haverá choro e ranger de dentes.»`, answer: 'fornalha' },
+    { ref: 'Mateus 13,57', full: `E estavam escandalizados por causa dele. Mas Jesus disse-lhes: «Um profeta só é desprezado na sua pátria e em sua casa.»`, verse: `…Mas Jesus disse-lhes: «Um profeta só é desprezado na sua {{blank}} e em sua casa.»`, answer: 'pátria' },
+    { ref: 'Mateus 15,27', full: `Retorquiu ela: «É verdade, Senhor, mas até os cachorros comem as migalhas que caem da mesa de seus donos.»`, verse: `Retorquiu ela: «É verdade, Senhor, mas até os cachorros comem as {{blank}} que caem da mesa de seus donos.»`, answer: 'migalhas' },
+    { ref: 'Mateus 18,27', full: `Levado pela compaixão, o senhor daquele servo mandou-o em liberdade e perdoou-lhe a dívida.`, verse: `Levado pela compaixão, o senhor daquele servo mandou-o em liberdade e perdoou-lhe a {{blank}}.`, answer: 'dívida' },
+    { ref: 'Mateus 21,5', full: `Dizei à filha de Sião: Aí vem o teu Rei, ao teu encontro, manso e montado num jumentinho, filho de uma jumenta.`, verse: `Dizei à filha de Sião: Aí vem o teu Rei, ao teu encontro, {{blank}} e montado num jumentinho,…`, answer: 'manso' },
+    { ref: 'Mateus 22,9', full: `Ide, pois, às saídas dos caminhos e convidai para as bodas todos quantos encontrardes.’`, verse: `Ide, pois, às saídas dos caminhos e convidai para as {{blank}} todos quantos encontrardes.’`, answer: 'bodas' },
+    { ref: 'Mateus 23,27', full: `Ai de vós, doutores da Lei e fariseus hipócritas, porque sois semelhantes a sepulcros caiados: formosos por fora, mas, por dentro, cheios de ossos de mortos e de toda a espécie de imundície!`, verse: `…porque sois semelhantes a sepulcros {{blank}}: formosos por fora, mas, por dentro, cheios de ossos de mortos…`, answer: 'caiados' },
+    { ref: 'Mateus 24,24', full: `porque hão de surgir falsos messias e falsos profetas, que farão grandes milagres e prodígios, a ponto de desencaminharem, se possível, até os eleitos.`, verse: `…que farão grandes milagres e prodígios, a ponto de desencaminharem, se possível, até os {{blank}}.`, answer: 'eleitos' },
+    { ref: 'Mateus 25,34', full: `O Rei dirá, então, aos da sua direita: ‘Vinde, benditos de meu Pai! Recebei em herança o Reino que vos está preparado desde a criação do mundo.`, verse: `O Rei dirá, então, aos da sua direita: ‘Vinde, {{blank}} de meu Pai! Recebei em herança o Reino…`, answer: 'benditos' },
+    { ref: 'Mateus 25,41', full: `Em seguida dirá aos da esquerda: ‘Afastai-vos de mim, malditos, para o fogo eterno, que está preparado para o diabo e para os seus anjos!`, verse: `Em seguida dirá aos da esquerda: ‘Afastai-vos de mim, {{blank}}, para o fogo eterno,…`, answer: 'malditos' },
+    { ref: 'Mateus 27,18', full: `Ele sabia que o tinham entregado por inveja.`, verse: `Ele sabia que o tinham entregado por {{blank}}.`, answer: 'inveja' },
+
+    // ── Marcos ──
+    { ref: 'Marcos 4,11', full: `Respondeu: «A vós é dado conhecer o mistério do Reino de Deus; mas, aos que estão de fora, tudo se lhes propõe em parábolas,`, verse: `Respondeu: «A vós é dado conhecer o {{blank}} do Reino de Deus; mas, aos que estão de fora,…`, answer: 'mistério' },
+    { ref: 'Marcos 7,15', full: `Nada há fora do homem que, entrando nele, o possa tornar impuro. Mas o que sai do homem, isso é que o torna impuro.`, verse: `Nada há fora do homem que, entrando nele, o possa tornar {{blank}}.…`, answer: 'impuro' },
+
+    // ── Lucas ──
+    { ref: 'Lucas 1,53', full: `Aos famintos encheu de bens e aos ricos despediu de mãos vazias.`, verse: `Aos {{blank}} encheu de bens e aos ricos despediu de mãos vazias.`, answer: 'famintos' },
+    { ref: 'Lucas 5,38', full: `Mas deve deitar-se vinho novo em odres novos.`, verse: `Mas deve deitar-se vinho novo em {{blank}} novos.`, answer: 'odres' },
+    { ref: 'Lucas 6,35', full: `Vós, porém, amai os vossos inimigos, fazei o bem e emprestai, sem nada esperar em troca. Então, a vossa recompensa será grande e sereis filhos do Altíssimo, porque Ele é bom até para os ingratos e os maus.`, verse: `…sereis filhos do Altíssimo, porque Ele é bom até para os {{blank}} e os maus.`, answer: 'ingratos' },
+    { ref: 'Lucas 9,62', full: `Jesus respondeu-lhe: «Quem olha para trás, depois de deitar a mão ao arado, não está apto para o Reino de Deus.»`, verse: `…«Quem olha para trás, depois de deitar a mão ao {{blank}}, não está apto para o Reino de Deus.»`, answer: 'arado' },
+    { ref: 'Lucas 10,2', full: `Disse-lhes: «A messe é grande, mas os trabalhadores são poucos. Rogai, portanto, ao dono da messe que mande trabalhadores para a sua messe.`, verse: `Disse-lhes: «A {{blank}} é grande, mas os trabalhadores são poucos.…`, answer: 'messe' },
+    { ref: 'Lucas 11,34', full: `A candeia do teu corpo são os teus olhos. Se os teus olhos estiverem sãos, todo o teu corpo estará iluminado; mas se estiverem em mau estado, o teu corpo estará em trevas.`, verse: `A {{blank}} do teu corpo são os teus olhos. Se os teus olhos estiverem sãos,…`, answer: 'candeia' },
+    { ref: 'Lucas 11,42', full: `Mas ai de vós, fariseus, que pagais o dízimo da hortelã, da arruda e de todas as plantas e descurais a justiça e o amor de Deus! Estas eram as coisas que devíeis praticar, sem omitir aquelas.`, verse: `Mas ai de vós, fariseus, que pagais o {{blank}} da hortelã, da arruda e de todas as plantas…`, answer: 'dízimo' },
+    { ref: 'Lucas 11,52', full: `Ai de vós, doutores da Lei, porque vos apoderastes da chave da ciência: vós próprios não entrastes e impedistes a entrada àqueles que queriam entrar!»`, verse: `Ai de vós, doutores da Lei, porque vos apoderastes da {{blank}} da ciência: vós próprios não entrastes…`, answer: 'chave' },
+    { ref: 'Lucas 12,15', full: `E prosseguiu: «Olhai, guardai-vos de toda a ganância, porque, mesmo que um homem viva na abundância, a sua vida não depende dos seus bens.»`, verse: `E prosseguiu: «Olhai, guardai-vos de toda a {{blank}}, porque, mesmo que um homem viva na abundância,…`, answer: 'ganância' },
+    { ref: 'Lucas 15,9', full: `E, ao encontrá-la, convoca as amigas e vizinhas e diz: ‘Alegrai-vos comigo, porque encontrei a dracma perdida.’`, verse: `…‘Alegrai-vos comigo, porque encontrei a {{blank}} perdida.’`, answer: 'dracma' },
+    { ref: 'Lucas 17,10', full: `Assim, também vós, quando tiverdes feito tudo o que vos foi ordenado, dizei: ‘Somos servos inúteis; fizemos o que devíamos fazer.’»`, verse: `…dizei: ‘Somos servos {{blank}}; fizemos o que devíamos fazer.’»`, answer: 'inúteis' },
+    { ref: 'Lucas 21,3', full: `e disse: «Em verdade vos digo que esta viúva pobre deitou mais do que todos os outros;`, verse: `e disse: «Em verdade vos digo que esta {{blank}} pobre deitou mais do que todos os outros;`, answer: 'viúva' },
+    { ref: 'Lucas 22,15', full: `Disse-lhes: «Tenho ardentemente desejado comer esta Páscoa convosco, antes de padecer,`, verse: `Disse-lhes: «Tenho ardentemente desejado comer esta {{blank}} convosco, antes de padecer,`, answer: 'páscoa' },
+
+    // ── João ──
+    { ref: 'João 3,14', full: `Assim como Moisés ergueu a serpente no deserto, assim também é necessário que o Filho do Homem seja erguido ao alto,`, verse: `Assim como Moisés ergueu a {{blank}} no deserto, assim também é necessário que o Filho do Homem…`, answer: 'serpente' },
+    { ref: 'João 10,16', full: `Tenho ainda outras ovelhas que não são deste redil. Também estas Eu preciso de as trazer e hão de ouvir a minha voz; e haverá um só rebanho e um só pastor.`, verse: `Tenho ainda outras ovelhas que não são deste {{blank}}. Também estas Eu preciso de as trazer…`, answer: 'redil' },
+    { ref: 'João 13,15', full: `Na verdade, dei-vos exemplo para que, assim como Eu fiz, vós façais também.`, verse: `Na verdade, dei-vos {{blank}} para que, assim como Eu fiz, vós façais também.`, answer: 'exemplo' },
+    { ref: 'João 14,2', full: `Na casa de meu Pai há muitas moradas. Se assim não fosse, como teria dito Eu que vos vou preparar um lugar?`, verse: `Na casa de meu Pai há muitas {{blank}}. Se assim não fosse, como teria dito Eu que vos vou preparar um lugar?`, answer: 'moradas' },
+    { ref: 'João 14,23', full: `Respondeu-lhe Jesus: «Se alguém me tem amor, há de guardar a minha palavra; e o meu Pai o amará, e Nós viremos a ele e nele faremos morada.`, verse: `…e o meu Pai o amará, e Nós viremos a ele e nele faremos {{blank}}.`, answer: 'morada' },
+    { ref: 'João 20,25', full: `Diziam-lhe os outros discípulos: «Vimos o Senhor!» Mas ele respondeu-lhes: «Se eu não vir o sinal dos pregos nas suas mãos e não meter o meu dedo nesse sinal dos pregos e a minha mão no seu peito, não acredito.»`, verse: `…«Se eu não vir o sinal dos {{blank}} nas suas mãos e não meter o meu dedo nesse sinal dos {{blank}}…`, answer: 'pregos' },
+
+    // ── Atos dos Apóstolos ──
+    { ref: 'Atos dos Apóstolos 2,3', full: `Viram então aparecer umas línguas, à maneira de fogo, que se iam dividindo, e poisou uma sobre cada um deles.`, verse: `Viram então aparecer umas {{blank}}, à maneira de fogo, que se iam dividindo,…`, answer: 'línguas' },
+    { ref: 'Atos dos Apóstolos 3,15', full: `Destes a morte ao Príncipe da Vida, mas Deus ressuscitou-o dos mortos, e disso nós somos testemunhas.`, verse: `Destes a morte ao {{blank}} da Vida, mas Deus ressuscitou-o dos mortos, e disso nós somos testemunhas.`, answer: 'príncipe' },
+    { ref: 'Atos dos Apóstolos 6,2', full: `Os Doze convocaram, então, a assembleia dos discípulos e disseram: «Não convém deixarmos a palavra de Deus, para servirmos às mesas.`, verse: `…«Não convém deixarmos a palavra de Deus, para servirmos às {{blank}}.`, answer: 'mesas' },
+    { ref: 'Atos dos Apóstolos 6,4', full: `Quanto a nós, entregar-nos-emos assiduamente à oração e ao serviço da Palavra.»`, verse: `Quanto a nós, entregar-nos-emos assiduamente à oração e ao {{blank}} da Palavra.»`, answer: 'serviço' },
+    { ref: 'Atos dos Apóstolos 11,26', full: `Encontrou-o e levou-o para Antioquia. Durante um ano inteiro, mantiveram-se juntos nesta igreja e ensinaram muita gente. Foi em Antioquia que, pela primeira vez, os discípulos começaram a ser tratados pelo nome de «cristãos.»`, verse: `…Foi em Antioquia que, pela primeira vez, os discípulos começaram a ser tratados pelo nome de «{{blank}}.»`, answer: 'cristãos' },
+    { ref: 'Atos dos Apóstolos 14,23', full: `Depois de lhes terem constituído anciãos em cada igreja, pela imposição das mãos, e de terem feito orações acompanhadas de jejum, recomendaram-nos ao Senhor, em quem tinham acreditado.`, verse: `Depois de lhes terem constituído {{blank}} em cada igreja, pela imposição das mãos,…`, answer: 'anciãos' },
+    { ref: 'Atos dos Apóstolos 17,28', full: `É nele, realmente, que vivemos, nos movemos e existimos, como também o disseram alguns dos vossos poetas: ‘Pois nós somos também da sua estirpe.’`, verse: `…como também o disseram alguns dos vossos poetas: ‘Pois nós somos também da sua {{blank}}.’`, answer: 'estirpe' },
+    { ref: 'Atos dos Apóstolos 26,28', full: `Agripa respondeu a Paulo: «Por pouco não me persuades a fazer-me cristão!»`, verse: `Agripa respondeu a Paulo: «Por pouco não me persuades a fazer-me {{blank}}!»`, answer: 'cristão' },
+
+    // ── Romanos ──
+    { ref: 'Romanos 1,29', full: `estão repletos de toda a espécie de injustiça, perversidade, ambição, maldade; cheios de inveja, homicídios, discórdia, falsidade, malícia; são difamadores,`, verse: `…cheios de inveja, homicídios, discórdia, falsidade, {{blank}}; são difamadores,`, answer: 'malícia' },
+    { ref: 'Romanos 4,4', full: `Ora bem, àquele que realiza obras, o salário não lhe é atribuído como oferta, mas como dívida.`, verse: `Ora bem, àquele que realiza obras, o {{blank}} não lhe é atribuído como oferta, mas como dívida.`, answer: 'salário' },
+    { ref: 'Romanos 4,25', full: `entregue por causa das nossas faltas e ressuscitado para nossa justificação.`, verse: `entregue por causa das nossas {{blank}} e ressuscitado para nossa justificação.`, answer: 'faltas' },
+    { ref: 'Romanos 5,4', full: `a paciência a firmeza, e a firmeza a esperança.`, verse: `a paciência a {{blank}}, e a {{blank}} a esperança.`, answer: 'firmeza' },
+    { ref: 'Romanos 6,22', full: `Mas agora, que estais libertos do pecado e vos tornastes servos de Deus, produzis frutos que levam à santificação, e o resultado é a vida eterna.`, verse: `Mas agora, que estais {{blank}} do pecado e vos tornastes servos de Deus,…`, answer: 'libertos' },
+    { ref: 'Romanos 8,15', full: `Vós não recebestes um Espírito que vos escravize e volte a encher-vos de medo; mas recebestes um Espírito que faz de vós filhos adotivos. É por Ele que clamamos: Abbá, ó Pai!`, verse: `…mas recebestes um Espírito que faz de vós filhos {{blank}}. É por Ele que clamamos: Abbá, ó Pai!`, answer: 'adotivos' },
+    { ref: 'Romanos 8,19', full: `Pois até a criação se encontra em expetativa ansiosa, aguardando a revelação dos filhos de Deus.`, verse: `Pois até a {{blank}} se encontra em expetativa ansiosa, aguardando a revelação dos filhos de Deus.`, answer: 'criação' },
+    { ref: 'Romanos 12,12', full: `Sede alegres na esperança, pacientes na tribulação, perseverantes na oração.`, verse: `Sede {{blank}} na esperança, pacientes na tribulação, perseverantes na oração.`, answer: 'alegres' },
+    { ref: 'Romanos 13,12', full: `A noite adiantou-se e o dia está próximo. Despojemo-nos, por isso, das obras das trevas e revistamo-nos das armas da luz.`, verse: `…Despojemo-nos, por isso, das obras das trevas e revistamo-nos das {{blank}} da luz.`, answer: 'armas' },
+    { ref: 'Romanos 14,13', full: `Deixemos, pois, de nos julgar uns aos outros. Tomai de preferência esta decisão: não ser para o irmão causa de tropeço ou de escândalo.`, verse: `…Tomai de preferência esta decisão: não ser para o irmão causa de {{blank}} ou de escândalo.`, answer: 'tropeço' },
+
+    // ── 1 Coríntios ──
+    { ref: '1 Coríntios 1,9', full: `Fiel é Deus, por quem fostes chamados à comunhão com seu Filho, Jesus Cristo Nosso Senhor.`, verse: `Fiel é Deus, por quem fostes chamados à {{blank}} com seu Filho, Jesus Cristo Nosso Senhor.`, answer: 'comunhão' },
+    { ref: '1 Coríntios 3,9', full: `Pois, nós somos cooperadores de Deus, e vós sois o seu terreno de cultivo, o edifício de Deus.`, verse: `Pois, nós somos cooperadores de Deus, e vós sois o seu terreno de cultivo, o {{blank}} de Deus.`, answer: 'edifício' },
+    { ref: '1 Coríntios 3,11', full: `pois ninguém pode pôr um alicerce diferente do que já foi posto: Jesus Cristo.`, verse: `pois ninguém pode pôr um {{blank}} diferente do que já foi posto: Jesus Cristo.`, answer: 'alicerce' },
+    { ref: '1 Coríntios 5,8', full: `Celebremos, pois, a festa, não com o fermento velho, nem com o fermento da malícia e da corrupção, mas com os ázimos da pureza e da verdade.`, verse: `…nem com o fermento da malícia e da corrupção, mas com os {{blank}} da pureza e da verdade.`, answer: 'ázimos' },
+    { ref: '1 Coríntios 7,7', full: `Desejaria que todos os homens fossem como eu, mas cada um recebe de Deus o seu próprio carisma, um de uma maneira, outro de outra.`, verse: `…mas cada um recebe de Deus o seu próprio {{blank}}, um de uma maneira, outro de outra.`, answer: 'carisma' },
+    { ref: '1 Coríntios 9,24', full: `Não sabeis que os que correm no estádio correm todos, mas só um ganha o prémio? Correi, pois, assim, para o alcançardes.`, verse: `Não sabeis que os que correm no estádio correm todos, mas só um ganha o {{blank}}?…`, answer: 'prémio' },
+    { ref: '1 Coríntios 10,16', full: `O cálice de bênção, que abençoamos, não é comunhão com o sangue de Cristo? O pão que partimos não é comunhão com o corpo de Cristo?`, verse: `O cálice de bênção, que abençoamos, não é {{blank}} com o sangue de Cristo?…`, answer: 'comunhão' },
+    { ref: '1 Coríntios 13,12', full: `Agora, vemos como num espelho, de maneira confusa; depois, veremos face a face. Agora, conheço de modo imperfeito; depois, conhecerei como sou conhecido.`, verse: `Agora, vemos como num {{blank}}, de maneira confusa; depois, veremos face a face.…`, answer: 'espelho' },
+    { ref: '1 Coríntios 14,33', full: `porque Deus não é um Deus de desordem, mas de paz. Como acontece em todas as assembleias de santos,`, verse: `porque Deus não é um Deus de {{blank}}, mas de paz.…`, answer: 'desordem' },
+    { ref: '1 Coríntios 15,54', full: `E, quando este corpo corruptível se tiver revestido de incorruptibilidade e este corpo mortal se tiver revestido de imortalidade, então cumprir-se-á a palavra da Escritura: A morte foi tragada pela vitória.`, verse: `…então cumprir-se-á a palavra da Escritura: A morte foi tragada pela {{blank}}.`, answer: 'vitória' },
+    { ref: '1 Coríntios 15,55', full: `Onde está, ó morte, a tua vitória? Onde está, ó morte, o teu aguilhão?`, verse: `Onde está, ó morte, a tua vitória? Onde está, ó morte, o teu {{blank}}?`, answer: 'aguilhão' },
+
+    // ── 2 Coríntios ──
+    { ref: '2 Coríntios 3,2', full: `A nossa carta sois vós, uma carta escrita nos nossos corações, conhecida e lida por todos os homens.`, verse: `A nossa {{blank}} sois vós, uma {{blank}} escrita nos nossos corações, conhecida e lida por todos os homens.`, answer: 'carta' },
+    { ref: '2 Coríntios 3,6', full: `É Ele que nos torna aptos para sermos ministros de uma nova aliança, não da letra, mas do Espírito; porque a letra mata, enquanto o Espírito dá a vida.`, verse: `…não da {{blank}}, mas do Espírito; porque a {{blank}} mata, enquanto o Espírito dá a vida.`, answer: 'letra' },
+    { ref: '2 Coríntios 4,1', full: `Por isso, investidos neste ministério que nos foi concedido por misericórdia, não perdemos a coragem,`, verse: `Por isso, investidos neste ministério que nos foi concedido por misericórdia, não perdemos a {{blank}},`, answer: 'coragem' },
+    { ref: '2 Coríntios 5,1', full: `Sabemos, com efeito, que, quando a nossa morada terrestre, a nossa tenda, for destruída, temos uma habitação no Céu, obra de Deus, uma casa eterna, não construída por mãos humanas.`, verse: `…quando a nossa morada terrestre, a nossa {{blank}}, for destruída, temos uma habitação no Céu,…`, answer: 'tenda' },
+    { ref: '2 Coríntios 5,7', full: `pois caminhamos pela fé e não pela visão...`, verse: `pois caminhamos pela fé e não pela {{blank}}...`, answer: 'visão' },
+    { ref: '2 Coríntios 5,10', full: `Com efeito, todos havemos de comparecer perante o tribunal de Cristo, a fim de que cada um receba conforme aquilo que fez de bem ou de mal, enquanto estava no corpo.`, verse: `…perante o {{blank}} de Cristo, a fim de que cada um receba conforme aquilo que fez de bem ou de mal,…`, answer: 'tribunal' },
+    { ref: '2 Coríntios 11,3', full: `Mas receio que, como a serpente seduziu Eva com a sua astúcia, os vossos pensamentos se deixem corromper, desviando-se da simplicidade que é devida a Cristo.`, verse: `Mas receio que, como a serpente seduziu Eva com a sua {{blank}}, os vossos pensamentos se deixem corromper,…`, answer: 'astúcia' },
+    { ref: '2 Coríntios 12,7', full: `E porque essas revelações eram extraordinárias, para que não me enchesse de orgulho, foi-me dado um espinho na carne, um anjo de Satanás, para me ferir, a fim de que não me orgulhasse.`, verse: `…para que não me enchesse de orgulho, foi-me dado um {{blank}} na carne, um anjo de Satanás, para me ferir,…`, answer: 'espinho' },
+
+    // ── Gálatas ──
+    { ref: 'Gálatas 1,8', full: `Mas, até mesmo se nós ou um anjo do céu vos anunciar como Evangelho o contrário daquilo que vos anunciámos, seja anátema.`, verse: `…ou um anjo do céu vos anunciar como Evangelho o contrário daquilo que vos anunciámos, seja {{blank}}.`, answer: 'anátema' },
+    { ref: 'Gálatas 3,13', full: `Cristo resgatou-nos da maldição da Lei, ao fazer-se maldição por nós, pois está escrito: Maldito seja todo aquele que é suspenso no madeiro.`, verse: `…pois está escrito: Maldito seja todo aquele que é suspenso no {{blank}}.`, answer: 'madeiro' },
+    { ref: 'Gálatas 3,24', full: `Deste modo, a Lei tornou-se nosso pedagogo até Cristo, para que fôssemos justificados pela fé.`, verse: `Deste modo, a Lei tornou-se nosso {{blank}} até Cristo, para que fôssemos justificados pela fé.`, answer: 'pedagogo' },
+    { ref: 'Gálatas 4,4', full: `Mas, quando chegou a plenitude do tempo, Deus enviou o seu Filho, nascido de uma mulher, nascido sob o domínio da Lei,`, verse: `Mas, quando chegou a plenitude do tempo, Deus enviou o seu Filho, nascido de uma {{blank}},…`, answer: 'mulher' },
+    { ref: 'Gálatas 6,17', full: `De agora em diante ninguém mais me venha perturbar; pois eu levo no meu corpo as marcas de Jesus.`, verse: `De agora em diante ninguém mais me venha perturbar; pois eu levo no meu corpo as {{blank}} de Jesus.`, answer: 'marcas' },
+
+    // ── Efésios ──
+    { ref: 'Efésios 1,14', full: `o qual é garantia da nossa herança, para que dela tomemos posse, na redenção, para louvor da sua glória.`, verse: `o qual é {{blank}} da nossa herança, para que dela tomemos posse, na redenção, para louvor da sua glória.`, answer: 'garantia' },
+    { ref: 'Efésios 2,20', full: `edificados sobre o alicerce dos Apóstolos e dos Profetas, tendo por pedra angular o próprio Cristo Jesus.`, verse: `edificados sobre o {{blank}} dos Apóstolos e dos Profetas, tendo por pedra angular o próprio Cristo Jesus.`, answer: 'alicerce' },
+    { ref: 'Efésios 4,11', full: `E foi Ele que a alguns constituiu como Apóstolos, Profetas, Evangelistas, Pastores e Mestres,`, verse: `E foi Ele que a alguns constituiu como Apóstolos, Profetas, Evangelistas, {{blank}} e Mestres,`, answer: 'pastores' },
+    { ref: 'Efésios 4,15', full: `antes, testemunhando a verdade no amor, cresceremos em tudo para aquele que é a cabeça, Cristo.`, verse: `antes, testemunhando a verdade no amor, cresceremos em tudo para aquele que é a {{blank}}, Cristo.`, answer: 'cabeça' },
+    { ref: 'Efésios 5,26', full: `para a santificar, purificando-a, no banho da água, pela palavra.`, verse: `para a santificar, purificando-a, no {{blank}} da água, pela palavra.`, answer: 'banho' },
+
+    // ── Filipenses ──
+    { ref: 'Filipenses 2,15', full: `para serdes irrepreensíveis e íntegros, filhos de Deus sem mancha, no meio de uma geração perversa e corrompida;nela brilhais como astros no mundo.`, verse: `…no meio de uma geração perversa e corrompida;nela brilhais como {{blank}} no mundo.`, answer: 'astros' },
+    { ref: 'Filipenses 3,10', full: `Assim posso conhecê-lo a Ele, na força da sua ressurreição e na comunhão com os seus sofrimentos, conformando-me com Ele na morte,`, verse: `…na força da sua ressurreição e na {{blank}} com os seus sofrimentos, conformando-me com Ele na morte,`, answer: 'comunhão' },
+    { ref: 'Filipenses 3,14', full: `corro em direção à meta, para o prémio a que Deus, lá do Alto, nos chama em Cristo Jesus.`, verse: `corro em direção à meta, para o {{blank}} a que Deus, lá do Alto, nos chama em Cristo Jesus.`, answer: 'prémio' },
+    { ref: 'Filipenses 3,20', full: `É que, para nós, a cidade a que pertencemos está nos céus, de onde certamente esperamos o Salvador, o Senhor Jesus Cristo.`, verse: `É que, para nós, a {{blank}} a que pertencemos está nos céus, de onde certamente esperamos o Salvador,…`, answer: 'cidade' },
+
+    // ── Colossenses ──
+    { ref: 'Colossenses 3,5', full: `Crucificai os vossos membros no que toca à prática de coisas da terra: fornicação, impureza, paixão, mau desejo e a ganância, que é uma idolatria.`, verse: `…fornicação, impureza, {{blank}}, mau desejo e a ganância, que é uma idolatria.`, answer: 'paixão' },
+    { ref: 'Colossenses 3,16', full: `A palavra de Cristo habite em vós com toda a sua riqueza: ensinai-vos e admoestai-vos uns aos outros com toda a sabedoria; cantai a Deus, nos vossos corações, o vosso reconhecimento, com salmos, hinos e cânticos inspirados.`, verse: `…cantai a Deus, nos vossos corações, o vosso reconhecimento, com {{blank}}, hinos e cânticos inspirados.`, answer: 'salmos' },
+
+    // ── 1 Tessalonicenses ──
+    { ref: '1 Tessalonicenses 4,16', full: `pois o próprio Senhor, à ordem dada, à voz do Arcanjo e ao som da trombeta de Deus, descerá do Céu, e os mortos em Cristo ressurgirão primeiro.`, verse: `pois o próprio Senhor, à ordem dada, à voz do Arcanjo e ao som da {{blank}} de Deus, descerá do Céu,…`, answer: 'trombeta' },
+    { ref: '1 Tessalonicenses 5,2', full: `Com efeito, vós próprios sabeis perfeitamente que o Dia do Senhor chega de noite como um ladrão.`, verse: `Com efeito, vós próprios sabeis perfeitamente que o Dia do Senhor chega de noite como um {{blank}}.`, answer: 'ladrão' },
+    { ref: '1 Tessalonicenses 5,6', full: `Não durmamos, pois, como os outros, mas vigiemos e sejamos sóbrios.`, verse: `Não durmamos, pois, como os outros, mas vigiemos e sejamos {{blank}}.`, answer: 'sóbrios' },
+
+    // ── 2 Tessalonicenses ──
+    { ref: '2 Tessalonicenses 2,3', full: `Ninguém, de modo algum, vos engane. Com efeito, antes deve vir a apostasia e manifestar-se o homem da iniquidade, o filho da perdição,`, verse: `…antes deve vir a apostasia e manifestar-se o homem da iniquidade, o filho da {{blank}},`, answer: 'perdição' },
+
+    // ── 1 Timóteo ──
+    { ref: '1 Timóteo 2,5', full: `Pois, há um só Deus, e um só mediador entre Deus e os homens, um homem: Cristo Jesus,`, verse: `Pois, há um só Deus, e um só {{blank}} entre Deus e os homens, um homem: Cristo Jesus,`, answer: 'mediador' },
+    { ref: '1 Timóteo 2,7', full: `Foi para isto que fui constituído arauto e apóstolo –digo a verdade, não minto – mestre das nações, na fé e na verdade.`, verse: `Foi para isto que fui constituído {{blank}} e apóstolo –digo a verdade, não minto – mestre das nações,…`, answer: 'arauto' },
+    { ref: '1 Timóteo 3,2', full: `Mas é necessário que o bispo seja irrepreensível, marido de uma só mulher, sóbrio, ponderado, de bons costumes, hospitaleiro, capaz de ensinar;`, verse: `Mas é necessário que o {{blank}} seja irrepreensível, marido de uma só mulher, sóbrio, ponderado,…`, answer: 'bispo' },
+    { ref: '1 Timóteo 3,8', full: `Do mesmo modo, os diáconos sejam pessoas dignas, sem duplicidade, não inclinados ao excesso de vinho, nem ávidos de lucros desonestos.`, verse: `Do mesmo modo, os {{blank}} sejam pessoas dignas, sem duplicidade, não inclinados ao excesso de vinho,…`, answer: 'diáconos' },
+    { ref: '1 Timóteo 3,15', full: `Porém, eu quero que saibas como deves proceder na casa de Deus, esta Igreja do Deus vivo, coluna e sustentáculo da verdade.`, verse: `…como deves proceder na casa de Deus, esta Igreja do Deus vivo, {{blank}} e sustentáculo da verdade.`, answer: 'coluna' },
+    { ref: '1 Timóteo 4,12', full: `Ninguém escarneça da tua juventude; antes, sê modelo dos fiéis, na palavra, na conduta, no amor, na fé, na castidade.`, verse: `…antes, sê {{blank}} dos fiéis, na palavra, na conduta, no amor, na fé, na castidade.`, answer: 'modelo' },
+    { ref: '1 Timóteo 4,14', full: `Não descures o carisma que está em ti, e que te foi dado através de uma profecia, com a imposição das mãos dos presbíteros.`, verse: `Não descures o {{blank}} que está em ti, e que te foi dado através de uma profecia,…`, answer: 'carisma' },
+    { ref: '1 Timóteo 6,12', full: `Combate o bom combate da fé, conquista a vida eterna, para a qual foste chamado e da qual fizeste uma bela profissão na presença de muitas testemunhas.`, verse: `{{blank}} o bom {{blank}} da fé, conquista a vida eterna, para a qual foste chamado…`, answer: 'combate' },
+    { ref: '1 Timóteo 6,20', full: `Ó Timóteo, guarda o depósito da fé, evita as vãs conversas profanas e as contradições da falsa ciência,`, verse: `Ó Timóteo, guarda o {{blank}} da fé, evita as vãs conversas profanas e as contradições da falsa ciência,`, answer: 'depósito' },
+
+    // ── 2 Timóteo ──
+    { ref: '2 Timóteo 1,7', full: `pois Deus não nos concedeu um espírito de timidez, mas de fortaleza, de amor e de bom senso.`, verse: `pois Deus não nos concedeu um espírito de {{blank}}, mas de fortaleza, de amor e de bom senso.`, answer: 'timidez' },
+    { ref: '2 Timóteo 2,3', full: `Compartilha as dificuldades, como bom soldado de Cristo Jesus.`, verse: `Compartilha as dificuldades, como bom {{blank}} de Cristo Jesus.`, answer: 'soldado' },
+    { ref: '2 Timóteo 2,9', full: `pelo qual sofro mesmo estas cadeias, como se fosse um malfeitor. Mas a palavra de Deus não pode ser acorrentada.`, verse: `pelo qual sofro mesmo estas {{blank}}, como se fosse um malfeitor.…`, answer: 'cadeias' },
+
+    // ── Tito ──
+    { ref: 'Tito 1,7', full: `Porque é preciso que o bispo, como administrador de Deus, seja irrepreensível, não arrogante, nem colérico, nem dado ao vinho, à violência ou ao lucro desonesto;`, verse: `Porque é preciso que o {{blank}}, como administrador de Deus, seja irrepreensível, não arrogante,…`, answer: 'bispo' },
+
+    // ── Filémon ──
+    { ref: 'Filémon 1,16', full: `não já como escravo, mas muito mais do que um escravo: como irmão querido; isto especialmente para mim, quanto mais para ti, que com ele estás relacionado tanto humanamente como no Senhor.`, verse: `não já como escravo, mas muito mais do que um escravo: como {{blank}} querido;…`, answer: 'irmão' },
+
+    // ── Hebreus ──
+    { ref: 'Hebreus 2,14', full: `Pois, tal como os filhos têm em comum a carne e o sangue, também Ele partilhou a condição deles, a fim de destruir, pela sua morte, aquele que tinha o poder da morte, isto é, o diabo,`, verse: `…a fim de destruir, pela sua morte, aquele que tinha o poder da morte, isto é, o {{blank}},`, answer: 'diabo' },
+    { ref: 'Hebreus 3,1', full: `Por conseguinte, irmãos santos, participantes de uma vocação celeste, considerai Jesus como o Apóstolo e o Sumo Sacerdote da fé que professamos,`, verse: `…considerai Jesus como o {{blank}} e o Sumo Sacerdote da fé que professamos,`, answer: 'apóstolo' },
+    { ref: 'Hebreus 3,11', full: `Assim, jurei na minha ira: ‘Não entrarão no meu repouso.’`, verse: `Assim, jurei na minha ira: ‘Não entrarão no meu {{blank}}.’`, answer: 'repouso' },
+    { ref: 'Hebreus 7,26', full: `Tal é, com efeito, o Sumo Sacerdote que nos convinha: santo, inocente, imaculado, separado dos pecadores e elevado acima dos céus,`, verse: `Tal é, com efeito, o Sumo Sacerdote que nos convinha: santo, {{blank}}, imaculado, separado dos pecadores…`, answer: 'inocente' },
+    { ref: 'Hebreus 8,6', full: `Mas, de facto, ele obteve um ministério tanto mais elevado, quanto maior é a aliança de que é mediador, a qual foi estabelecida sobre melhores promessas.`, verse: `…quanto maior é a aliança de que é {{blank}}, a qual foi estabelecida sobre melhores promessas.`, answer: 'mediador' },
+    { ref: 'Hebreus 10,4', full: `uma vez que é impossível que o sangue dos touros e dos bodes apague os pecados.`, verse: `uma vez que é impossível que o sangue dos {{blank}} e dos bodes apague os pecados.`, answer: 'touros' },
+    { ref: 'Hebreus 10,5', full: `Por isso, ao entrar no mundo, Cristo diz: Tu não quiseste sacrifício nem oferenda, mas preparaste-me um corpo.`, verse: `…Cristo diz: Tu não quiseste sacrifício nem {{blank}}, mas preparaste-me um corpo.`, answer: 'oferenda' },
+    { ref: 'Hebreus 11,16', full: `mas agora eles aspiram a uma pátria melhor, isto é, à pátria celeste. Por isso, Deus não se envergonha de ser chamado o «seu Deus», porque preparou para eles uma cidade.`, verse: `mas agora eles aspiram a uma {{blank}} melhor, isto é, à {{blank}} celeste.…`, answer: 'pátria' },
+    { ref: 'Hebreus 12,2', full: `tendo os olhos postos em Jesus, autor e consumador da fé. Ele, renunciando à alegria que lhe fora proposta, sofreu a cruz, desprezando a ignomínia, e sentou-se à direita do trono de Deus.`, verse: `tendo os olhos postos em Jesus, {{blank}} e consumador da fé.…`, answer: 'autor' },
+    { ref: 'Hebreus 12,24', full: `de Jesus, o Mediador da Nova Aliança, e de um sangue de aspersão que fala melhor que o de Abel.`, verse: `de Jesus, o {{blank}} da Nova Aliança, e de um sangue de aspersão que fala melhor que o de Abel.`, answer: 'mediador' },
+    { ref: 'Hebreus 13,14', full: `porque não temos aqui cidade permanente, mas procuramos a futura.`, verse: `porque não temos aqui {{blank}} permanente, mas procuramos a futura.`, answer: 'cidade' },
+
+    // ── Tiago ──
+    { ref: 'Tiago 1,27', full: `A religião pura e sem mácula diante daquele que é Deus e Pai é esta: visitar os órfãos e as viúvas nas suas tribulações e não se deixar contaminar pelo mundo.`, verse: `…é esta: visitar os {{blank}} e as viúvas nas suas tribulações e não se deixar contaminar pelo mundo.`, answer: 'órfãos' },
+    { ref: 'Tiago 2,19', full: `Tu crês que há um só Deus? Fazes bem. Também o creem os demónios, mas enchem-se de terror.»`, verse: `Tu crês que há um só Deus? Fazes bem. Também o creem os {{blank}}, mas enchem-se de terror.»`, answer: 'demónios' },
+    { ref: 'Tiago 3,1', full: `Meus irmãos, não haja muitos entre vós que pretendam ser mestres, sabendo que nós teremos um julgamento mais severo,`, verse: `Meus irmãos, não haja muitos entre vós que pretendam ser {{blank}}, sabendo que nós teremos um julgamento…`, answer: 'mestres' },
+    { ref: 'Tiago 3,6', full: `Assim também a língua é fogo, é um mundo de iniquidade; entre os nossos membros, é ela que contamina todo o corpo e, inflamada pelo Inferno, incendeia o curso da nossa existência.`, verse: `Assim também a {{blank}} é fogo, é um mundo de iniquidade;…`, answer: 'língua' },
+    { ref: 'Tiago 4,7', full: `Submetei-vos, portanto, a Deus; resisti ao diabo, e ele fugirá de vós.`, verse: `Submetei-vos, portanto, a Deus; resisti ao {{blank}}, e ele fugirá de vós.`, answer: 'diabo' },
+    { ref: 'Tiago 5,8', full: `Tende, também vós, paciência e fortalecei os vossos corações, porque a vinda do Senhor está próxima.`, verse: `Tende, também vós, paciência e fortalecei os vossos corações, porque a {{blank}} do Senhor está próxima.`, answer: 'vinda' },
+
+    // ── 1 Pedro ──
+    { ref: '1 Pedro 1,2', full: `por meio da santificação do Espírito, segundo a providência de Deus Pai, para obedecerem a Jesus Cristo e receberem a aspersão do seu sangue. Graça e paz vos sejam dadas em abundância.`, verse: `…para obedecerem a Jesus Cristo e receberem a {{blank}} do seu sangue.…`, answer: 'aspersão' },
+    { ref: '1 Pedro 2,5', full: `também vós – como pedras vivas – entrais na construção de um edifício espiritual, em função de um sacerdócio santo, cujo fim é oferecer sacrifícios espirituais agradáveis a Deus, por Jesus Cristo.`, verse: `também vós – como {{blank}} vivas – entrais na construção de um edifício espiritual,…`, answer: 'pedras' },
+    { ref: '1 Pedro 2,24', full: `subindo ao madeiro, Ele levou os nossos pecados no seu corpo, para que, mortos para o pecado, vivamos para a justiça: pelas suas chagas fostes curados.`, verse: `subindo ao {{blank}}, Ele levou os nossos pecados no seu corpo, para que, mortos para o pecado,…`, answer: 'madeiro' },
+    { ref: '1 Pedro 3,15', full: `mas, no íntimo do vosso coração, confessai Cristo como Senhor, sempre dispostos a dar a razão da vossa esperança a todo aquele que vo-la peça;`, verse: `…sempre dispostos a dar a {{blank}} da vossa esperança a todo aquele que vo-la peça;`, answer: 'razão' },
+    { ref: '1 Pedro 4,12', full: `Caríssimos, não estranheis a fogueira que se ateou no meio de vós para vos pôr à prova, como se vos acontecesse alguma coisa estranha.`, verse: `Caríssimos, não estranheis a {{blank}} que se ateou no meio de vós para vos pôr à prova,…`, answer: 'fogueira' },
+    { ref: '1 Pedro 4,16', full: `Mas, se sofre por ser cristão, não se envergonhe, antes glorifique a Deus por ter este nome.`, verse: `Mas, se sofre por ser {{blank}}, não se envergonhe, antes glorifique a Deus por ter este nome.`, answer: 'cristão' },
+
+    // ── 2 Pedro ──
+    { ref: '2 Pedro 1,4', full: `Com elas, teve a bondade de nos dar também os mais preciosos e sublimes bens prometidos, a fim de que – por meio deles – vos torneis participantes da natureza divina, depois de vos livrardes da corrupção que a concupiscência gerou no mundo.`, verse: `…vos torneis participantes da {{blank}} divina, depois de vos livrardes da corrupção…`, answer: 'natureza' },
+    { ref: '2 Pedro 1,5', full: `Por este motivo é que, da vossa parte, deveis pôr todo o empenho em juntar à vossa fé a virtude; à virtude o conhecimento;`, verse: `…deveis pôr todo o empenho em juntar à vossa fé a {{blank}}; à {{blank}} o conhecimento;`, answer: 'virtude' },
+    { ref: '2 Pedro 1,16', full: `De facto, demo-vos a conhecer o poder e a vinda de Nosso Senhor Jesus Cristo, não por havermos ido atrás de fábulas engenhosas, mas por termos sido testemunhas oculares da sua majestade.`, verse: `…não por havermos ido atrás de {{blank}} engenhosas, mas por termos sido testemunhas oculares…`, answer: 'fábulas' },
+    { ref: '2 Pedro 2,4', full: `Com efeito, Deus não poupou os anjos que pecaram mas, precipitando-os no Inferno, entregou-os a um fosso de trevas, onde estão reservados para o Juízo;`, verse: `…Deus não poupou os anjos que pecaram mas, precipitando-os no {{blank}}, entregou-os a um fosso de trevas,…`, answer: 'inferno' },
+    { ref: '2 Pedro 3,10', full: `Porém, o Dia do Senhor chegará como um ladrão: os céus desaparecerão com estrondo, os elementos do mundo abrasados dissolver-se-ão, assim como a terra e as obras que nela houver.`, verse: `Porém, o Dia do Senhor chegará como um {{blank}}: os céus desaparecerão com estrondo,…`, answer: 'ladrão' },
+
+    // ── 1 João ──
+    { ref: '1 João 1,1', full: `O que existia desde o princípio, o que ouvimos, o que vimos com os nossos olhos, o que contemplámos e as nossas mãos tocaram relativamente ao Verbo da Vida`, verse: `…o que contemplámos e as nossas mãos tocaram relativamente ao {{blank}} da Vida`, answer: 'verbo' },
+    { ref: '1 João 1,5', full: `Eis a mensagem que ouvimos de Jesus e vos anunciamos: Deus é luz e nele não há nenhuma espécie de trevas.`, verse: `Eis a {{blank}} que ouvimos de Jesus e vos anunciamos: Deus é luz e nele não há nenhuma espécie de trevas.`, answer: 'mensagem' },
+    { ref: '1 João 2,1', full: `Filhinhos meus, escrevo-vos estas coisas para que não pequeis; mas, se alguém pecar, temos junto do Pai um advogado, Jesus Cristo, o Justo,`, verse: `…mas, se alguém pecar, temos junto do Pai um {{blank}}, Jesus Cristo, o Justo,`, answer: 'advogado' },
+    { ref: '1 João 3,15', full: `Todo aquele que tem ódio a seu irmão é um homicida; e vós bem sabeis que nenhum homicida mantém dentro de si a vida eterna.`, verse: `Todo aquele que tem ódio a seu irmão é um {{blank}};…`, answer: 'homicida' },
+    { ref: '1 João 5,19', full: `E bem sabemos que somos de Deus, ao passo que o mundo inteiro está sob o poder do Maligno.`, verse: `E bem sabemos que somos de Deus, ao passo que o mundo inteiro está sob o poder do {{blank}}.`, answer: 'maligno' },
+
+    // ── 2 João ──
+    { ref: '2 João 1,7', full: `É que apareceram no mundo muitos sedutores que afirmam que Jesus Cristo não veio em carne mortal. Esse é o sedutor e o Anticristo!`, verse: `É que apareceram no mundo muitos sedutores que afirmam que Jesus Cristo não veio em carne {{blank}}.…`, answer: 'mortal' },
+
+    // ── Judas ──
+    { ref: 'Judas 1,6', full: `e que os anjos que não mantiveram a sua dignidade, mas abandonaram a sua própria morada, o Senhor os tem guardados sob o poder das trevas com cadeias perpétuas para o julgamento do grande dia.`, verse: `…o Senhor os tem guardados sob o poder das trevas com {{blank}} perpétuas para o julgamento do grande dia.`, answer: 'cadeias' },
+    { ref: 'Judas 1,12', full: `Estes são um escândalo nos vossos ágapes; banqueteando-se convosco sem respeito nenhum, o que fazem é cevar-se. São nuvens sem água arrastadas pelos ventos; árvores de outono sem fruto, duas vezes mortas e arrancadas pela raiz;`, verse: `Estes são um escândalo nos vossos {{blank}}; banqueteando-se convosco sem respeito nenhum,…`, answer: 'ágapes' },
+
+    // ── Apocalipse ──
+    { ref: 'Apocalipse 1,18', full: `aquele que vive. Estive morto; mas, como vês, estou vivo pelos séculos dos séculos e tenho as chaves da Morte e do Abismo!`, verse: `…Estive morto; mas, como vês, estou vivo pelos séculos dos séculos e tenho as {{blank}} da Morte e do Abismo!`, answer: 'chaves' },
+    { ref: 'Apocalipse 3,16', full: `Assim, porque és morno – e não és frio nem quente – vou vomitar-te da minha boca.`, verse: `Assim, porque és {{blank}} – e não és frio nem quente – vou vomitar-te da minha boca.`, answer: 'morno' },
+    { ref: 'Apocalipse 5,8', full: `E, quando Ele recebeu o livro, os quatro seres viventes e os vinte e quatro anciãos prostraram-se diante do Cordeiro. Cada um deles tinha uma cítara e taças de ouro cheias de incenso, que são as orações dos santos.`, verse: `…Cada um deles tinha uma cítara e taças de ouro cheias de {{blank}}, que são as orações dos santos.`, answer: 'incenso' },
+    { ref: 'Apocalipse 5,9', full: `E cantavam um cântico novo, dizendo: «Tu és digno de receber o livro e de abrir os selos; porque foste morto e, com teu sangue, resgataste para Deus, homens de todas as tribos, línguas, povos e nações;`, verse: `…«Tu és digno de receber o livro e de abrir os {{blank}}; porque foste morto e, com teu sangue,…`, answer: 'selos' },
+    { ref: 'Apocalipse 7,9', full: `Depois disto, apareceu na visão uma multidão enorme que ninguém podia contar, de todas as nações, tribos, povos e línguas. Estavam de pé com túnicas brancas diante do trono e diante do Cordeiro, e com palmas na mão.`, verse: `…Estavam de pé com túnicas brancas diante do trono e diante do Cordeiro, e com {{blank}} na mão.`, answer: 'palmas' },
+    { ref: 'Apocalipse 7,14', full: `Eu respondi-lhe: «Meu senhor, tu é que sabes.» Ele disse-me: «Estes são os que vêm da grande tribulação; lavaram as suas túnicas e as branquearam no sangue do Cordeiro.`, verse: `…«Estes são os que vêm da grande tribulação; lavaram as suas {{blank}} e as branquearam no sangue do Cordeiro.`, answer: 'túnicas' },
+    { ref: 'Apocalipse 13,11', full: `Vi ainda outra Besta que subia da terra; tinha dois chifres como um cordeiro, mas falava como um dragão.`, verse: `Vi ainda outra {{blank}} que subia da terra; tinha dois chifres como um cordeiro, mas falava como um dragão.`, answer: 'besta' },
+    { ref: 'Apocalipse 14,13', full: `Depois, ouvi uma voz que vinha do céu e me dizia: «Escreve: Felizes os que de agora em diante morrerem em união com o Senhor! Assim é – diz o Espírito; que descansem dos seus trabalhos, pois as suas obras os acompanham.»`, verse: `…que descansem dos seus trabalhos, pois as suas {{blank}} os acompanham.»`, answer: 'obras' },
+    { ref: 'Apocalipse 15,3', full: `E cantavam o Cântico de Moisés, servo do Senhor, e o cântico do Cordeiro, aclamando: «Grandes e admiráveis são as tuas obras, Senhor Deus todo-poderoso! Justos e verdadeiros são os teus caminhos, ó Rei das nações!`, verse: `E cantavam o {{blank}} de Moisés, servo do Senhor, e o {{blank}} do Cordeiro, aclamando:…`, answer: 'cântico' },
+    { ref: 'Apocalipse 19,9', full: `Depois disse-me: «Escreve: Felizes os convidados para o banquete das núpcias do Cordeiro!» E acrescentou: «Estas são palavras verdadeiras, do próprio Deus.»`, verse: `…«Escreve: Felizes os convidados para o banquete das {{blank}} do Cordeiro!»…`, answer: 'núpcias' },
+    { ref: 'Apocalipse 19,13', full: `estava vestido com um manto embebido em sangue e o seu nome é «Verbo de Deus.»`, verse: `estava vestido com um manto embebido em sangue e o seu nome é «{{blank}} de Deus.»`, answer: 'verbo' },
+    { ref: 'Apocalipse 21,9', full: `Depois, um dos sete anjos que têm as sete taças cheias dos sete últimos flagelos aproximou-se, dirigiu-se a mim e disse: «Vem cá. Vou mostrar-te a noiva, a esposa do Cordeiro.»`, verse: `…dirigiu-se a mim e disse: «Vem cá. Vou mostrar-te a noiva, a {{blank}} do Cordeiro.»`, answer: 'esposa' },
+    { ref: 'Apocalipse 21,27', full: `Mas não entrará nela nada de impuro, nem os idólatras, nem os impostores. Só entrarão os que estiverem inscritos no livro da Vida, que está na posse do Cordeiro.`, verse: `Mas não entrará nela nada de {{blank}}, nem os idólatras, nem os impostores.…`, answer: 'impuro' },
+    { ref: 'Apocalipse 22,2', full: `No meio da praça da cidade e nas margens do rio está a árvore da Vida que produz doze colheitas de frutos; em cada mês o seu fruto, e as folhas da árvore servem de medicamento para as nações.`, verse: `…em cada mês o seu fruto, e as {{blank}} da árvore servem de medicamento para as nações.`, answer: 'folhas' },
 ];
