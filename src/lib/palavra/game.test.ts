@@ -174,10 +174,10 @@ describe('revealWords', () => {
         expect(shown(verse, 0)).toBe('e {{blank}}.');
     });
 
-    it('widens with each wrong guess and ends on the whole verse', () => {
-        expect(shown(verse, 1)).toBe('criou homem e {{blank}}.');
-        expect(shown(verse, 3)).toBe(verse);
-        expect(shown(verse, 1, true)).toBe(verse);
+    it('widens with each wrong guess and shows the whole verse only at the end', () => {
+        expect(shown(verse, 1)).toBe('homem e {{blank}}.');
+        expect(shown(verse, 5)).toBe('imagem de Deus; Ele os criou homem e {{blank}}.');
+        expect(shown(verse, 5, true)).toBe(verse);
     });
 
     it('counts from every blank of a repeated word', () => {
