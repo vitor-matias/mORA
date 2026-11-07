@@ -581,9 +581,10 @@ export default function Palavra() {
 
     // The whole verse is laid out from the start, but only the words around
     // the blank are legible; each wrong guess unblurs more, the end all of it.
-    // Once over, the whole verse (`full`) rather than the puzzle's excerpt.
+    // The whole verse (`full`), not the puzzle's excerpt, from the first guess:
+    // laying out only the excerpt made the rest of the verse pop in at the end.
     const verseText = challenge
-        ? (over && challenge.full && blankAnswer(challenge.full, answerDisplay)) || challenge.verse
+        ? (challenge.full && blankAnswer(challenge.full, answerDisplay)) || challenge.verse
         : '';
     const verseWords = challenge ? revealWords(verseText, play.guesses.length, over) : [];
 
