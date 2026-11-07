@@ -4,6 +4,7 @@ import { StrictMode, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter, Routes, Route } from "react-router-dom"
 import './index.css'
+import './lib/swUpdate'
 
 import { Layout } from './components/layout/Layout'
 import Home from './pages/Home'
