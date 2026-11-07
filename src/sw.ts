@@ -14,6 +14,22 @@ import { readReminderSchedule, readShownReminders, recordShownReminder, matchRem
 self.skipWaiting();
 clientsClaim();
 
+// Pages built before src/lib/swUpdate.ts have nothing that reloads them when
+// this worker takes over, so they would keep the old JS until the app is next
+// cold-started. Pages that have it answer this ping and reload themselves at a
+// safe moment; the rest are reloaded here. Not under waitUntil: fetches wait
+// while the worker is activating. Once every page answers, this is a no-op.
+self.addEventListener('activate', () => {
+    self.clients.claim().then(() => self.clients.matchAll({ type: 'window' })).then((clients) => {
+        for (const client of clients) {
+            const channel = new MessageChannel();
+            const timer = setTimeout(() => client.navigate(client.url).catch(() => {}), 3000);
+            channel.port1.onmessage = () => clearTimeout(timer);
+            client.postMessage('mora-reloads-itself?', [channel.port2]);
+        }
+    });
+});
+
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 

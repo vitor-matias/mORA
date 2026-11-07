@@ -6,6 +6,12 @@
 // running the old JS until something reloads it.
 import { registerSW } from 'virtual:pwa-register';
 
+// Tells sw.ts this page reloads itself (onNeedReload below), so the worker
+// leaves it alone instead of reloading it under the user.
+navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data === 'mora-reloads-itself?') event.ports[0]?.postMessage(true);
+});
+
 registerSW({
     onRegisteredSW(_url, registration) {
         if (!registration) return;
