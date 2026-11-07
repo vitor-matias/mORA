@@ -13,6 +13,7 @@ import { Keyboard } from '@/components/palavra/Keyboard';
 import { ResultSheet } from '@/components/palavra/ResultSheet';
 import { fetchDailyChallenge, PALAVRA_IS_MOCK } from '@/lib/palavra/api';
 import {
+    blankAnswer,
     deobfuscateAnswer,
     emojiGrid,
     keyboardState,
@@ -580,7 +581,11 @@ export default function Palavra() {
 
     // The whole verse is laid out from the start, but only the words around
     // the blank are legible; each wrong guess unblurs more, the end all of it.
-    const verseWords = challenge ? revealWords(challenge.verse, play.guesses.length, over) : [];
+    // Once over, the whole verse (`full`) rather than the puzzle's excerpt.
+    const verseText = challenge
+        ? (over && challenge.full && blankAnswer(challenge.full, answerDisplay)) || challenge.verse
+        : '';
+    const verseWords = challenge ? revealWords(verseText, play.guesses.length, over) : [];
 
     // Rendered twice — in the desktop sidebar and in the mobile flow — the way
     // Missa and Horas handle their own date nav. Each DateNav instance owns

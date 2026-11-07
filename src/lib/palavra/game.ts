@@ -122,6 +122,19 @@ export function revealWords(verse: string, guessesMade: number, over = false): {
     }));
 }
 
+/**
+ * `full` with the answer (accents and case ignored, whole words only) marked
+ * by BLANK_MARKER, so the finished card can show the whole verse with the
+ * word in place. Null when the word isn't found, so the caller can fall back
+ * to the puzzle's own `verse`.
+ */
+export function blankAnswer(full: string, answer: string): string | null {
+    if (!answer) return null;
+    const escaped = answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const marked = full.replace(new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, 'giu'), BLANK_MARKER);
+    return marked === full ? null : marked;
+}
+
 // ── The answer, in transit ───────────────────────────────────────────────
 
 /** sha256(`${date}:${ANSWER}`), hex. Lets the client recognise a win without

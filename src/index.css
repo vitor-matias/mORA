@@ -607,10 +607,11 @@
   }
 
   /* Verse words stay blurred until a wrong guess (or the end) reveals them,
-     then come into focus once the row has flipped. Blurring back is
-     instant: switching to another day must not show its verse readable. */
-  /* inline-block: Safari clips a filter at an inline box's edge. */
-  .palavra-verse-word { display: inline-block; transition: filter 0.6s ease 0.6s; }
+     then come into focus once the row has flipped: the longest row (8 tiles,
+     80ms apart, 350ms each) settles at 910ms. Blurring back is instant:
+     switching to another day must not show its verse readable.
+     inline-block: Safari clips a filter at an inline box's edge. */
+  .palavra-verse-word { display: inline-block; transition: filter 0.6s ease 1s; }
   .palavra-verse-hidden { filter: blur(6px); user-select: none; transition: none; }
 
   @media (prefers-reduced-motion: reduce) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     answerHash,
+    blankAnswer,
     deobfuscateAnswer,
     emojiGrid,
     isSolved,
@@ -186,5 +187,22 @@ describe('revealWords', () => {
 
     it('returns every word, so the card can blur the hidden ones in place', () => {
         expect(revealWords(verse, 0).map((w) => w.word).join(' ')).toBe(verse);
+    });
+});
+
+describe('blankAnswer', () => {
+    it('marks the accented answer in the whole verse, ignoring case', () => {
+        expect(blankAnswer('Deus criou o ser humano à sua imagem… homem e mulher.', 'MULHER'))
+            .toBe('Deus criou o ser humano à sua imagem… homem e {{blank}}.');
+        expect(blankAnswer('A minha Salvação vem do Senhor.', 'SALVAÇÃO')).toBe('A minha {{blank}} vem do Senhor.');
+    });
+
+    it('marks whole words only, and every occurrence', () => {
+        expect(blankAnswer('o Verbo; o Verbo estava em Deus; Verbos', 'VERBO')).toBe('o {{blank}}; o {{blank}} estava em Deus; Verbos');
+    });
+
+    it('returns null when the word is not there, so the excerpt is used', () => {
+        expect(blankAnswer('Nada a ver.', 'PASTOR')).toBeNull();
+        expect(blankAnswer('Nada a ver.', '')).toBeNull();
     });
 });
