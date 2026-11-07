@@ -6,7 +6,7 @@
 
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils.js';
-import type { Mark } from './types';
+import { BLANK_MARKER, type Mark } from './types';
 
 /**
  * A word reduced to the 26 letters the keyboard offers.
@@ -100,6 +100,39 @@ const MARK_EMOJI: Record<Mark, string> = {
 /** The shareable board — the only part of a result that travels as text. */
 export function emojiGrid(rows: Mark[][]): string {
     return rows.map((row) => row.map((mark) => MARK_EMOJI[mark]).join('')).join('\n');
+}
+
+// Words shown either side of the blank before each guess; past the end of
+// the list the whole verse is shown. Seeing the full clause up front made the
+// word a first-guess solve on more than a third of days.
+const REVEAL_RADIUS = [1, 3, 6];
+
+/**
+ * The verse word by word, each `shown` if it is within the radius of a blank
+ * after `guessesMade` wrong guesses, or once the game is `over`. The card
+ * blurs the rest. Words keep their punctuation and any BLANK_MARKER.
+ */
+export function revealWords(verse: string, guessesMade: number, over = false): { word: string; shown: boolean }[] {
+    const words = verse.split(' ');
+    const blanks = words.flatMap((word, i) => (word.includes(BLANK_MARKER) ? [i] : []));
+    const radius = over ? undefined : REVEAL_RADIUS[guessesMade];
+    return words.map((word, i) => ({
+        word,
+        shown: radius === undefined || blanks.some((b) => Math.abs(b - i) <= radius),
+    }));
+}
+
+/**
+ * `full` with the answer (accents and case ignored, whole words only) marked
+ * by BLANK_MARKER, so the finished card can show the whole verse with the
+ * word in place. Null when the word isn't found, so the caller can fall back
+ * to the puzzle's own `verse`.
+ */
+export function blankAnswer(full: string, answer: string): string | null {
+    if (!answer) return null;
+    const escaped = answer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const marked = full.replace(new RegExp(`(?<!\\p{L})${escaped}(?!\\p{L})`, 'giu'), BLANK_MARKER);
+    return marked === full ? null : marked;
 }
 
 // ── The answer, in transit ───────────────────────────────────────────────
