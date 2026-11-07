@@ -18,7 +18,7 @@ import {
     keyboardState,
     matchesAnswerHash,
     normalizeWord,
-    revealSegments,
+    revealWords,
     scoreGuess,
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
@@ -578,9 +578,9 @@ export default function Palavra() {
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
-    // While playing, each wrong guess reveals more of the verse; the end shows
-    // it whole. Each segment is split on its blanks when rendered.
-    const verseSegments = challenge ? revealSegments(challenge.verse, play.guesses.length, over) : [];
+    // The whole verse is laid out from the start, but only the words around
+    // the blank are legible; each wrong guess unblurs more, the end all of it.
+    const verseWords = challenge ? revealWords(challenge.verse, play.guesses.length, over) : [];
 
     // Rendered twice — in the desktop sidebar and in the mobile flow — the way
     // Missa and Horas handle their own date nav. Each DateNav instance owns
@@ -778,19 +778,22 @@ export default function Palavra() {
                             or the answer would sit in plain sight beside its
                             own gap. They all fill together on the reveal. */}
                         <blockquote className="surface surface-accent rounded-3xl p-4 text-[1.05rem] leading-relaxed">
-                            {verseSegments.map((segment, s) => {
-                                const parts = segment.text.split(BLANK_MARKER);
+                            {verseWords.map(({ word, shown }, w) => {
+                                const parts = word.split(BLANK_MARKER);
                                 return (
-                                    <span
-                                        // Keyed by guess count so text revealed
-                                        // by this guess mounts, and fades in, anew.
-                                        key={segment.fresh ? `${play.guesses.length}-${s}` : s}
-                                        className={segment.fresh ? 'palavra-verse-in' : undefined}
-                                    >
-                                        {parts.map((part, i) => (
-                                            <Fragment key={i}>
-                                                {part}
-                                                {i < parts.length - 1 && (
+                                    <Fragment key={w}>
+                                        {w > 0 && ' '}
+                                        <span
+                                            // Blurred words are unreadable, so
+                                            // they are kept from screen readers
+                                            // and text selection too.
+                                            className={shown ? 'palavra-verse-word' : 'palavra-verse-word palavra-verse-hidden'}
+                                            aria-hidden={shown ? undefined : true}
+                                        >
+                                            {parts.map((part, i) => (
+                                                <Fragment key={i}>
+                                                    {part}
+                                                    {i < parts.length - 1 && (
                                                     <span
                                                         // Only while it is a blank: after
                                                         // the reveal it is ordinary text.
@@ -805,12 +808,18 @@ export default function Palavra() {
                                                     >
                                                         {over ? answerDisplay : ' '}
                                                     </span>
-                                                )}
-                                            </Fragment>
-                                        ))}
-                                    </span>
+                                                    )}
+                                                </Fragment>
+                                            ))}
+                                        </span>
+                                    </Fragment>
                                 );
                             })}
+                            {/* The blurred words are hidden from screen readers,
+                                so say that the verse goes on. */}
+                            {verseWords.some((w) => !w.shown) && (
+                                <span className="sr-only"> {t.verseStillHidden}</span>
+                            )}
                             <cite className="block not-italic text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-2">
                                 {over && (
                                     <>

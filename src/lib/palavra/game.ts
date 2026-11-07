@@ -107,50 +107,19 @@ export function emojiGrid(rows: Mark[][]): string {
 // word a first-guess solve on more than a third of days.
 const REVEAL_RADIUS = [1, 3, 6];
 
-/** A run of verse text; `fresh` when the last guess (or the end) revealed it. */
-export interface VerseSegment {
-    text: string;
-    fresh: boolean;
-}
-
 /**
- * The verse as far as it is revealed after `guessesMade` wrong guesses (or
- * all of it once the game is `over`): only the words within the radius of a
- * blank, each hidden run shown as one "…", or "(…)" at either end. The text
- * still carries BLANK_MARKER. Words the previous guess didn't show yet come
- * back `fresh`, so the card can animate just those.
+ * The verse word by word, each `shown` if it is within the radius of a blank
+ * after `guessesMade` wrong guesses, or once the game is `over`. The card
+ * blurs the rest. Words keep their punctuation and any BLANK_MARKER.
  */
-export function revealSegments(verse: string, guessesMade: number, over = false): VerseSegment[] {
+export function revealWords(verse: string, guessesMade: number, over = false): { word: string; shown: boolean }[] {
     const words = verse.split(' ');
     const blanks = words.flatMap((word, i) => (word.includes(BLANK_MARKER) ? [i] : []));
-    const visibleAt = (step: number) => {
-        const radius = REVEAL_RADIUS[step];
-        return words.map((_, i) => radius === undefined || blanks.some((b) => Math.abs(b - i) <= radius));
-    };
-    const now = over ? words.map(() => true) : visibleAt(guessesMade);
-    const before = guessesMade > 0 ? visibleAt(guessesMade - 1) : now;
-
-    const segments: VerseSegment[] = [];
-    const add = (text: string, fresh: boolean) => {
-        const last = segments.at(-1);
-        if (last && last.fresh === fresh) last.text += text;
-        else segments.push({ text, fresh });
-    };
-    for (let i = 0; i < words.length; i++) {
-        const space = i === 0 ? '' : ' ';
-        if (!now[i]) {
-            if (i > 0 && !now[i - 1]) continue; // this hidden run is already marked
-            const runEnds = now.indexOf(true, i) === -1;
-            add(space + (i === 0 || runEnds ? '(…)' : '…'), false);
-            continue;
-        }
-        let word = words[i];
-        // The excerpt's own ellipsis is redundant beside a hidden run.
-        if (i > 0 && !now[i - 1]) word = word.replace(/^…/, '');
-        if (i < words.length - 1 && !now[i + 1]) word = word.replace(/…$/, '');
-        add(space + word, !before[i]);
-    }
-    return segments;
+    const radius = over ? undefined : REVEAL_RADIUS[guessesMade];
+    return words.map((word, i) => ({
+        word,
+        shown: radius === undefined || blanks.some((b) => Math.abs(b - i) <= radius),
+    }));
 }
 
 // ── The answer, in transit ───────────────────────────────────────────────

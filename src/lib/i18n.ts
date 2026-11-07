@@ -88,6 +88,7 @@ const translations = {
 
         letters: (n: number) => `${n} letras`,
         hiddenWord: (n: number) => `palavra escondida de ${n} letras`,
+        verseStillHidden: "O resto do versículo vai sendo revelado a cada tentativa falhada.",
         wrongLength: (n: number) => `A palavra tem ${n} letras.`,
         alreadyTried: "Já tentaste essa palavra.",
         shareHeading: (date: string, score: string) => `Oremus — Palavra Bíblica do Dia ${date} ${score}`,
