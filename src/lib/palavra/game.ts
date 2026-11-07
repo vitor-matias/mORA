@@ -102,10 +102,11 @@ export function emojiGrid(rows: Mark[][]): string {
     return rows.map((row) => row.map((mark) => MARK_EMOJI[mark]).join('')).join('\n');
 }
 
-// Words shown either side of the blank before each guess; past the end of
-// the list the whole verse is shown. Seeing the full clause up front made the
-// word a first-guess solve on more than a third of days.
-const REVEAL_RADIUS = [1, 3, 6];
+// Words shown either side of the blank before guesses 1 to 5; the last guess
+// gets the whole verse. Seeing the full clause up front made the word a
+// first-guess solve on more than a third of days, and [1, 3, 6] still showed
+// most verses whole by guess 4.
+const REVEAL_RADIUS = [1, 2, 3, 4, 6];
 
 /**
  * The verse word by word, each `shown` if it is within the radius of a blank
