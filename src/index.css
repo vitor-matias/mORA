@@ -606,8 +606,16 @@
     40%, 80% { transform: translateX(5px); }
   }
 
+  /* Verse words a wrong guess reveals fade in once the row has flipped, so
+     the eye goes to the letters first and then to the new context. */
+  .palavra-verse-in { animation: palavra-verse-in 0.5s ease 0.6s both; }
+  @keyframes palavra-verse-in {
+    0%   { opacity: 0; filter: blur(3px); }
+    100% { opacity: 1; filter: blur(0); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .palavra-reveal, .palavra-shake { animation: none; }
+    .palavra-reveal, .palavra-shake, .palavra-verse-in { animation: none; }
     .palavra-tile-filled { transform: none; }
   }
 }

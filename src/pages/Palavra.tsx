@@ -18,7 +18,7 @@ import {
     keyboardState,
     matchesAnswerHash,
     normalizeWord,
-    revealVerse,
+    revealSegments,
     scoreGuess,
 } from '@/lib/palavra/game';
 import { BLANK_MARKER, MAX_GUESSES, type DailyChallenge } from '@/lib/palavra/types';
@@ -578,11 +578,9 @@ export default function Palavra() {
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
-    // The verse split on every blank: n parts means n-1 gaps to render. While
-    // playing, each wrong guess reveals more of it; the end shows it whole.
-    const verseParts = challenge
-        ? (over ? challenge.verse : revealVerse(challenge.verse, play.guesses.length)).split(BLANK_MARKER)
-        : [''];
+    // While playing, each wrong guess reveals more of the verse; the end shows
+    // it whole. Each segment is split on its blanks when rendered.
+    const verseSegments = challenge ? revealSegments(challenge.verse, play.guesses.length, over) : [];
 
     // Rendered twice — in the desktop sidebar and in the mobile flow — the way
     // Missa and Horas handle their own date nav. Each DateNav instance owns
@@ -780,27 +778,39 @@ export default function Palavra() {
                             or the answer would sit in plain sight beside its
                             own gap. They all fill together on the reveal. */}
                         <blockquote className="surface surface-accent rounded-3xl p-4 text-[1.05rem] leading-relaxed">
-                            {verseParts.map((part, i) => (
-                                <Fragment key={i}>
-                                    {part}
-                                    {i < verseParts.length - 1 && (
-                                        <span
-                                            // Only while it is a blank: after
-                                            // the reveal it is ordinary text.
-                                            // A plain span is `generic`, which
-                                            // ARIA gives no accessible name,
-                                            // so the label below could be
-                                            // dropped without a role here.
-                                            role={over ? undefined : 'img'}
-                                            className="inline-block align-baseline border-b-2 border-liturgy-600 dark:border-liturgy-400 text-liturgy-700 dark:text-liturgy-300 font-semibold px-1 text-center"
-                                            style={over ? undefined : { minWidth: `${challenge.length * 0.72}em` }}
-                                            aria-label={over ? undefined : t.hiddenWord(challenge.length)}
-                                        >
-                                            {over ? answerDisplay : ' '}
-                                        </span>
-                                    )}
-                                </Fragment>
-                            ))}
+                            {verseSegments.map((segment, s) => {
+                                const parts = segment.text.split(BLANK_MARKER);
+                                return (
+                                    <span
+                                        // Keyed by guess count so text revealed
+                                        // by this guess mounts, and fades in, anew.
+                                        key={segment.fresh ? `${play.guesses.length}-${s}` : s}
+                                        className={segment.fresh ? 'palavra-verse-in' : undefined}
+                                    >
+                                        {parts.map((part, i) => (
+                                            <Fragment key={i}>
+                                                {part}
+                                                {i < parts.length - 1 && (
+                                                    <span
+                                                        // Only while it is a blank: after
+                                                        // the reveal it is ordinary text.
+                                                        // A plain span is `generic`, which
+                                                        // ARIA gives no accessible name,
+                                                        // so the label below could be
+                                                        // dropped without a role here.
+                                                        role={over ? undefined : 'img'}
+                                                        className="inline-block align-baseline border-b-2 border-liturgy-600 dark:border-liturgy-400 text-liturgy-700 dark:text-liturgy-300 font-semibold px-1 text-center"
+                                                        style={over ? undefined : { minWidth: `${challenge.length * 0.72}em` }}
+                                                        aria-label={over ? undefined : t.hiddenWord(challenge.length)}
+                                                    >
+                                                        {over ? answerDisplay : ' '}
+                                                    </span>
+                                                )}
+                                            </Fragment>
+                                        ))}
+                                    </span>
+                                );
+                            })}
                             <cite className="block not-italic text-xs font-medium text-zinc-500 dark:text-zinc-400 mt-2">
                                 {over && (
                                     <>

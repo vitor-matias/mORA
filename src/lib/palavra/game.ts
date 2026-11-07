@@ -107,26 +107,50 @@ export function emojiGrid(rows: Mark[][]): string {
 // word a first-guess solve on more than a third of days.
 const REVEAL_RADIUS = [1, 3, 6];
 
+/** A run of verse text; `fresh` when the last guess (or the end) revealed it. */
+export interface VerseSegment {
+    text: string;
+    fresh: boolean;
+}
+
 /**
- * The verse as far as it is revealed after `guessesMade` wrong guesses: only
- * the words within the radius of a blank, with each hidden run collapsed to
- * one "…", and "(…)" at either end while part of the verse is still hidden.
- * The result still carries BLANK_MARKER, so it renders the same way.
+ * The verse as far as it is revealed after `guessesMade` wrong guesses (or
+ * all of it once the game is `over`): only the words within the radius of a
+ * blank, each hidden run shown as one "…", or "(…)" at either end. The text
+ * still carries BLANK_MARKER. Words the previous guess didn't show yet come
+ * back `fresh`, so the card can animate just those.
  */
-export function revealVerse(verse: string, guessesMade: number): string {
-    const radius = REVEAL_RADIUS[guessesMade];
-    if (radius === undefined) return verse;
+export function revealSegments(verse: string, guessesMade: number, over = false): VerseSegment[] {
     const words = verse.split(' ');
     const blanks = words.flatMap((word, i) => (word.includes(BLANK_MARKER) ? [i] : []));
-    const shown = words
-        .map((word, i) => (blanks.some((b) => Math.abs(b - i) <= radius) ? word : '…'))
-        .join(' ');
-    if (shown === verse) return verse;
-    return shown
-        .replace(/…(?: …)+/g, '…') // a hidden run is one ellipsis…
-        .replace(/…+/g, '…') // …even where it meets the excerpt's own
-        .replace(/^…\s*/, '(…) ')
-        .replace(/\s*…$/, ' (…)');
+    const visibleAt = (step: number) => {
+        const radius = REVEAL_RADIUS[step];
+        return words.map((_, i) => radius === undefined || blanks.some((b) => Math.abs(b - i) <= radius));
+    };
+    const now = over ? words.map(() => true) : visibleAt(guessesMade);
+    const before = guessesMade > 0 ? visibleAt(guessesMade - 1) : now;
+
+    const segments: VerseSegment[] = [];
+    const add = (text: string, fresh: boolean) => {
+        const last = segments.at(-1);
+        if (last && last.fresh === fresh) last.text += text;
+        else segments.push({ text, fresh });
+    };
+    for (let i = 0; i < words.length; i++) {
+        const space = i === 0 ? '' : ' ';
+        if (!now[i]) {
+            if (i > 0 && !now[i - 1]) continue; // this hidden run is already marked
+            const runEnds = now.indexOf(true, i) === -1;
+            add(space + (i === 0 || runEnds ? '(…)' : '…'), false);
+            continue;
+        }
+        let word = words[i];
+        // The excerpt's own ellipsis is redundant beside a hidden run.
+        if (i > 0 && !now[i - 1]) word = word.replace(/^…/, '');
+        if (i < words.length - 1 && !now[i + 1]) word = word.replace(/…$/, '');
+        add(space + word, !before[i]);
+    }
+    return segments;
 }
 
 // ── The answer, in transit ───────────────────────────────────────────────

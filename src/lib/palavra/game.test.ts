@@ -8,7 +8,7 @@ import {
     matchesAnswerHash,
     normalizeWord,
     obfuscateAnswer,
-    revealVerse,
+    revealSegments,
     scoreGuess,
 } from './game.ts';
 import type { Mark } from './types.ts';
@@ -164,20 +164,31 @@ describe('the answer in transit', () => {
     });
 });
 
-describe('revealVerse', () => {
+describe('revealSegments', () => {
     const verse = 'Deus criou o ser humano à sua imagem, criou-o à imagem de Deus; Ele os criou homem e {{blank}}.';
+    const text = (v: string, n: number, over = false) => revealSegments(v, n, over).map((s) => s.text).join('');
 
     it('shows only the words next to the blank before the first guess', () => {
-        expect(revealVerse(verse, 0)).toBe('(…) e {{blank}}.');
+        expect(text(verse, 0)).toBe('(…) e {{blank}}.');
     });
 
     it('widens with each wrong guess and ends on the whole verse', () => {
-        expect(revealVerse(verse, 1)).toBe('(…) criou homem e {{blank}}.');
-        expect(revealVerse(verse, 3)).toBe(verse);
+        expect(text(verse, 1)).toBe('(…) criou homem e {{blank}}.');
+        expect(text(verse, 3)).toBe(verse);
+        expect(text(verse, 1, true)).toBe(verse);
     });
 
     it('keeps every blank of a repeated word, with one ellipsis per hidden run', () => {
-        expect(revealVerse('No princípio havia o {{blank}}; o {{blank}} estava em Deus; e o {{blank}} era Deus.', 0))
+        expect(text('No princípio havia o {{blank}}; o {{blank}} estava em Deus; e o {{blank}} era Deus.', 0))
             .toBe('(…) o {{blank}}; o {{blank}} estava … o {{blank}} era (…)');
+    });
+
+    it('marks only the words this guess revealed as fresh', () => {
+        expect(revealSegments(verse, 0).filter((s) => s.fresh)).toEqual([]);
+        expect(revealSegments(verse, 1)).toEqual([
+            { text: '(…)', fresh: false },
+            { text: ' criou homem', fresh: true },
+            { text: ' e {{blank}}.', fresh: false },
+        ]);
     });
 });
