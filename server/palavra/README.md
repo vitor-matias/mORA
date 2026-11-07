@@ -436,8 +436,9 @@ repeated a verse on **140 days of a 365-day year** while never showing about
 Instead, days are counted from a fixed epoch and the pool is walked in a
 permuted order. Each complete pass through all 1482 verses is **reshuffled with
 a new seed**, so every verse appears exactly once per cycle and the next cycle
-deals a different order. With 1482 entries that's a fresh verse every day for
-about 4.1 years before anything recurs.
+deals a different order. With 1482 entries a cycle runs about 4.1 years. That
+is a per-cycle guarantee, not a minimum gap: a verse dealt late in one cycle can
+come back early in the next.
 
 It stays a pure function of the date, which is what makes backfilling safe: any
 republish of the same day produces byte-identical output.
@@ -446,7 +447,10 @@ republish of the same day produces byte-identical output.
 entries in `verses.js` (the pool size is part of the arithmetic), and changing
 `EPOCH_MS`. Neither matters for days that were never published, but avoid
 force-republishing a day that is already out: players would see the archive
-change under them. Append-only, and let the next cycle pick up the additions.
+change under them. The re-deal is immediate: the publisher reads
+`VERSES.length` for every date, so additions can turn up from the next
+unpublished day, and that day may also land on a verse already published under
+the old pool size. Keep the pool append-only.
 
 ### Choosing the hidden word
 
