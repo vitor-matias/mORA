@@ -347,6 +347,9 @@ export default function Palavra() {
     // The day just finished on this screen: only then does the rest of the
     // verse fade in, not every time a finished day is reopened.
     const [finishedHere, setFinishedHere] = useState<string | null>(null);
+    // Leaving the tab or the day ends that moment: a browser restarts a CSS
+    // animation when its element is shown again, replaying the fade.
+    useEffect(() => () => setFinishedHere(null), [pageTab, viewDate]);
 
     const onEnter = useCallback(() => {
         if (!challenge || !answer || readOnly) return;
@@ -808,6 +811,8 @@ export default function Palavra() {
                                                 'palavra-verse-word',
                                                 !shown && 'palavra-verse-hidden',
                                                 (w < excerptFirst || w > excerptLast) && 'palavra-verse-arriving',
+                                                // Solved elsewhere and synced in: no unblur either.
+                                                over && finishedHere !== challenge.date && 'transition-none',
                                             )}
                                             aria-hidden={shown ? undefined : true}
                                         >
