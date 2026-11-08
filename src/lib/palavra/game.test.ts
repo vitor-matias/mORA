@@ -4,6 +4,7 @@ import {
     blankAnswer,
     deobfuscateAnswer,
     emojiGrid,
+    excerptSpan,
     isSolved,
     keyboardState,
     matchesAnswerHash,
@@ -188,6 +189,22 @@ describe('revealWords', () => {
 
     it('returns every word, so the card can blur the hidden ones in place', () => {
         expect(revealWords(verse, 0).map((w) => w.word).join(' ')).toBe(verse);
+    });
+});
+
+describe('excerptSpan', () => {
+    const full = 'Jesus respondeu-lhe: «Eu sou o {{blank}} e a Vida. Ninguém vai ao Pai.';
+
+    it('finds an excerpt cut at either end, even mid-word', () => {
+        expect(excerptSpan(full, '…Eu sou o {{blank}} e a Vida…')).toEqual([2, 8]);
+    });
+
+    it('covers every word when nothing was cut', () => {
+        expect(excerptSpan(full, full)).toEqual([0, 12]);
+    });
+
+    it('is null when the excerpt is not in the verse', () => {
+        expect(excerptSpan(full, 'outro {{blank}}…')).toBeNull();
     });
 });
 

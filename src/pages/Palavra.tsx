@@ -16,6 +16,7 @@ import {
     blankAnswer,
     deobfuscateAnswer,
     emojiGrid,
+    excerptSpan,
     keyboardState,
     matchesAnswerHash,
     normalizeWord,
@@ -32,6 +33,7 @@ import { useDayRollover } from '@/lib/useDayRollover';
 import { syncNostrNow } from '@/lib/useNostrSync';
 import { publishKey, usePublishStatus } from '@/lib/palavra/publishStatus';
 import { useTranslations } from '@/lib/i18n';
+import { cn } from '@/lib/utils';
 
 const EMPTY_PLAY = { guesses: [] as string[], solved: false, ms: 0 };
 
@@ -342,6 +344,10 @@ export default function Palavra() {
         }
     }, [today, myPubkey]);
 
+    // The day just finished on this screen: only then does the rest of the
+    // verse fade in, not every time a finished day is reopened.
+    const [finishedHere, setFinishedHere] = useState<string | null>(null);
+
     const onEnter = useCallback(() => {
         if (!challenge || !answer || readOnly) return;
         // Read the board from the store rather than this render's snapshot,
@@ -368,6 +374,7 @@ export default function Palavra() {
 
         const guesses = [...current.guesses, guess];
         if (solved || guesses.length >= MAX_GUESSES) {
+            setFinishedHere(challenge.date);
             void reportResult();
         }
     }, [challenge, answer, readOnly, scope, submitGuess, writeDraft, flashNotice, reportResult, t]);
@@ -579,14 +586,16 @@ export default function Palavra() {
         ].join('\n');
     }, [challenge, over, play.solved, play.guesses.length, played, t]);
 
-    // The whole verse is laid out from the start, but only the words around
-    // the blank are legible; each wrong guess unblurs more, the end all of it.
-    // The whole verse (`full`), not the puzzle's excerpt, from the first guess:
-    // laying out only the excerpt made the rest of the verse pop in at the end.
+    // The excerpt is laid out from the start, but only the words around the
+    // blank are legible; each wrong guess unblurs more, the end all of it.
+    // The whole verse (`full`) only once over: during play it can run to three
+    // times the excerpt's length, taking that height from the board and keyboard.
     const verseText = challenge
-        ? (challenge.full && blankAnswer(challenge.full, answerDisplay)) || challenge.verse
+        ? (over && challenge.full && blankAnswer(challenge.full, answerDisplay)) || challenge.verse
         : '';
     const verseWords = challenge ? revealWords(verseText, play.guesses.length, over) : [];
+    const [excerptFirst, excerptLast] = (challenge && finishedHere === challenge.date
+        && excerptSpan(verseText, challenge.verse)) || [0, Infinity];
 
     // Rendered twice — in the desktop sidebar and in the mobile flow — the way
     // Missa and Horas handle their own date nav. Each DateNav instance owns
@@ -787,13 +796,19 @@ export default function Palavra() {
                             {verseWords.map(({ word, shown }, w) => {
                                 const parts = word.split(BLANK_MARKER);
                                 return (
-                                    <Fragment key={w}>
+                                    // Keyed from the excerpt's first word, so when the
+                                    // verse grows at its start each word keeps its span.
+                                    <Fragment key={w - excerptFirst}>
                                         {w > 0 && ' '}
                                         <span
                                             // Blurred words are unreadable, so
                                             // they are kept from screen readers
                                             // and text selection too.
-                                            className={shown ? 'palavra-verse-word' : 'palavra-verse-word palavra-verse-hidden'}
+                                            className={cn(
+                                                'palavra-verse-word',
+                                                !shown && 'palavra-verse-hidden',
+                                                (w < excerptFirst || w > excerptLast) && 'palavra-verse-arriving',
+                                            )}
                                             aria-hidden={shown ? undefined : true}
                                         >
                                             {parts.map((part, i) => (
