@@ -614,8 +614,15 @@
   .palavra-verse-word { display: inline-block; transition: filter 0.6s ease 1s; }
   .palavra-verse-hidden { filter: blur(6px); user-select: none; transition: none; }
 
+  /* The rest of the verse, beyond the excerpt, arrives at the same moment
+     and pace as the words coming into focus. */
+  .palavra-verse-arriving { animation: palavra-verse-arrive 0.6s ease 1s backwards; }
+  @keyframes palavra-verse-arrive {
+    from { opacity: 0; filter: blur(6px); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .palavra-reveal, .palavra-shake { animation: none; }
+    .palavra-reveal, .palavra-shake, .palavra-verse-arriving { animation: none; }
     .palavra-verse-word { transition: none; }
     .palavra-tile-filled { transform: none; }
   }

@@ -136,6 +136,18 @@ export function blankAnswer(full: string, answer: string): string | null {
     return marked === full ? null : marked;
 }
 
+/**
+ * The indexes of the first and last word of `full` that `excerpt` covers, both
+ * carrying the same blanks. Null when the excerpt isn't found in it.
+ */
+export function excerptSpan(full: string, excerpt: string): [number, number] | null {
+    const core = excerpt.replace(/…/g, '').trim();
+    const at = full.indexOf(core);
+    if (at < 0) return null;
+    const wordIndexAt = (end: number) => full.slice(0, end).split(' ').length - 1;
+    return [wordIndexAt(at), wordIndexAt(at + core.length)];
+}
+
 // ── The answer, in transit ───────────────────────────────────────────────
 
 /** sha256(`${date}:${ANSWER}`), hex. Lets the client recognise a win without
