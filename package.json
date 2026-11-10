@@ -43,7 +43,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "globals": "^17.12.0",
-    "jsdom": "^30.0.1",
+    "jsdom": "^31.0.0",
     "pdfjs-dist": "^6.3.289",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.4",
