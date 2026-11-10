@@ -562,8 +562,9 @@ describe('healOwnEvents', () => {
 
     it('ignores events by other authors', async () => {
         const { healOwnEvents } = await import('./nostr');
-        const [one] = TEST_RELAYS;
+        const [one, two] = TEST_RELAYS;
         perRelayEvents.set(one, [{ ...ev('c'.repeat(64), 30), pubkey: 'f'.repeat(64) }]);
+        perRelayEvents.set(two, []);
 
         await healOwnEvents(ME);
 
