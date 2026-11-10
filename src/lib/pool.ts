@@ -174,10 +174,10 @@ export const pool = new NPool({
 /** An id no event has, so the relay answers with a bare EOSE. */
 const NO_SUCH_EVENT = '0'.repeat(64);
 
-async function roundTrip(relay: NRelay, signal: AbortSignal): Promise<number | null> {
+async function roundTrip(relay: NRelay, timeoutMs: number): Promise<number | null> {
     const startedAt = performance.now();
     try {
-        for await (const _answer of relay.req([{ ids: [NO_SUCH_EVENT], limit: 1 }], { signal })) {
+        for await (const _answer of relay.req([{ ids: [NO_SUCH_EVENT], limit: 1 }], { signal: AbortSignal.timeout(timeoutMs) })) {
             return Math.round(performance.now() - startedAt);
         }
     } catch {
@@ -195,6 +195,5 @@ async function roundTrip(relay: NRelay, signal: AbortSignal): Promise<number | n
  */
 export async function pingRelay(url: string, timeoutMs = 5000): Promise<number | null> {
     const relay = pool.relay(url);
-    const signal = AbortSignal.timeout(timeoutMs);
-    return await roundTrip(relay, signal) === null ? null : roundTrip(relay, signal);
+    return await roundTrip(relay, timeoutMs) === null ? null : roundTrip(relay, timeoutMs);
 }

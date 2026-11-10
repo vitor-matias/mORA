@@ -169,6 +169,26 @@ describe('pingRelay', () => {
         expect(await ping).toEqual(expect.any(Number));
     });
 
+    it('gives the second REQ its own timeout, after a slow connection', async () => {
+        // @ts-expect-error a stand-in for the browser's own constructor
+        globalThis.WebSocket = ScriptedSocket;
+        const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+        const ping = pingRelay('wss://slow-to-open.example', 400);
+        const socket = ScriptedSocket.latest!;
+        const reqs = () => socket.sent.filter(([type]) => type === 'REQ');
+
+        await wait(200);
+        socket.open();
+        await vi.waitFor(() => expect(reqs()).toHaveLength(1));
+        socket.say(['EOSE', reqs()[0][1]]);
+        await vi.waitFor(() => expect(reqs()).toHaveLength(2));
+        // Past 400ms from the start, where one shared timeout would have fired.
+        await wait(250);
+        socket.say(['EOSE', reqs()[1][1]]);
+
+        expect(await ping).toEqual(expect.any(Number));
+    });
+
     it('is null for a relay that never answers', async () => {
         // @ts-expect-error a stand-in for the browser's own constructor
         globalThis.WebSocket = ScriptedSocket;
