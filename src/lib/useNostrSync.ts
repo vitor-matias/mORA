@@ -11,6 +11,10 @@ const MIN_INTERVAL_MS = 60_000;
 const PUBLISH_DEBOUNCE_MS = 2_000;
 
 let lastSyncAt = 0;
+// Topping up the player's own events on the relays that lack them is a full
+// read of their history, so once an hour per page load is plenty.
+const HEAL_INTERVAL_MS = 3_600_000;
+let lastHealAt = 0;
 
 // The running hook's pull, for the Palavra board to call when it opens.
 let pullNow: ((force?: boolean) => Promise<void>) | null = null;
@@ -96,6 +100,12 @@ export function useNostrSync() {
                 // default. Under that branch, a player with sync off got a
                 // single attempt per game and no second chance.
                 await publishMissingResults(pubkey);
+
+                if (Date.now() - lastHealAt > HEAL_INTERVAL_MS) {
+                    lastHealAt = Date.now();
+                    const { healOwnEvents } = await import('@/lib/nostr');
+                    await healOwnEvents(pubkey);
+                }
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own
                 // state stands until the next attempt. Release the throttle so

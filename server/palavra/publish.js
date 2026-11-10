@@ -194,17 +194,24 @@ export function publishedDate(event, pubkey) {
     return date && d === puzzleDTag(date) ? date : null;
 }
 
-/** The puzzle events (by date) this publisher already has on a relay. */
+/**
+ * The puzzle events (by date) this publisher already has on a relay, and
+ * whether the relay finished answering. A CLOSED, timeout or socket error
+ * yields `answered: false`: that is silence, not "holds nothing", and a relay
+ * that refuses the read (relay.ditto.pub does, for kind 30078) must not be
+ * mistaken for an empty one and be sent 60 days of events every cycle.
+ */
 function publishedDatesOn(url, pubkey, since) {
     return new Promise((resolve) => {
         const found = new Map();
+        let answered = false;
         let settled = false;
         const finish = () => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             try { socket.close(); } catch { /* already closing */ }
-            resolve(found);
+            resolve({ found, answered });
         };
         const socket = new WebSocket(url);
         const timer = setTimeout(finish, RELAY_TIMEOUT_MS);
@@ -218,7 +225,8 @@ function publishedDatesOn(url, pubkey, since) {
                     const date = publishedDate(msg[2], pubkey);
                     if (date) found.set(date, msg[2]);
                 }
-                if (msg[0] === 'EOSE') finish();
+                if (msg[0] === 'EOSE') { answered = true; finish(); }
+                if (msg[0] === 'CLOSED') finish();
             } catch { /* not for us */ }
         });
         socket.on('error', finish);
@@ -232,10 +240,10 @@ function publishedDatesOn(url, pubkey, since) {
  */
 async function publishedDates(pubkey, sinceDays) {
     const since = Math.floor((Date.now() - sinceDays * 86400000) / 1000);
-    const maps = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
+    const reads = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
     const all = new Map();
-    for (const map of maps) for (const [d, event] of map) all.set(d, event);
-    return { all, perRelay: maps };
+    for (const { found } of reads) for (const [d, event] of found) all.set(d, event);
+    return { all, perRelay: reads };
 }
 
 function sendTo(url, event) {
@@ -295,10 +303,9 @@ async function fillGap(secretKey, pubkey, days = MAX_GAP_DAYS) {
 
     // Redundancy: a day that exists but is missing on some relays (it was
     // down, or rejected it) is re-sent as the same signed event to those only.
-    // shortcut: a relay that never answers is retried each cycle, harmless but
-    // wasteful; track per-relay failures if that gets noisy.
     for (const [date, event] of already) {
-        const lacking = RELAYS.filter((_, i) => !perRelay[i].has(date));
+        // Only relays that answered: silence says nothing about what they hold.
+        const lacking = RELAYS.filter((_, i) => perRelay[i].answered && !perRelay[i].found.has(date));
         if (lacking.length === 0) continue;
         const sent = (await Promise.all(lacking.map((url) => sendTo(url, event)))).filter(Boolean).length;
         console.log(`${date}  healed ${sent}/${lacking.length} relays that lacked it`);

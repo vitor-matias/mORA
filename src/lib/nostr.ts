@@ -135,10 +135,13 @@ const POLICY_REFUSAL = /^(auth-required|restricted):/;
  * get the union deduplicated by id and pick, which is what the ones that care
  * already do.
  */
+/** What one relay said to a queryComplete read. */
+export interface RelayRead { url: string; events: NostrEvent[]; answered: boolean }
+
 export async function queryComplete(
     filters: NostrFilter[],
-    opts: { signal: AbortSignal; relays?: string[]; heal?: boolean },
-): Promise<{ events: NostrEvent[]; answered: number; asked: number; refused: number }> {
+    opts: { signal: AbortSignal; relays?: string[] },
+): Promise<{ events: NostrEvent[]; answered: number; asked: number; refused: number; relays: RelayRead[] }> {
     const urls = opts.relays ?? RELAYS;
 
     const perRelay = await Promise.all(urls.map(async (url) => {
@@ -162,52 +165,56 @@ export async function queryComplete(
     for (const relay of perRelay) {
         for (const event of relay.events) byId.set(event.id, event);
     }
-    if (opts.heal) healThinEvents(urls, perRelay, byId);
     return {
         events: [...byId.values()],
         answered: perRelay.filter((relay) => relay.answered).length,
         asked: urls.length,
         refused: perRelay.filter((relay) => relay.refused).length,
+        relays: perRelay.map((relay, i) => ({ url: urls[i], ...relay })),
     };
 }
 
-/** Most events re-sent per read, so one busy board can't turn into a burst. */
-const MAX_HEAL_PER_READ = 20;
+/** Most events one pass re-sends, so a long history can't become a burst. */
+const MAX_HEAL_EVENTS = 50;
 
 /**
- * Re-send events that fewer than half of the relays that answered hold, to the
- * answering relays that lack them. Same signed event, so a relay that has it
- * already just says duplicate. Fire and forget: the board doesn't wait on it.
+ * Re-send the signed-in player's OWN addressable events to the relays that
+ * answered a read and hold nothing newer for that address.
  *
- * Relays that did not reach EOSE are left alone: their silence says nothing
- * about what they hold. NRelay1 already verified every event's signature.
- * shortcut: a relay that cut the read at its limit looks like it lacks the
- * older events; the extra re-send is harmless.
+ * Only the player's own, on purpose: a client re-sending strangers' events
+ * would let anyone plant junk on one relay and have every reader copy it to
+ * the rest. Per address, the newest version wins, so a superseded one is never
+ * pushed around and a relay holding an older one gets the newest.
+ *
+ * Skipped: relays that did not reach EOSE (silence says nothing about what
+ * they hold) and relays whose reply filled the limit (they may have cut the
+ * list short, so "missing" would be a guess). Fire and forget.
  */
-function healThinEvents(
-    urls: string[],
-    perRelay: { events: NostrEvent[]; answered: boolean }[],
-    byId: Map<string, NostrEvent>,
-): void {
-    const answering = urls.filter((_, i) => perRelay[i].answered);
-    if (answering.length < 2) return;
-    const holders = new Map<string, Set<string>>();
-    perRelay.forEach((relay, i) => {
-        for (const event of relay.events) {
-            const set = holders.get(event.id) ?? new Set<string>();
-            set.add(urls[i]);
-            holders.set(event.id, set);
+export async function healOwnEvents(pubkey: string, limit = 200): Promise<void> {
+    const { relays } = await queryComplete(
+        [{ kinds: [KIND_APP_STATE], authors: [pubkey], limit }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    const address = (e: NostrEvent) => `${e.kind}:${e.tags.find(([n]) => n === 'd')?.[1] ?? ''}`;
+    const newest = new Map<string, NostrEvent>();
+    for (const relay of relays) {
+        for (const event of matching(relay.events, { kind: KIND_APP_STATE, author: pubkey })) {
+            if (supersedes(event, newest.get(address(event)))) newest.set(address(event), event);
         }
-    });
-    let budget = MAX_HEAL_PER_READ;
-    for (const [id, have] of holders) {
-        if (budget === 0) break;
-        if (have.size / answering.length >= 0.5) continue;
-        budget--;
-        const missing = answering.filter((url) => !have.has(url));
-        const event = byId.get(id)!;
-        for (const url of missing) {
-            pool.relay(url).event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) })
+    }
+
+    let budget = MAX_HEAL_EVENTS;
+    for (const relay of relays) {
+        if (!relay.answered || relay.events.length >= limit) continue;
+        const held = new Map<string, NostrEvent>();
+        for (const event of relay.events) {
+            if (supersedes(event, held.get(address(event)))) held.set(address(event), event);
+        }
+        for (const [key, event] of newest) {
+            if (budget === 0) return;
+            if (held.get(key)?.id === event.id || !supersedes(event, held.get(key))) continue;
+            budget--;
+            pool.relay(relay.url).event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) })
                 .catch(() => { /* best effort */ });
         }
     }
