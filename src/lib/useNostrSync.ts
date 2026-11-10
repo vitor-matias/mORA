@@ -104,7 +104,11 @@ export function useNostrSync() {
                 if (Date.now() - lastHealAt > HEAL_INTERVAL_MS) {
                     lastHealAt = Date.now();
                     const { healOwnEvents } = await import('@/lib/nostr');
-                    await healOwnEvents(pubkey);
+                    // Honour the opt-outs: public results follow the results
+                    // switch, everything else (snapshots, lists) the sync one.
+                    const { usePalavraStore, sharesResults } = await import('@/store/palavra');
+                    const resultsOn = sharesResults(usePalavraStore.getState(), pubkey);
+                    await healOwnEvents(pubkey, (d) => (d.startsWith('mora-palavra-r:') ? resultsOn : shareStreaks));
                 }
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own

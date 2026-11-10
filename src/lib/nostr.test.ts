@@ -526,6 +526,17 @@ describe('healOwnEvents', () => {
         expect(relayEvent).not.toHaveBeenCalled();
     });
 
+    it('never re-sends what the allow predicate refuses', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20, 'private')]);
+        perRelayEvents.set(two, []);
+
+        await healOwnEvents(ME, (d) => d !== 'private');
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
     it('ignores events by other authors', async () => {
         const { healOwnEvents } = await import('./nostr');
         const [one] = TEST_RELAYS;

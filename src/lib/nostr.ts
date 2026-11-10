@@ -190,7 +190,11 @@ const MAX_HEAL_EVENTS = 50;
  * they hold) and relays whose reply filled the limit (they may have cut the
  * list short, so "missing" would be a guess). Fire and forget.
  */
-export async function healOwnEvents(pubkey: string, limit = 200): Promise<void> {
+export async function healOwnEvents(
+    pubkey: string,
+    allow: (dTag: string) => boolean = () => true,
+    limit = 200,
+): Promise<void> {
     const { relays } = await queryComplete(
         [{ kinds: [KIND_APP_STATE], authors: [pubkey], limit }],
         { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
@@ -199,6 +203,8 @@ export async function healOwnEvents(pubkey: string, limit = 200): Promise<void> 
     const newest = new Map<string, NostrEvent>();
     for (const relay of relays) {
         for (const event of matching(relay.events, { kind: KIND_APP_STATE, author: pubkey })) {
+            // What the player has switched off sharing is never re-sent.
+            if (!allow(event.tags.find(([n]) => n === 'd')?.[1] ?? '')) continue;
             if (supersedes(event, newest.get(address(event)))) newest.set(address(event), event);
         }
     }

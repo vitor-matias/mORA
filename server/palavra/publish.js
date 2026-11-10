@@ -301,27 +301,41 @@ async function publish(date, secretKey) {
 async function fillGap(secretKey, pubkey, days = MAX_GAP_DAYS) {
     const { all: already, perRelay } = await publishedDates(pubkey, days);
 
-    // Redundancy: a day that exists but is missing on some relays (it was
-    // down, or rejected it) is re-sent as the same signed event to those only.
-    for (const [date, event] of already) {
-        // Only relays that answered: silence says nothing about what they hold.
-        const lacking = RELAYS.filter((_, i) => perRelay[i].answered && !perRelay[i].found.has(date));
-        if (lacking.length === 0) continue;
-        const sent = (await Promise.all(lacking.map((url) => sendTo(url, event)))).filter(Boolean).length;
-        console.log(`${date}  healed ${sent}/${lacking.length} relays that lacked it`);
-    }
-
     const wanted = Array.from({ length: days }, (_, i) => isoDate(Date.now() - i * 86400000)).reverse();
     const missing = wanted.filter((date) => !already.has(date));
 
-    if (missing.length === 0) {
-        console.log(`nothing missing in the last ${days} days (latest: ${[...already].sort().pop() ?? 'none'})`);
-        return true;
-    }
-    console.log(`${missing.length} day(s) missing — publishing oldest first`);
     let ok = true;
-    for (const date of missing) ok = await publish(date, secretKey) && ok;
+    if (missing.length === 0) {
+        console.log(`nothing missing in the last ${days} days (latest: ${[...already.keys()].sort().pop() ?? 'none'})`);
+    } else {
+        console.log(`${missing.length} day(s) missing — publishing oldest first`);
+        for (const date of missing) ok = await publish(date, secretKey) && ok;
+    }
+
+    // After the missing days, so a slow relay can never delay today's puzzle.
+    await healRelays(already, perRelay);
     return ok;
+}
+
+/**
+ * Redundancy: a day that exists but is missing on some relays (it was down,
+ * or rejected it) is re-sent as the same signed event to those only. One
+ * chain per relay, run side by side, so a relay that hangs only holds up its
+ * own re-sends. Only relays that answered the read: silence says nothing
+ * about what they hold.
+ */
+async function healRelays(already, perRelay) {
+    await Promise.all(RELAYS.map(async (url, i) => {
+        if (!perRelay[i].answered) return;
+        let sent = 0;
+        let lacking = 0;
+        for (const [date, event] of already) {
+            if (perRelay[i].found.has(date)) continue;
+            lacking++;
+            if (await sendTo(url, event)) sent++;
+        }
+        if (lacking > 0) console.log(`${url}  healed ${sent}/${lacking} days it lacked`);
+    }));
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────
