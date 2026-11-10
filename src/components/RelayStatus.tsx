@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { RELAYS, pingRelay } from "@/lib/pool";
 import { useTranslations } from "@/lib/i18n";
 
@@ -7,16 +7,21 @@ export function RelayStatus() {
     // Absent while measuring; null once a relay has failed to answer.
     const [pings, setPings] = useState<Record<string, number | null>>({});
 
-    useEffect(() => {
+    // On opening rather than on mount: nothing is measured for a closed
+    // section, and reopening it takes a fresh reading.
+    const measure = () => {
+        setPings({});
         for (const url of RELAYS) {
             pingRelay(url).then((ms) => setPings((current) => ({ ...current, [url]: ms })));
         }
-    }, []);
+    };
 
     return (
-        <section className="surface rounded-3xl p-6 mt-8">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 wrap-anywhere mb-4">{t.relays}</h2>
-            <ul className="grid lg:grid-cols-2 gap-x-8 gap-y-2">
+        <details className="surface rounded-3xl p-6 mt-8" onToggle={(e) => { if (e.currentTarget.open) measure(); }}>
+            <summary className="cursor-pointer text-zinc-500 dark:text-zinc-400">
+                <h2 className="inline text-sm font-semibold uppercase tracking-wider wrap-anywhere">{t.relays}</h2>
+            </summary>
+            <ul className="grid lg:grid-cols-2 gap-x-8 gap-y-2 mt-4">
                 {RELAYS.map((url) => {
                     const ms = pings[url];
                     return (
@@ -30,6 +35,6 @@ export function RelayStatus() {
                     );
                 })}
             </ul>
-        </section>
+        </details>
     );
 }
