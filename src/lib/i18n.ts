@@ -66,7 +66,10 @@ const translations = {
         rosaryBeginner: "Iniciante",
         rosaryAdvanced: "Avançado",
         rosaryBeginnerToggle: "Ativar Modo Iniciante",
-        rosaryAdvancedToggle: "Ativar Modo Avançado"
+        rosaryAdvancedToggle: "Ativar Modo Avançado",
+        relays: "Relays",
+        relayMeasuring: "A medir…",
+        relayUnreachable: "Sem ligação"
     },
     // Palavra Bíblica do Dia. Entries that interpolate are functions rather
     // than templates with placeholders, so the call site can't pass the

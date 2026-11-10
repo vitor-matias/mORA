@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NostrEvent, NRelay } from '@nostrify/nostrify';
 // @ts-expect-error ws ships no types and this is the only typed file using it
 import { WebSocketServer } from 'ws';
-import { pool } from './pool';
+import { pingRelay, pool } from './pool';
 
 const RealWebSocket = globalThis.WebSocket;
 
@@ -149,5 +149,34 @@ describe('a relay that closes a subscription', () => {
 
         expect((await first).value).toEqual(['CLOSED', id, reason]);
         expect((await sub.next()).done).toBe(true);
+    });
+});
+
+describe('pingRelay', () => {
+    it('times a second REQ, once the socket is open', async () => {
+        // @ts-expect-error a stand-in for the browser's own constructor
+        globalThis.WebSocket = ScriptedSocket;
+        const ping = pingRelay('wss://answering.example');
+        const socket = ScriptedSocket.latest!;
+        const reqs = () => socket.sent.filter(([type]) => type === 'REQ');
+        socket.open();
+
+        for (const count of [1, 2]) {
+            await vi.waitFor(() => expect(reqs()).toHaveLength(count));
+            socket.say(['EOSE', reqs()[count - 1][1]]);
+        }
+
+        expect(await ping).toEqual(expect.any(Number));
+    });
+
+    it('is null for a relay that never answers', async () => {
+        // @ts-expect-error a stand-in for the browser's own constructor
+        globalThis.WebSocket = ScriptedSocket;
+        await expect(pingRelay('wss://silent.example', 50)).resolves.toBeNull();
+    });
+
+    it('is null for a relay that cannot be opened', async () => {
+        refuseSockets();
+        await expect(pingRelay('wss://unopenable.four.example')).resolves.toBeNull();
     });
 });

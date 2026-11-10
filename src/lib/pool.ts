@@ -170,3 +170,31 @@ export const pool = new NPool({
     reqRouter: (filters) => new Map(RELAYS.map((url) => [url, filters])),
     eventRouter: () => RELAYS,
 });
+
+/** An id no event has, so the relay answers with a bare EOSE. */
+const NO_SUCH_EVENT = '0'.repeat(64);
+
+async function roundTrip(relay: NRelay, signal: AbortSignal): Promise<number | null> {
+    const startedAt = performance.now();
+    try {
+        for await (const _answer of relay.req([{ ids: [NO_SUCH_EVENT], limit: 1 }], { signal })) {
+            return Math.round(performance.now() - startedAt);
+        }
+    } catch {
+        // Aborted: no answer in time.
+    }
+    return null;
+}
+
+/**
+ * Round trip to a relay over the app's own socket, in ms, or null if it did
+ * not answer. A refusal (CLOSED) counts as an answer: the relay is reachable.
+ *
+ * Measured twice, keeping the second: the first REQ may have waited for the
+ * socket to open, which is connection time rather than ping.
+ */
+export async function pingRelay(url: string, timeoutMs = 5000): Promise<number | null> {
+    const relay = pool.relay(url);
+    const signal = AbortSignal.timeout(timeoutMs);
+    return await roundTrip(relay, signal) === null ? null : roundTrip(relay, signal);
+}

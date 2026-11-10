@@ -12,6 +12,7 @@ import { passkeysAvailable } from "@/lib/keyVault";
 import { CANONICAL_HOURS } from "@/lib/hours";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MyBadges } from "@/components/palavra/MyBadges";
+import { RelayStatus } from "@/components/RelayStatus";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
@@ -1222,6 +1223,7 @@ export default function Profile() {
             )}
 
             </div>
+            <RelayStatus />
             </div>
         </div>
     );
