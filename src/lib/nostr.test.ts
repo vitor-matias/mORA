@@ -490,7 +490,7 @@ describe('syncFavouritesWithNostr', () => {
 });
 
 describe('healOwnEvents', () => {
-    const ev = (id: string, created_at: number, d = 'x') => ({
+    const ev = (id: string, created_at: number, d = 'mora-x') => ({
         id, pubkey: ME, kind: 30078, created_at, content: '', sig: '', tags: [['d', d]],
     });
 
@@ -529,10 +529,21 @@ describe('healOwnEvents', () => {
     it('never re-sends what the allow predicate refuses', async () => {
         const { healOwnEvents } = await import('./nostr');
         const [one, two] = TEST_RELAYS;
-        perRelayEvents.set(one, [ev('b'.repeat(64), 20, 'private')]);
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20, 'mora-private')]);
         perRelayEvents.set(two, []);
 
-        await healOwnEvents(ME, (d) => d !== 'private');
+        await healOwnEvents(ME, (d) => d !== 'mora-private');
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
+    it('leaves other apps\' events alone', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20, 'some-app-settings')]);
+        perRelayEvents.set(two, []);
+
+        await healOwnEvents(ME);
 
         expect(relayEvent).not.toHaveBeenCalled();
     });

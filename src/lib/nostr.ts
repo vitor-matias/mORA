@@ -174,6 +174,9 @@ export async function queryComplete(
     };
 }
 
+/** How far back healOwnEvents reads. */
+const HEAL_WINDOW_DAYS = 60;
+
 /** Most events one pass re-sends, so a long history can't become a burst. */
 const MAX_HEAL_EVENTS = 50;
 
@@ -196,9 +199,16 @@ export async function healOwnEvents(
     limit = 200,
 ): Promise<void> {
     const { relays } = await queryComplete(
-        [{ kinds: [KIND_APP_STATE], authors: [pubkey], limit }],
+        // since: only recent history, so a long-time player's reply stays
+        // under `limit` and relays aren't skipped as full.
+        // shortcut: a snapshot not rewritten for HEAL_WINDOW_DAYS isn't healed;
+        // page with `until` if that ever matters.
+        [{ kinds: [KIND_APP_STATE], authors: [pubkey], since: Math.floor(Date.now() / 1000) - HEAL_WINDOW_DAYS * 86400, limit }],
         { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
     );
+    // Other NIP-78 apps' data under the same key is none of ours to copy.
+    const mine = (e: NostrEvent) => (e.tags.find(([n]) => n === 'd')?.[1] ?? '').startsWith('mora-');
+    for (const relay of relays) relay.events = matching(relay.events, { kind: KIND_APP_STATE, author: pubkey }).filter(mine);
     const address = (e: NostrEvent) => `${e.kind}:${e.tags.find(([n]) => n === 'd')?.[1] ?? ''}`;
     const newest = new Map<string, NostrEvent>();
     for (const relay of relays) {

@@ -14,7 +14,7 @@ let lastSyncAt = 0;
 // Topping up the player's own events on the relays that lack them is a full
 // read of their history, so once an hour per page load is plenty.
 const HEAL_INTERVAL_MS = 3_600_000;
-let lastHealAt = 0;
+const lastHealAt = new Map<string, number>();
 
 // The running hook's pull, for the Palavra board to call when it opens.
 let pullNow: ((force?: boolean) => Promise<void>) | null = null;
@@ -101,8 +101,8 @@ export function useNostrSync() {
                 // single attempt per game and no second chance.
                 await publishMissingResults(pubkey);
 
-                if (Date.now() - lastHealAt > HEAL_INTERVAL_MS) {
-                    lastHealAt = Date.now();
+                if (Date.now() - (lastHealAt.get(pubkey) ?? 0) > HEAL_INTERVAL_MS) {
+                    lastHealAt.set(pubkey, Date.now());
                     const { healOwnEvents } = await import('@/lib/nostr');
                     // Honour the opt-outs: public results follow the results
                     // switch, everything else (snapshots, lists) the sync one.
@@ -116,6 +116,7 @@ export function useNostrSync() {
                 // that attempt can be the next foreground rather than a minute
                 // from now.
                 lastSyncAt = 0;
+                lastHealAt.delete(pubkey);
                 console.warn('Nostr sync skipped:', error);
             }
         };
