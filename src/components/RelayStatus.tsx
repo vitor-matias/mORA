@@ -30,7 +30,7 @@ export function RelayStatus() {
                 {RELAYS.map((url) => {
                     const ms = pings[url];
                     return (
-                        <li key={url} className="flex items-center justify-between gap-3 text-sm">
+                        <li key={url} aria-live="polite" aria-atomic="true" className="flex items-center justify-between gap-3 text-sm">
                             <span className="min-w-0 truncate">{url.replace(/^wss?:\/\//, "")}</span>
                             <span className={`flex items-center gap-2 shrink-0 text-xs tabular-nums ${ms === null ? "text-red-600 dark:text-red-400" : "text-zinc-500 dark:text-zinc-400"}`}>
                                 <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full ${ms === undefined ? "bg-zinc-300 dark:bg-zinc-600" : ms === null ? "bg-red-500" : "bg-green-500"}`} />
