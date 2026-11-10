@@ -230,7 +230,22 @@ export async function fetchDailyLeaderboard(date: string, limit = 50): Promise<L
         console.warn('Could not load the Palavra leaderboard.', error);
     }
 
+    healDay(date);
     return withNames(dayRows(withRemembered(events, [date]), date, limit));
+}
+
+// A heal read per day per page load is plenty; the board refreshes often.
+const healedDays = new Set<string>();
+
+/** pool.query can't say which relay holds what, so thin events are found by a
+    second, background read that can. Never awaited, never throws. */
+function healDay(date: string): void {
+    if (healedDays.has(date)) return;
+    healedDays.add(date);
+    queryComplete(
+        [{ kinds: [KIND_APP_STATE], '#d': [resultDTag(date)], '#t': [PALAVRA_TOPIC], limit: 200 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS), heal: true },
+    ).catch(() => { /* best effort */ });
 }
 
 function dayRows(events: NostrEvent[], date: string, limit: number): LeaderboardEntry[] {
@@ -268,6 +283,7 @@ const MONTH_DAY_LIMIT = 200;
 function queryDays(groups: string[][], limit: number) {
     return queryComplete(filtersFor(groups, limit), {
         signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS),
+        heal: true,
     });
 }
 

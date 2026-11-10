@@ -137,7 +137,7 @@ const POLICY_REFUSAL = /^(auth-required|restricted):/;
  */
 export async function queryComplete(
     filters: NostrFilter[],
-    opts: { signal: AbortSignal; relays?: string[] },
+    opts: { signal: AbortSignal; relays?: string[]; heal?: boolean },
 ): Promise<{ events: NostrEvent[]; answered: number; asked: number; refused: number }> {
     const urls = opts.relays ?? RELAYS;
 
@@ -162,12 +162,55 @@ export async function queryComplete(
     for (const relay of perRelay) {
         for (const event of relay.events) byId.set(event.id, event);
     }
+    if (opts.heal) healThinEvents(urls, perRelay, byId);
     return {
         events: [...byId.values()],
         answered: perRelay.filter((relay) => relay.answered).length,
         asked: urls.length,
         refused: perRelay.filter((relay) => relay.refused).length,
     };
+}
+
+/** Most events re-sent per read, so one busy board can't turn into a burst. */
+const MAX_HEAL_PER_READ = 20;
+
+/**
+ * Re-send events that fewer than half of the relays that answered hold, to the
+ * answering relays that lack them. Same signed event, so a relay that has it
+ * already just says duplicate. Fire and forget: the board doesn't wait on it.
+ *
+ * Relays that did not reach EOSE are left alone: their silence says nothing
+ * about what they hold. NRelay1 already verified every event's signature.
+ * shortcut: a relay that cut the read at its limit looks like it lacks the
+ * older events; the extra re-send is harmless.
+ */
+function healThinEvents(
+    urls: string[],
+    perRelay: { events: NostrEvent[]; answered: boolean }[],
+    byId: Map<string, NostrEvent>,
+): void {
+    const answering = urls.filter((_, i) => perRelay[i].answered);
+    if (answering.length < 2) return;
+    const holders = new Map<string, Set<string>>();
+    perRelay.forEach((relay, i) => {
+        for (const event of relay.events) {
+            const set = holders.get(event.id) ?? new Set<string>();
+            set.add(urls[i]);
+            holders.set(event.id, set);
+        }
+    });
+    let budget = MAX_HEAL_PER_READ;
+    for (const [id, have] of holders) {
+        if (budget === 0) break;
+        if (have.size / answering.length >= 0.5) continue;
+        budget--;
+        const missing = answering.filter((url) => !have.has(url));
+        const event = byId.get(id)!;
+        for (const url of missing) {
+            pool.relay(url).event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) })
+                .catch(() => { /* best effort */ });
+        }
+    }
 }
 
 // One sync of each kind at a time; overlapping callers await the same run.
