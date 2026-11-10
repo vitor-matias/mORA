@@ -534,10 +534,13 @@ interface AppState {
         key means that Hour is not being reminded. */
     hourReminders: Record<string, string>;
     setHourReminder: (hourId: string, time: string | null) => void;
-    /** Saturday-night summary of the prayed week. Opt-in, device-local like
-        the other reminders. */
+    /** Saturday summary of the prayed week. Opt-in, device-local like the
+        other reminders. */
     weeklySummary: boolean;
     setWeeklySummary: (on: boolean) => void;
+    /** "HH:MM"; kept while the summary is off, so switching back restores it. */
+    weeklySummaryTime: string;
+    setWeeklySummaryTime: (time: string) => void;
     // True while this browser holds a server-registered Web Push
     // subscription; the in-app reminder timer stands down then.
     pushSubscribed: boolean;
@@ -651,6 +654,8 @@ export const useAppStore = create<AppState>()(
             }),
             weeklySummary: false,
             setWeeklySummary: (weeklySummary) => set({ weeklySummary }),
+            weeklySummaryTime: '22:00',
+            setWeeklySummaryTime: (weeklySummaryTime) => set({ weeklySummaryTime }),
             pushSubscribed: false,
             setPushSubscribed: (pushSubscribed) => set({ pushSubscribed }),
             liturgicalColor: 'verde',

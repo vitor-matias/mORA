@@ -5,7 +5,7 @@ import { verifyPushSubscription } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
 import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
-import { WEEKLY_SUMMARY, weekDates, weekSummary } from '@/lib/week';
+import { WEEKLY_SUMMARY_WEEKDAY, weekDates, weekSummary } from '@/lib/week';
 
 /**
  * Every reminder this device is set up for — the daily rosary reminder plus
@@ -21,8 +21,8 @@ export function buildReminderSchedule(
     notificationTime: string | null,
     hourReminders: Record<string, string>,
     rosaryTitle: string,
-    /** The weekly summary's text, when the user switched it on. */
-    weeklySummary: string | null = null,
+    /** The weekly summary's time and text, when the user switched it on. */
+    weeklySummary: { time: string; body: string } | null = null,
     now: Date = new Date()
 ): ReminderEntry[] {
     const drafts: { time: string; isHour: boolean; label: string; url: string }[] = [];
@@ -56,9 +56,9 @@ export function buildReminderSchedule(
     // A separate server key ("6@22:00"), so it never merges with a daily
     // reminder at the same minute.
     return [...daily, {
-        ...WEEKLY_SUMMARY,
+        ...weeklySummary,
+        weekday: WEEKLY_SUMMARY_WEEKDAY,
         title: 'Resumo da Semana 🙏',
-        body: weeklySummary,
         // Counted when written; this Saturday is the only day it is true.
         date: weekDates(now)[6],
         staleBody: 'Vê como correu a tua semana de oração.',
@@ -67,7 +67,7 @@ export function buildReminderSchedule(
 }
 
 export function useNotifications() {
-    const { notificationTime, hourReminders, pushSubscribed, weeklySummary, streaks } = useAppStore();
+    const { notificationTime, hourReminders, pushSubscribed, weeklySummary, weeklySummaryTime, streaks } = useAppStore();
     const t = useTranslations().home;
     // "<due date> <HH:MM>" for each reminder already shown, so a repeated tick
     // inside the catch-up window can't show it twice. Keyed by the date the
@@ -83,11 +83,11 @@ export function useNotifications() {
     }, []);
 
     // Rebuilt on every prayer, so the summary the service worker shows on
-    // Saturday night is as fresh as this device's last one.
+    // Saturday is as fresh as this device's last one.
     const schedule = useMemo(
         () => buildReminderSchedule(notificationTime, hourReminders, t.rosaryTitle,
-            weeklySummary ? weekSummary(streaks, new Date()) : null),
-        [notificationTime, hourReminders, t.rosaryTitle, weeklySummary, streaks]
+            weeklySummary ? { time: weeklySummaryTime, body: weekSummary(streaks, new Date()) } : null),
+        [notificationTime, hourReminders, t.rosaryTitle, weeklySummary, weeklySummaryTime, streaks]
     );
 
     // Hand the schedule to the service worker even when push is active — that
