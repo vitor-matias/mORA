@@ -11,6 +11,10 @@ const MIN_INTERVAL_MS = 60_000;
 const PUBLISH_DEBOUNCE_MS = 2_000;
 
 let lastSyncAt = 0;
+// Topping up the player's own events on the relays that lack them is a full
+// read of their history, so once an hour per page load is plenty.
+const HEAL_INTERVAL_MS = 3_600_000;
+const lastHealAt = new Map<string, number>();
 
 // The running hook's pull, for the Palavra board to call when it opens.
 let pullNow: ((force?: boolean) => Promise<void>) | null = null;
@@ -96,12 +100,23 @@ export function useNostrSync() {
                 // default. Under that branch, a player with sync off got a
                 // single attempt per game and no second chance.
                 await publishMissingResults(pubkey);
+
+                if (Date.now() - (lastHealAt.get(pubkey) ?? 0) > HEAL_INTERVAL_MS) {
+                    lastHealAt.set(pubkey, Date.now());
+                    const { healOwnEvents } = await import('@/lib/nostr');
+                    // Honour the opt-outs: public results follow the results
+                    // switch, everything else (snapshots, lists) the sync one.
+                    const { usePalavraStore, sharesResults } = await import('@/store/palavra');
+                    const resultsOn = sharesResults(usePalavraStore.getState(), pubkey);
+                    await healOwnEvents(pubkey, (d) => (d.startsWith('mora-palavra-r:') ? resultsOn : shareStreaks));
+                }
             } catch (error) {
                 // Offline, relay down, chunk load failed — this device's own
                 // state stands until the next attempt. Release the throttle so
                 // that attempt can be the next foreground rather than a minute
                 // from now.
                 lastSyncAt = 0;
+                lastHealAt.delete(pubkey);
                 console.warn('Nostr sync skipped:', error);
             }
         };

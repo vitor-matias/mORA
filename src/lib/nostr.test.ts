@@ -96,7 +96,10 @@ const relayPublish = vi.fn();
 const signEvent = vi.fn();
 
 // Hoisted alongside the mock factory below, which reads them.
-const { silentRelays, closingRelays, TEST_RELAYS } = vi.hoisted(() => ({
+const { silentRelays, closingRelays, perRelayEvents, relayEvent, TEST_RELAYS } = vi.hoisted(() => ({
+    /** Relays that hold their own events, overriding `relayQuery`. */
+    perRelayEvents: new Map<string, unknown[]>(),
+    relayEvent: vi.fn(),
     /** Relays that never finish answering: no events, no EOSE — what a dead
         relay, or one still connecting when the deadline lands, looks like. */
     silentRelays: new Set<string>(),
@@ -121,9 +124,11 @@ vi.mock('@/lib/pool', () => ({
                     yield ['CLOSED', 'sub', reason];
                     return;
                 }
-                for (const event of await relayQuery(...args)) yield ['EVENT', 'sub', event];
+                const own = perRelayEvents.get(url);
+                for (const event of own ?? await relayQuery(...args)) yield ['EVENT', 'sub', event];
                 yield ['EOSE', 'sub'];
             },
+            event: (event: unknown) => { relayEvent(url, event); return Promise.resolve(); },
         }),
     },
     RELAYS: TEST_RELAYS,
@@ -481,5 +486,88 @@ describe('syncFavouritesWithNostr', () => {
 
         expect(relayQuery).not.toHaveBeenCalled();
         expect(relayPublish).not.toHaveBeenCalled();
+    });
+});
+
+describe('healOwnEvents', () => {
+    const ev = (id: string, created_at: number, d = 'mora-x') => ({
+        id, pubkey: ME, kind: 30078, created_at, content: '', sig: '', tags: [['d', d]],
+    });
+
+    beforeEach(() => {
+        perRelayEvents.clear();
+        silentRelays.clear();
+        closingRelays.clear();
+        relayEvent.mockClear();
+    });
+
+    it('sends the newest version only to the relays that lack it', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20)]);
+        perRelayEvents.set(two, [ev('a'.repeat(64), 10)]);
+
+        await healOwnEvents(ME);
+
+        // Relay two holds an older version and gets the newest; relay one
+        // already has it, and the older version is never pushed anywhere.
+        expect(relayEvent).toHaveBeenCalledTimes(1);
+        expect(relayEvent).toHaveBeenCalledWith(two, expect.objectContaining({ id: 'b'.repeat(64) }));
+    });
+
+    it('leaves a relay that did not answer alone', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20)]);
+        silentRelays.add(two);
+
+        await healOwnEvents(ME);
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
+    it('never re-sends what the allow predicate refuses', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20, 'mora-private')]);
+        perRelayEvents.set(two, []);
+
+        await healOwnEvents(ME, (d) => d !== 'mora-private');
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
+    it('leaves other apps\' events alone', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20, 'some-app-settings')]);
+        perRelayEvents.set(two, []);
+
+        await healOwnEvents(ME);
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
+    it('treats a page that was full before filtering as cut off', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20)]);
+        // Full at limit 2 only because of the other app's event.
+        perRelayEvents.set(two, [ev('c'.repeat(64), 5, 'other-app'), ev('d'.repeat(64), 6, 'other-app2')]);
+
+        await healOwnEvents(ME, () => true, 2);
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
+    it('ignores events by other authors', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [{ ...ev('c'.repeat(64), 30), pubkey: 'f'.repeat(64) }]);
+        perRelayEvents.set(two, []);
+
+        await healOwnEvents(ME);
+
+        expect(relayEvent).not.toHaveBeenCalled();
     });
 });

@@ -177,6 +177,13 @@ function loadSecretKey() {
     return decoded.data;
 }
 
+/** Newer wins; equal timestamps break on the lower id, as relays do. */
+function supersedes(candidate, held) {
+    if (!held) return true;
+    if (candidate.created_at !== held.created_at) return candidate.created_at > held.created_at;
+    return candidate.id < held.id;
+}
+
 /**
  * The puzzle date an event from a relay proves is published, or null.
  *
@@ -194,17 +201,24 @@ export function publishedDate(event, pubkey) {
     return date && d === puzzleDTag(date) ? date : null;
 }
 
-/** Which puzzle dates this publisher already has on a relay. */
+/**
+ * The puzzle events (by date) this publisher already has on a relay, and
+ * whether the relay finished answering. A CLOSED, timeout or socket error
+ * yields `answered: false`: that is silence, not "holds nothing", and a relay
+ * that refuses the read (relay.ditto.pub does, for kind 30078) must not be
+ * mistaken for an empty one and be sent 60 days of events every cycle.
+ */
 function publishedDatesOn(url, pubkey, since) {
     return new Promise((resolve) => {
-        const found = new Set();
+        const found = new Map();
+        let answered = false;
         let settled = false;
         const finish = () => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             try { socket.close(); } catch { /* already closing */ }
-            resolve(found);
+            resolve({ found, answered });
         };
         const socket = new WebSocket(url);
         const timer = setTimeout(finish, RELAY_TIMEOUT_MS);
@@ -216,9 +230,10 @@ function publishedDatesOn(url, pubkey, since) {
                 const msg = JSON.parse(raw.toString());
                 if (msg[0] === 'EVENT') {
                     const date = publishedDate(msg[2], pubkey);
-                    if (date) found.add(date);
+                    if (date && supersedes(msg[2], found.get(date))) found.set(date, msg[2]);
                 }
-                if (msg[0] === 'EOSE') finish();
+                if (msg[0] === 'EOSE') { answered = true; finish(); }
+                if (msg[0] === 'CLOSED') finish();
             } catch { /* not for us */ }
         });
         socket.on('error', finish);
@@ -226,13 +241,16 @@ function publishedDatesOn(url, pubkey, since) {
     });
 }
 
-/** Union across relays: a day published anywhere counts as published. */
+/**
+ * Per relay, what it holds; `all` is the union, so a day published anywhere
+ * counts as published, and keeps one verified event per day for re-sending.
+ */
 async function publishedDates(pubkey, sinceDays) {
     const since = Math.floor((Date.now() - sinceDays * 86400000) / 1000);
-    const sets = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
-    const all = new Set();
-    for (const set of sets) for (const d of set) all.add(d);
-    return all;
+    const reads = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
+    const all = new Map();
+    for (const { found } of reads) for (const [d, event] of found) if (supersedes(event, all.get(d))) all.set(d, event);
+    return { all, perRelay: reads };
 }
 
 function sendTo(url, event) {
@@ -288,18 +306,44 @@ async function publish(date, secretKey) {
  * its own — and a second publisher running elsewhere doesn't double-post.
  */
 async function fillGap(secretKey, pubkey, days = MAX_GAP_DAYS) {
-    const already = await publishedDates(pubkey, days);
+    const { all: already, perRelay } = await publishedDates(pubkey, days);
+
     const wanted = Array.from({ length: days }, (_, i) => isoDate(Date.now() - i * 86400000)).reverse();
     const missing = wanted.filter((date) => !already.has(date));
 
-    if (missing.length === 0) {
-        console.log(`nothing missing in the last ${days} days (latest: ${[...already].sort().pop() ?? 'none'})`);
-        return true;
-    }
-    console.log(`${missing.length} day(s) missing — publishing oldest first`);
     let ok = true;
-    for (const date of missing) ok = await publish(date, secretKey) && ok;
+    if (missing.length === 0) {
+        console.log(`nothing missing in the last ${days} days (latest: ${[...already.keys()].sort().pop() ?? 'none'})`);
+    } else {
+        console.log(`${missing.length} day(s) missing — publishing oldest first`);
+        for (const date of missing) ok = await publish(date, secretKey) && ok;
+    }
+
+    // After the missing days, so a slow relay can never delay today's puzzle.
+    await healRelays(already, perRelay);
     return ok;
+}
+
+/**
+ * Redundancy: a day that exists but is missing on some relays (it was down,
+ * or rejected it) is re-sent as the same signed event to those only. One
+ * chain per relay, run side by side, so a relay that hangs only holds up its
+ * own re-sends. Only relays that answered the read: silence says nothing
+ * about what they hold.
+ */
+async function healRelays(already, perRelay) {
+    await Promise.all(RELAYS.map(async (url, i) => {
+        if (!perRelay[i].answered) return;
+        let sent = 0;
+        let lacking = 0;
+        for (const [date, event] of already) {
+            // Holding an older version of the day counts as lacking this one.
+            if (!supersedes(event, perRelay[i].found.get(date))) continue;
+            lacking++;
+            if (await sendTo(url, event)) sent++;
+        }
+        if (lacking > 0) console.log(`${url}  healed ${sent}/${lacking} days it lacked`);
+    }));
 }
 
 // ── Entry point ──────────────────────────────────────────────────────────
