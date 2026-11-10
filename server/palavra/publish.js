@@ -194,10 +194,10 @@ export function publishedDate(event, pubkey) {
     return date && d === puzzleDTag(date) ? date : null;
 }
 
-/** Which puzzle dates this publisher already has on a relay. */
+/** The puzzle events (by date) this publisher already has on a relay. */
 function publishedDatesOn(url, pubkey, since) {
     return new Promise((resolve) => {
-        const found = new Set();
+        const found = new Map();
         let settled = false;
         const finish = () => {
             if (settled) return;
@@ -216,7 +216,7 @@ function publishedDatesOn(url, pubkey, since) {
                 const msg = JSON.parse(raw.toString());
                 if (msg[0] === 'EVENT') {
                     const date = publishedDate(msg[2], pubkey);
-                    if (date) found.add(date);
+                    if (date) found.set(date, msg[2]);
                 }
                 if (msg[0] === 'EOSE') finish();
             } catch { /* not for us */ }
@@ -226,13 +226,16 @@ function publishedDatesOn(url, pubkey, since) {
     });
 }
 
-/** Union across relays: a day published anywhere counts as published. */
+/**
+ * Per relay, what it holds; `all` is the union, so a day published anywhere
+ * counts as published, and keeps one verified event per day for re-sending.
+ */
 async function publishedDates(pubkey, sinceDays) {
     const since = Math.floor((Date.now() - sinceDays * 86400000) / 1000);
-    const sets = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
-    const all = new Set();
-    for (const set of sets) for (const d of set) all.add(d);
-    return all;
+    const maps = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
+    const all = new Map();
+    for (const map of maps) for (const [d, event] of map) all.set(d, event);
+    return { all, perRelay: maps };
 }
 
 function sendTo(url, event) {
@@ -288,7 +291,19 @@ async function publish(date, secretKey) {
  * its own — and a second publisher running elsewhere doesn't double-post.
  */
 async function fillGap(secretKey, pubkey, days = MAX_GAP_DAYS) {
-    const already = await publishedDates(pubkey, days);
+    const { all: already, perRelay } = await publishedDates(pubkey, days);
+
+    // Redundancy: a day that exists but is missing on some relays (it was
+    // down, or rejected it) is re-sent as the same signed event to those only.
+    // shortcut: a relay that never answers is retried each cycle, harmless but
+    // wasteful; track per-relay failures if that gets noisy.
+    for (const [date, event] of already) {
+        const lacking = RELAYS.filter((_, i) => !perRelay[i].has(date));
+        if (lacking.length === 0) continue;
+        const sent = (await Promise.all(lacking.map((url) => sendTo(url, event)))).filter(Boolean).length;
+        console.log(`${date}  healed ${sent}/${lacking.length} relays that lacked it`);
+    }
+
     const wanted = Array.from({ length: days }, (_, i) => isoDate(Date.now() - i * 86400000)).reverse();
     const missing = wanted.filter((date) => !already.has(date));
 
