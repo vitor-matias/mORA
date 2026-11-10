@@ -4,7 +4,7 @@ import type { BunkerLogin } from "@/lib/signer";
 import { useAppStore, CONTENT_FONT_SCALE, type ThemeMode, type FontSize, type FontFamily } from "@/store/app";
 import { sharesResults, usePalavraStore } from "@/store/palavra";
 import type { RosaryBeadMode } from "@/lib/rosary";
-import { Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
+import { CalendarDays, Settings, Moon, Sun, Monitor, Bell, Type, User, Save, Clock, Upload, Copy, Check, Eye, EyeOff, TriangleAlert, Smartphone, QrCode, Lock, LockOpen } from "lucide-react";
 import { nip19 } from "nostr-tools";
 import { QRCodeSVG } from "qrcode.react";
 import { fileToAvatarDataUrl } from "@/lib/image";
@@ -17,11 +17,50 @@ import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
 import { reminderKey } from "@/lib/reminderSchedule";
-import { WEEKLY_SUMMARY } from "@/lib/week";
+import { WEEKLY_SUMMARY_WEEKDAY } from "@/lib/week";
 
 /** Long enough to cover picking an hour then a minute, short enough that the
     registration still feels immediate. */
 const REMINDER_SYNC_DEBOUNCE_MS = 600;
+
+/** Where the Terço reminder starts when switched on: after Vésperas, before Completas. */
+const ROSARY_DEFAULT_TIME = "21:00";
+
+/** Switching on seeds the default time; switching off clears the reminder. */
+function ReminderRow({ label, time, defaultTime, onChange }: {
+    label: string;
+    time: string | null | undefined;
+    defaultTime: string;
+    onChange: (time: string | null) => void;
+}) {
+    const enabled = Boolean(time);
+    return (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <button
+                type="button"
+                role="switch"
+                aria-checked={enabled}
+                aria-label={`Lembrete: ${label}`}
+                onClick={() => onChange(enabled ? null : defaultTime)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+            >
+                <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                />
+            </button>
+            <span className="text-sm flex-1 min-w-0 truncate">{label}</span>
+            <input
+                type="time"
+                value={time ?? defaultTime}
+                disabled={!enabled}
+                aria-label={`Hora do lembrete: ${label}`}
+                onChange={(e) => onChange(e.target.value || null)}
+                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 min-h-8 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
+            />
+        </div>
+    );
+}
 
 export default function Profile() {
     const { login, lockedPubkey, protectedKey, isLocked, autoUnlock, setAutoUnlock, setProtectedKey, unlockWithKey, signIn, loginWithNip07, loginWithPrivateKey, generateLocalKey, logout, setProfile } = useAuthStore();
@@ -36,7 +75,7 @@ export default function Profile() {
     const nsec = useAuthStore(localNsec) ?? "";
     // The passkey vault predates the login record and speaks hex.
     const privkeyHex = useAuthStore(localPrivkeyHex);
-    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, weeklySummary, setWeeklySummary, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
+    const { theme, setTheme, notificationTime, setNotificationTime, hourReminders, setHourReminder, weeklySummary, setWeeklySummary, weeklySummaryTime, setWeeklySummaryTime, pushSubscribed, rosaryMode, setRosaryMode, fontSize, setFontSize, fontFamily, setFontFamily, shareStreaks, setShareStreaks } = useAppStore();
     const tPalavra = useTranslations().palavra;
     // Per identity: the toggle reflects and sets this pubkey's own choice,
     // so a second account on the same browser starts from its own answer.
@@ -347,7 +386,7 @@ export default function Profile() {
 
     // A new identity publishes its display name straight away — without one the
     // account shows up as a bare public key everywhere, including the
-    // "who prayed today" line on Início.
+    // Palavra leaderboards.
     const handleCreateIdentity = async () => {
         const name = newIdentityName.trim();
         setIsCreatingIdentity(true);
@@ -422,11 +461,11 @@ export default function Profile() {
 
     useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
 
-    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>, nextWeekly = weeklySummary) => {
+    const syncReminders = (nextTime: string | null, nextHours: Record<string, string>, nextWeekly: string | null = weeklySummary ? weeklySummaryTime : null) => {
         const times = [...new Set([
             ...(nextTime ? [nextTime] : []),
             ...Object.values(nextHours),
-            ...(nextWeekly ? [reminderKey(WEEKLY_SUMMARY)] : []),
+            ...(nextWeekly ? [reminderKey({ weekday: WEEKLY_SUMMARY_WEEKDAY, time: nextWeekly })] : []),
         ])].sort();
 
         window.clearTimeout(syncTimerRef.current);
@@ -448,19 +487,11 @@ export default function Profile() {
         }, REMINDER_SYNC_DEBOUNCE_MS);
     };
 
-    const clearNotification = () => {
-        setNotificationTime(null);
-        syncReminders(null, hourReminders);
-    };
-
-    const handleNotificationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const time = e.target.value || null;
+    const setRosaryTime = (time: string | null) => {
         setNotificationTime(time);
         syncReminders(time, hourReminders);
     };
 
-    // Switching an Hour on seeds it with its traditional time; the user can
-    // then move it. Switching off removes it from the schedule entirely.
     const setHourTime = (hourId: string, time: string | null) => {
         const nextHours = { ...hourReminders };
         if (time) nextHours[hourId] = time; else delete nextHours[hourId];
@@ -576,21 +607,7 @@ export default function Profile() {
                             <Bell className="text-zinc-500 dark:text-zinc-400" size={16} />
                             <p className="text-sm font-medium">{t.notifications}</p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                            <input
-                                type="time"
-                                value={notificationTime || ''}
-                                onChange={handleNotificationChange}
-                                className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 min-h-11 text-zinc-900 dark:text-zinc-100 flex-1 min-w-0 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
-                            />
-                            <button
-                                type="button"
-                                onClick={clearNotification}
-                                className="text-xs text-red-500 hover:text-red-600 px-2 py-2"
-                            >
-                                {t.notificationsOff}
-                            </button>
-                        </div>
+                        <ReminderRow label="Terço" time={notificationTime} defaultTime={ROSARY_DEFAULT_TIME} onChange={setRosaryTime} />
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
                             {pushSubscribed
                                 ? 'Lembrete ativo: chega mesmo com a aplicação fechada.'
@@ -608,63 +625,37 @@ export default function Profile() {
                             Escolhe as Horas que queres rezar. Cada uma avisa à hora que definires.
                         </p>
                         <div className="space-y-2">
-                            {CANONICAL_HOURS.map((hour) => {
-                                const time = hourReminders[hour.id];
-                                const enabled = Boolean(time);
-                                return (
-                                    <div key={hour.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                                        <button
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={enabled}
-                                            aria-label={`Lembrete: ${hour.label}`}
-                                            onClick={() => setHourTime(hour.id, enabled ? null : hour.defaultTime)}
-                                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${enabled ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-                                        >
-                                            <span
-                                                aria-hidden="true"
-                                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`}
-                                            />
-                                        </button>
-                                        <span className="text-sm flex-1 min-w-0 truncate">{hour.label}</span>
-                                        <input
-                                            type="time"
-                                            value={time ?? hour.defaultTime}
-                                            disabled={!enabled}
-                                            aria-label={`Hora do lembrete: ${hour.label}`}
-                                            onChange={(e) => setHourTime(hour.id, e.target.value || null)}
-                                            className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 min-h-8 text-sm text-zinc-900 dark:text-zinc-100 disabled:opacity-40 focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 outline-hidden"
-                                        />
-                                    </div>
-                                );
-                            })}
+                            {CANONICAL_HOURS.map((hour) => (
+                                <ReminderRow
+                                    key={hour.id}
+                                    label={hour.label}
+                                    time={hourReminders[hour.id]}
+                                    defaultTime={hour.defaultTime}
+                                    onChange={(time) => setHourTime(hour.id, time)}
+                                />
+                            ))}
                         </div>
                     </div>
 
-                    {/* Weekly summary — opt-in, Saturday night, what Resumo da Semana shows. */}
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-sm font-medium">Resumo da Semana</p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                                Sábado às {WEEKLY_SUMMARY.time}, quantos dias rezaste a Missa e cada uma das Horas.
-                            </p>
+                    {/* Weekly summary — opt-in, on Saturdays, what Resumo da Semana shows. */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <CalendarDays className="text-zinc-500 dark:text-zinc-400" size={16} />
+                            <p className="text-sm font-medium">Notificação Semanal</p>
                         </div>
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={weeklySummary}
-                            aria-label="Resumo da Semana"
-                            onClick={() => {
-                                setWeeklySummary(!weeklySummary);
-                                syncReminders(notificationTime, hourReminders, !weeklySummary);
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+                            Ao sábado, quantos dias rezaste a Missa e cada uma das Horas.
+                        </p>
+                        <ReminderRow
+                            label="Resumo da Semana"
+                            time={weeklySummary ? weeklySummaryTime : null}
+                            defaultTime={weeklySummaryTime}
+                            onChange={(time) => {
+                                setWeeklySummary(time !== null);
+                                if (time) setWeeklySummaryTime(time);
+                                syncReminders(notificationTime, hourReminders, time);
                             }}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-liturgy-700 dark:focus:ring-liturgy-400 focus:ring-offset-2 ${weeklySummary ? 'bg-liturgy-600' : 'bg-zinc-200 dark:bg-zinc-700'}`}
-                        >
-                            <span
-                                aria-hidden="true"
-                                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${weeklySummary ? 'translate-x-5' : 'translate-x-0'}`}
-                            />
-                        </button>
+                        />
                     </div>
                 </div>
             </section>
@@ -956,7 +947,7 @@ export default function Profile() {
                             <p className="text-sm font-medium">Sincronizar entre dispositivos</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                 Guarda sequências, favoritos e preferências de leitura na rede, encriptados —
-                                só os teus dispositivos os conseguem ler. O teu nome pode aparecer na lista de quem rezou hoje.
+                                só os teus dispositivos os conseguem ler.
                             </p>
                         </div>
                         <button
@@ -1036,7 +1027,7 @@ export default function Profile() {
                             </button>
                         </div>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
-                            {t.keyDisclaimer} O nome é o que aparece aos outros em «já rezou hoje». Podes mudá-lo ou deixá-lo em branco.
+                            {t.keyDisclaimer} O nome fica público e é o que os outros veem se publicares os teus resultados da Palavra. Podes mudá-lo ou deixá-lo em branco.
                         </p>
 
                         <div className="relative">

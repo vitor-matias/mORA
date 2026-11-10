@@ -42,7 +42,7 @@ const translations = {
         pubkey: "Identificador público",
         authenticated: "Autenticado via",
         logout: "Terminar Sessão",
-        loginPrompt: "O teu progresso fica guardado neste dispositivo. Se quiseres uma cópia de segurança portátil (opcional, para utilizadores avançados):",
+        loginPrompt: "O teu progresso fica guardado neste dispositivo, sem precisares de conta. Com uma identidade Nostr (opcional), podes sincronizá-lo entre dispositivos, de forma privada, e, se quiseres, publicar os teus resultados da Palavra para entrares nas classificações, duelos e ligas.",
         loginNip07: "Entrar com Extensão Nostr",
         nip07Missing: "Não foi detetada nenhuma extensão Nostr neste navegador.",
         // Android installs a PWA as its own app, and browser extensions don't
@@ -60,7 +60,6 @@ const translations = {
         system: "Sistema",
         language: "Idioma",
         notifications: "Notificação Diária (Terço)",
-        notificationsOff: "Desativar",
         notificationsSet: "Definir Hora",
         rosaryMode: "Modo do Terço",
         rosaryBeginner: "Iniciante",

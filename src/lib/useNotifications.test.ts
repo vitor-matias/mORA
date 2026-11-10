@@ -12,6 +12,11 @@ describe('buildReminderSchedule urls', () => {
         const [entry] = buildReminderSchedule('19:00', { vesperas: '19:00' }, 'Terço');
         expect(entry.url).toBe('/terco');
     });
+
+    it('sends the weekly summary at the chosen time, on Saturdays only', () => {
+        const [entry] = buildReminderSchedule(null, {}, 'Terço', { time: '08:30', body: 'Três dias' });
+        expect(entry).toMatchObject({ time: '08:30', weekday: 6, body: 'Três dias', url: '/semana' });
+    });
 });
 
 describe('reminderRoute', () => {

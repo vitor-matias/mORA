@@ -3,8 +3,8 @@ import { completedDates, emptyStreak, type StreakData, type StreakItem, type Str
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { daysApart, formatISODate } from '@/lib/format';
 
-/** When the weekly summary goes out: Saturday night, after Completas. */
-export const WEEKLY_SUMMARY = { weekday: 6, time: '22:00' } as const;
+/** The weekly summary goes out on Saturdays, at the time the user picked. */
+export const WEEKLY_SUMMARY_WEEKDAY = 6;
 
 /** The stored count only moves when someone prays, so a streak last extended
     three days ago still reads as its old number. Today or yesterday keeps it
