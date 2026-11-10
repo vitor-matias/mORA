@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RELAYS, pingRelay } from "@/lib/pool";
 import { useTranslations } from "@/lib/i18n";
 
@@ -6,13 +6,18 @@ export function RelayStatus() {
     const t = useTranslations().profile;
     // Absent while measuring; null once a relay has failed to answer.
     const [pings, setPings] = useState<Record<string, number | null>>({});
+    const latestReading = useRef(0);
 
     // On opening rather than on mount: nothing is measured for a closed
     // section, and reopening it takes a fresh reading.
     const measure = () => {
+        const reading = ++latestReading.current;
         setPings({});
         for (const url of RELAYS) {
-            pingRelay(url).then((ms) => setPings((current) => ({ ...current, [url]: ms })));
+            pingRelay(url).then((ms) => {
+                // A ping from an earlier opening must not land in this one.
+                if (reading === latestReading.current) setPings((current) => ({ ...current, [url]: ms }));
+            });
         }
     };
 
