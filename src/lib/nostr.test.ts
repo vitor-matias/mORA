@@ -548,6 +548,18 @@ describe('healOwnEvents', () => {
         expect(relayEvent).not.toHaveBeenCalled();
     });
 
+    it('treats a page that was full before filtering as cut off', async () => {
+        const { healOwnEvents } = await import('./nostr');
+        const [one, two] = TEST_RELAYS;
+        perRelayEvents.set(one, [ev('b'.repeat(64), 20)]);
+        // Full at limit 2 only because of the other app's event.
+        perRelayEvents.set(two, [ev('c'.repeat(64), 5, 'other-app'), ev('d'.repeat(64), 6, 'other-app2')]);
+
+        await healOwnEvents(ME, () => true, 2);
+
+        expect(relayEvent).not.toHaveBeenCalled();
+    });
+
     it('ignores events by other authors', async () => {
         const { healOwnEvents } = await import('./nostr');
         const [one] = TEST_RELAYS;

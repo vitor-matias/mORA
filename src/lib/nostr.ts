@@ -177,7 +177,7 @@ export async function queryComplete(
 /** How far back healOwnEvents reads. */
 const HEAL_WINDOW_DAYS = 60;
 
-/** Most events one pass re-sends, so a long history can't become a burst. */
+/** Most events one pass re-sends to any one relay, so a long history can't become a burst. */
 const MAX_HEAL_EVENTS = 50;
 
 /**
@@ -208,26 +208,35 @@ export async function healOwnEvents(
     );
     // Other NIP-78 apps' data under the same key is none of ours to copy.
     const mine = (e: NostrEvent) => (e.tags.find(([n]) => n === 'd')?.[1] ?? '').startsWith('mora-');
-    for (const relay of relays) relay.events = matching(relay.events, { kind: KIND_APP_STATE, author: pubkey }).filter(mine);
+    // `full` is taken from what the relay returned, before the filter below
+    // shortens the list: a page that was full may have been cut off.
+    const reads = relays.map((relay) => ({
+        url: relay.url,
+        answered: relay.answered,
+        full: relay.events.length >= limit,
+        events: matching(relay.events, { kind: KIND_APP_STATE, author: pubkey }).filter(mine),
+    }));
     const address = (e: NostrEvent) => `${e.kind}:${e.tags.find(([n]) => n === 'd')?.[1] ?? ''}`;
     const newest = new Map<string, NostrEvent>();
-    for (const relay of relays) {
-        for (const event of matching(relay.events, { kind: KIND_APP_STATE, author: pubkey })) {
+    for (const relay of reads) {
+        for (const event of relay.events) {
             // What the player has switched off sharing is never re-sent.
             if (!allow(event.tags.find(([n]) => n === 'd')?.[1] ?? '')) continue;
             if (supersedes(event, newest.get(address(event)))) newest.set(address(event), event);
         }
     }
 
-    let budget = MAX_HEAL_EVENTS;
-    for (const relay of relays) {
-        if (!relay.answered || relay.events.length >= limit) continue;
+    for (const relay of reads) {
+        if (!relay.answered || relay.full) continue;
+        // Per relay, not shared: relays that prune old events would otherwise
+        // use the whole budget every pass and starve the ones that keep them.
+        let budget = MAX_HEAL_EVENTS;
         const held = new Map<string, NostrEvent>();
         for (const event of relay.events) {
             if (supersedes(event, held.get(address(event)))) held.set(address(event), event);
         }
         for (const [key, event] of newest) {
-            if (budget === 0) return;
+            if (budget === 0) break;
             if (held.get(key)?.id === event.id || !supersedes(event, held.get(key))) continue;
             budget--;
             pool.relay(relay.url).event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) })

@@ -177,6 +177,13 @@ function loadSecretKey() {
     return decoded.data;
 }
 
+/** Newer wins; equal timestamps break on the lower id, as relays do. */
+function supersedes(candidate, held) {
+    if (!held) return true;
+    if (candidate.created_at !== held.created_at) return candidate.created_at > held.created_at;
+    return candidate.id < held.id;
+}
+
 /**
  * The puzzle date an event from a relay proves is published, or null.
  *
@@ -223,7 +230,7 @@ function publishedDatesOn(url, pubkey, since) {
                 const msg = JSON.parse(raw.toString());
                 if (msg[0] === 'EVENT') {
                     const date = publishedDate(msg[2], pubkey);
-                    if (date) found.set(date, msg[2]);
+                    if (date && supersedes(msg[2], found.get(date))) found.set(date, msg[2]);
                 }
                 if (msg[0] === 'EOSE') { answered = true; finish(); }
                 if (msg[0] === 'CLOSED') finish();
@@ -242,7 +249,7 @@ async function publishedDates(pubkey, sinceDays) {
     const since = Math.floor((Date.now() - sinceDays * 86400000) / 1000);
     const reads = await Promise.all(RELAYS.map((url) => publishedDatesOn(url, pubkey, since)));
     const all = new Map();
-    for (const { found } of reads) for (const [d, event] of found) all.set(d, event);
+    for (const { found } of reads) for (const [d, event] of found) if (supersedes(event, all.get(d))) all.set(d, event);
     return { all, perRelay: reads };
 }
 
@@ -330,7 +337,8 @@ async function healRelays(already, perRelay) {
         let sent = 0;
         let lacking = 0;
         for (const [date, event] of already) {
-            if (perRelay[i].found.has(date)) continue;
+            // Holding an older version of the day counts as lacking this one.
+            if (!supersedes(event, perRelay[i].found.get(date))) continue;
             lacking++;
             if (await sendTo(url, event)) sent++;
         }
