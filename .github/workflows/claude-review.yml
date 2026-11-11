@@ -1,8 +1,8 @@
 name: Claude Review
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-# A newer push replaces a review still running, so two can't post the same finding.
+    types: [opened, ready_for_review, reopened, synchronize]
+# One review per PR at a time: a push while one is running replaces it.
 concurrency:
   group: claude-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -95,5 +95,5 @@ jobs:
             || { echo "::warning::No approval: could not read the PR's review threads."; exit 0; }
           [ "$open" = 0 ] || { echo "No approval: unresolved Claude threads: $open."; withdraw; exit 0; }
           gh api "repos/$REPO/pulls/$PR/reviews" -f event=APPROVE -f commit_id="$HEAD_SHA" \
-            -f body="Automated review of ${HEAD_SHA:0:7} found no issues. Later commits get their own review." > /dev/null \
+            -f body="Automated review of ${HEAD_SHA:0:7} found no issues. Each later push gets its own review." > /dev/null \
             || echo "::warning::The review found nothing but could not approve the PR."
