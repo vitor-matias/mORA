@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app';
 import { useTranslations } from '@/lib/i18n';
-import { verifyPushSubscription } from '@/lib/push';
+import { verifyPushSubscription, enablePushReminder, disablePushReminder, isPushConfigured } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
 import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
@@ -80,6 +80,16 @@ export function useNotifications() {
     // fallback timer below isn't left disabled with no push active.
     useEffect(() => {
         verifyPushSubscription();
+        // The server keeps its own copy of the times, and a failed or
+        // interrupted sync from Profile (best-effort DELETE, a debounce cut off
+        // by leaving the page) leaves it with reminders the app no longer
+        // lists — a ghost notification nobody can switch off. Push what this
+        // device actually has, or nothing, once per start.
+        if (!isPushConfigured()) return;
+        const { notificationTime: rosary, hourReminders: hours } = useAppStore.getState();
+        const times = [...new Set([...(rosary ? [rosary] : []), ...Object.values(hours)])].sort();
+        if (times.length === 0) disablePushReminder();
+        else if (useAppStore.getState().pushSubscribed) enablePushReminder(times);
     }, []);
 
     // Rebuilt on every prayer, so the summary the service worker shows on
