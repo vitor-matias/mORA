@@ -752,7 +752,7 @@ export default function Palavra() {
                                 // needed, which is a hint about how hard the
                                 // word is. Withheld until this player has
                                 // finished it.
-                                revealResults={over || isArchive}
+                                revealResults={over || isArchive || (viewDate === today && finishedToday)}
                                 // Not the same question, and the month board
                                 // needs this one: browsing the archive reveals
                                 // nothing about today's word, but a monthly

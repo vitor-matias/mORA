@@ -59,10 +59,31 @@ export function useNostrSync() {
         // results need neither: read them so the boards open and the app
         // knows today is already played. Everything else waits for the unlock.
         if (isLocked) {
-            import('@/lib/palavra/nostr')
-                .then(({ adoptPublishedResults }) => adoptPublishedResults(pubkey))
-                .catch((error) => console.warn('Could not read published results.', error));
-            return;
+            // Same refresh paths as the full sync (Palavra's mount, the
+            // foreground), throttled the same way: a result finished on
+            // another device, or a new UTC day, is picked up without an unlock.
+            const readPublic = async (force = false) => {
+                const now = Date.now();
+                if (!force && now - lastSyncAt < MIN_INTERVAL_MS) return;
+                lastSyncAt = now;
+                try {
+                    const { adoptPublishedResults } = await import('@/lib/palavra/nostr');
+                    await adoptPublishedResults(pubkey);
+                } catch (error) {
+                    lastSyncAt = 0;
+                    console.warn('Could not read published results.', error);
+                }
+            };
+            pullNow = readPublic;
+            void readPublic(true);
+            const onVisible = () => {
+                if (document.visibilityState === 'visible') void readPublic();
+            };
+            document.addEventListener('visibilitychange', onVisible);
+            return () => {
+                if (pullNow === readPublic) pullNow = null;
+                document.removeEventListener('visibilitychange', onVisible);
+            };
         }
 
         const pull = async (force = false) => {
