@@ -127,8 +127,12 @@ export default function Palavra() {
     const scope = isArchive && !recorded ? 'practice' : 'daily';
     const play = (isArchive ? (recorded ?? practice[viewDate]) : plays[viewDate]) ?? EMPTY_PLAY;
     const over = isFinished(play);
+    // Today's result is on the relays but this device has no game for it: it
+    // was played elsewhere, or while the key was locked. Replaying it here
+    // would only produce a second attempt that disagrees with the board.
+    const playedElsewhere = !isArchive && !over && Boolean(myPubkey && publishedResults[`${myPubkey}:${today}`]);
     // A recorded archive day is history: shown, not replayable.
-    const readOnly = isArchive && Boolean(recorded);
+    const readOnly = (isArchive && Boolean(recorded)) || playedElsewhere;
     // Whether *today* is done, which is not what `over` says while an archive
     // day is on screen — there `play` is the archived day's. The month board
     // sums today's guess counts, so that is the question it has to ask.
@@ -404,7 +408,7 @@ export default function Palavra() {
     // Gated on there actually being a board: loading, a load error and a
     // rejected payload all render no Keyboard, and hiding the tab bar for
     // them takes away navigation to make room for nothing.
-    const keyboardUp = pageTab === 'game' && !over && Boolean(challenge) && !loadError;
+    const keyboardUp = pageTab === 'game' && !over && !playedElsewhere && Boolean(challenge) && !loadError;
     const setBottomBarYielded = useAppStore((s) => s.setBottomBarYielded);
     useEffect(() => {
         setBottomBarYielded(keyboardUp);
@@ -665,6 +669,12 @@ export default function Palavra() {
             {PALAVRA_IS_MOCK && (
                 <p className="text-xs text-center text-amber-700 dark:text-amber-500 bg-amber-500/10 rounded-xl px-3 py-2">
                     {t.demoMode}
+                </p>
+            )}
+            {playedElsewhere && (
+                <p role="status" className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+                    <History size={14} className="shrink-0" aria-hidden="true" />
+                    {t.playedElsewhere}
                 </p>
             )}
             {isArchive && (
@@ -945,7 +955,7 @@ export default function Palavra() {
                             </p>
                         </div>
 
-                        {!over && (
+                        {!over && !playedElsewhere && (
                             <div ref={keyboardRef}>
                             <Keyboard
                                 state={keys}
