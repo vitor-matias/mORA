@@ -84,6 +84,7 @@ const translations = {
         archiveRecorded: "Já jogaste este dia. Este é o teu resultado.",
         playedElsewhere: "Já jogaste hoje.",
         playedElsewhereLocked: "Já jogaste hoje. Desbloqueia a chave para sincronizar as jogadas.",
+        progressElsewhereLocked: "Se começaste o jogo de hoje noutro dispositivo, desbloqueia a chave para continuar onde ficaste.",
         playedElsewhereUnlockFailed: "Não foi possível desbloquear a chave. Tenta outra vez para sincronizar as jogadas.",
         archivePractice: "Modo de treino: não conta para o teu registo nem para as classificações.",
 

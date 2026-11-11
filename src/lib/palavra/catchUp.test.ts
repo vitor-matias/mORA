@@ -54,7 +54,7 @@ vi.mock('@/store/app', () => ({
     useAppStore: { getState: () => ({ shareStreaks: false }) },
 }));
 
-const { publishMissingResults, publishPalavraResult, adoptPublishedResults } = await import('./nostr');
+const { publishMissingResults, publishPalavraResult, adoptPublishedResults, palavraStateTouchedAt } = await import('./nostr');
 const { usePalavraStore } = await import('@/store/palavra');
 const { rememberedResults } = await import('./resultCache');
 const { publishKey, setPublishState, usePublishStatus } = await import('./publishStatus');
@@ -281,5 +281,26 @@ describe('adoptPublishedResults', () => {
         await adoptPublishedResults(ME);
 
         expect(usePalavraStore.getState().publishedResults).toEqual({});
+    });
+});
+
+describe('palavraStateTouchedAt', () => {
+    const state = (author: string, created_at: number, d = 'mora-palavra-state') => ({
+        id: String(created_at).padStart(64, '0'), pubkey: author, kind: 30078, created_at, sig: '', content: 'x',
+        tags: [['d', d]],
+    });
+
+    beforeEach(() => queryRead.mockReset());
+
+    it('returns when the newest of the identity\'s own play logs was written', async () => {
+        queryRead.mockResolvedValue({ events: [state(ME, 10), state(ME, 30), state(THEM, 99), state(ME, 50, 'other')] });
+
+        expect(await palavraStateTouchedAt(ME)).toBe(30);
+    });
+
+    it('returns null when there is none', async () => {
+        queryRead.mockResolvedValue({ events: [] });
+
+        expect(await palavraStateTouchedAt(ME)).toBeNull();
     });
 });

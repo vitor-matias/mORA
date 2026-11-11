@@ -33,6 +33,7 @@ import { useDayRollover } from '@/lib/useDayRollover';
 import { syncNostrNow } from '@/lib/useNostrSync';
 import { unlockIfNeeded } from '@/lib/nostr';
 import { publishKey, usePublishStatus } from '@/lib/palavra/publishStatus';
+import { blocksPlay, dayNotice } from '@/lib/palavra/dayNotice';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -128,10 +129,39 @@ export default function Palavra() {
     const scope = isArchive && !recorded ? 'practice' : 'daily';
     const play = (isArchive ? (recorded ?? practice[viewDate]) : plays[viewDate]) ?? EMPTY_PLAY;
     const over = isFinished(play);
-    // Today's result is on the relays but this device has no game for it: it
-    // was played elsewhere, or while the key was locked. Replaying it here
-    // would only produce a second attempt that disagrees with the board.
-    const playedElsewhere = !isArchive && !over && Boolean(myPubkey && publishedResults[`${myPubkey}:${today}`]);
+    // A locked passkey key can't sign, so offering to publish would only
+    // turn into "failed". It is asked to unlock instead.
+    const locked = useAuthStore((s) => s.isLocked);
+    // Unlocking only brings the plays back when cross-device sync is on;
+    // otherwise there is nothing to sync and no reason to ask for the key.
+    const syncOn = useAppStore((s) => s.shareStreaks);
+    const canUnlockToSync = locked && syncOn;
+    // When the encrypted play log was last written: public metadata, so a
+    // locked device can still read it. Keyed, so a stale answer for another
+    // identity or day is never used.
+    const [logTouched, setLogTouched] = useState<{ key: string; at: number | null } | null>(null);
+    const logKey = `${myPubkey}:${today}`;
+    useEffect(() => {
+        if (!canUnlockToSync || !myPubkey) return;
+        let live = true;
+        import('@/lib/palavra/nostr')
+            .then(({ palavraStateTouchedAt }) => palavraStateTouchedAt(myPubkey))
+            .then((at) => { if (live) setLogTouched({ key: logKey, at }); })
+            .catch(() => {});
+        return () => { live = false; };
+    }, [canUnlockToSync, myPubkey, logKey]);
+    // A game played elsewhere (or while locked) has a public result but no
+    // play here; one started elsewhere has only a fresh play log. See dayNotice.
+    const dayState = dayNotice({
+        isArchive,
+        over,
+        guesses: play.guesses.length,
+        publishedToday: Boolean(myPubkey && publishedResults[`${myPubkey}:${today}`]),
+        canUnlockToSync,
+        logTouchedAt: logTouched?.key === logKey ? logTouched.at : null,
+        today,
+    });
+    const playedElsewhere = blocksPlay(dayState);
     // A recorded archive day is history: shown, not replayable.
     const readOnly = (isArchive && Boolean(recorded)) || playedElsewhere;
     // Whether *today* is done, which is not what `over` says while an archive
@@ -328,14 +358,7 @@ export default function Palavra() {
     const todayPublishState = usePublishStatus((s) =>
         (myPubkey ? s.byKey[publishKey(myPubkey, today)] : undefined));
     const remoteSigner = useAuthStore((s) => s.login?.type === 'bunker');
-    // A locked passkey key can't sign, so offering to publish would only
-    // turn into "failed". It is asked to unlock instead.
-    const locked = useAuthStore((s) => s.isLocked);
-    const [unlockFailed, setUnlockFailed] = useState(false);
-    // Unlocking only brings the plays back when cross-device sync is on;
-    // otherwise there is nothing to sync and no reason to ask for the key.
-    const syncOn = useAppStore((s) => s.shareStreaks);
-    const unlockSyncsPlays = locked && syncOn;
+
     const ownResult = finishedToday && sharing && !todayPublished
         ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
         : null;
@@ -678,27 +701,19 @@ export default function Palavra() {
                     {t.demoMode}
                 </p>
             )}
-            {playedElsewhere && (
-                <div role="status" className="text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
-                    <p className="flex items-center justify-center gap-2">
-                        <History size={14} className="shrink-0" aria-hidden="true" />
-                        {/* The plays are encrypted to the key: without it, all this
-                            device can know is that today is done. */}
-                        {!unlockSyncsPlays ? t.playedElsewhere : unlockFailed ? t.playedElsewhereUnlockFailed : t.playedElsewhereLocked}
-                    </p>
-                    {unlockSyncsPlays && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setUnlockFailed(false);
-                                unlockIfNeeded().catch(() => setUnlockFailed(true));
-                            }}
-                            className="inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors"
-                        >
-                            {t.resultUnlock}
-                        </button>
-                    )}
-                </div>
+            {dayState === 'played' && (
+                <p role="status" className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+                    <History size={14} className="shrink-0" aria-hidden="true" />
+                    {t.playedElsewhere}
+                </p>
+            )}
+            {/* The plays are encrypted to the key: without it, all this device
+                can know is that today is done, or that the log moved today. */}
+            {dayState === 'played-unlock' && (
+                <UnlockNotice text={t.playedElsewhereLocked} failed={t.playedElsewhereUnlockFailed} action={t.resultUnlock} />
+            )}
+            {dayState === 'in-progress-unlock' && (
+                <UnlockNotice text={t.progressElsewhereLocked} failed={t.playedElsewhereUnlockFailed} action={t.resultUnlock} />
             )}
             {isArchive && (
                 <p className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
@@ -1002,3 +1017,26 @@ export default function Palavra() {
     );
 }
 
+
+/** Asks for the passkey; unlocking re-runs the sync, which merges the plays. */
+function UnlockNotice({ text, failed, action }: { text: string; failed: string; action: string }) {
+    const [unlockFailed, setUnlockFailed] = useState(false);
+    return (
+        <div role="status" className="text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+            <p className="flex items-center justify-center gap-2">
+                <History size={14} className="shrink-0" aria-hidden="true" />
+                {unlockFailed ? failed : text}
+            </p>
+            <button
+                type="button"
+                onClick={() => {
+                    setUnlockFailed(false);
+                    unlockIfNeeded().catch(() => setUnlockFailed(true));
+                }}
+                className="inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors"
+            >
+                {action}
+            </button>
+        </div>
+    );
+}

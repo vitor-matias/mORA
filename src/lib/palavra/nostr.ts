@@ -29,6 +29,8 @@ import {
     KIND_APP_STATE,
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
+    matching,
+    newestEvent,
     queryComplete,
     fetchSnapshot,
     publishSnapshot,
@@ -443,4 +445,18 @@ export async function adoptPublishedResults(pubkey: string): Promise<void> {
             markResultPublished(pubkey, date);
         }
     }
+}
+
+/**
+ * When this identity's encrypted play log was last written, in seconds, or
+ * null if none was found. The timestamp is public metadata, so a locked key
+ * can still tell that some device has touched the log today, which is the
+ * only hint it can get that a game may be in progress elsewhere.
+ */
+export async function palavraStateTouchedAt(pubkey: string): Promise<number | null> {
+    const { events } = await queryComplete(
+        [{ kinds: [KIND_APP_STATE], authors: [pubkey], '#d': [D_PALAVRA_STATE], limit: 1 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    return newestEvent(matching(events, { kind: KIND_APP_STATE, author: pubkey, dTag: D_PALAVRA_STATE }))?.created_at ?? null;
 }
