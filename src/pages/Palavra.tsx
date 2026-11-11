@@ -332,6 +332,10 @@ export default function Palavra() {
     // turn into "failed". It is asked to unlock instead.
     const locked = useAuthStore((s) => s.isLocked);
     const [unlockFailed, setUnlockFailed] = useState(false);
+    // Unlocking only brings the plays back when cross-device sync is on;
+    // otherwise there is nothing to sync and no reason to ask for the key.
+    const syncOn = useAppStore((s) => s.shareStreaks);
+    const unlockSyncsPlays = locked && syncOn;
     const ownResult = finishedToday && sharing && !todayPublished
         ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
         : null;
@@ -424,8 +428,9 @@ export default function Palavra() {
         // window — without the guard, typing while reading the leaderboard
         // would fill in a board nobody can see.
         // Over, too: nothing is left to type, and the blur below would swallow
-        // Enter on the result sheet's own link and buttons.
-        if (pageTab !== 'game' || over) return;
+        // Enter on the result sheet's own link and buttons. Read-only likewise,
+        // or Enter on the unlock button would be swallowed.
+        if (pageTab !== 'game' || over || readOnly) return;
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.metaKey || event.ctrlKey || event.altKey) return;
             // DateNav renders a date input on this tab. Typing in it also
@@ -458,7 +463,7 @@ export default function Palavra() {
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onEnter, onBackspace, onLetter, pageTab, over]);
+    }, [onEnter, onBackspace, onLetter, pageTab, over, readOnly]);
 
     // How tall a tile may be, measured rather than assumed.
     //
@@ -679,9 +684,9 @@ export default function Palavra() {
                         <History size={14} className="shrink-0" aria-hidden="true" />
                         {/* The plays are encrypted to the key: without it, all this
                             device can know is that today is done. */}
-                        {!locked ? t.playedElsewhere : unlockFailed ? t.playedElsewhereUnlockFailed : t.playedElsewhereLocked}
+                        {!unlockSyncsPlays ? t.playedElsewhere : unlockFailed ? t.playedElsewhereUnlockFailed : t.playedElsewhereLocked}
                     </p>
-                    {locked && (
+                    {unlockSyncsPlays && (
                         <button
                             type="button"
                             onClick={() => {
