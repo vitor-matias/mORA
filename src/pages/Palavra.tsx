@@ -705,7 +705,10 @@ export default function Palavra() {
             {dayState === 'played-sync-off' && (
                 <p role="status" className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
                     <History size={14} className="shrink-0" aria-hidden="true" />
-                    {t.playedElsewhereSyncOff}
+                    <span>
+                        {t.playedElsewhereSyncOff}{' '}
+                        <Link to="/perfil" className="font-semibold underline">{t.playedElsewhereSyncOffLink}</Link>
+                    </span>
                 </p>
             )}
             {dayState === 'played-resync' && (

@@ -83,6 +83,7 @@ const translations = {
         demoMode: "Modo de demonstração: sem publicador de desafios configurado.",
         archiveRecorded: "Já jogaste este dia. Este é o teu resultado.",
         playedElsewhereSyncOff: "Já jogaste hoje. Para veres aqui as tuas jogadas, ativa «Sincronizar entre dispositivos» em Perfil.",
+        playedElsewhereSyncOffLink: "Abrir Perfil",
         playedElsewhereResync: "Já jogaste hoje. Se as tuas jogadas não aparecerem, sincroniza outra vez.",
         playedElsewhereResyncAction: "Sincronizar",
         playedElsewhereLocked: "Já jogaste hoje. Desbloqueia a chave para sincronizar as jogadas.",

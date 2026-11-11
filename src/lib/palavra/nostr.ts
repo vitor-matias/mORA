@@ -286,10 +286,32 @@ export async function publishPalavraResult(
     // the in-flight state comes out, so nothing in between reads as "never
     // tried".
     setPublishState(pubkey, date, 'publishing');
+    // First result wins. A day already on the relays (finished on another
+    // device, or by a game started here before the lookup that would have
+    // closed the board came back) is not replaced by a second attempt.
+    if (await resultOnRelays(pubkey, date)) {
+        usePalavraStore.getState().markResultPublished(pubkey, date);
+        setPublishState(pubkey, date, null);
+        return true;
+    }
     const sent = await sendResult(date, play, pubkey);
     if (sent) usePalavraStore.getState().markResultPublished(pubkey, date);
     setPublishState(pubkey, date, sent ? null : 'failed');
     return sent;
+}
+
+/** Whether this identity already has a valid public result for `date`. A
+    failed read says no, so publishing goes ahead as it always did. */
+async function resultOnRelays(pubkey: string, date: string): Promise<boolean> {
+    try {
+        const { events } = await queryComplete(
+            [{ kinds: [KIND_RESULT], authors: [pubkey], '#d': [resultDTag(date)], limit: 5 }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
+        return entriesFromEvents(events, date).some((entry) => entry.pubkey === pubkey);
+    } catch {
+        return false;
+    }
 }
 
 /** Mine, sign and send one result. True only once a relay has accepted it. */

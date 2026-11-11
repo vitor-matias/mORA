@@ -5,7 +5,7 @@
 // the daily board is therefore this function, not that attempt — so these run
 // the real one, with the relay, the signer and the miner stubbed.
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatUTCDate } from '@/lib/format';
 import { resultDTag } from './results';
 import type { PalavraPlay } from '@/store/palavra';
@@ -18,7 +18,8 @@ const THEM = 'b'.repeat(64);
 let signedIn = ME;
 
 const relayPublish = vi.fn();
-const queryRead = vi.fn();
+// Relays hold nothing unless a case says so.
+const queryRead = vi.fn().mockResolvedValue({ events: [] });
 const signEvent = vi.fn();
 
 vi.mock('@/lib/pool', () => ({
@@ -281,6 +282,32 @@ describe('adoptPublishedResults', () => {
         await adoptPublishedResults(ME);
 
         expect(usePalavraStore.getState().publishedResults).toEqual({});
+    });
+});
+
+describe('first result wins', () => {
+    const today = formatUTCDate(new Date());
+    const solved: PalavraPlay = { guesses: ['TERRA'], solved: true, ms: 1000 };
+
+    beforeEach(() => {
+        relayPublish.mockReset();
+        signEvent.mockReset();
+        usePalavraStore.setState({ publishedResults: {}, sharing: { [ME]: true } });
+    });
+    afterEach(() => queryRead.mockResolvedValue({ events: [] }));
+
+    it('does not replace a result already on the relays, and marks the day published', async () => {
+        queryRead.mockResolvedValue({ events: [{
+            id: '0'.repeat(64), pubkey: ME, kind: 30078, created_at: 1, sig: '',
+            content: JSON.stringify({ tries: 2, solved: true, ms: 500 }),
+            tags: [['d', resultDTag(today)], ['date', today], ['t', 'morapalavra']],
+        }] });
+
+        expect(await publishPalavraResult(today, solved, ME)).toBe(true);
+
+        expect(signEvent).not.toHaveBeenCalled();
+        expect(relayPublish).not.toHaveBeenCalled();
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${today}`]).toBe(true);
     });
 });
 
