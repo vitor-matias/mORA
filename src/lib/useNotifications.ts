@@ -102,8 +102,18 @@ export function useNotifications() {
         if (!isPushConfigured()) return;
         const st = useAppStore.getState();
         const times = pushTimes(st.notificationTime, st.hourReminders, st.weeklySummary ? st.weeklySummaryTime : null);
-        if (times.length === 0) disablePushReminder();
-        else if (st.pushSubscribed) enablePushReminder(times);
+        if (times.length === 0) {
+            disablePushReminder();
+            return;
+        }
+        // Gate on the browser's own subscription, not the persisted flag: a
+        // failed sync clears the flag, and that is exactly the case to retry.
+        // Granted permission means this never prompts on page load.
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        navigator.serviceWorker?.getRegistration()
+            .then((registration) => registration?.pushManager.getSubscription())
+            .then((subscription) => { if (subscription) return enablePushReminder(times); })
+            .catch(() => {});
     }, []);
 
     // Rebuilt on every prayer, so the summary the service worker shows on
