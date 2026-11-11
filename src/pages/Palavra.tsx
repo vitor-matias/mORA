@@ -31,6 +31,7 @@ import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
 import { syncNostrNow } from '@/lib/useNostrSync';
+import { unlockIfNeeded } from '@/lib/nostr';
 import { publishKey, usePublishStatus } from '@/lib/palavra/publishStatus';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -330,6 +331,7 @@ export default function Palavra() {
     // A locked passkey key can't sign, so offering to publish would only
     // turn into "failed". It is asked to unlock instead.
     const locked = useAuthStore((s) => s.isLocked);
+    const [unlockFailed, setUnlockFailed] = useState(false);
     const ownResult = finishedToday && sharing && !todayPublished
         ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
         : null;
@@ -672,10 +674,26 @@ export default function Palavra() {
                 </p>
             )}
             {playedElsewhere && (
-                <p role="status" className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
-                    <History size={14} className="shrink-0" aria-hidden="true" />
-                    {t.playedElsewhere}
-                </p>
+                <div role="status" className="text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+                    <p className="flex items-center justify-center gap-2">
+                        <History size={14} className="shrink-0" aria-hidden="true" />
+                        {/* The plays are encrypted to the key: without it, all this
+                            device can know is that today is done. */}
+                        {!locked ? t.playedElsewhere : unlockFailed ? t.playedElsewhereUnlockFailed : t.playedElsewhereLocked}
+                    </p>
+                    {locked && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setUnlockFailed(false);
+                                unlockIfNeeded().catch(() => setUnlockFailed(true));
+                            }}
+                            className="inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors"
+                        >
+                            {t.resultUnlock}
+                        </button>
+                    )}
+                </div>
             )}
             {isArchive && (
                 <p className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">

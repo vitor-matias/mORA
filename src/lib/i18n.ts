@@ -82,7 +82,9 @@ const translations = {
 
         demoMode: "Modo de demonstração: sem publicador de desafios configurado.",
         archiveRecorded: "Já jogaste este dia. Este é o teu resultado.",
-        playedElsewhere: "Já jogaste hoje, noutro dispositivo ou com a chave bloqueada. O teu resultado está na Comunidade; desbloqueia para ver as tuas tentativas.",
+        playedElsewhere: "Já jogaste hoje.",
+        playedElsewhereLocked: "Já jogaste hoje. Desbloqueia a chave para sincronizar as jogadas.",
+        playedElsewhereUnlockFailed: "Não foi possível desbloquear a chave. Tenta outra vez para sincronizar as jogadas.",
         archivePractice: "Modo de treino: não conta para o teu registo nem para as classificações.",
 
         loading: "A carregar o desafio…",
