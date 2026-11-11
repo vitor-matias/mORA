@@ -129,6 +129,12 @@ export function useNostrSync() {
                 // results is its own opt-in, and it is the one that is on by
                 // default. Under that branch, a player with sync off got a
                 // single attempt per game and no second chance.
+                // Public results first, needing no key and no opt-in: a day already
+                // on the relays is marked done, so it is neither replayable here
+                // nor re-mined by the catch-up below.
+                const { adoptPublishedResults } = await import('@/lib/palavra/nostr');
+                await adoptPublishedResults(pubkey)
+                    .catch((error) => console.warn('Could not read published results.', error));
                 await publishMissingResults(pubkey);
 
                 if (Date.now() - (lastHealAt.get(pubkey) ?? 0) > HEAL_INTERVAL_MS) {

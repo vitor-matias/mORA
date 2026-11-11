@@ -31,7 +31,9 @@ import { formatUTCDate } from '@/lib/format';
 import { appUrl } from '@/lib/appUrl';
 import { useDayRollover } from '@/lib/useDayRollover';
 import { syncNostrNow } from '@/lib/useNostrSync';
+import { unlockIfNeeded } from '@/lib/nostr';
 import { publishKey, usePublishStatus } from '@/lib/palavra/publishStatus';
+import { blocksPlay, dayNotice } from '@/lib/palavra/dayNotice';
 import { useTranslations } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -127,8 +129,42 @@ export default function Palavra() {
     const scope = isArchive && !recorded ? 'practice' : 'daily';
     const play = (isArchive ? (recorded ?? practice[viewDate]) : plays[viewDate]) ?? EMPTY_PLAY;
     const over = isFinished(play);
+    // A locked passkey key can't sign, so offering to publish would only
+    // turn into "failed". It is asked to unlock instead.
+    const locked = useAuthStore((s) => s.isLocked);
+    // Unlocking only brings the plays back when cross-device sync is on;
+    // otherwise there is nothing to sync and no reason to ask for the key.
+    const syncOn = useAppStore((s) => s.shareStreaks);
+    const canUnlockToSync = locked && syncOn;
+    // When the encrypted play log was last written: public metadata, so a
+    // locked device can still read it. Keyed, so a stale answer for another
+    // identity or day is never used.
+    const [logTouched, setLogTouched] = useState<{ key: string; at: number | null } | null>(null);
+    const logKey = `${myPubkey}:${today}`;
+    useEffect(() => {
+        if (!canUnlockToSync || !myPubkey) return;
+        let live = true;
+        import('@/lib/palavra/nostr')
+            .then(({ palavraStateTouchedAt }) => palavraStateTouchedAt(myPubkey))
+            .then((at) => { if (live) setLogTouched({ key: logKey, at }); })
+            .catch(() => {});
+        return () => { live = false; };
+    }, [canUnlockToSync, myPubkey, logKey]);
+    // A game played elsewhere (or while locked) has a public result but no
+    // play here; one started elsewhere has only a fresh play log. See dayNotice.
+    const dayState = dayNotice({
+        isArchive,
+        over,
+        guesses: play.guesses.length,
+        publishedToday: Boolean(myPubkey && publishedResults[`${myPubkey}:${today}`]),
+        locked,
+        syncOn,
+        logTouchedAt: logTouched?.key === logKey ? logTouched.at : null,
+        today,
+    });
+    const playedElsewhere = blocksPlay(dayState);
     // A recorded archive day is history: shown, not replayable.
-    const readOnly = isArchive && Boolean(recorded);
+    const readOnly = (isArchive && Boolean(recorded)) || playedElsewhere;
     // Whether *today* is done, which is not what `over` says while an archive
     // day is on screen — there `play` is the archived day's. The month board
     // sums today's guess counts, so that is the question it has to ask.
@@ -323,9 +359,7 @@ export default function Palavra() {
     const todayPublishState = usePublishStatus((s) =>
         (myPubkey ? s.byKey[publishKey(myPubkey, today)] : undefined));
     const remoteSigner = useAuthStore((s) => s.login?.type === 'bunker');
-    // A locked passkey key can't sign, so offering to publish would only
-    // turn into "failed". It is asked to unlock instead.
-    const locked = useAuthStore((s) => s.isLocked);
+
     const ownResult = finishedToday && sharing && !todayPublished
         ? (locked ? 'locked' : todayPublishState ?? 'unpublished')
         : null;
@@ -404,7 +438,7 @@ export default function Palavra() {
     // Gated on there actually being a board: loading, a load error and a
     // rejected payload all render no Keyboard, and hiding the tab bar for
     // them takes away navigation to make room for nothing.
-    const keyboardUp = pageTab === 'game' && !over && Boolean(challenge) && !loadError;
+    const keyboardUp = pageTab === 'game' && !over && !playedElsewhere && Boolean(challenge) && !loadError;
     const setBottomBarYielded = useAppStore((s) => s.setBottomBarYielded);
     useEffect(() => {
         setBottomBarYielded(keyboardUp);
@@ -418,8 +452,9 @@ export default function Palavra() {
         // window — without the guard, typing while reading the leaderboard
         // would fill in a board nobody can see.
         // Over, too: nothing is left to type, and the blur below would swallow
-        // Enter on the result sheet's own link and buttons.
-        if (pageTab !== 'game' || over) return;
+        // Enter on the result sheet's own link and buttons. Read-only likewise,
+        // or Enter on the unlock button would be swallowed.
+        if (pageTab !== 'game' || over || readOnly) return;
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.metaKey || event.ctrlKey || event.altKey) return;
             // DateNav renders a date input on this tab. Typing in it also
@@ -452,7 +487,7 @@ export default function Palavra() {
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onEnter, onBackspace, onLetter, pageTab, over]);
+    }, [onEnter, onBackspace, onLetter, pageTab, over, readOnly]);
 
     // How tall a tile may be, measured rather than assumed.
     //
@@ -666,6 +701,34 @@ export default function Palavra() {
                 <p className="text-xs text-center text-amber-700 dark:text-amber-500 bg-amber-500/10 rounded-xl px-3 py-2">
                     {t.demoMode}
                 </p>
+            )}
+            {dayState === 'played-sync-off' && (
+                <p role="status" className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+                    <History size={14} className="shrink-0" aria-hidden="true" />
+                    <span>
+                        {t.playedElsewhereSyncOff}{' '}
+                        <Link to="/perfil" className="font-semibold underline">{t.playedElsewhereSyncOffLink}</Link>
+                    </span>
+                </p>
+            )}
+            {dayState === 'played-resync' && (
+                // Unlocked with sync on: the sync should bring the plays. If it
+                // failed, this is the way to run it again.
+                <div role="status" className="text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+                    <p className="flex items-center justify-center gap-2">
+                        <History size={14} className="shrink-0" aria-hidden="true" />
+                        {t.playedElsewhereResync}
+                    </p>
+                    <button type="button" onClick={() => syncNostrNow()} className={NOTICE_ACTION}>
+                        {t.playedElsewhereResyncAction}
+                    </button>
+                </div>
+            )}
+            {dayState === 'played-unlock' && (
+                <UnlockNotice text={t.playedElsewhereLocked} failed={t.playedElsewhereUnlockFailed} action={t.resultUnlock} />
+            )}
+            {dayState === 'in-progress-unlock' && (
+                <UnlockNotice text={t.progressElsewhereLocked} failed={t.playedElsewhereUnlockFailed} action={t.resultUnlock} />
             )}
             {isArchive && (
                 <p className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
@@ -945,7 +1008,7 @@ export default function Palavra() {
                             </p>
                         </div>
 
-                        {!over && (
+                        {!over && !playedElsewhere && (
                             <div ref={keyboardRef}>
                             <Keyboard
                                 state={keys}
@@ -969,3 +1032,28 @@ export default function Palavra() {
     );
 }
 
+
+const NOTICE_ACTION = 'inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors';
+
+/** Asks for the passkey; unlocking re-runs the sync, which merges the plays. */
+function UnlockNotice({ text, failed, action }: { text: string; failed: string; action: string }) {
+    const [unlockFailed, setUnlockFailed] = useState(false);
+    return (
+        <div role="status" className="text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+            <p className="flex items-center justify-center gap-2">
+                <History size={14} className="shrink-0" aria-hidden="true" />
+                {unlockFailed ? failed : text}
+            </p>
+            <button
+                type="button"
+                onClick={() => {
+                    setUnlockFailed(false);
+                    unlockIfNeeded().catch(() => setUnlockFailed(true));
+                }}
+                className={NOTICE_ACTION}
+            >
+                {action}
+            </button>
+        </div>
+    );
+}

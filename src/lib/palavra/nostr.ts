@@ -29,6 +29,8 @@ import {
     KIND_APP_STATE,
     RELAY_PUBLISH_TIMEOUT_MS,
     RELAY_QUERY_TIMEOUT_MS,
+    matching,
+    newestEvent,
     queryComplete,
     fetchSnapshot,
     publishSnapshot,
@@ -284,10 +286,32 @@ export async function publishPalavraResult(
     // the in-flight state comes out, so nothing in between reads as "never
     // tried".
     setPublishState(pubkey, date, 'publishing');
+    // First result wins. A day already on the relays (finished on another
+    // device, or by a game started here before the lookup that would have
+    // closed the board came back) is not replaced by a second attempt.
+    if (await resultOnRelays(pubkey, date)) {
+        usePalavraStore.getState().markResultPublished(pubkey, date);
+        setPublishState(pubkey, date, null);
+        return true;
+    }
     const sent = await sendResult(date, play, pubkey);
     if (sent) usePalavraStore.getState().markResultPublished(pubkey, date);
     setPublishState(pubkey, date, sent ? null : 'failed');
     return sent;
+}
+
+/** Whether this identity already has a valid public result for `date`. A
+    failed read says no, so publishing goes ahead as it always did. */
+async function resultOnRelays(pubkey: string, date: string): Promise<boolean> {
+    try {
+        const { events } = await queryComplete(
+            [{ kinds: [KIND_RESULT], authors: [pubkey], '#d': [resultDTag(date)], limit: 5 }],
+            { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+        );
+        return entriesFromEvents(events, date).some((entry) => entry.pubkey === pubkey);
+    } catch {
+        return false;
+    }
 }
 
 /** Mine, sign and send one result. True only once a relay has accepted it. */
@@ -443,4 +467,18 @@ export async function adoptPublishedResults(pubkey: string): Promise<void> {
             markResultPublished(pubkey, date);
         }
     }
+}
+
+/**
+ * When this identity's encrypted play log was last written, in seconds, or
+ * null if none was found. The timestamp is public metadata, so a locked key
+ * can still tell that some device has touched the log today, which is the
+ * only hint it can get that a game may be in progress elsewhere.
+ */
+export async function palavraStateTouchedAt(pubkey: string): Promise<number | null> {
+    const { events } = await queryComplete(
+        [{ kinds: [KIND_APP_STATE], authors: [pubkey], '#d': [D_PALAVRA_STATE], limit: 1 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    return newestEvent(matching(events, { kind: KIND_APP_STATE, author: pubkey, dTag: D_PALAVRA_STATE }))?.created_at ?? null;
 }
