@@ -16,8 +16,7 @@ import { RelayStatus } from "@/components/RelayStatus";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
 import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
-import { reminderKey } from "@/lib/reminderSchedule";
-import { WEEKLY_SUMMARY_WEEKDAY } from "@/lib/week";
+import { pushTimes } from "@/lib/useNotifications";
 
 /** Long enough to cover picking an hour then a minute, short enough that the
     registration still feels immediate. */
@@ -462,11 +461,7 @@ export default function Profile() {
     useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
 
     const syncReminders = (nextTime: string | null, nextHours: Record<string, string>, nextWeekly: string | null = weeklySummary ? weeklySummaryTime : null) => {
-        const times = [...new Set([
-            ...(nextTime ? [nextTime] : []),
-            ...Object.values(nextHours),
-            ...(nextWeekly ? [reminderKey({ weekday: WEEKLY_SUMMARY_WEEKDAY, time: nextWeekly })] : []),
-        ])].sort();
+        const times = pushTimes(nextTime, nextHours, nextWeekly);
 
         window.clearTimeout(syncTimerRef.current);
         const seq = ++syncSeqRef.current;

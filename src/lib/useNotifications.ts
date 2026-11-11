@@ -8,6 +8,20 @@ import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVE
 import { WEEKLY_SUMMARY_WEEKDAY, weekDates, weekSummary } from '@/lib/week';
 
 /**
+ * The list a push subscription registers with the server: the rosary time, each
+ * Hour, and the weekly summary's "weekday@time" key. Shared by Profile and the
+ * start-up re-sync, because the server stores it as the whole schedule — a
+ * caller that leaves one out silently drops it.
+ */
+export function pushTimes(rosary: string | null, hours: Record<string, string>, weekly: string | null): string[] {
+    return [...new Set([
+        ...(rosary ? [rosary] : []),
+        ...Object.values(hours),
+        ...(weekly ? [reminderKey({ weekday: WEEKLY_SUMMARY_WEEKDAY, time: weekly })] : []),
+    ])].sort();
+}
+
+/**
  * Every reminder this device is set up for — the daily rosary reminder plus
  * whichever Hours the user switched on — sorted by time of day, at most one
  * entry per time. Single source of truth for both the in-app timer below and
@@ -86,10 +100,10 @@ export function useNotifications() {
         // lists — a ghost notification nobody can switch off. Push what this
         // device actually has, or nothing, once per start.
         if (!isPushConfigured()) return;
-        const { notificationTime: rosary, hourReminders: hours } = useAppStore.getState();
-        const times = [...new Set([...(rosary ? [rosary] : []), ...Object.values(hours)])].sort();
+        const st = useAppStore.getState();
+        const times = pushTimes(st.notificationTime, st.hourReminders, st.weeklySummary ? st.weeklySummaryTime : null);
         if (times.length === 0) disablePushReminder();
-        else if (useAppStore.getState().pushSubscribed) enablePushReminder(times);
+        else if (st.pushSubscribed) enablePushReminder(times);
     }, []);
 
     // Rebuilt on every prayer, so the summary the service worker shows on
