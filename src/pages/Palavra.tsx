@@ -98,6 +98,7 @@ export default function Palavra() {
     const deviceHasOwner = useAppStore((s) => Boolean(s.localDataOwner));
     const sharing = usePalavraStore((s) => sharesResults(s, myPubkey));
     const plays = usePalavraStore((s) => s.plays);
+    const publishedResults = usePalavraStore((s) => s.publishedResults);
     const practice = usePalavraStore((s) => s.practice);
     const beginPlay = usePalavraStore((s) => s.beginPlay);
     const submitGuess = usePalavraStore((s) => s.submitGuess);
@@ -131,7 +132,10 @@ export default function Palavra() {
     // Whether *today* is done, which is not what `over` says while an archive
     // day is on screen — there `play` is the archived day's. The month board
     // sums today's guess counts, so that is the question it has to ask.
-    const finishedToday = isFinished(plays[today] ?? EMPTY_PLAY);
+    // A result already on the relays counts too: a game played on another
+    // device, or while the key was locked, has no play here to read.
+    const finishedToday = isFinished(plays[today] ?? EMPTY_PLAY)
+        || Boolean(myPubkey && publishedResults[`${myPubkey}:${today}`]);
 
     // A PWA resumed from the background can be days behind; re-anchor and
     // re-fetch rather than leave yesterday's puzzle on screen. Only moves the

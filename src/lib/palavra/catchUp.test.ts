@@ -18,6 +18,7 @@ const THEM = 'b'.repeat(64);
 let signedIn = ME;
 
 const relayPublish = vi.fn();
+const queryRead = vi.fn();
 const signEvent = vi.fn();
 
 vi.mock('@/lib/pool', () => ({
@@ -37,6 +38,7 @@ vi.mock('@/store/auth', () => ({
 vi.mock('@/lib/nostr', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/nostr')>()),
     signNostrEvent: (template: unknown) => signEvent(template),
+    queryComplete: (...args: unknown[]) => queryRead(...args),
 }));
 // Mining runs in a Worker, which this environment has none of — and an unmined
 // event is refused by `publishPalavraResult` on purpose, so without this every
@@ -52,7 +54,7 @@ vi.mock('@/store/app', () => ({
     useAppStore: { getState: () => ({ shareStreaks: false }) },
 }));
 
-const { publishMissingResults, publishPalavraResult } = await import('./nostr');
+const { publishMissingResults, publishPalavraResult, adoptPublishedResults } = await import('./nostr');
 const { usePalavraStore } = await import('@/store/palavra');
 const { rememberedResults } = await import('./resultCache');
 const { publishKey, setPublishState, usePublishStatus } = await import('./publishStatus');
@@ -249,5 +251,35 @@ describe('publishMissingResults', () => {
         await publishMissingResults(ME);
 
         expect(relayPublish).not.toHaveBeenCalled();
+    });
+});
+
+describe('adoptPublishedResults', () => {
+    const today = formatUTCDate(new Date());
+    const result = (author: string, date: string) => ({
+        id: '0'.repeat(64), pubkey: author, kind: 30078, created_at: 1, sig: '',
+        content: JSON.stringify({ tries: 3, solved: true, ms: 1000 }),
+        tags: [['d', resultDTag(date)], ['date', date], ['t', 'morapalavra']],
+    });
+
+    beforeEach(() => {
+        queryRead.mockReset();
+        usePalavraStore.setState({ publishedResults: {} });
+    });
+
+    it('marks days the identity already has a public result for, with no key', async () => {
+        queryRead.mockResolvedValue({ events: [result(ME, today)] });
+
+        await adoptPublishedResults(ME);
+
+        expect(usePalavraStore.getState().publishedResults[`${ME}:${today}`]).toBe(true);
+    });
+
+    it('ignores results by anyone else', async () => {
+        queryRead.mockResolvedValue({ events: [result(THEM, today)] });
+
+        await adoptPublishedResults(ME);
+
+        expect(usePalavraStore.getState().publishedResults).toEqual({});
     });
 });
