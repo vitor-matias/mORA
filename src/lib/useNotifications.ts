@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app';
 import { useTranslations } from '@/lib/i18n';
-import { verifyPushSubscription, enablePushReminder, disablePushReminder, isPushConfigured } from '@/lib/push';
+import { verifyPushSubscription, enablePushReminder, disablePushReminder, isPushConfigured, enqueuePushSync } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
 import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
@@ -100,20 +100,20 @@ export function useNotifications() {
         // lists — a ghost notification nobody can switch off. Push what this
         // device actually has, or nothing, once per start.
         if (!isPushConfigured()) return;
-        const st = useAppStore.getState();
-        const times = pushTimes(st.notificationTime, st.hourReminders, st.weeklySummary ? st.weeklySummaryTime : null);
-        if (times.length === 0) {
-            disablePushReminder();
-            return;
-        }
-        // Gate on the browser's own subscription, not the persisted flag: a
-        // failed sync clears the flag, and that is exactly the case to retry.
-        // Granted permission means this never prompts on page load.
-        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-        navigator.serviceWorker?.getRegistration()
-            .then((registration) => registration?.pushManager.getSubscription())
-            .then((subscription) => { if (subscription) return enablePushReminder(times); })
-            .catch(() => {});
+        // Queued behind any Profile sync, and the times are read when it runs
+        // rather than at mount, so it can never put an older list over a newer
+        // one the user just saved.
+        enqueuePushSync(async () => {
+            const st = useAppStore.getState();
+            const times = pushTimes(st.notificationTime, st.hourReminders, st.weeklySummary ? st.weeklySummaryTime : null);
+            if (times.length === 0) return disablePushReminder();
+            // Gate on the browser's own subscription, not the persisted flag: a
+            // failed sync clears the flag, and that is exactly the case to retry.
+            // Granted permission means this never prompts on page load.
+            if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+            const registration = await navigator.serviceWorker?.getRegistration();
+            if (await registration?.pushManager.getSubscription()) await enablePushReminder(times);
+        }).catch(() => {});
     }, []);
 
     // Rebuilt on every prayer, so the summary the service worker shows on

@@ -15,7 +15,7 @@ import { MyBadges } from "@/components/palavra/MyBadges";
 import { RelayStatus } from "@/components/RelayStatus";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
-import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
+import { isPushConfigured, enablePushReminder, disablePushReminder, enqueuePushSync } from "@/lib/push";
 import { pushTimes } from "@/lib/useNotifications";
 
 /** Long enough to cover picking an hour then a minute, short enough that the
@@ -456,7 +456,6 @@ export default function Profile() {
     // and the server keeps the older schedule.
     const syncTimerRef = useRef<number | undefined>(undefined);
     const syncSeqRef = useRef(0);
-    const syncQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 
     useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
 
@@ -466,19 +465,16 @@ export default function Profile() {
         window.clearTimeout(syncTimerRef.current);
         const seq = ++syncSeqRef.current;
         syncTimerRef.current = window.setTimeout(() => {
-            syncQueueRef.current = syncQueueRef.current
-                // One failed registration must not stall every later one.
-                .catch(() => {})
-                .then(async () => {
-                    if (seq !== syncSeqRef.current) return;
-                    if (times.length === 0) {
-                        await disablePushReminder();
-                    } else if (isPushConfigured()) {
-                        await enablePushReminder(times);
-                    } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-                        await Notification.requestPermission();
-                    }
-                });
+            enqueuePushSync(async () => {
+                if (seq !== syncSeqRef.current) return;
+                if (times.length === 0) {
+                    await disablePushReminder();
+                } else if (isPushConfigured()) {
+                    await enablePushReminder(times);
+                } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+                    await Notification.requestPermission();
+                }
+            });
         }, REMINDER_SYNC_DEBOUNCE_MS);
     };
 
