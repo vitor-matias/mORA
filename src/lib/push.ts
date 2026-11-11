@@ -171,3 +171,14 @@ export async function disablePushReminder(): Promise<void> {
         console.warn('Push unsubscribe failed:', e);
     }
 }
+
+// Every registration or removal, from Profile or the start-up re-sync, runs
+// through this one chain so two in-flight POSTs/DELETEs can't land out of
+// order and leave the server with the older schedule.
+let pushQueue: Promise<unknown> = Promise.resolve();
+export function enqueuePushSync<T>(task: () => Promise<T>): Promise<T> {
+    // One failed registration must not stall every later one.
+    const run = pushQueue.catch(() => {}).then(task);
+    pushQueue = run;
+    return run;
+}

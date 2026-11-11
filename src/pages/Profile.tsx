@@ -15,9 +15,8 @@ import { MyBadges } from "@/components/palavra/MyBadges";
 import { RelayStatus } from "@/components/RelayStatus";
 import { useTranslations } from "@/lib/i18n";
 import { fetchNostrProfile, publishNostrProfile } from "@/lib/nostr";
-import { isPushConfigured, enablePushReminder, disablePushReminder } from "@/lib/push";
-import { reminderKey } from "@/lib/reminderSchedule";
-import { WEEKLY_SUMMARY_WEEKDAY } from "@/lib/week";
+import { isPushConfigured, enablePushReminder, disablePushReminder, enqueuePushSync } from "@/lib/push";
+import { pushTimes } from "@/lib/useNotifications";
 
 /** Long enough to cover picking an hour then a minute, short enough that the
     registration still feels immediate. */
@@ -457,33 +456,25 @@ export default function Profile() {
     // and the server keeps the older schedule.
     const syncTimerRef = useRef<number | undefined>(undefined);
     const syncSeqRef = useRef(0);
-    const syncQueueRef = useRef<Promise<unknown>>(Promise.resolve());
 
     useEffect(() => () => window.clearTimeout(syncTimerRef.current), []);
 
     const syncReminders = (nextTime: string | null, nextHours: Record<string, string>, nextWeekly: string | null = weeklySummary ? weeklySummaryTime : null) => {
-        const times = [...new Set([
-            ...(nextTime ? [nextTime] : []),
-            ...Object.values(nextHours),
-            ...(nextWeekly ? [reminderKey({ weekday: WEEKLY_SUMMARY_WEEKDAY, time: nextWeekly })] : []),
-        ])].sort();
+        const times = pushTimes(nextTime, nextHours, nextWeekly);
 
         window.clearTimeout(syncTimerRef.current);
         const seq = ++syncSeqRef.current;
         syncTimerRef.current = window.setTimeout(() => {
-            syncQueueRef.current = syncQueueRef.current
-                // One failed registration must not stall every later one.
-                .catch(() => {})
-                .then(async () => {
-                    if (seq !== syncSeqRef.current) return;
-                    if (times.length === 0) {
-                        await disablePushReminder();
-                    } else if (isPushConfigured()) {
-                        await enablePushReminder(times);
-                    } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
-                        await Notification.requestPermission();
-                    }
-                });
+            enqueuePushSync(async () => {
+                if (seq !== syncSeqRef.current) return;
+                if (times.length === 0) {
+                    await disablePushReminder();
+                } else if (isPushConfigured()) {
+                    await enablePushReminder(times);
+                } else if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+                    await Notification.requestPermission();
+                }
+            });
         }, REMINDER_SYNC_DEBOUNCE_MS);
     };
 

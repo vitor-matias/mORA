@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useAppStore } from '@/store/app';
 import { useTranslations } from '@/lib/i18n';
-import { verifyPushSubscription } from '@/lib/push';
+import { verifyPushSubscription, enablePushReminder, disablePushReminder, isPushConfigured, enqueuePushSync } from '@/lib/push';
 import { CANONICAL_HOURS } from '@/lib/hours';
 import { formatISODate, joinWithE } from '@/lib/format';
 import { writeReminderSchedule, reminderBody, reminderKey, reminderRoute, DELIVERY_WINDOW_MIN, type ReminderEntry } from '@/lib/reminderSchedule';
 import { WEEKLY_SUMMARY_WEEKDAY, weekDates, weekSummary } from '@/lib/week';
+
+/**
+ * The list a push subscription registers with the server: the rosary time, each
+ * Hour, and the weekly summary's "weekday@time" key. Shared by Profile and the
+ * start-up re-sync, because the server stores it as the whole schedule — a
+ * caller that leaves one out silently drops it.
+ */
+export function pushTimes(rosary: string | null, hours: Record<string, string>, weekly: string | null): string[] {
+    return [...new Set([
+        ...(rosary ? [rosary] : []),
+        ...Object.values(hours),
+        ...(weekly ? [reminderKey({ weekday: WEEKLY_SUMMARY_WEEKDAY, time: weekly })] : []),
+    ])].sort();
+}
 
 /**
  * Every reminder this device is set up for — the daily rosary reminder plus
@@ -80,6 +94,26 @@ export function useNotifications() {
     // fallback timer below isn't left disabled with no push active.
     useEffect(() => {
         verifyPushSubscription();
+        // The server keeps its own copy of the times, and a failed or
+        // interrupted sync from Profile (best-effort DELETE, a debounce cut off
+        // by leaving the page) leaves it with reminders the app no longer
+        // lists — a ghost notification nobody can switch off. Push what this
+        // device actually has, or nothing, once per start.
+        if (!isPushConfigured()) return;
+        // Queued behind any Profile sync, and the times are read when it runs
+        // rather than at mount, so it can never put an older list over a newer
+        // one the user just saved.
+        enqueuePushSync(async () => {
+            const st = useAppStore.getState();
+            const times = pushTimes(st.notificationTime, st.hourReminders, st.weeklySummary ? st.weeklySummaryTime : null);
+            if (times.length === 0) return disablePushReminder();
+            // Gate on the browser's own subscription, not the persisted flag: a
+            // failed sync clears the flag, and that is exactly the case to retry.
+            // Granted permission means this never prompts on page load.
+            if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+            const registration = await navigator.serviceWorker?.getRegistration();
+            if (await registration?.pushManager.getSubscription()) await enablePushReminder(times);
+        }).catch(() => {});
     }, []);
 
     // Rebuilt on every prayer, so the summary the service worker shows on
