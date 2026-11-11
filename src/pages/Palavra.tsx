@@ -157,7 +157,8 @@ export default function Palavra() {
         over,
         guesses: play.guesses.length,
         publishedToday: Boolean(myPubkey && publishedResults[`${myPubkey}:${today}`]),
-        canUnlockToSync,
+        locked,
+        syncOn,
         logTouchedAt: logTouched?.key === logKey ? logTouched.at : null,
         today,
     });
@@ -701,14 +702,25 @@ export default function Palavra() {
                     {t.demoMode}
                 </p>
             )}
-            {dayState === 'played' && (
+            {dayState === 'played-sync-off' && (
                 <p role="status" className="flex items-center justify-center gap-2 text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
                     <History size={14} className="shrink-0" aria-hidden="true" />
-                    {t.playedElsewhere}
+                    {t.playedElsewhereSyncOff}
                 </p>
             )}
-            {/* The plays are encrypted to the key: without it, all this device
-                can know is that today is done, or that the log moved today. */}
+            {dayState === 'played-resync' && (
+                // Unlocked with sync on: the sync should bring the plays. If it
+                // failed, this is the way to run it again.
+                <div role="status" className="text-xs text-center text-zinc-600 dark:text-zinc-400 bg-zinc-500/10 rounded-xl px-3 py-2">
+                    <p className="flex items-center justify-center gap-2">
+                        <History size={14} className="shrink-0" aria-hidden="true" />
+                        {t.playedElsewhereResync}
+                    </p>
+                    <button type="button" onClick={() => syncNostrNow()} className={NOTICE_ACTION}>
+                        {t.playedElsewhereResyncAction}
+                    </button>
+                </div>
+            )}
             {dayState === 'played-unlock' && (
                 <UnlockNotice text={t.playedElsewhereLocked} failed={t.playedElsewhereUnlockFailed} action={t.resultUnlock} />
             )}
@@ -1018,6 +1030,8 @@ export default function Palavra() {
 }
 
 
+const NOTICE_ACTION = 'inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors';
+
 /** Asks for the passkey; unlocking re-runs the sync, which merges the plays. */
 function UnlockNotice({ text, failed, action }: { text: string; failed: string; action: string }) {
     const [unlockFailed, setUnlockFailed] = useState(false);
@@ -1033,7 +1047,7 @@ function UnlockNotice({ text, failed, action }: { text: string; failed: string; 
                     setUnlockFailed(false);
                     unlockIfNeeded().catch(() => setUnlockFailed(true));
                 }}
-                className="inline-block mt-2 py-1.5 px-3 rounded-lg font-semibold bg-liturgy-500/10 text-liturgy-700 dark:text-liturgy-300 hover:bg-liturgy-500/20 transition-colors"
+                className={NOTICE_ACTION}
             >
                 {action}
             </button>

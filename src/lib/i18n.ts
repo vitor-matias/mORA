@@ -82,7 +82,9 @@ const translations = {
 
         demoMode: "Modo de demonstração: sem publicador de desafios configurado.",
         archiveRecorded: "Já jogaste este dia. Este é o teu resultado.",
-        playedElsewhere: "Já jogaste hoje.",
+        playedElsewhereSyncOff: "Já jogaste hoje. Para veres aqui as tuas jogadas, ativa «Sincronizar entre dispositivos» em Perfil.",
+        playedElsewhereResync: "Já jogaste hoje. Se as tuas jogadas não aparecerem, sincroniza outra vez.",
+        playedElsewhereResyncAction: "Sincronizar",
         playedElsewhereLocked: "Já jogaste hoje. Desbloqueia a chave para sincronizar as jogadas.",
         progressElsewhereLocked: "Se começaste o jogo de hoje noutro dispositivo, desbloqueia a chave para continuar onde ficaste.",
         playedElsewhereUnlockFailed: "Não foi possível desbloquear a chave. Tenta outra vez para sincronizar as jogadas.",

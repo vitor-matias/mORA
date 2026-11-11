@@ -5,22 +5,23 @@ const today = '2026-11-11';
 const midnight = Date.parse(`${today}T00:00:00Z`) / 1000;
 const base = {
     isArchive: false, over: false, guesses: 0, publishedToday: false,
-    canUnlockToSync: false, logTouchedAt: null, today,
+    locked: false, syncOn: false, logTouchedAt: null, today,
 };
 
 describe('dayNotice', () => {
     it('says nothing for a fresh day with no hints', () => {
         expect(dayNotice(base)).toBeNull();
+        expect(blocksPlay(null)).toBe(false);
     });
 
-    it('closes the board when today is published elsewhere', () => {
-        expect(dayNotice({ ...base, publishedToday: true })).toBe('played');
-        expect(blocksPlay('played')).toBe(true);
-    });
-
-    it('offers the unlock for a published day only when it would sync', () => {
-        expect(dayNotice({ ...base, publishedToday: true, canUnlockToSync: true })).toBe('played-unlock');
-        expect(blocksPlay('played-unlock')).toBe(true);
+    it('closes the board when today is published elsewhere, whatever the key and sync', () => {
+        expect(dayNotice({ ...base, publishedToday: true })).toBe('played-sync-off');
+        expect(dayNotice({ ...base, publishedToday: true, locked: true })).toBe('played-sync-off');
+        expect(dayNotice({ ...base, publishedToday: true, syncOn: true, locked: true })).toBe('played-unlock');
+        expect(dayNotice({ ...base, publishedToday: true, syncOn: true })).toBe('played-resync');
+        for (const notice of ['played-sync-off', 'played-unlock', 'played-resync'] as const) {
+            expect(blocksPlay(notice)).toBe(true);
+        }
     });
 
     it('stays quiet once the game here is over, or on an archive day', () => {
@@ -29,17 +30,18 @@ describe('dayNotice', () => {
     });
 
     it('hints at a game in progress elsewhere without closing the board', () => {
-        const notice = dayNotice({ ...base, canUnlockToSync: true, logTouchedAt: midnight + 60 });
+        const notice = dayNotice({ ...base, locked: true, syncOn: true, logTouchedAt: midnight + 60 });
         expect(notice).toBe('in-progress-unlock');
         expect(blocksPlay(notice)).toBe(false);
     });
 
     it('does not hint when the log was last written before today', () => {
-        expect(dayNotice({ ...base, canUnlockToSync: true, logTouchedAt: midnight - 1 })).toBeNull();
+        expect(dayNotice({ ...base, locked: true, syncOn: true, logTouchedAt: midnight - 1 })).toBeNull();
     });
 
-    it('does not hint once a guess is made here, or when unlocking would not sync', () => {
-        expect(dayNotice({ ...base, canUnlockToSync: true, logTouchedAt: midnight + 60, guesses: 1 })).toBeNull();
-        expect(dayNotice({ ...base, logTouchedAt: midnight + 60 })).toBeNull();
+    it('does not hint once a guess is made here, when unlocked, or with sync off', () => {
+        expect(dayNotice({ ...base, locked: true, syncOn: true, logTouchedAt: midnight + 60, guesses: 1 })).toBeNull();
+        expect(dayNotice({ ...base, syncOn: true, logTouchedAt: midnight + 60 })).toBeNull();
+        expect(dayNotice({ ...base, locked: true, logTouchedAt: midnight + 60 })).toBeNull();
     });
 });
