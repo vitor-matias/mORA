@@ -28,6 +28,8 @@ import { useAppStore } from '@/store/app';
 import {
     KIND_APP_STATE,
     RELAY_PUBLISH_TIMEOUT_MS,
+    RELAY_QUERY_TIMEOUT_MS,
+    queryComplete,
     fetchSnapshot,
     publishSnapshot,
     signNostrEvent,
@@ -53,7 +55,7 @@ export const D_PALAVRA_STATE = 'mora-palavra-state';
 // depends on them, so Node can import all three without dragging the signer
 // and the stores in. Imported for use below and re-exported, because this is
 // where the writer half looks for them.
-import { PALAVRA_TOPIC, resultDTag } from './results';
+import { PALAVRA_TOPIC, resultDTag, entriesFromEvents, tagValue, KIND_RESULT } from './results';
 export { PALAVRA_TOPIC, resultDTag };
 
 // One sync at a time; overlapping callers await the same run — the same
@@ -414,4 +416,31 @@ export async function sharePalavraNote({
         content: lines.join('\n'),
     });
     await pool.event(event, { signal: AbortSignal.timeout(RELAY_PUBLISH_TIMEOUT_MS) });
+}
+
+/**
+ * Learn from the relays which recent days this identity already has a public
+ * result for, and record them as published.
+ *
+ * Needs no key: the results are public and signed, so a locked passkey key (or
+ * a device that never played the day) can still tell that the player has
+ * finished it. That is what lets the boards open and the "publish" notice stay
+ * quiet without a biometric prompt. Each event goes through the same checks a
+ * board applies (date/d agreement, proof of work), and only the identity's own
+ * are asked for.
+ */
+export async function adoptPublishedResults(pubkey: string): Promise<void> {
+    const since = Math.floor((Date.now() - CATCH_UP_DAYS * 86_400_000) / 1000);
+    const { events } = await queryComplete(
+        [{ kinds: [KIND_RESULT], authors: [pubkey], '#t': [PALAVRA_TOPIC], since, limit: 50 }],
+        { signal: AbortSignal.timeout(RELAY_QUERY_TIMEOUT_MS) },
+    );
+    const mine = events.filter((event) => event.pubkey === pubkey);
+    const { markResultPublished } = usePalavraStore.getState();
+    for (const date of new Set(mine.map((event) => tagValue(event, 'date')))) {
+        if (!date) continue;
+        if (entriesFromEvents(mine, date).some((entry) => entry.pubkey === pubkey)) {
+            markResultPublished(pubkey, date);
+        }
+    }
 }

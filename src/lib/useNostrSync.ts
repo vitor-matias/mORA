@@ -54,7 +54,16 @@ export function useNostrSync() {
         //
         // `shareStreaks` is not part of this guard: it governs the five syncs
         // below, not the public Palavra result, which has its own opt-in.
-        if (!pubkey || isLocked) return;
+        if (!pubkey) return;
+        // A locked key can't sign or decrypt, but the player's own public
+        // results need neither: read them so the boards open and the app
+        // knows today is already played. Everything else waits for the unlock.
+        if (isLocked) {
+            import('@/lib/palavra/nostr')
+                .then(({ adoptPublishedResults }) => adoptPublishedResults(pubkey))
+                .catch((error) => console.warn('Could not read published results.', error));
+            return;
+        }
 
         const pull = async (force = false) => {
             const now = Date.now();
